@@ -1,19 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { View, ActivityIndicator } from "react-native";
 
 import HomeScreen from "../screens/HomeScreen";
 import CreateConfessionScreen from "../screens/CreateConfessionScreen";
 import VideoRecordScreen from "../screens/VideoRecordScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import VideoFeedScreen from "../screens/VideoFeedScreen";
+import OnboardingScreen from "../screens/OnboardingScreen";
+import SignUpScreen from "../screens/SignUpScreen";
+import SignInScreen from "../screens/SignInScreen";
+import { useAuthStore } from "../state/authStore";
 
 export type RootStackParamList = {
   MainTabs: undefined;
   VideoRecord: undefined;
+  AuthStack: undefined;
+};
+
+export type AuthStackParamList = {
+  Onboarding: undefined;
+  SignUp: undefined;
+  SignIn: undefined;
 };
 
 export type TabParamList = {
@@ -24,7 +36,24 @@ export type TabParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
+
+function AuthStackNavigator() {
+  return (
+    <AuthStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        gestureEnabled: true,
+        animation: "slide_from_right",
+      }}
+    >
+      <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
+      <AuthStack.Screen name="SignUp" component={SignUpScreen} />
+      <AuthStack.Screen name="SignIn" component={SignInScreen} />
+    </AuthStack.Navigator>
+  );
+}
 
 function MainTabs() {
   return (
@@ -91,6 +120,24 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
+  const { isAuthenticated, isLoading, user, checkAuthState } = useAuthStore();
+
+  useEffect(() => {
+    checkAuthState();
+  }, [checkAuthState]);
+
+  // Show loading screen while checking auth state
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-black items-center justify-center">
+        <ActivityIndicator size="large" color="#1D9BF0" />
+      </View>
+    );
+  }
+
+  // Determine which stack to show
+  const shouldShowAuth = !isAuthenticated || (user && !user.isOnboarded);
+
   return (
     <NavigationContainer
       theme={{
@@ -137,19 +184,29 @@ export default function AppNavigator() {
           headerShadowVisible: false,
         }}
       >
-        <Stack.Screen 
-          name="MainTabs" 
-          component={MainTabs}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="VideoRecord" 
-          component={VideoRecordScreen}
-          options={{ 
-            title: "Record Video",
-            presentation: "modal"
-          }}
-        />
+        {shouldShowAuth ? (
+          <Stack.Screen 
+            name="AuthStack" 
+            component={AuthStackNavigator}
+            options={{ headerShown: false }}
+          />
+        ) : (
+          <>
+            <Stack.Screen 
+              name="MainTabs" 
+              component={MainTabs}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="VideoRecord" 
+              component={VideoRecordScreen}
+              options={{ 
+                title: "Record Video",
+                presentation: "modal"
+              }}
+            />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

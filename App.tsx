@@ -1,7 +1,9 @@
+import React, { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import AppNavigator from "./src/navigation/AppNavigator";
+import { useAuthStore } from "./src/state/authStore";
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
@@ -25,6 +27,13 @@ const openai_api_key = Constants.expoConfig.extra.apikey;
 */
 
 export default function App() {
+  const checkAuthState = useAuthStore((state) => state.checkAuthState);
+
+  useEffect(() => {
+    // Initialize auth state on app launch
+    checkAuthState();
+  }, [checkAuthState]);
+
   return (
     <GestureHandlerRootView className="flex-1">
       <SafeAreaProvider>

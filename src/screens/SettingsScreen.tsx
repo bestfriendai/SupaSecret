@@ -3,14 +3,17 @@ import { View, Text, Pressable, ScrollView, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useConfessionStore } from "../state/confessionStore";
+import { useAuthStore } from "../state/authStore";
+import { format } from "date-fns";
 
 export default function SettingsScreen() {
   const { confessions, clearAllConfessions } = useConfessionStore();
+  const { user, signOut } = useAuthStore();
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState<"confirm" | "success">("confirm");
+  const [modalType, setModalType] = useState<"confirm" | "success" | "signout">("confirm");
 
-  const showMessage = (message: string, type: "confirm" | "success") => {
+  const showMessage = (message: string, type: "confirm" | "success" | "signout") => {
     setModalMessage(message);
     setModalType(type);
     setShowModal(true);
@@ -31,6 +34,19 @@ export default function SettingsScreen() {
     }, 100);
   };
 
+  const handleSignOut = () => {
+    showMessage("Are you sure you want to sign out?", "signout");
+  };
+
+  const confirmSignOut = async () => {
+    try {
+      await signOut();
+      setShowModal(false);
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-black">
       {/* Header */}
@@ -41,6 +57,46 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView className="flex-1">
+        {/* Account Section */}
+        {user && (
+          <View className="border-b border-gray-800">
+            <View className="px-4 py-4">
+              <Text className="text-white text-17 font-bold mb-4">
+                Account
+              </Text>
+              <View className="space-y-4">
+                <View className="flex-row items-center py-2">
+                  <View className="w-12 h-12 bg-blue-500 rounded-full items-center justify-center mr-3">
+                    <Ionicons name="person" size={20} color="#FFFFFF" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white text-15 font-medium">
+                      {user.username || "Anonymous User"}
+                    </Text>
+                    <Text className="text-gray-500 text-13">{user.email}</Text>
+                  </View>
+                </View>
+                <View className="flex-row items-center justify-between py-2">
+                  <Text className="text-white text-15">Member Since</Text>
+                  <Text className="text-gray-400 text-13">
+                    {format(new Date(user.createdAt), "MMM d, yyyy")}
+                  </Text>
+                </View>
+                <Pressable 
+                  className="flex-row items-center justify-between py-2"
+                  onPress={handleSignOut}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                    <Text className="text-red-500 text-15 font-medium ml-3">Sign Out</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Stats Section */}
         <View className="border-b border-gray-800">
           <View className="px-4 py-4">
@@ -180,6 +236,21 @@ export default function SettingsScreen() {
                   onPress={confirmClearAll}
                 >
                   <Text className="text-white font-semibold text-center">Clear All</Text>
+                </Pressable>
+              </View>
+            ) : modalType === "signout" ? (
+              <View className="flex-row space-x-3">
+                <Pressable
+                  className="flex-1 py-3 px-4 rounded-full bg-gray-700"
+                  onPress={() => setShowModal(false)}
+                >
+                  <Text className="text-white font-semibold text-center">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="flex-1 py-3 px-4 rounded-full bg-red-600"
+                  onPress={confirmSignOut}
+                >
+                  <Text className="text-white font-semibold text-center">Sign Out</Text>
                 </Pressable>
               </View>
             ) : (
