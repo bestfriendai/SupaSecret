@@ -76,17 +76,18 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   // Video players management
   const videoPlayers = useVideoPlayers(videoConfessions);
 
-  // Handle screen focus for audio management
+  // Handle screen focus for audio management and autoplay
   useFocusEffect(
     useCallback(() => {
-      // Screen is focused - unmute videos
       videoPlayers.unmuteAll();
-      
+      if (videoConfessions.length > 0) {
+        videoPlayers.playVideo(0);
+        setCurrentIndex(0);
+      }
       return () => {
-        // Screen is blurred - mute all videos but keep playing
         videoPlayers.muteAll();
       };
-    }, [videoPlayers])
+    }, [videoPlayers, videoConfessions.length])
   );
 
   // Handle video changes
@@ -237,6 +238,13 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
 
   const currentVideo = videoConfessions[currentIndex];
   const currentPlayer = videoPlayers.getPlayer(currentIndex);
+
+  // Ensure autoplay when player becomes available
+  useEffect(() => {
+    if (currentPlayer && !currentPlayer.playing) {
+      videoPlayers.playVideo(currentIndex);
+    }
+  }, [currentPlayer, currentIndex, videoPlayers]);
 
   return (
     <GestureHandlerRootView className="flex-1">
