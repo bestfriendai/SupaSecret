@@ -8,6 +8,7 @@ import { useConfessionStore } from "../state/confessionStore";
 import { processVideoConfession } from "../utils/videoProcessing";
 
 export default function VideoRecordScreen() {
+  // All hooks must be called at the top level, before any conditional logic
   const [facing, setFacing] = useState<CameraType>("front");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -19,29 +20,14 @@ export default function VideoRecordScreen() {
   const navigation = useNavigation();
   const addConfession = useConfessionStore((state) => state.addConfession);
 
-  if (!permission) {
-    return <View className="flex-1 bg-slate-900" />;
-  }
-
-  if (!permission.granted) {
-    return (
-      <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
-        <Ionicons name="camera-outline" size={64} color="#8B98A5" />
-        <Text className="text-white text-xl font-semibold mt-4 text-center">
-          Camera Permission Required
-        </Text>
-        <Text className="text-gray-400 text-base mt-2 text-center mb-8">
-          We need camera access to record your video confession
-        </Text>
-        <Pressable
-          className="bg-blue-500 rounded-full px-6 py-3"
-          onPress={requestPermission}
-        >
-          <Text className="text-white font-semibold">Grant Permission</Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
+  // Cleanup effect - must be called after all other hooks
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === "back" ? "front" : "back"));
@@ -130,6 +116,33 @@ export default function VideoRecordScreen() {
     }
   };
 
+  // Render permission loading state
+  if (!permission) {
+    return <View className="flex-1 bg-black" />;
+  }
+
+  // Render permission request screen
+  if (!permission.granted) {
+    return (
+      <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
+        <Ionicons name="camera-outline" size={64} color="#8B98A5" />
+        <Text className="text-white text-xl font-semibold mt-4 text-center">
+          Camera Permission Required
+        </Text>
+        <Text className="text-gray-400 text-base mt-2 text-center mb-8">
+          We need camera access to record your video confession
+        </Text>
+        <Pressable
+          className="bg-blue-500 rounded-full px-6 py-3"
+          onPress={requestPermission}
+        >
+          <Text className="text-white font-semibold">Grant Permission</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  // Render processing screen
   if (isProcessing) {
     return (
       <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
@@ -144,6 +157,7 @@ export default function VideoRecordScreen() {
     );
   }
 
+  // Render main camera screen
   return (
     <View className="flex-1 bg-black">
       <CameraView
