@@ -86,11 +86,26 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-black">
-      {/* Header */}
+      {/* Enhanced Header */}
       <View className="px-4 py-3 border-b border-gray-800">
-        <Text className="text-white text-20 font-bold">
-          Secrets
-        </Text>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <View className="w-8 h-8 bg-gray-700 rounded-full items-center justify-center mr-3">
+              <Ionicons name="person" size={16} color="#8B98A5" />
+            </View>
+            <Text className="text-white text-20 font-bold">
+              Secrets
+            </Text>
+          </View>
+          <View className="flex-row items-center space-x-4">
+            <Pressable className="p-2">
+              <Ionicons name="search-outline" size={22} color="#8B98A5" />
+            </Pressable>
+            <Pressable className="p-2">
+              <Ionicons name="notifications-outline" size={22} color="#8B98A5" />
+            </Pressable>
+          </View>
+        </View>
       </View>
       
       <ScrollView 

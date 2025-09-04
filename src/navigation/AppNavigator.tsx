@@ -9,6 +9,7 @@ import HomeScreen from "../screens/HomeScreen";
 import CreateConfessionScreen from "../screens/CreateConfessionScreen";
 import VideoRecordScreen from "../screens/VideoRecordScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import VideoFeedScreen from "../screens/VideoFeedScreen";
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -17,6 +18,7 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home: undefined;
+  Videos: undefined;
   Create: undefined;
   Settings: undefined;
 };
@@ -33,6 +35,8 @@ function MainTabs() {
 
           if (route.name === "Home") {
             iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "Videos") {
+            iconName = focused ? "videocam" : "videocam-outline";
           } else if (route.name === "Create") {
             iconName = focused ? "add-circle" : "add-circle-outline";
           } else if (route.name === "Settings") {
@@ -66,6 +70,11 @@ function MainTabs() {
         name="Home" 
         component={HomeScreen}
         options={{ title: "Secrets" }}
+      />
+      <Tab.Screen 
+        name="Videos" 
+        component={VideoFeedScreen}
+        options={{ title: "Videos" }}
       />
       <Tab.Screen 
         name="Create" 

@@ -4,6 +4,15 @@ export interface ProcessedVideo {
   uri: string;
   transcription: string;
   duration?: number;
+  thumbnailUri?: string;
+  audioUri?: string;
+}
+
+export interface VideoProcessingOptions {
+  enableFaceBlur?: boolean;
+  enableVoiceChange?: boolean;
+  enableTranscription?: boolean;
+  quality?: "high" | "medium" | "low";
 }
 
 /**
@@ -15,21 +24,42 @@ export interface ProcessedVideo {
  * 4. Transcribe the modified audio
  * 5. Combine processed audio and video
  */
-export const processVideoConfession = async (videoUri: string): Promise<ProcessedVideo> => {
+export const processVideoConfession = async (
+  videoUri: string,
+  options: VideoProcessingOptions = {}
+): Promise<ProcessedVideo> => {
   try {
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const {
+      enableTranscription = true,
+      quality = "medium"
+    } = options;
+
+    // Simulate processing time based on quality
+    const processingTime = quality === "high" ? 4000 : quality === "medium" ? 2000 : 1000;
+    await new Promise(resolve => setTimeout(resolve, processingTime));
     
-    // In a real app, you would:
-    // 1. Extract audio from video using FFmpeg or similar
-    // 2. Apply voice modulation (pitch shifting, formant shifting)
-    // 3. Use ML models to detect and blur faces in video frames
-    // 4. Transcribe the original audio before voice change
-    // 5. Combine the processed components
+    let transcription = "";
     
-    // For now, we'll simulate transcription with a placeholder
-    // In production, you'd extract audio first, then transcribe
-    const mockTranscription = generateMockTranscription();
+    if (enableTranscription) {
+      try {
+        // In a real implementation, you would:
+        // 1. Extract audio from video using FFmpeg
+        // 2. Save audio as temporary file
+        // 3. Transcribe using the actual transcribeAudio function
+        // 4. Clean up temporary files
+        
+        // For now, simulate with mock data but structure for real implementation
+        transcription = generateMockTranscription();
+        
+        // Uncomment for real transcription:
+        // const audioUri = await extractAudioFromVideo(videoUri);
+        // transcription = await transcribeAudio(audioUri);
+        // await FileSystem.deleteAsync(audioUri, { idempotent: true });
+      } catch (error) {
+        console.error("Transcription failed:", error);
+        transcription = "Transcription unavailable";
+      }
+    }
     
     // Copy video to a processed location (in real app, this would be the processed video)
     const processedVideoUri = `${FileSystem.documentDirectory}processed_${Date.now()}.mp4`;
@@ -37,15 +67,38 @@ export const processVideoConfession = async (videoUri: string): Promise<Processe
       from: videoUri,
       to: processedVideoUri,
     });
+
+    // Generate thumbnail (mock implementation)
+    const thumbnailUri = await generateVideoThumbnail(processedVideoUri);
     
     return {
       uri: processedVideoUri,
-      transcription: mockTranscription,
-      duration: 30, // Mock duration
+      transcription,
+      duration: 30, // Mock duration - in real app, get from video metadata
+      thumbnailUri,
     };
   } catch (error) {
     console.error("Video processing error:", error);
     throw new Error("Failed to process video confession");
+  }
+};
+
+/**
+ * Generate thumbnail from video (mock implementation)
+ */
+const generateVideoThumbnail = async (_videoUri: string): Promise<string> => {
+  try {
+    // In a real implementation, you would use expo-video-thumbnails or similar
+    // For now, return a placeholder
+    const thumbnailUri = `${FileSystem.documentDirectory}thumbnail_${Date.now()}.jpg`;
+    
+    // Mock thumbnail generation
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    return thumbnailUri;
+  } catch (error) {
+    console.error("Thumbnail generation failed:", error);
+    return "";
   }
 };
 
