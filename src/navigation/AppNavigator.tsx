@@ -1,5 +1,4 @@
 import React from "react";
-import { View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -37,34 +36,24 @@ function MainTabs() {
           if (route.name === "Home") {
             iconName = focused ? "home" : "home-outline";
           } else if (route.name === "Videos") {
-            iconName = focused ? "play" : "play-outline";
+            iconName = focused ? "videocam" : "videocam-outline";
           } else if (route.name === "Create") {
-            iconName = focused ? "add" : "add-outline";
+            iconName = focused ? "add-circle" : "add-circle-outline";
           } else if (route.name === "Settings") {
-            iconName = focused ? "person" : "person-outline";
+            iconName = focused ? "settings" : "settings-outline";
           } else {
             iconName = "help-outline";
           }
 
-          if (route.name === "Create") {
-            return (
-              <View className="w-12 h-12 bg-gradient-to-r from-pink-500 to-red-500 rounded-full items-center justify-center shadow-lg">
-                <Ionicons name={iconName} size={24} color="#FFFFFF" />
-              </View>
-            );
-          }
-          
           return <Ionicons name={iconName} size={24} color={color} />;
         },
-        tabBarActiveTintColor: "#FF0050",
+        tabBarActiveTintColor: "#1D9BF0",
         tabBarInactiveTintColor: "#8B98A5",
         tabBarStyle: {
           backgroundColor: "#000000",
-          borderTopColor: "rgba(255, 255, 255, 0.1)",
+          borderTopColor: "#2F3336",
           borderTopWidth: 0.5,
-          height: 90,
-          paddingBottom: 25,
-          paddingTop: 15,
+          height: 60,
         },
         headerStyle: {
           backgroundColor: "#000000",
@@ -73,51 +62,29 @@ function MainTabs() {
         },
         headerTintColor: "#FFFFFF",
         headerTitleStyle: {
-          fontWeight: "700",
-          fontSize: 18,
+          fontWeight: "600",
         },
       })}
     >
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
-        options={{ 
-          title: "Secrets",
-          headerTitleStyle: {
-            fontWeight: "800",
-            fontSize: 22,
-          }
-        }}
+        options={{ title: "Secrets" }}
       />
       <Tab.Screen 
         name="Videos" 
         component={VideoFeedScreen}
-        options={{ 
-          title: "Videos",
-          headerShown: false
-        }}
+        options={{ title: "Videos" }}
       />
       <Tab.Screen 
         name="Create" 
         component={CreateConfessionScreen}
-        options={{ 
-          title: "Create",
-          headerTitleStyle: {
-            fontWeight: "700",
-            fontSize: 18,
-          }
-        }}
+        options={{ title: "Compose" }}
       />
       <Tab.Screen 
         name="Settings" 
         component={SettingsScreen}
-        options={{ 
-          title: "Profile",
-          headerTitleStyle: {
-            fontWeight: "700",
-            fontSize: 18,
-          }
-        }}
+        options={{ title: "Settings" }}
       />
     </Tab.Navigator>
   );
@@ -164,7 +131,7 @@ export default function AppNavigator() {
           },
           headerTintColor: "#FFFFFF",
           headerTitleStyle: {
-            fontWeight: "700",
+            fontWeight: "600",
             fontSize: 20,
           },
           headerShadowVisible: false,
