@@ -43,87 +43,107 @@ export default function CreateConfessionScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-900">
+    <SafeAreaView className="flex-1 bg-black">
+      {/* Header */}
+      <View className="px-4 py-3 border-b border-gray-800 flex-row items-center justify-between">
+        <Text className="text-white text-20 font-bold">
+          Share Secret
+        </Text>
+        <Pressable
+          className={`rounded-full px-4 py-2 ${
+            isSubmitting || !textContent.trim() 
+              ? "bg-gray-800" 
+              : "bg-blue-500"
+          }`}
+          onPress={handleTextSubmit}
+          disabled={isSubmitting || !textContent.trim()}
+        >
+          <Text className={`font-bold text-15 ${
+            isSubmitting || !textContent.trim() 
+              ? "text-gray-500" 
+              : "text-white"
+          }`}>
+            {isSubmitting ? "Posting..." : "Post"}
+          </Text>
+        </Pressable>
+      </View>
+
       <KeyboardAvoidingView 
         className="flex-1" 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View className="flex-1 px-4 py-6">
-          <Text className="text-white text-2xl font-bold mb-2">
-            Share Your Secret
-          </Text>
-          <Text className="text-gray-400 text-base mb-8">
-            Your confession will be completely anonymous
-          </Text>
-
-          {/* Text Confession Section */}
-          <View className="mb-8">
-            <Text className="text-white text-lg font-semibold mb-4">
-              Write Your Confession
-            </Text>
-            <TextInput
-              className="bg-gray-800 text-white p-4 rounded-xl text-base min-h-32"
-              placeholder="Share your deepest secret..."
-              placeholderTextColor="#6B7280"
-              multiline
-              textAlignVertical="top"
-              value={textContent}
-              onChangeText={setTextContent}
-              maxLength={1000}
-            />
-            <Text className="text-gray-500 text-sm mt-2 text-right">
-              {textContent.length}/1000
-            </Text>
-            
-            <Pressable
-              className={`mt-4 rounded-xl p-4 flex-row items-center justify-center ${
-                isSubmitting || !textContent.trim() 
-                  ? "bg-gray-700" 
-                  : "bg-purple-600"
-              }`}
-              onPress={handleTextSubmit}
-              disabled={isSubmitting || !textContent.trim()}
-            >
-              <Ionicons 
-                name="send" 
-                size={20} 
-                color={isSubmitting || !textContent.trim() ? "#6B7280" : "#FFFFFF"} 
+        <View className="flex-1">
+          {/* Compose Area */}
+          <View className="flex-row p-4">
+            <View className="w-12 h-12 bg-gray-700 rounded-full items-center justify-center mr-3">
+              <Ionicons name="person" size={20} color="#8B98A5" />
+            </View>
+            <View className="flex-1">
+              <TextInput
+                className="text-white text-20 leading-6"
+                placeholder="What's your secret?"
+                placeholderTextColor="#8B98A5"
+                multiline
+                textAlignVertical="top"
+                value={textContent}
+                onChangeText={setTextContent}
+                maxLength={280}
+                style={{ minHeight: 120 }}
               />
-              <Text className={`ml-2 font-semibold ${
-                isSubmitting || !textContent.trim() 
-                  ? "text-gray-400" 
-                  : "text-white"
-              }`}>
-                {isSubmitting ? "Sharing..." : "Share Anonymously"}
-              </Text>
-            </Pressable>
+              
+              {/* Character count */}
+              <View className="flex-row items-center justify-between mt-4">
+                <View className="flex-row items-center">
+                  <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                  <Text className="text-green-500 text-13 ml-1">Anonymous</Text>
+                </View>
+                <Text className={`text-13 ${
+                  textContent.length > 260 ? "text-red-500" : "text-gray-500"
+                }`}>
+                  {textContent.length}/280
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* Divider */}
-          <View className="flex-row items-center mb-8">
-            <View className="flex-1 h-px bg-gray-700" />
-            <Text className="text-gray-500 mx-4">OR</Text>
-            <View className="flex-1 h-px bg-gray-700" />
-          </View>
+          <View className="h-px bg-gray-800 mx-4" />
 
-          {/* Video Confession Section */}
-          <View>
-            <Text className="text-white text-lg font-semibold mb-4">
-              Record Video Confession
+          {/* Video Option */}
+          <View className="p-4">
+            <Text className="text-white text-17 font-bold mb-2">
+              Or record a video confession
             </Text>
-            <Text className="text-gray-400 text-sm mb-4">
-              Your face will be blurred and voice changed for complete anonymity
+            <Text className="text-gray-500 text-15 mb-4 leading-5">
+              Your face will be automatically blurred and voice changed for complete anonymity
             </Text>
             
             <Pressable
-              className="bg-red-600 rounded-xl p-4 flex-row items-center justify-center"
+              className="bg-gray-900 border border-gray-700 rounded-2xl p-4 flex-row items-center"
               onPress={handleVideoRecord}
             >
-              <Ionicons name="videocam" size={20} color="#FFFFFF" />
-              <Text className="text-white ml-2 font-semibold">
-                Record Video Secret
-              </Text>
+              <View className="w-12 h-12 bg-red-600 rounded-full items-center justify-center mr-3">
+                <Ionicons name="videocam" size={20} color="#FFFFFF" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-white font-bold text-15">Record Video</Text>
+                <Text className="text-gray-500 text-13">Face blur & voice change enabled</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
             </Pressable>
+          </View>
+
+          {/* Privacy Notice */}
+          <View className="px-4 pb-4">
+            <View className="bg-gray-900 border border-gray-700 rounded-2xl p-4">
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="lock-closed" size={16} color="#1D9BF0" />
+                <Text className="text-blue-400 font-bold text-15 ml-2">Privacy Protected</Text>
+              </View>
+              <Text className="text-gray-400 text-13 leading-4">
+                All confessions are completely anonymous. No personal information is stored or shared.
+              </Text>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>

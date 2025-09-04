@@ -43,17 +43,20 @@ function MainTabs() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#8B5CF6",
-        tabBarInactiveTintColor: "#6B7280",
+        tabBarActiveTintColor: "#1D9BF0",
+        tabBarInactiveTintColor: "#8B98A5",
         tabBarStyle: {
-          backgroundColor: "#111827",
-          borderTopColor: "#374151",
-          borderTopWidth: 1,
+          backgroundColor: "#000000",
+          borderTopColor: "#2F3336",
+          borderTopWidth: 0.5,
+          height: 60,
         },
         headerStyle: {
-          backgroundColor: "#111827",
+          backgroundColor: "#000000",
+          shadowColor: "transparent",
+          elevation: 0,
         },
-        headerTintColor: "#F9FAFB",
+        headerTintColor: "#FFFFFF",
         headerTitleStyle: {
           fontWeight: "600",
         },
@@ -62,12 +65,12 @@ function MainTabs() {
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
-        options={{ title: "Everyone's Secret" }}
+        options={{ title: "Secrets" }}
       />
       <Tab.Screen 
         name="Create" 
         component={CreateConfessionScreen}
-        options={{ title: "Share Secret" }}
+        options={{ title: "Compose" }}
       />
       <Tab.Screen 
         name="Settings" 
@@ -84,12 +87,12 @@ export default function AppNavigator() {
       theme={{
         dark: true,
         colors: {
-          primary: "#8B5CF6",
-          background: "#0F172A",
-          card: "#111827",
-          text: "#F9FAFB",
-          border: "#374151",
-          notification: "#EF4444",
+          primary: "#1D9BF0",
+          background: "#000000",
+          card: "#000000",
+          text: "#FFFFFF",
+          border: "#2F3336",
+          notification: "#F91880",
         },
         fonts: {
           regular: {
@@ -115,12 +118,14 @@ export default function AppNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
-            backgroundColor: "#111827",
+            backgroundColor: "#000000",
           },
-          headerTintColor: "#F9FAFB",
+          headerTintColor: "#FFFFFF",
           headerTitleStyle: {
-            fontWeight: "600",
+            fontWeight: "700",
+            fontSize: 20,
           },
+          headerShadowVisible: false,
         }}
       >
         <Stack.Screen 

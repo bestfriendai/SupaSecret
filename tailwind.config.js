@@ -30,6 +30,12 @@ module.exports = {
         "7xl": "64px",
         "8xl": "72px",
         "9xl": "80px",
+        // Twitter-like text sizes
+        "11": "11px",
+        "13": "13px",
+        "15": "15px",
+        "17": "17px",
+        "20": "20px",
       },
     },
   },

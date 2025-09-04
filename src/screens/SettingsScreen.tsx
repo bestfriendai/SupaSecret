@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, Alert } from "react-native";
+import { View, Text, Pressable, Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useConfessionStore } from "../state/confessionStore";
@@ -26,85 +26,121 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-900">
-      <View className="flex-1 px-4 py-6">
-        <Text className="text-white text-2xl font-bold mb-2">
+    <SafeAreaView className="flex-1 bg-black">
+      {/* Header */}
+      <View className="px-4 py-3 border-b border-gray-800">
+        <Text className="text-white text-20 font-bold">
           Settings
         </Text>
-        <Text className="text-gray-400 text-base mb-8">
-          Manage your anonymous confession app
-        </Text>
+      </View>
 
-        <View className="space-y-4">
-          {/* Stats Section */}
-          <View className="bg-gray-800 rounded-xl p-4">
-            <Text className="text-white text-lg font-semibold mb-3">
+      <ScrollView className="flex-1">
+        {/* Stats Section */}
+        <View className="border-b border-gray-800">
+          <View className="px-4 py-4">
+            <Text className="text-white text-17 font-bold mb-4">
               Statistics
             </Text>
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-gray-300">Total Confessions</Text>
-              <Text className="text-purple-400 font-medium">{confessions.length}</Text>
-            </View>
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-gray-300">Text Confessions</Text>
-              <Text className="text-purple-400 font-medium">
-                {confessions.filter(c => c.type === "text").length}
-              </Text>
-            </View>
-            <View className="flex-row items-center justify-between">
-              <Text className="text-gray-300">Video Confessions</Text>
-              <Text className="text-purple-400 font-medium">
-                {confessions.filter(c => c.type === "video").length}
-              </Text>
+            <View className="space-y-3">
+              <View className="flex-row items-center justify-between py-2">
+                <Text className="text-white text-15">Total Confessions</Text>
+                <Text className="text-blue-400 font-bold text-15">{confessions.length}</Text>
+              </View>
+              <View className="flex-row items-center justify-between py-2">
+                <Text className="text-white text-15">Text Confessions</Text>
+                <Text className="text-blue-400 font-bold text-15">
+                  {confessions.filter(c => c.type === "text").length}
+                </Text>
+              </View>
+              <View className="flex-row items-center justify-between py-2">
+                <Text className="text-white text-15">Video Confessions</Text>
+                <Text className="text-blue-400 font-bold text-15">
+                  {confessions.filter(c => c.type === "video").length}
+                </Text>
+              </View>
             </View>
           </View>
+        </View>
 
-          {/* Privacy Section */}
-          <View className="bg-gray-800 rounded-xl p-4">
-            <Text className="text-white text-lg font-semibold mb-3">
+        {/* Privacy Section */}
+        <View className="border-b border-gray-800">
+          <View className="px-4 py-4">
+            <Text className="text-white text-17 font-bold mb-4">
               Privacy & Security
             </Text>
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
-              <Text className="text-gray-300 ml-3 flex-1">
-                All confessions are completely anonymous
-              </Text>
-            </View>
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="eye-off" size={20} color="#10B981" />
-              <Text className="text-gray-300 ml-3 flex-1">
-                Video faces are automatically blurred
-              </Text>
-            </View>
-            <View className="flex-row items-center">
-              <Ionicons name="volume-off" size={20} color="#10B981" />
-              <Text className="text-gray-300 ml-3 flex-1">
-                Video voices are automatically changed
-              </Text>
+            <View className="space-y-4">
+              <View className="flex-row items-center py-2">
+                <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+                <View className="ml-3 flex-1">
+                  <Text className="text-white text-15 font-medium">Anonymous Confessions</Text>
+                  <Text className="text-gray-500 text-13">All posts are completely anonymous</Text>
+                </View>
+              </View>
+              <View className="flex-row items-center py-2">
+                <Ionicons name="eye-off" size={20} color="#10B981" />
+                <View className="ml-3 flex-1">
+                  <Text className="text-white text-15 font-medium">Face Blur Protection</Text>
+                  <Text className="text-gray-500 text-13">Video faces are automatically blurred</Text>
+                </View>
+              </View>
+              <View className="flex-row items-center py-2">
+                <Ionicons name="volume-off" size={20} color="#10B981" />
+                <View className="ml-3 flex-1">
+                  <Text className="text-white text-15 font-medium">Voice Change</Text>
+                  <Text className="text-gray-500 text-13">Video voices are automatically changed</Text>
+                </View>
+              </View>
             </View>
           </View>
+        </View>
 
-          {/* Danger Zone */}
-          <View className="bg-red-900/20 border border-red-800 rounded-xl p-4">
-            <Text className="text-red-400 text-lg font-semibold mb-3">
-              Danger Zone
+        {/* About Section */}
+        <View className="border-b border-gray-800">
+          <View className="px-4 py-4">
+            <Text className="text-white text-17 font-bold mb-4">
+              About
             </Text>
-            <Text className="text-gray-300 text-sm mb-4">
-              This action will permanently delete all confessions from your device. 
-              This cannot be undone.
+            <View className="space-y-4">
+              <Pressable className="flex-row items-center justify-between py-2">
+                <Text className="text-white text-15">Privacy Policy</Text>
+                <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
+              </Pressable>
+              <Pressable className="flex-row items-center justify-between py-2">
+                <Text className="text-white text-15">Terms of Service</Text>
+                <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
+              </Pressable>
+              <Pressable className="flex-row items-center justify-between py-2">
+                <Text className="text-white text-15">Help & Support</Text>
+                <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        {/* Danger Zone */}
+        <View className="px-4 py-6">
+          <Text className="text-red-500 text-17 font-bold mb-4">
+            Danger Zone
+          </Text>
+          <View className="bg-gray-900 border border-red-900 rounded-2xl p-4">
+            <Text className="text-white text-15 font-medium mb-2">
+              Clear All Confessions
+            </Text>
+            <Text className="text-gray-500 text-13 mb-4 leading-4">
+              This will permanently delete all {confessions.length} confessions from your device. This action cannot be undone.
             </Text>
             <Pressable
-              className="bg-red-600 rounded-lg p-3 flex-row items-center justify-center"
+              className="bg-red-600 rounded-full py-3 px-4 flex-row items-center justify-center"
               onPress={handleClearAll}
             >
-              <Ionicons name="trash" size={18} color="#FFFFFF" />
-              <Text className="text-white font-semibold ml-2">
+              <Ionicons name="trash" size={16} color="#FFFFFF" />
+              <Text className="text-white font-bold text-15 ml-2">
                 Clear All Confessions
               </Text>
             </Pressable>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

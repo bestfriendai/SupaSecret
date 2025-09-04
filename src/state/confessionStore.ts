@@ -8,7 +8,7 @@ const sampleConfessions: Confession[] = [
   {
     id: "sample-1",
     type: "text",
-    content: "I've been pretending to be happy at work for months, but I'm actually really struggling with anxiety and feel like I'm failing at everything. I put on a smile every day but inside I'm falling apart.",
+    content: "I've been pretending to be happy at work for months, but I'm actually struggling with anxiety. Every meeting feels like I'm drowning and everyone can see right through me.",
     isAnonymous: true,
     timestamp: Date.now() - 3600000, // 1 hour ago
   },
@@ -17,16 +17,32 @@ const sampleConfessions: Confession[] = [
     type: "video",
     content: "Video confession with face blur and voice change applied",
     videoUri: "sample-video-uri",
-    transcription: "I secretly judge people based on their social media posts, even though I know it's wrong and I hate that I do it. I see someone's vacation photos and immediately think they're showing off, or I see their achievements and feel bitter instead of happy for them.",
+    transcription: "I judge people on social media way too much. Someone posts vacation pics and I immediately think they're showing off. I hate that I'm like this but I can't stop.",
     isAnonymous: true,
     timestamp: Date.now() - 7200000, // 2 hours ago
   },
   {
     id: "sample-3",
     type: "text", 
-    content: "I've been lying to my family about my financial situation. I'm actually in debt and too embarrassed to ask for help. Every time they ask how I'm doing, I just say everything's fine.",
+    content: "I've been lying to my family about money. I'm actually in debt but too embarrassed to ask for help. When they ask how I'm doing, I just say everything's fine.",
     isAnonymous: true,
     timestamp: Date.now() - 10800000, // 3 hours ago
+  },
+  {
+    id: "sample-4",
+    type: "text",
+    content: "Sometimes I feel like I'm not good enough for my partner. They deserve someone better and I'm just waiting for them to realize it.",
+    isAnonymous: true,
+    timestamp: Date.now() - 14400000, // 4 hours ago
+  },
+  {
+    id: "sample-5",
+    type: "video",
+    content: "Video confession with face blur and voice change applied", 
+    videoUri: "sample-video-uri-2",
+    transcription: "I've been avoiding my best friend because I'm jealous of their success. They got promoted and I can barely handle my current job. I feel terrible about it.",
+    isAnonymous: true,
+    timestamp: Date.now() - 18000000, // 5 hours ago
   },
 ];
 
