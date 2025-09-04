@@ -12,6 +12,8 @@ interface VideoPlayerManager {
   playVideo: (index: number) => void;
   pauseVideo: (index: number) => void;
   pauseAll: () => void;
+  muteAll: () => void;
+  unmuteAll: () => void;
   cleanup: () => void;
 }
 
@@ -114,6 +116,22 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     currentPlayingRef.current = -1;
   };
 
+  const muteAll = () => {
+    playersRef.current.forEach((player) => {
+      if (player) {
+        player.muted = true;
+      }
+    });
+  };
+
+  const unmuteAll = () => {
+    playersRef.current.forEach((player) => {
+      if (player) {
+        player.muted = false;
+      }
+    });
+  };
+
   const cleanup = () => {
     pauseAll();
     playersRef.current.clear();
@@ -131,6 +149,8 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     playVideo,
     pauseVideo,
     pauseAll,
+    muteAll,
+    unmuteAll,
     cleanup,
   };
 };

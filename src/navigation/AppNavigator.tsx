@@ -1,4 +1,5 @@
 import React from "react";
+import { View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -30,30 +31,40 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           if (route.name === "Home") {
             iconName = focused ? "home" : "home-outline";
           } else if (route.name === "Videos") {
-            iconName = focused ? "videocam" : "videocam-outline";
+            iconName = focused ? "play" : "play-outline";
           } else if (route.name === "Create") {
-            iconName = focused ? "add-circle" : "add-circle-outline";
+            iconName = focused ? "add" : "add-outline";
           } else if (route.name === "Settings") {
-            iconName = focused ? "settings" : "settings-outline";
+            iconName = focused ? "person" : "person-outline";
           } else {
             iconName = "help-outline";
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          if (route.name === "Create") {
+            return (
+              <View className="w-12 h-12 bg-gradient-to-r from-pink-500 to-red-500 rounded-full items-center justify-center shadow-lg">
+                <Ionicons name={iconName} size={24} color="#FFFFFF" />
+              </View>
+            );
+          }
+          
+          return <Ionicons name={iconName} size={24} color={color} />;
         },
-        tabBarActiveTintColor: "#1D9BF0",
+        tabBarActiveTintColor: "#FF0050",
         tabBarInactiveTintColor: "#8B98A5",
         tabBarStyle: {
           backgroundColor: "#000000",
-          borderTopColor: "#2F3336",
+          borderTopColor: "rgba(255, 255, 255, 0.1)",
           borderTopWidth: 0.5,
-          height: 60,
+          height: 90,
+          paddingBottom: 25,
+          paddingTop: 15,
         },
         headerStyle: {
           backgroundColor: "#000000",
@@ -62,29 +73,51 @@ function MainTabs() {
         },
         headerTintColor: "#FFFFFF",
         headerTitleStyle: {
-          fontWeight: "600",
+          fontWeight: "700",
+          fontSize: 18,
         },
       })}
     >
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
-        options={{ title: "Secrets" }}
+        options={{ 
+          title: "Secrets",
+          headerTitleStyle: {
+            fontWeight: "800",
+            fontSize: 22,
+          }
+        }}
       />
       <Tab.Screen 
         name="Videos" 
         component={VideoFeedScreen}
-        options={{ title: "Videos" }}
+        options={{ 
+          title: "Videos",
+          headerShown: false
+        }}
       />
       <Tab.Screen 
         name="Create" 
         component={CreateConfessionScreen}
-        options={{ title: "Compose" }}
+        options={{ 
+          title: "Create",
+          headerTitleStyle: {
+            fontWeight: "700",
+            fontSize: 18,
+          }
+        }}
       />
       <Tab.Screen 
         name="Settings" 
         component={SettingsScreen}
-        options={{ title: "Settings" }}
+        options={{ 
+          title: "Profile",
+          headerTitleStyle: {
+            fontWeight: "700",
+            fontSize: 18,
+          }
+        }}
       />
     </Tab.Navigator>
   );

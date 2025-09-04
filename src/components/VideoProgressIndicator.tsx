@@ -43,12 +43,12 @@ export default function VideoProgressIndicator({
       style={[
         {
           position: "absolute",
-          bottom: 100,
+          bottom: 120,
           left: 16,
-          right: 16,
-          height: 2,
-          backgroundColor: "rgba(255, 255, 255, 0.3)",
-          borderRadius: 1,
+          right: 90,
+          height: 3,
+          backgroundColor: "rgba(255, 255, 255, 0.2)",
+          borderRadius: 2,
         },
         containerStyle,
       ]}
@@ -57,8 +57,8 @@ export default function VideoProgressIndicator({
         style={[
           {
             height: "100%",
-            backgroundColor: "#FFFFFF",
-            borderRadius: 1,
+            backgroundColor: "#FF0050",
+            borderRadius: 2,
           },
           progressStyle,
         ]}

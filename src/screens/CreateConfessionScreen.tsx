@@ -44,26 +44,27 @@ export default function CreateConfessionScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-black">
-      {/* Header */}
-      <View className="px-4 py-3 border-b border-gray-800 flex-row items-center justify-between">
-        <Text className="text-white text-20 font-bold">
-          Share Secret
-        </Text>
-        <Pressable
-          className={`rounded-full px-4 py-2 ${
+      {/* Enhanced Header */}
+      <View className="px-4 py-4 border-b border-gray-800/50 flex-row items-center justify-between">
+        <View>
+          <Text className="text-white text-22 font-black">
+            Share Secret
+          </Text>
+          <Text className="text-gray-400 text-14 font-medium">
+            Anonymous & protected
+          </Text>
+        </View>
+        <Pressable 
+          className={`rounded-full px-6 py-3 ${
             isSubmitting || !textContent.trim() 
-              ? "bg-gray-800" 
-              : "bg-blue-500"
+              ? "bg-gray-700" 
+              : "bg-gradient-to-r from-pink-500 to-red-500"
           }`}
           onPress={handleTextSubmit}
           disabled={isSubmitting || !textContent.trim()}
         >
-          <Text className={`font-bold text-15 ${
-            isSubmitting || !textContent.trim() 
-              ? "text-gray-500" 
-              : "text-white"
-          }`}>
-            {isSubmitting ? "Posting..." : "Post"}
+          <Text className="text-white font-bold text-15">
+            {isSubmitting ? "Sharing..." : "Share"}
           </Text>
         </Pressable>
       </View>

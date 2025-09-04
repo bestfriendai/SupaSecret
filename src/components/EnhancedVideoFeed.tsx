@@ -6,6 +6,7 @@ import { VideoView } from "expo-video";
 import { useConfessionStore } from "../state/confessionStore";
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
+import { useFocusEffect } from "@react-navigation/native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -25,6 +26,7 @@ import AnimatedActionButton from "./AnimatedActionButton";
 import PullToRefresh from "./PullToRefresh";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
 import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
+import VideoProgressIndicator from "./VideoProgressIndicator";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useVideoPlayers } from "../hooks/useVideoPlayers";
 
@@ -73,6 +75,19 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   
   // Video players management
   const videoPlayers = useVideoPlayers(videoConfessions);
+
+  // Handle screen focus for audio management
+  useFocusEffect(
+    useCallback(() => {
+      // Screen is focused - unmute videos
+      videoPlayers.unmuteAll();
+      
+      return () => {
+        // Screen is blurred - mute all videos but keep playing
+        videoPlayers.muteAll();
+      };
+    }, [videoPlayers])
+  );
 
   // Handle video changes
   useEffect(() => {
@@ -263,7 +278,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
               <Ionicons name="heart" size={80} color="#FF3040" />
             </Animated.View>
 
-            {/* Top Overlay */}
+            {/* Top Overlay - TikTok Style */}
             <Animated.View 
               style={[
                 { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 },
@@ -271,49 +286,52 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
               ]}
             >
               <SafeAreaView>
-                <View className="flex-row items-center justify-between px-4 py-2">
+                <View className="flex-row items-center justify-between px-4 py-3">
                   <Pressable
-                    className="bg-black/50 rounded-full p-2"
+                    className="bg-black/60 rounded-full p-3"
                     onPress={onClose}
                   >
-                    <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                    <Ionicons name="chevron-down" size={24} color="#FFFFFF" />
                   </Pressable>
                   
-                  <View className="bg-black/50 rounded-full px-3 py-1">
-                    <Text className="text-white text-13 font-medium">
-                      {currentIndex + 1}/{videoConfessions.length}
+                  <View className="flex-row items-center space-x-4">
+                    <Text className="text-white text-16 font-bold">
+                      For You
+                    </Text>
+                    <Text className="text-gray-400 text-16 font-medium">
+                      Following
                     </Text>
                   </View>
                   
-                  <Pressable className="bg-black/50 rounded-full p-2">
-                    <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+                  <Pressable className="bg-black/60 rounded-full p-3">
+                    <Ionicons name="search" size={22} color="#FFFFFF" />
                   </Pressable>
                 </View>
               </SafeAreaView>
             </Animated.View>
 
-            {/* Right Side Actions */}
+            {/* Right Side Actions - TikTok Style */}
             <Animated.View 
               style={[
-                { position: "absolute", right: 16, bottom: 120, zIndex: 10 },
+                { position: "absolute", right: 12, bottom: 140, zIndex: 10 },
                 actionButtonsStyle
               ]}
             >
-              <View className="items-center space-y-6">
+              <View className="items-center">
                 <AnimatedActionButton
                   icon={currentVideo.isLiked ? "heart" : "heart-outline"}
-                  label="Like"
+                  label=""
                   count={currentVideo.likes || 0}
                   isActive={currentVideo.isLiked}
                   onPress={() => {
                     toggleLike(currentVideo.id);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   }}
                 />
                 
                 <AnimatedActionButton
                   icon="chatbubble-outline"
-                  label="Reply"
+                  label="23"
                   onPress={() => {
                     commentSheetRef.current?.present();
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -331,61 +349,81 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                 
                 <AnimatedActionButton
                   icon="bookmark-outline"
-                  label="Save"
+                  label=""
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   }}
                 />
+
+                {/* Profile Avatar */}
+                <View className="w-12 h-12 bg-gray-600 rounded-full items-center justify-center border-2 border-white mt-4">
+                  <Ionicons name="person" size={20} color="#FFFFFF" />
+                </View>
+                <View className="w-6 h-6 bg-red-500 rounded-full items-center justify-center -mt-2 border-2 border-black">
+                  <Ionicons name="add" size={14} color="#FFFFFF" />
+                </View>
               </View>
             </Animated.View>
 
-            {/* Bottom Overlay */}
+            {/* Bottom Overlay - TikTok Style */}
             <Animated.View 
               style={[
-                { position: "absolute", bottom: 0, left: 0, right: 60, zIndex: 10 },
+                { position: "absolute", bottom: 0, left: 0, right: 80, zIndex: 10 },
                 overlayStyle
               ]}
             >
               <SafeAreaView>
-                <View className="px-4 pb-4">
-                  {/* User Info */}
+                <View className="px-4 pb-6">
+                  {/* User Info - TikTok Style */}
                   <View className="flex-row items-center mb-3">
-                    <View className="w-10 h-10 bg-gray-700 rounded-full items-center justify-center mr-3">
-                      <Ionicons name="person" size={16} color="#8B98A5" />
-                    </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-center">
-                        <Text className="text-white font-bold text-15">Anonymous</Text>
-                        <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                        <Text className="text-gray-400 text-13">
-                          {format(new Date(currentVideo.timestamp), "MMM d")}
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center mt-1">
-                        <Ionicons name="eye-off" size={12} color="#10B981" />
-                        <Text className="text-green-500 text-11 ml-1">Face blurred</Text>
-                        <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                        <Ionicons name="volume-off" size={12} color="#10B981" />
-                        <Text className="text-green-500 text-11 ml-1">Voice changed</Text>
-                      </View>
-                    </View>
+                    <Text className="text-white font-bold text-16">@anonymous</Text>
+                    <View className="w-1.5 h-1.5 bg-gray-400 rounded-full mx-2" />
+                    <Text className="text-gray-300 text-14">
+                      {format(new Date(currentVideo.timestamp), "MMM d")}
+                    </Text>
+                    <Pressable className="ml-4 border border-white rounded px-4 py-1">
+                      <Text className="text-white text-14 font-semibold">Follow</Text>
+                    </Pressable>
                   </View>
 
-                  {/* Transcription */}
+                  {/* Transcription - TikTok Style */}
                   {currentVideo.transcription && (
-                    <Text className="text-white text-15 leading-5 mb-2">
+                    <Text className="text-white text-15 leading-6 mb-3 font-medium">
                       {currentVideo.transcription}
                     </Text>
                   )}
                   
-                  {/* Video Info */}
+                  {/* Privacy Tags */}
+                  <View className="flex-row items-center mb-3">
+                    <View className="bg-green-500/20 rounded-full px-3 py-1 mr-2">
+                      <View className="flex-row items-center">
+                        <Ionicons name="eye-off" size={12} color="#10B981" />
+                        <Text className="text-green-400 text-11 ml-1 font-medium">Face protected</Text>
+                      </View>
+                    </View>
+                    <View className="bg-green-500/20 rounded-full px-3 py-1">
+                      <View className="flex-row items-center">
+                        <Ionicons name="volume-off" size={12} color="#10B981" />
+                        <Text className="text-green-400 text-11 ml-1 font-medium">Voice changed</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Music/Audio Info - TikTok Style */}
                   <View className="flex-row items-center">
-                    <Ionicons name="videocam" size={14} color="#1D9BF0" />
-                    <Text className="text-blue-400 text-13 ml-1">Video confession</Text>
+                    <Ionicons name="musical-notes" size={14} color="#FFFFFF" />
+                    <Text className="text-white text-13 ml-2">Anonymous confession • Original audio</Text>
                   </View>
                 </View>
               </SafeAreaView>
             </Animated.View>
+
+            {/* Video Progress Indicator */}
+            <VideoProgressIndicator
+              currentTime={currentPlayer?.currentTime || 0}
+              duration={currentPlayer?.duration || 0}
+              isVisible={true}
+            />
 
             {/* Tap to Play/Pause */}
             <Pressable
