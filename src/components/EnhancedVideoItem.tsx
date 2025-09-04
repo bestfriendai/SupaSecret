@@ -7,8 +7,9 @@ import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { useConfessionStore } from "../state/confessionStore";
 import AnimatedActionButton from "./AnimatedActionButton";
-import CommentBottomSheet from "./CommentBottomSheet";
-import ShareModal from "./ShareModal";
+import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
+import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 
 const { height: screenHeight } = Dimensions.get("window");
 
@@ -26,8 +27,6 @@ export default function EnhancedVideoItem({
   onClose,
 }: EnhancedVideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
-  const [showComments, setShowComments] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
 
   return (
     <View style={{ height: screenHeight }} className="bg-black">
@@ -81,7 +80,7 @@ export default function EnhancedVideoItem({
             icon="chatbubble-outline"
             label="Reply"
             onPress={() => {
-              setShowComments(true);
+              // Present comment sheet from parent feed; placeholder for item usage
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           />
@@ -90,7 +89,6 @@ export default function EnhancedVideoItem({
             icon="share-outline"
             label="Share"
             onPress={() => {
-              setShowShareModal(true);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           />
@@ -161,20 +159,8 @@ export default function EnhancedVideoItem({
         }}
       />
 
-      {/* Comment Bottom Sheet */}
-      <CommentBottomSheet
-        isVisible={showComments}
-        onClose={() => setShowComments(false)}
-        confessionId={confession.id}
-      />
-
-      {/* Share Modal */}
-      <ShareModal
-        isVisible={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        confessionId={confession.id}
-        confessionText={confession.transcription || confession.content}
-      />
+      {/* Bottom Sheets */}
+      
     </View>
   );
 }

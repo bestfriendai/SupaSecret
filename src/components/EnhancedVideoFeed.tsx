@@ -1,14 +1,11 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { View, Text, Pressable, Dimensions, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { VideoView } from "expo-video";
 import { useConfessionStore } from "../state/confessionStore";
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
-import AnimatedActionButton from "./AnimatedActionButton";
-import PullToRefresh from "./PullToRefresh";
-import CommentBottomSheet from "./CommentBottomSheet";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -24,6 +21,12 @@ import {
   GestureDetector,
   GestureHandlerRootView,
 } from "react-native-gesture-handler";
+import AnimatedActionButton from "./AnimatedActionButton";
+import PullToRefresh from "./PullToRefresh";
+import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
+import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useVideoPlayers } from "../hooks/useVideoPlayers";
 
 const { height: screenHeight } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 50;
@@ -57,7 +60,8 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
-  const [showComments, setShowComments] = useState(false);
+  const commentSheetRef = useRef<BottomSheetModal | null>(null);
+  const shareSheetRef = useRef<BottomSheetModal | null>(null);
   
   // Animated values
   const translateY = useSharedValue(0);
@@ -67,60 +71,28 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const overlayOpacity = useSharedValue(1);
   const actionButtonsTranslateX = useSharedValue(0);
   
-  // Video players with preloading
-  const videoPlayers = useRef<any[]>([]);
-  
-  // Initialize video players
-  useEffect(() => {
-    videoPlayers.current = videoConfessions.map((_, index) => 
-      useVideoPlayer(
-        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-        (player) => {
-          player.loop = true;
-          player.muted = false;
-          if (index === 0) {
-            player.play();
-          }
-        }
-      )
-    );
-    
-    return () => {
-      videoPlayers.current.forEach(player => player?.release?.());
-    };
-  }, [videoConfessions]);
+  // Video players management
+  const videoPlayers = useVideoPlayers(videoConfessions);
 
-  // Preload adjacent videos
+  // Handle video changes
   useEffect(() => {
-    const preloadRange = 2;
-    const startIndex = Math.max(0, currentIndex - preloadRange);
-    const endIndex = Math.min(videoConfessions.length - 1, currentIndex + preloadRange);
-    
-    videoPlayers.current.forEach((player, index) => {
-      if (index >= startIndex && index <= endIndex && index !== currentIndex) {
-        // Preload but don't play
-        player?.pause?.();
-      } else if (index < startIndex || index > endIndex) {
-        // Unload distant videos to save memory
-        player?.pause?.();
-      }
-    });
-  }, [currentIndex, videoConfessions.length]);
+    if (videoConfessions.length > 0) {
+      videoPlayers.playVideo(currentIndex);
+    }
+  }, [currentIndex, videoPlayers, videoConfessions.length]);
 
   const changeVideo = useCallback((newIndex: number) => {
     if (newIndex < 0 || newIndex >= videoConfessions.length) return;
     
-    // Pause current video
-    videoPlayers.current[currentIndex]?.pause?.();
-    
-    // Play new video
-    videoPlayers.current[newIndex]?.play?.();
+    // Pause current and play new
+    videoPlayers.pauseVideo(currentIndex);
+    videoPlayers.playVideo(newIndex);
     
     setCurrentIndex(newIndex);
     
     // Haptic feedback
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [currentIndex, videoConfessions]);
+  }, [currentIndex, videoConfessions.length, videoPlayers]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -249,7 +221,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   }
 
   const currentVideo = videoConfessions[currentIndex];
-  const currentPlayer = videoPlayers.current[currentIndex];
+  const currentPlayer = videoPlayers.getPlayer(currentIndex);
 
   return (
     <GestureHandlerRootView className="flex-1">
@@ -257,183 +229,189 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
       <View className="flex-1 bg-black">
         <GestureDetector gesture={composedGestures}>
           <Animated.View style={[{ flex: 1 }, containerStyle]}>
-                {/* Video Player */}
-                {currentPlayer && (
-                  <VideoView
-                    player={currentPlayer}
-                    style={{ flex: 1 }}
-                    contentFit="cover"
-                    nativeControls={false}
-                  />
-                )}
+            {/* Video Player */}
+            {currentPlayer && (
+              <VideoView
+                player={currentPlayer}
+                style={{ flex: 1 }}
+                contentFit="cover"
+                nativeControls={false}
+              />
+            )}
 
-                {/* Pull to Refresh Indicator */}
-                <PullToRefresh
-                  pullDistance={pullDistance}
-                  isRefreshing={isRefreshing}
-                  threshold={80}
-                />
+            {/* Pull to Refresh Indicator */}
+            <PullToRefresh
+              pullDistance={pullDistance}
+              isRefreshing={isRefreshing}
+              threshold={80}
+            />
 
-                {/* Heart Animation Overlay */}
-                <Animated.View 
-                  style={[
-                    {
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      marginTop: -40,
-                      marginLeft: -40,
-                      zIndex: 100,
-                    },
-                    heartAnimationStyle
-                  ]}
-                >
-                  <Ionicons name="heart" size={80} color="#FF3040" />
-                </Animated.View>
+            {/* Heart Animation Overlay */}
+            <Animated.View 
+              style={[
+                {
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  marginTop: -40,
+                  marginLeft: -40,
+                  zIndex: 100,
+                },
+                heartAnimationStyle
+              ]}
+            >
+              <Ionicons name="heart" size={80} color="#FF3040" />
+            </Animated.View>
 
-                {/* Top Overlay */}
-                <Animated.View 
-                  style={[
-                    { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 },
-                    overlayStyle
-                  ]}
-                >
-                  <SafeAreaView>
-                    <View className="flex-row items-center justify-between px-4 py-2">
-                      <Pressable
-                        className="bg-black/50 rounded-full p-2"
-                        onPress={onClose}
-                      >
-                        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-                      </Pressable>
-                      
-                      <View className="bg-black/50 rounded-full px-3 py-1">
-                        <Text className="text-white text-13 font-medium">
-                          {currentIndex + 1}/{videoConfessions.length}
-                        </Text>
-                      </View>
-                      
-                      <Pressable className="bg-black/50 rounded-full p-2">
-                        <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
-                      </Pressable>
-                    </View>
-                  </SafeAreaView>
-                </Animated.View>
-
-                {/* Right Side Actions */}
-                <Animated.View 
-                  style={[
-                    { position: "absolute", right: 16, bottom: 120, zIndex: 10 },
-                    actionButtonsStyle
-                  ]}
-                >
-                  <View className="items-center space-y-6">
-                    <AnimatedActionButton
-                      icon={currentVideo.isLiked ? "heart" : "heart-outline"}
-                      label="Like"
-                      count={currentVideo.likes || 0}
-                      isActive={currentVideo.isLiked}
-                      onPress={() => {
-                        toggleLike(currentVideo.id);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                    />
-                    
-                    <AnimatedActionButton
-                      icon="chatbubble-outline"
-                      label="Reply"
-                      onPress={() => {
-                        setShowComments(true);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                    />
-                    
-                    <AnimatedActionButton
-                      icon="share-outline"
-                      label="Share"
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                    />
-                    
-                    <AnimatedActionButton
-                      icon="bookmark-outline"
-                      label="Save"
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                    />
+            {/* Top Overlay */}
+            <Animated.View 
+              style={[
+                { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 },
+                overlayStyle
+              ]}
+            >
+              <SafeAreaView>
+                <View className="flex-row items-center justify-between px-4 py-2">
+                  <Pressable
+                    className="bg-black/50 rounded-full p-2"
+                    onPress={onClose}
+                  >
+                    <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                  </Pressable>
+                  
+                  <View className="bg-black/50 rounded-full px-3 py-1">
+                    <Text className="text-white text-13 font-medium">
+                      {currentIndex + 1}/{videoConfessions.length}
+                    </Text>
                   </View>
-                </Animated.View>
+                  
+                  <Pressable className="bg-black/50 rounded-full p-2">
+                    <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+                  </Pressable>
+                </View>
+              </SafeAreaView>
+            </Animated.View>
 
-                {/* Bottom Overlay */}
-                <Animated.View 
-                  style={[
-                    { position: "absolute", bottom: 0, left: 0, right: 60, zIndex: 10 },
-                    overlayStyle
-                  ]}
-                >
-                  <SafeAreaView>
-                    <View className="px-4 pb-4">
-                      {/* User Info */}
-                      <View className="flex-row items-center mb-3">
-                        <View className="w-10 h-10 bg-gray-700 rounded-full items-center justify-center mr-3">
-                          <Ionicons name="person" size={16} color="#8B98A5" />
-                        </View>
-                        <View className="flex-1">
-                          <View className="flex-row items-center">
-                            <Text className="text-white font-bold text-15">Anonymous</Text>
-                            <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                            <Text className="text-gray-400 text-13">
-                              {format(new Date(currentVideo.timestamp), "MMM d")}
-                            </Text>
-                          </View>
-                          <View className="flex-row items-center mt-1">
-                            <Ionicons name="eye-off" size={12} color="#10B981" />
-                            <Text className="text-green-500 text-11 ml-1">Face blurred</Text>
-                            <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                            <Ionicons name="volume-off" size={12} color="#10B981" />
-                            <Text className="text-green-500 text-11 ml-1">Voice changed</Text>
-                          </View>
-                        </View>
-                      </View>
-
-                      {/* Transcription */}
-                      {currentVideo.transcription && (
-                        <Text className="text-white text-15 leading-5 mb-2">
-                          {currentVideo.transcription}
-                        </Text>
-                      )}
-                      
-                      {/* Video Info */}
-                      <View className="flex-row items-center">
-                        <Ionicons name="videocam" size={14} color="#1D9BF0" />
-                        <Text className="text-blue-400 text-13 ml-1">Video confession</Text>
-                      </View>
-                    </View>
-                  </SafeAreaView>
-                </Animated.View>
-
-                {/* Tap to Play/Pause */}
-                <Pressable
-                  className="absolute inset-0 z-5"
+            {/* Right Side Actions */}
+            <Animated.View 
+              style={[
+                { position: "absolute", right: 16, bottom: 120, zIndex: 10 },
+                actionButtonsStyle
+              ]}
+            >
+              <View className="items-center space-y-6">
+                <AnimatedActionButton
+                  icon={currentVideo.isLiked ? "heart" : "heart-outline"}
+                  label="Like"
+                  count={currentVideo.likes || 0}
+                  isActive={currentVideo.isLiked}
                   onPress={() => {
-                    if (currentPlayer?.playing) {
-                      currentPlayer.pause();
-                    } else {
-                      currentPlayer?.play();
-                    }
+                    toggleLike(currentVideo.id);
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   }}
                 />
+                
+                <AnimatedActionButton
+                  icon="chatbubble-outline"
+                  label="Reply"
+                  onPress={() => {
+                    commentSheetRef.current?.present();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                />
+                
+                <AnimatedActionButton
+                  icon="share-outline"
+                  label="Share"
+                  onPress={() => {
+                    shareSheetRef.current?.present();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                />
+                
+                <AnimatedActionButton
+                  icon="bookmark-outline"
+                  label="Save"
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                />
+              </View>
+            </Animated.View>
+
+            {/* Bottom Overlay */}
+            <Animated.View 
+              style={[
+                { position: "absolute", bottom: 0, left: 0, right: 60, zIndex: 10 },
+                overlayStyle
+              ]}
+            >
+              <SafeAreaView>
+                <View className="px-4 pb-4">
+                  {/* User Info */}
+                  <View className="flex-row items-center mb-3">
+                    <View className="w-10 h-10 bg-gray-700 rounded-full items-center justify-center mr-3">
+                      <Ionicons name="person" size={16} color="#8B98A5" />
+                    </View>
+                    <View className="flex-1">
+                      <View className="flex-row items-center">
+                        <Text className="text-white font-bold text-15">Anonymous</Text>
+                        <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
+                        <Text className="text-gray-400 text-13">
+                          {format(new Date(currentVideo.timestamp), "MMM d")}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center mt-1">
+                        <Ionicons name="eye-off" size={12} color="#10B981" />
+                        <Text className="text-green-500 text-11 ml-1">Face blurred</Text>
+                        <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
+                        <Ionicons name="volume-off" size={12} color="#10B981" />
+                        <Text className="text-green-500 text-11 ml-1">Voice changed</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Transcription */}
+                  {currentVideo.transcription && (
+                    <Text className="text-white text-15 leading-5 mb-2">
+                      {currentVideo.transcription}
+                    </Text>
+                  )}
+                  
+                  {/* Video Info */}
+                  <View className="flex-row items-center">
+                    <Ionicons name="videocam" size={14} color="#1D9BF0" />
+                    <Text className="text-blue-400 text-13 ml-1">Video confession</Text>
+                  </View>
+                </View>
+              </SafeAreaView>
+            </Animated.View>
+
+            {/* Tap to Play/Pause */}
+            <Pressable
+              className="absolute inset-0 z-5"
+              onPress={() => {
+                if (currentPlayer?.playing) {
+                  videoPlayers.pauseVideo(currentIndex);
+                } else {
+                  videoPlayers.playVideo(currentIndex);
+                }
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+            />
           </Animated.View>
         </GestureDetector>
 
         {/* Comment Bottom Sheet */}
-        <CommentBottomSheet
-          isVisible={showComments}
-          onClose={() => setShowComments(false)}
+        <EnhancedCommentBottomSheet
+          bottomSheetModalRef={commentSheetRef}
+        />
+
+        {/* Share Bottom Sheet */}
+        <EnhancedShareBottomSheet
+          bottomSheetModalRef={shareSheetRef}
           confessionId={currentVideo.id}
+          confessionText={currentVideo.transcription || currentVideo.content}
         />
       </View>
     </GestureHandlerRootView>
