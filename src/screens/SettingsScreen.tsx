@@ -28,8 +28,8 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-black">
       {/* Header */}
-      <View className="px-4 py-3 border-b border-gray-800">
-        <Text className="text-white text-20 font-bold">
+      <View className="px-4 py-2 border-b border-gray-800">
+        <Text className="text-white text-18 font-semibold">
           Settings
         </Text>
       </View>

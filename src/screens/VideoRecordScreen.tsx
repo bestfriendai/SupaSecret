@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
 import { processVideoConfession } from "../utils/videoProcessing";
+import * as Haptics from "expo-haptics";
 
 export default function VideoRecordScreen() {
   // All hooks must be called at the top level, before any conditional logic
@@ -13,6 +14,8 @@ export default function VideoRecordScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [processingStatus, setProcessingStatus] = useState("");
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<Promise<any> | null>(null);
@@ -31,6 +34,7 @@ export default function VideoRecordScreen() {
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === "back" ? "front" : "back"));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const startRecording = async () => {
@@ -38,6 +42,9 @@ export default function VideoRecordScreen() {
     
     setIsRecording(true);
     setRecordingTime(0);
+    
+    // Add haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     // Start timer
     timerRef.current = setInterval(() => {
@@ -57,8 +64,26 @@ export default function VideoRecordScreen() {
     } catch (error) {
       console.error("Recording error:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      
       if (errorMessage !== "Recording stopped") {
-        Alert.alert("Error", "Failed to record video. Please try again.");
+        let userFriendlyMessage = "Failed to record video. Please try again.";
+        
+        if (errorMessage.includes("permission")) {
+          userFriendlyMessage = "Camera or microphone permission was denied. Please check your settings.";
+        } else if (errorMessage.includes("storage") || errorMessage.includes("space")) {
+          userFriendlyMessage = "Not enough storage space to record video. Please free up some space.";
+        } else if (errorMessage.includes("camera")) {
+          userFriendlyMessage = "Camera is not available. Please make sure no other app is using the camera.";
+        }
+        
+        Alert.alert(
+          "Recording Failed", 
+          userFriendlyMessage,
+          [
+            { text: "Try Again", style: "default" },
+            { text: "Go Back", style: "cancel", onPress: () => navigation.goBack() }
+          ]
+        );
       }
     } finally {
       setIsRecording(false);
@@ -73,6 +98,7 @@ export default function VideoRecordScreen() {
   const stopRecording = () => {
     if (cameraRef.current && isRecording) {
       cameraRef.current.stopRecording();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setIsRecording(false);
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -91,9 +117,21 @@ export default function VideoRecordScreen() {
 
   const processVideo = async (videoUri: string) => {
     setIsProcessing(true);
+    setProcessingProgress(0);
+    setProcessingStatus("Starting processing...");
+    
     try {
       // Process video with face blur, voice change, and transcription
-      const processedVideo = await processVideoConfession(videoUri);
+      const processedVideo = await processVideoConfession(videoUri, {
+        enableTranscription: true,
+        enableFaceBlur: true,
+        enableVoiceChange: true,
+        quality: "medium",
+        onProgress: (progress, status) => {
+          setProcessingProgress(progress);
+          setProcessingStatus(status);
+        }
+      });
       
       addConfession({
         type: "video",
@@ -110,9 +148,34 @@ export default function VideoRecordScreen() {
       );
     } catch (error) {
       console.error("Processing error:", error);
-      Alert.alert("Error", "Failed to process video. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      let userFriendlyMessage = "Failed to process your video confession.";
+      let suggestions = "Please try recording again.";
+      
+      if (errorMessage.includes("transcription")) {
+        userFriendlyMessage = "Video recorded successfully, but transcription failed.";
+        suggestions = "Your video will be saved without transcription. You can try again later.";
+      } else if (errorMessage.includes("storage") || errorMessage.includes("space")) {
+        userFriendlyMessage = "Not enough storage space to process video.";
+        suggestions = "Please free up some space and try again.";
+      } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
+        userFriendlyMessage = "Network error during processing.";
+        suggestions = "Please check your internet connection and try again.";
+      }
+      
+      Alert.alert(
+        "Processing Failed", 
+        `${userFriendlyMessage}\n\n${suggestions}`,
+        [
+          { text: "Try Again", style: "default", onPress: () => setIsProcessing(false) },
+          { text: "Go Back", style: "cancel", onPress: () => navigation.goBack() }
+        ]
+      );
     } finally {
       setIsProcessing(false);
+      setProcessingProgress(0);
+      setProcessingStatus("");
     }
   };
 
@@ -125,18 +188,26 @@ export default function VideoRecordScreen() {
   if (!permission.granted) {
     return (
       <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
-        <Ionicons name="camera-outline" size={64} color="#8B98A5" />
+        <View className="w-20 h-20 bg-gray-800 rounded-full items-center justify-center mb-6">
+          <Ionicons name="camera-outline" size={40} color="#8B98A5" />
+        </View>
         <Text className="text-white text-xl font-semibold mt-4 text-center">
           Camera Permission Required
         </Text>
-        <Text className="text-gray-400 text-base mt-2 text-center mb-8">
-          We need camera access to record your video confession
+        <Text className="text-gray-400 text-base mt-2 text-center mb-8 leading-6">
+          We need camera and microphone access to record your anonymous video confession with privacy protection.
         </Text>
         <Pressable
-          className="bg-blue-500 rounded-full px-6 py-3"
+          className="bg-blue-500 rounded-full px-8 py-4 mb-4"
           onPress={requestPermission}
         >
-          <Text className="text-white font-semibold">Grant Permission</Text>
+          <Text className="text-white font-semibold text-16">Grant Permission</Text>
+        </Pressable>
+        <Pressable
+          className="bg-gray-800 rounded-full px-6 py-3"
+          onPress={() => navigation.goBack()}
+        >
+          <Text className="text-gray-300 font-medium">Go Back</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -150,8 +221,20 @@ export default function VideoRecordScreen() {
         <Text className="text-white text-xl font-semibold mt-4 text-center">
           Processing Your Video
         </Text>
-        <Text className="text-gray-400 text-base mt-2 text-center">
-          Applying face blur, voice change, and transcription...
+        <Text className="text-gray-400 text-base mt-2 text-center mb-6">
+          {processingStatus || "Applying face blur, voice change, and transcription..."}
+        </Text>
+        
+        {/* Progress Bar */}
+        <View className="w-full max-w-xs bg-gray-800 rounded-full h-2 mb-4">
+          <View 
+            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${processingProgress}%` }}
+          />
+        </View>
+        
+        <Text className="text-blue-400 text-sm font-medium">
+          {Math.round(processingProgress)}% Complete
         </Text>
       </SafeAreaView>
     );
@@ -164,6 +247,7 @@ export default function VideoRecordScreen() {
         ref={cameraRef}
         style={{ flex: 1 }}
         facing={facing}
+        mode="video"
       >
         {/* Overlay UI */}
         <View className="absolute top-0 left-0 right-0 bottom-0 z-10">
@@ -179,7 +263,7 @@ export default function VideoRecordScreen() {
             <View className="bg-black/70 rounded-full px-4 py-2 flex-row items-center">
               <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
               <Text className="text-white text-sm font-medium">
-                Face Blur: ON
+                Protected Mode
               </Text>
             </View>
             
@@ -194,19 +278,34 @@ export default function VideoRecordScreen() {
           {/* Bottom Controls */}
           <View className="absolute bottom-0 left-0 right-0">
             <SafeAreaView className="items-center pb-8">
-              <Text className="text-white text-sm mb-4 text-center px-4">
-                Your face will be blurred and voice changed automatically
-              </Text>
+              <View className="bg-black/70 rounded-2xl px-4 py-3 mb-4 mx-4">
+                <View className="flex-row items-center justify-center mb-2">
+                  <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                  <Text className="text-green-400 text-sm font-semibold ml-2">
+                    Privacy Protection Active
+                  </Text>
+                </View>
+                <Text className="text-white text-sm text-center leading-5">
+                  Face blur and voice change will be applied automatically
+                </Text>
+              </View>
               
               {isRecording && (
-                <View className="bg-red-600 rounded-full px-4 py-2 mb-4">
-                  <Text className="text-white text-sm font-medium">
-                    Recording: {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                <View className="bg-red-600 rounded-full px-6 py-3 mb-4 flex-row items-center">
+                  <View className="w-3 h-3 bg-white rounded-full mr-3 animate-pulse" />
+                  <Text className="text-white text-base font-bold">
+                    REC {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                   </Text>
                 </View>
               )}
               
-              <View className="flex-row items-center justify-center">
+              <View className="flex-row items-center justify-center space-x-8">
+                {/* Quality Selector */}
+                <Pressable className="bg-black/70 rounded-full p-3">
+                  <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+                </Pressable>
+                
+                {/* Record Button */}
                 <Pressable
                   className={`rounded-full p-6 border-4 ${
                     isRecording 
@@ -220,12 +319,22 @@ export default function VideoRecordScreen() {
                     isRecording ? "w-6 h-6 bg-white" : "w-8 h-8 bg-red-500"
                   }`} />
                 </Pressable>
+                
+                {/* Gallery/Preview */}
+                <Pressable className="bg-black/70 rounded-full p-3">
+                  <Ionicons name="images-outline" size={24} color="#FFFFFF" />
+                </Pressable>
               </View>
               
               {!isRecording && (
-                <Text className="text-gray-300 text-sm mt-4 font-medium">
-                  Tap to start recording
-                </Text>
+                <View className="items-center mt-4">
+                  <Text className="text-white text-base font-semibold mb-1">
+                    Tap to start recording
+                  </Text>
+                  <Text className="text-gray-400 text-sm">
+                    Max duration: 60 seconds
+                  </Text>
+                </View>
               )}
             </SafeAreaView>
           </View>

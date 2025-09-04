@@ -132,7 +132,7 @@ export default function AppNavigator() {
           headerTintColor: "#FFFFFF",
           headerTitleStyle: {
             fontWeight: "600",
-            fontSize: 20,
+            fontSize: 18,
           },
           headerShadowVisible: false,
         }}

@@ -45,8 +45,8 @@ export default function CreateConfessionScreen() {
   return (
     <SafeAreaView className="flex-1 bg-black">
       {/* Header */}
-      <View className="px-4 py-3 border-b border-gray-800 flex-row items-center justify-between">
-        <Text className="text-white text-20 font-bold">
+      <View className="px-4 py-2 border-b border-gray-800 flex-row items-center justify-between">
+        <Text className="text-white text-18 font-semibold">
           Share Secret
         </Text>
         <Pressable 
