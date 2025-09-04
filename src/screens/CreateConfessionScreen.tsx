@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -12,12 +12,21 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function CreateConfessionScreen() {
   const [textContent, setTextContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState<"success" | "error">("success");
   const navigation = useNavigation<NavigationProp>();
   const addConfession = useConfessionStore((state) => state.addConfession);
 
+  const showMessage = (message: string, type: "success" | "error") => {
+    setModalMessage(message);
+    setModalType(type);
+    setShowModal(true);
+  };
+
   const handleTextSubmit = async () => {
     if (!textContent.trim()) {
-      Alert.alert("Error", "Please enter your confession");
+      showMessage("Please enter your confession", "error");
       return;
     }
 
@@ -30,9 +39,9 @@ export default function CreateConfessionScreen() {
       });
       
       setTextContent("");
-      Alert.alert("Success", "Your secret has been shared anonymously");
+      showMessage("Your secret has been shared anonymously", "success");
     } catch (error) {
-      Alert.alert("Error", "Failed to share your secret. Please try again.");
+      showMessage("Failed to share your secret. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -143,6 +152,35 @@ export default function CreateConfessionScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Custom Modal */}
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center px-6">
+          <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
+            <View className="items-center mb-4">
+              <Ionicons 
+                name={modalType === "success" ? "checkmark-circle" : "alert-circle"} 
+                size={48} 
+                color={modalType === "success" ? "#10B981" : "#EF4444"} 
+              />
+            </View>
+            <Text className="text-white text-16 text-center mb-6 leading-5">
+              {modalMessage}
+            </Text>
+            <Pressable
+              className="bg-blue-500 rounded-full py-3 px-6"
+              onPress={() => setShowModal(false)}
+            >
+              <Text className="text-white font-semibold text-center">OK</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

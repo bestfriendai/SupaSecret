@@ -1,28 +1,34 @@
-import React from "react";
-import { View, Text, Pressable, Alert, ScrollView } from "react-native";
+import React, { useState } from "react";
+import { View, Text, Pressable, ScrollView, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useConfessionStore } from "../state/confessionStore";
 
 export default function SettingsScreen() {
   const { confessions, clearAllConfessions } = useConfessionStore();
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState<"confirm" | "success">("confirm");
+
+  const showMessage = (message: string, type: "confirm" | "success") => {
+    setModalMessage(message);
+    setModalType(type);
+    setShowModal(true);
+  };
 
   const handleClearAll = () => {
-    Alert.alert(
-      "Clear All Confessions",
+    showMessage(
       `Are you sure you want to delete all ${confessions.length} confessions? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Clear All", 
-          style: "destructive",
-          onPress: () => {
-            clearAllConfessions();
-            Alert.alert("Success", "All confessions have been cleared.");
-          }
-        },
-      ]
+      "confirm"
     );
+  };
+
+  const confirmClearAll = () => {
+    clearAllConfessions();
+    setShowModal(false);
+    setTimeout(() => {
+      showMessage("All confessions have been cleared.", "success");
+    }, 100);
   };
 
   return (
@@ -141,6 +147,52 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Custom Modal */}
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center px-6">
+          <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
+            <View className="items-center mb-4">
+              <Ionicons 
+                name={modalType === "success" ? "checkmark-circle" : "alert-circle"} 
+                size={48} 
+                color={modalType === "success" ? "#10B981" : "#EF4444"} 
+              />
+            </View>
+            <Text className="text-white text-16 text-center mb-6 leading-5">
+              {modalMessage}
+            </Text>
+            {modalType === "confirm" ? (
+              <View className="flex-row space-x-3">
+                <Pressable
+                  className="flex-1 py-3 px-4 rounded-full bg-gray-700"
+                  onPress={() => setShowModal(false)}
+                >
+                  <Text className="text-white font-semibold text-center">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="flex-1 py-3 px-4 rounded-full bg-red-600"
+                  onPress={confirmClearAll}
+                >
+                  <Text className="text-white font-semibold text-center">Clear All</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                className="bg-blue-500 rounded-full py-3 px-6"
+                onPress={() => setShowModal(false)}
+              >
+                <Text className="text-white font-semibold text-center">OK</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

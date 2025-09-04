@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from "react";
-import { View, Text, Pressable, Share, Alert } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { View, Text, Pressable, Share, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -21,8 +21,18 @@ export default function EnhancedShareBottomSheet({
   confessionText,
   bottomSheetModalRef,
 }: EnhancedShareBottomSheetProps) {
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState<"success" | "confirm">("success");
+  
   // Bottom sheet configuration
   const snapPoints = useMemo(() => ["40%"], []);
+
+  const showMessage = (message: string, type: "success" | "confirm") => {
+    setModalMessage(message);
+    setModalType(type);
+    setShowModal(true);
+  };
 
   // Backdrop component
   const renderBackdrop = useCallback(
@@ -55,7 +65,7 @@ export default function EnhancedShareBottomSheet({
     try {
       const shareUrl = `https://secrets.app/confession/${confessionId}`;
       await Clipboard.setStringAsync(shareUrl);
-      Alert.alert("Copied!", "Anonymous link copied to clipboard");
+      showMessage("Anonymous link copied to clipboard", "success");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       bottomSheetModalRef.current?.dismiss();
     } catch (error) {
@@ -66,7 +76,7 @@ export default function EnhancedShareBottomSheet({
   const handleCopyText = useCallback(async () => {
     try {
       await Clipboard.setStringAsync(confessionText);
-      Alert.alert("Copied!", "Anonymous confession copied to clipboard");
+      showMessage("Anonymous confession copied to clipboard", "success");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       bottomSheetModalRef.current?.dismiss();
     } catch (error) {
@@ -75,22 +85,19 @@ export default function EnhancedShareBottomSheet({
   }, [confessionText, bottomSheetModalRef]);
 
   const handleReport = useCallback(() => {
-    Alert.alert(
-      "Report Anonymous Content",
+    showMessage(
       "Are you sure you want to report this confession? Your report will be anonymous.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Report",
-          style: "destructive",
-          onPress: () => {
-            Alert.alert("Reported", "Thank you for your anonymous report. We'll review this content.");
-            bottomSheetModalRef.current?.dismiss();
-          },
-        },
-      ]
+      "confirm"
     );
-  }, [bottomSheetModalRef]);
+  }, []);
+
+  const confirmReport = () => {
+    setShowModal(false);
+    bottomSheetModalRef.current?.dismiss();
+    setTimeout(() => {
+      showMessage("Thank you for your anonymous report. We'll review this content.", "success");
+    }, 100);
+  };
 
   const ShareOption = ({ 
     icon, 
@@ -188,6 +195,52 @@ export default function EnhancedShareBottomSheet({
           </Text>
         </View>
       </BottomSheetView>
+
+      {/* Custom Modal */}
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center px-6">
+          <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
+            <View className="items-center mb-4">
+              <Ionicons 
+                name={modalType === "success" ? "checkmark-circle" : "alert-circle"} 
+                size={48} 
+                color={modalType === "success" ? "#10B981" : "#EF4444"} 
+              />
+            </View>
+            <Text className="text-white text-16 text-center mb-6 leading-5">
+              {modalMessage}
+            </Text>
+            {modalType === "confirm" ? (
+              <View className="flex-row space-x-3">
+                <Pressable
+                  className="flex-1 py-3 px-4 rounded-full bg-gray-700"
+                  onPress={() => setShowModal(false)}
+                >
+                  <Text className="text-white font-semibold text-center">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  className="flex-1 py-3 px-4 rounded-full bg-red-600"
+                  onPress={confirmReport}
+                >
+                  <Text className="text-white font-semibold text-center">Report</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                className="bg-blue-500 rounded-full py-3 px-6"
+                onPress={() => setShowModal(false)}
+              >
+                <Text className="text-white font-semibold text-center">OK</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </Modal>
     </BottomSheetModal>
   );
 }

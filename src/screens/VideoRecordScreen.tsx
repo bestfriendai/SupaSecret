@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, Alert } from "react-native";
+import { View, Text, Pressable, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,12 +16,23 @@ export default function VideoRecordScreen() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState<"success" | "error">("success");
+  const [modalButtons, setModalButtons] = useState<Array<{text: string, onPress?: () => void}>>([]);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<Promise<any> | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const navigation = useNavigation();
   const addConfession = useConfessionStore((state) => state.addConfession);
+
+  const showMessage = (message: string, type: "success" | "error", buttons?: Array<{text: string, onPress?: () => void}>) => {
+    setModalMessage(message);
+    setModalType(type);
+    setModalButtons(buttons || [{text: "OK", onPress: () => setShowModal(false)}]);
+    setShowModal(true);
+  };
 
   // Cleanup effect - must be called after all other hooks
   useEffect(() => {
@@ -76,14 +87,10 @@ export default function VideoRecordScreen() {
           userFriendlyMessage = "Camera is not available. Please make sure no other app is using the camera.";
         }
         
-        Alert.alert(
-          "Recording Failed", 
-          userFriendlyMessage,
-          [
-            { text: "Try Again", style: "default" },
-            { text: "Go Back", style: "cancel", onPress: () => navigation.goBack() }
-          ]
-        );
+        showMessage(userFriendlyMessage, "error", [
+          { text: "Try Again" },
+          { text: "Go Back", onPress: () => navigation.goBack() }
+        ]);
       }
     } finally {
       setIsRecording(false);
@@ -141,9 +148,9 @@ export default function VideoRecordScreen() {
         isAnonymous: true,
       });
 
-      Alert.alert(
-        "Success", 
-        "Your video confession has been processed and shared anonymously!",
+      showMessage(
+        "Your video confession has been processed and shared anonymously!", 
+        "success",
         [{ text: "OK", onPress: () => navigation.goBack() }]
       );
     } catch (error) {
@@ -164,12 +171,12 @@ export default function VideoRecordScreen() {
         suggestions = "Please check your internet connection and try again.";
       }
       
-      Alert.alert(
-        "Processing Failed", 
+      showMessage(
         `${userFriendlyMessage}\n\n${suggestions}`,
+        "error",
         [
-          { text: "Try Again", style: "default", onPress: () => setIsProcessing(false) },
-          { text: "Go Back", style: "cancel", onPress: () => navigation.goBack() }
+          { text: "Try Again", onPress: () => setIsProcessing(false) },
+          { text: "Go Back", onPress: () => navigation.goBack() }
         ]
       );
     } finally {
@@ -340,6 +347,47 @@ export default function VideoRecordScreen() {
           </View>
         </View>
       </CameraView>
+
+      {/* Custom Modal */}
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center px-6">
+          <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
+            <View className="items-center mb-4">
+              <Ionicons 
+                name={modalType === "success" ? "checkmark-circle" : "alert-circle"} 
+                size={48} 
+                color={modalType === "success" ? "#10B981" : "#EF4444"} 
+              />
+            </View>
+            <Text className="text-white text-16 text-center mb-6 leading-5">
+              {modalMessage}
+            </Text>
+            <View className="flex-row space-x-3">
+              {modalButtons.map((button, index) => (
+                <Pressable
+                  key={index}
+                  className={`flex-1 py-3 px-4 rounded-full ${
+                    index === 0 ? "bg-blue-500" : "bg-gray-700"
+                  }`}
+                  onPress={() => {
+                    setShowModal(false);
+                    button.onPress?.();
+                  }}
+                >
+                  <Text className="text-white font-semibold text-center">
+                    {button.text}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -21,46 +21,43 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   const playersRef = useRef<Map<number, any>>(new Map());
   const currentPlayingRef = useRef<number>(-1);
 
-  // Create stable video source
-  const videoSource = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-
   // Create video players using individual hooks (following Rules of Hooks)
-  const player0 = useVideoPlayer(videos.length > 0 ? videoSource : null, (player) => {
+  const player0 = useVideoPlayer(videos.length > 0 ? videos[0]?.videoUri || null : null, (player) => {
     player.loop = true;
     player.muted = false;
   });
 
-  const player1 = useVideoPlayer(videos.length > 1 ? videoSource : null, (player) => {
+  const player1 = useVideoPlayer(videos.length > 1 ? videos[1]?.videoUri || null : null, (player) => {
     player.loop = true;
     player.muted = false;
   });
 
-  const player2 = useVideoPlayer(videos.length > 2 ? videoSource : null, (player) => {
+  const player2 = useVideoPlayer(videos.length > 2 ? videos[2]?.videoUri || null : null, (player) => {
     player.loop = true;
     player.muted = false;
   });
 
-  const player3 = useVideoPlayer(videos.length > 3 ? videoSource : null, (player) => {
+  const player3 = useVideoPlayer(videos.length > 3 ? videos[3]?.videoUri || null : null, (player) => {
     player.loop = true;
     player.muted = false;
   });
 
-  const player4 = useVideoPlayer(videos.length > 4 ? videoSource : null, (player) => {
+  const player4 = useVideoPlayer(videos.length > 4 ? videos[4]?.videoUri || null : null, (player) => {
     player.loop = true;
     player.muted = false;
   });
 
-  const player5 = useVideoPlayer(videos.length > 5 ? videoSource : null, (player) => {
+  const player5 = useVideoPlayer(videos.length > 5 ? videos[5]?.videoUri || null : null, (player) => {
     player.loop = true;
     player.muted = false;
   });
 
-  const player6 = useVideoPlayer(videos.length > 6 ? videoSource : null, (player) => {
+  const player6 = useVideoPlayer(videos.length > 6 ? videos[6]?.videoUri || null : null, (player) => {
     player.loop = true;
     player.muted = false;
   });
 
-  const player7 = useVideoPlayer(videos.length > 7 ? videoSource : null, (player) => {
+  const player7 = useVideoPlayer(videos.length > 7 ? videos[7]?.videoUri || null : null, (player) => {
     player.loop = true;
     player.muted = false;
   });
