@@ -18,6 +18,7 @@ import ProgressIndicator from "../components/ProgressIndicator";
 import AuthButton from "../components/AuthButton";
 import { OnboardingSlide as OnboardingSlideType } from "../types/auth";
 import { useAuthStore } from "../state/authStore";
+import { debugAuthState } from "../utils/auth";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -128,7 +129,9 @@ export default function OnboardingScreen() {
     <SafeAreaView className="flex-1 bg-black">
       {/* Header */}
       <View className="flex-row items-center justify-between px-6 py-4">
-        <View className="w-16" />
+        <Pressable onPress={debugAuthState} className="px-2 py-1">
+          <Text className="text-gray-500 text-12">Debug</Text>
+        </Pressable>
         <ProgressIndicator
           totalSlides={onboardingSlides.length}
           scrollX={scrollX}

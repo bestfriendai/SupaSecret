@@ -134,6 +134,14 @@ export const signInUser = async (credentials: AuthCredentials): Promise<User> =>
     password,
   });
 
+  if (__DEV__) {
+    console.log('🔍 Sign in result:', {
+      hasUser: !!authData.user,
+      hasSession: !!authData.session,
+      error: authError?.message
+    });
+  }
+
   if (authError) {
     if (authError.message.includes('Invalid login credentials')) {
       throw new AuthError("INVALID_CREDENTIALS", "Invalid email or password");
@@ -203,6 +211,15 @@ export const getCurrentUser = async (): Promise<User | null> => {
       .eq('id', authUser.id)
       .single();
 
+    if (__DEV__) {
+      console.log('🔍 Profile query result:', {
+        userId: authUser.id,
+        profileData,
+        profileError: profileError?.message,
+        errorCode: profileError?.code
+      });
+    }
+
     if (profileError && profileError.code !== 'PGRST116') {
       console.error('Error fetching user profile:', profileError);
     }
@@ -271,6 +288,44 @@ export const signOutUser = async (): Promise<void> => {
   if (error) {
     console.error("Error signing out:", error);
     throw new Error("Failed to sign out");
+  }
+};
+
+// Debug function to check auth state manually
+export const debugAuthState = async () => {
+  try {
+    console.log('🔍 === DEBUG AUTH STATE ===');
+
+    // Check session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('🔍 Session:', session ? `exists (expires: ${session.expires_at})` : 'null', sessionError?.message || '');
+
+    // Check user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('🔍 Auth User:', user ? `${user.email} (${user.id})` : 'null', userError?.message || '');
+
+    if (user) {
+      // Check profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      console.log('🔍 Profile Data:', profileData, profileError?.message || '');
+    }
+
+    // Check AsyncStorage directly
+    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+    const supabaseSession = await AsyncStorage.default.getItem('sb-xhtqobjcbjgzxkgfyvdj-auth-token');
+    console.log('🔍 AsyncStorage Supabase Token:', supabaseSession ? 'exists' : 'null');
+
+    const authStorage = await AsyncStorage.default.getItem('auth-storage');
+    console.log('🔍 AsyncStorage Auth Store:', authStorage ? 'exists' : 'null');
+
+    console.log('🔍 === END DEBUG ===');
+  } catch (error) {
+    console.error('🔍 Debug auth state error:', error);
   }
 };
 

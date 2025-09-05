@@ -3,7 +3,10 @@ console.log("[index] Project ID is: ", process.env.EXPO_PUBLIC_VIBECODE_PROJECT_
 import "./global.css";
 import "react-native-get-random-values";
 import { LogBox } from "react-native";
-LogBox.ignoreLogs(["Expo AV has been deprecated", "Disconnected from Metro"]);
+LogBox.ignoreLogs([
+  "Disconnected from Metro",
+  // Remove expo-av deprecation warning since we've migrated to expo-audio
+]);
 
 import { registerRootComponent } from "expo";
 

@@ -1,5 +1,5 @@
 import * as FileSystem from "expo-file-system";
-import { Audio } from "expo-av";
+import { AudioPlayer } from "expo-audio";
 import { transcribeAudio } from "../api/transcribe-audio";
 
 export interface ProcessedVideo {
@@ -155,21 +155,21 @@ const extractAudioFromVideo = async (videoUri: string): Promise<string> => {
     // Create temporary audio file path
     const audioUri = `${FileSystem.documentDirectory}temp_audio_${Date.now()}.m4a`;
     
-    // Load the video to extract audio
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: videoUri },
-      { shouldPlay: false }
-    );
-    
+    // Load the video to extract audio using expo-audio
+    const audioPlayer = AudioPlayer.create(videoUri);
+
     // Get the audio URI from the loaded sound
     // Note: This is a simplified approach. In a real implementation,
     // you would use FFmpeg or similar to properly extract audio
-    
+
     // For now, we'll copy the video file as audio (works for most formats)
     await FileSystem.copyAsync({
       from: videoUri,
       to: audioUri,
     });
+
+    // Clean up the audio player
+    audioPlayer.remove();
     
     // Unload the sound
     await sound.unloadAsync();

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { View, Text, Pressable, Modal, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
-import { Audio } from "expo-av";
+import { requestPermissionsAsync } from "expo-audio";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
@@ -40,7 +40,7 @@ export default function VideoRecordScreen() {
   useEffect(() => {
     const checkAudioPermission = async () => {
       try {
-        const { status } = await Audio.requestPermissionsAsync();
+        const { status } = await requestPermissionsAsync();
         setAudioPermission(status === 'granted');
       } catch (error) {
         console.error('Error checking audio permission:', error);
@@ -62,11 +62,15 @@ export default function VideoRecordScreen() {
 
   const requestAllPermissions = async () => {
     try {
+      console.log('🔍 Requesting permissions...');
+
       // Request camera permission
       const cameraResult = await requestPermission();
+      console.log('🔍 Camera permission result:', cameraResult);
 
-      // Request audio permission
-      const audioResult = await Audio.requestPermissionsAsync();
+      // Request audio permission using expo-audio
+      const audioResult = await requestPermissionsAsync();
+      console.log('🔍 Audio permission result:', audioResult);
       setAudioPermission(audioResult.status === 'granted');
 
       if (!cameraResult.granted) {

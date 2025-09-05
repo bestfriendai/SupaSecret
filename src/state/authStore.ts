@@ -121,6 +121,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuthState: async () => {
+        if (__DEV__) {
+          console.log('🔍 Starting auth state check...');
+        }
         set({ isLoading: true });
         try {
           const user = await getCurrentUser();

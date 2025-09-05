@@ -7,6 +7,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "plugins": [
+      "expo-audio",
+      "expo-camera"
+    ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {

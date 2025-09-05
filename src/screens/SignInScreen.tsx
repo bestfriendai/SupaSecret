@@ -62,19 +62,22 @@ export default function SignInScreen() {
 
   const handleSignIn = async () => {
     clearError();
-    
+
     if (!validateForm()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
     try {
+      console.log('🔍 Attempting sign in with:', formData.email);
       await signIn(formData);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Navigation will be handled by the auth state change
     } catch (error) {
+      console.log('🔍 Sign in error caught:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (error instanceof Error) {
+        console.log('🔍 Showing error modal:', error.message);
         showMessage(error.message, "error");
       }
     }

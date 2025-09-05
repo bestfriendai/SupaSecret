@@ -51,7 +51,9 @@ function AuthStackNavigator() {
     } else if (isAuthenticated && user && !user.isOnboarded) {
       return "Onboarding"; // Show onboarding for authenticated but not onboarded users
     } else {
-      return "Onboarding"; // Fallback to onboarding
+      // This case should never be reached since authenticated + onboarded users
+      // should be in MainTabs, not AuthStack. But if we get here, show SignIn as fallback
+      return "SignIn";
     }
   };
 
