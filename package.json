@@ -87,6 +87,7 @@
     "expo-video": "~2.1.8",
     "expo-web-browser": "~14.1.6",
     "lottie-react-native": "7.2.2",
+    "ffmpeg-kit-react-native": "^6.0.2",
     "nativewind": "^4.1.23",
     "openai": "^4.89.0",
     "patch-package": "^8.0.0",

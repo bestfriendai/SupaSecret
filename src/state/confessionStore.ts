@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ConfessionState, Confession, UserPreferences, VideoAnalytics } from "../types/confession";
 import { supabase } from "../lib/supabase";
+import { ensureSignedVideoUrl, isLocalUri, uploadVideoToSupabase } from "../utils/storage";
 
 const sampleConfessions: Confession[] = [
   {
@@ -113,17 +114,27 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
-          const confessions: Confession[] = data.map(item => ({
-            id: item.id,
-            type: item.type as 'text' | 'video',
-            content: item.content,
-            videoUri: item.video_uri || undefined,
-            transcription: item.transcription || undefined,
-            timestamp: new Date(item.created_at).getTime(),
-            isAnonymous: item.is_anonymous,
-            likes: item.likes,
-            isLiked: false, // TODO: Track user likes separately
-          }));
+          const confessions: Confession[] = await Promise.all(
+            data.map(async (item) => {
+              const base: Confession = {
+                id: item.id,
+                type: item.type as 'text' | 'video',
+                content: item.content,
+                videoUri: undefined,
+                transcription: item.transcription || undefined,
+                timestamp: new Date(item.created_at).getTime(),
+                isAnonymous: item.is_anonymous,
+                likes: item.likes,
+                isLiked: false,
+              };
+
+              if (base.type === 'video' && item.video_uri) {
+                base.videoUri = await ensureSignedVideoUrl(item.video_uri);
+              }
+
+              return base;
+            })
+          );
 
           set({ confessions, isLoading: false });
         } catch (error) {
@@ -134,10 +145,28 @@ export const useConfessionStore = create<ConfessionState>()(
         }
       },
 
-      addConfession: async (confession) => {
+      addConfession: async (confession, opts) => {
         set({ isLoading: true, error: null });
         try {
           const { data: { user } } = await supabase.auth.getUser();
+
+          let videoStoragePath: string | undefined;
+          let signedVideoUrl: string | undefined;
+
+          if (confession.type === 'video' && confession.videoUri) {
+            if (!user?.id) throw new Error('User not authenticated');
+            if (isLocalUri(confession.videoUri)) {
+              const result = await uploadVideoToSupabase(confession.videoUri, user.id, opts?.onUploadProgress);
+              videoStoragePath = result.path; // store path in DB
+              signedVideoUrl = result.signedUrl; // use for immediate playback
+            } else {
+              // Already a remote URL (e.g., previously signed URL)
+              signedVideoUrl = confession.videoUri;
+              // Optionally, do not store signed URL in DB; keep it as content path if you have it
+              // For now, store the URL directly
+              videoStoragePath = confession.videoUri;
+            }
+          }
 
           const { data, error } = await supabase
             .from('confessions')
@@ -145,7 +174,7 @@ export const useConfessionStore = create<ConfessionState>()(
               user_id: user?.id,
               type: confession.type,
               content: confession.content,
-              video_uri: confession.videoUri,
+              video_uri: videoStoragePath,
               transcription: confession.transcription,
               is_anonymous: confession.isAnonymous,
             })
@@ -158,7 +187,7 @@ export const useConfessionStore = create<ConfessionState>()(
             id: data.id,
             type: data.type as 'text' | 'video',
             content: data.content,
-            videoUri: data.video_uri || undefined,
+            videoUri: signedVideoUrl || (await ensureSignedVideoUrl(data.video_uri || undefined)) || undefined,
             transcription: data.transcription || undefined,
             timestamp: new Date(data.created_at).getTime(),
             isAnonymous: data.is_anonymous,
@@ -227,11 +256,34 @@ export const useConfessionStore = create<ConfessionState>()(
         set({ isLoading: true, error: null });
         try {
           const state = get();
-          const confession = state.confessions.find(c => c.id === id);
-          if (!confession) throw new Error('Confession not found');
+          const curr = state.confessions.find(c => c.id === id);
+          if (!curr) throw new Error('Confession not found');
 
-          const newLikes = confession.isLiked ? confession.likes - 1 : confession.likes + 1;
+          // Try RPC first for server-verified toggle
+          const { data: rpcData, error: rpcError } = await supabase.rpc('toggle_confession_like', { confession_uuid: id });
 
+          if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData[0]?.likes_count !== undefined) {
+            const serverCount = rpcData[0].likes_count as number;
+            set((state) => ({
+              confessions: state.confessions.map((c) =>
+                c.id === id
+                  ? { ...c, isLiked: !c.isLiked, likes: serverCount }
+                  : c
+              ),
+              videoAnalytics: {
+                ...state.videoAnalytics,
+                [id]: {
+                  ...state.videoAnalytics[id],
+                  interactions: (state.videoAnalytics[id]?.interactions || 0) + 1,
+                },
+              },
+              isLoading: false,
+            }));
+            return;
+          }
+
+          // Fallback to optimistic client update
+          const newLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
           const { error } = await supabase
             .from('confessions')
             .update({ likes: newLikes })
@@ -240,14 +292,10 @@ export const useConfessionStore = create<ConfessionState>()(
           if (error) throw error;
 
           set((state) => ({
-            confessions: state.confessions.map((confession) =>
-              confession.id === id
-                ? {
-                    ...confession,
-                    isLiked: !confession.isLiked,
-                    likes: newLikes,
-                  }
-                : confession
+            confessions: state.confessions.map((c) =>
+              c.id === id
+                ? { ...c, isLiked: !c.isLiked, likes: newLikes }
+                : c
             ),
             videoAnalytics: {
               ...state.videoAnalytics,

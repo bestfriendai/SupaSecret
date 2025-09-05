@@ -33,7 +33,10 @@ export interface ConfessionState {
 
   // Async methods for Supabase operations
   loadConfessions: () => Promise<void>;
-  addConfession: (confession: Omit<Confession, "id" | "timestamp">) => Promise<void>;
+  addConfession: (
+    confession: Omit<Confession, "id" | "timestamp">,
+    opts?: { onUploadProgress?: (progressPercent: number) => void }
+  ) => Promise<void>;
   deleteConfession: (id: string) => Promise<void>;
   clearAllConfessions: () => Promise<void>;
   toggleLike: (id: string) => Promise<void>;

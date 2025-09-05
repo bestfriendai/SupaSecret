@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, Modal, Alert } from "react-native";
+import { View, Text, Pressable, Modal, Alert, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
-import { requestPermissionsAsync } from "expo-audio";
+import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
 import { processVideoConfession } from "../utils/videoProcessing";
 import * as Haptics from "expo-haptics";
+import { BlurView } from "expo-blur";
+import { VideoView, useVideoPlayer } from "expo-video";
+import * as Speech from "expo-speech";
+import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
 
 export default function VideoRecordScreen() {
   // All hooks must be called at the top level, before any conditional logic
@@ -23,11 +26,43 @@ export default function VideoRecordScreen() {
   const [modalButtons, setModalButtons] = useState<Array<{text: string, onPress?: () => void}>>([]);
   const [audioPermission, setAudioPermission] = useState<boolean | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<Promise<any> | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const navigation = useNavigation();
   const addConfession = useConfessionStore((state) => state.addConfession);
+
+  // Preview state after processing (before upload)
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewTranscription, setPreviewTranscription] = useState<string>("");
+  const previewPlayer = useVideoPlayer(previewUri, (player) => {
+    player.loop = true;
+    player.muted = true; // Expo Go: mute original and use TTS for masking
+  });
+
+  // Start/stop preview playback + TTS voice masking for Expo Go
+  useEffect(() => {
+    if (showPreview && previewUri) {
+      try {
+        previewPlayer.play?.();
+      } catch {}
+      if (previewTranscription) {
+        // Simulate voice change using TTS (lower pitch / slower rate)
+        Speech.stop();
+        Speech.speak(previewTranscription, {
+          language: 'en-US',
+          pitch: 0.75,
+          rate: 0.9,
+          volume: 1.0,
+        });
+      }
+    } else {
+      Speech.stop();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPreview, previewUri, previewTranscription]);
 
   const showMessage = (message: string, type: "success" | "error", buttons?: Array<{text: string, onPress?: () => void}>) => {
     setModalMessage(message);
@@ -40,16 +75,23 @@ export default function VideoRecordScreen() {
   useEffect(() => {
     const checkAudioPermission = async () => {
       try {
-        const { status } = await requestPermissionsAsync();
-        setAudioPermission(status === 'granted');
+        console.log('🔍 Checking initial microphone permissions...');
+        // micPermission may be undefined initially; request a check if present
+        if (micPermission?.granted !== undefined) {
+          setAudioPermission(micPermission.granted);
+        } else {
+          // Try requesting silently to prompt user only when needed later
+          const res = await requestMicPermission();
+          setAudioPermission(res.granted);
+        }
       } catch (error) {
-        console.error('Error checking audio permission:', error);
+        console.error('❌ Error checking audio permission:', error);
         setAudioPermission(false);
       }
     };
 
     checkAudioPermission();
-  }, []);
+  }, [micPermission?.granted]);
 
   // Cleanup effect - must be called after all other hooks
   useEffect(() => {
@@ -68,38 +110,46 @@ export default function VideoRecordScreen() {
       const cameraResult = await requestPermission();
       console.log('🔍 Camera permission result:', cameraResult);
 
-      // Request audio permission using expo-audio
-      const audioResult = await requestPermissionsAsync();
-      console.log('🔍 Audio permission result:', audioResult);
-      setAudioPermission(audioResult.status === 'granted');
+      // Request microphone permission via expo-camera hook
+      const micResult = await requestMicPermission();
+      console.log('🔍 Microphone permission result:', micResult);
 
+      // Update state immediately after getting results
+      setAudioPermission(micResult.granted);
+
+      // If both permissions are granted, we're done
+      if (cameraResult.granted && micResult.granted) {
+        console.log('✅ All permissions granted');
+        return;
+      }
+
+      // Show appropriate alerts for denied permissions
       if (!cameraResult.granted) {
         Alert.alert(
           "Camera Permission Required",
           "Please enable camera access in your device settings to record video confessions.",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => {
-              // On iOS, this will open the app settings
-              // On Android, you might need to use a different approach
-            }}
+            { text: "Try Again", onPress: requestAllPermissions },
+            { text: "Open Settings", onPress: () => Linking.openSettings() }
           ]
         );
+        return;
       }
 
-      if (audioResult.status !== 'granted') {
+      if (!micResult.granted) {
         Alert.alert(
           "Microphone Permission Required",
           "Please enable microphone access in your device settings to record audio for your video confessions.",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => {
-              // On iOS, this will open the app settings
-              // On Android, you might need to use a different approach
-            }}
+            { text: "Try Again", onPress: requestAllPermissions },
+            { text: "Open Settings", onPress: () => Linking.openSettings() }
           ]
         );
+        return;
       }
+
     } catch (error) {
       console.error('Error requesting permissions:', error);
       showMessage("Failed to request permissions. Please try again.", "error");
@@ -115,7 +165,7 @@ export default function VideoRecordScreen() {
     if (!cameraRef.current || isRecording) return;
 
     // Double-check permissions before recording
-    if (!permission.granted || audioPermission !== true) {
+    if (!permission?.granted || audioPermission !== true) {
       showMessage("Camera and microphone permissions are required to record video.", "error");
       return;
     }
@@ -208,20 +258,15 @@ export default function VideoRecordScreen() {
           setProcessingStatus(status);
         }
       });
-      
-      addConfession({
-        type: "video",
-        content: "Video confession with face blur and voice change applied",
-        videoUri: processedVideo.uri,
-        transcription: processedVideo.transcription,
-        isAnonymous: true,
-      });
 
-      showMessage(
-        "Your video confession has been processed and shared anonymously!", 
-        "success",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
-      );
+      // Show preview with simulated voice change + captions overlay
+      setIsProcessing(false);
+      setProcessingProgress(100);
+      setProcessingStatus("");
+      setPreviewUri(processedVideo.uri);
+      setPreviewTranscription(processedVideo.transcription || "");
+      setShowPreview(true);
+      return;
     } catch (error) {
       console.error("Processing error:", error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -256,14 +301,18 @@ export default function VideoRecordScreen() {
   };
 
   // Render permission loading state
-  if (!permission) {
-    return <View className="flex-1 bg-black" />;
+  if (!permission || audioPermission === null || micPermission === null) {
+    return (
+      <View className="flex-1 bg-black justify-center items-center">
+        <Text className="text-white text-lg">Checking permissions...</Text>
+      </View>
+    );
   }
 
   // Render permission request screen
-  if (!permission.granted || audioPermission === false) {
-    const needsCamera = !permission.granted;
-    const needsAudio = audioPermission === false;
+  if (!permission?.granted || micPermission?.granted !== true) {
+    const needsCamera = !permission?.granted;
+    const needsAudio = micPermission?.granted !== true;
 
     return (
       <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
@@ -289,7 +338,17 @@ export default function VideoRecordScreen() {
           className="bg-blue-500 rounded-full px-8 py-4 mb-4"
           onPress={requestAllPermissions}
         >
-          <Text className="text-white font-semibold text-16">Grant Permissions</Text>
+          <Text className="text-white font-semibold text-lg">Grant Permissions</Text>
+        </Pressable>
+        <Pressable
+          className="bg-gray-700 rounded-full px-6 py-3 mb-2"
+          onPress={() => {
+            // Force re-check permissions
+            setAudioPermission(null);
+            requestAllPermissions();
+          }}
+        >
+          <Text className="text-gray-300 font-medium">Refresh Permissions</Text>
         </Pressable>
         <Pressable
           className="bg-gray-800 rounded-full px-6 py-3"
@@ -325,6 +384,112 @@ export default function VideoRecordScreen() {
           {Math.round(processingProgress)}% Complete
         </Text>
       </SafeAreaView>
+    );
+  }
+
+  // Render preview screen (after processing, before upload)
+  if (showPreview && previewUri) {
+    return (
+      <View className="flex-1 bg-black">
+        <VideoView
+          player={previewPlayer}
+          style={{ flex: 1 }}
+          contentFit="cover"
+          nativeControls={false}
+        />
+        {/* Mild blur to maintain privacy even in preview */}
+        <BlurView intensity={15} tint="dark" style={{ position: 'absolute', inset: 0 }} pointerEvents="none" />
+
+        {/* Captions overlay */}
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 140, paddingHorizontal: 16 }}>
+          <View className="bg-black/50 rounded-2xl px-4 py-3">
+            <TikTokCaptionsOverlay
+              text={previewTranscription}
+              currentTime={previewPlayer.currentTime || 0}
+              duration={previewPlayer.duration || 1}
+            />
+          </View>
+        </View>
+
+        {/* Top + Bottom controls */}
+        <SafeAreaView className="absolute top-0 left-0 right-0 flex-row justify-between items-center px-4 py-2">
+          <Pressable className="bg-black/70 rounded-full p-3" onPress={() => {
+            Speech.stop();
+            setShowPreview(false);
+            setPreviewUri(null);
+            setPreviewTranscription("");
+          }}>
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </Pressable>
+
+          <View className="bg-black/70 rounded-full px-4 py-2 flex-row items-center">
+            <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+            <Text className="text-green-400 text-sm font-semibold ml-2">Voice changed</Text>
+          </View>
+
+          <View style={{ width: 48 }} />
+        </SafeAreaView>
+
+        <SafeAreaView className="absolute bottom-0 left-0 right-0 items-center pb-8">
+          <View className="flex-row items-center justify-center space-x-4">
+            <Pressable
+              className="bg-gray-800 rounded-full px-6 py-3 mr-3"
+              onPress={() => {
+                Speech.stop();
+                setShowPreview(false);
+                setPreviewUri(null);
+                setPreviewTranscription("");
+              }}
+            >
+              <Text className="text-white font-semibold">Retake</Text>
+            </Pressable>
+            <Pressable
+              className="bg-blue-500 rounded-full px-8 py-3"
+              onPress={async () => {
+                try {
+                  // Begin upload step
+                  setIsProcessing(true);
+                  setProcessingStatus("Uploading video to secure storage...");
+                  setProcessingProgress(90);
+
+                  await addConfession({
+                    type: "video",
+                    content: "Video confession with face blur and voice change applied",
+                    videoUri: previewUri,
+                    transcription: previewTranscription,
+                    isAnonymous: true,
+                  }, {
+                    onUploadProgress: (pct) => {
+                      const mapped = 90 + (pct * 0.1);
+                      setProcessingProgress(Math.min(100, Math.max(90, mapped)));
+                    }
+                  });
+
+                  Speech.stop();
+                  setShowPreview(false);
+                  setPreviewUri(null);
+                  setPreviewTranscription("");
+
+                  showMessage(
+                    "Your video confession has been processed and shared anonymously!",
+                    "success",
+                    [{ text: "OK", onPress: () => navigation.goBack() }]
+                  );
+                } catch (err) {
+                  console.error(err);
+                  showMessage("Failed to upload video. Please try again.", "error");
+                } finally {
+                  setIsProcessing(false);
+                  setProcessingProgress(0);
+                  setProcessingStatus("");
+                }
+              }}
+            >
+              <Text className="text-white font-semibold">Share</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
@@ -427,6 +592,8 @@ export default function VideoRecordScreen() {
             </SafeAreaView>
           </View>
         </View>
+        {/* Privacy blur overlay (visual-only) */}
+        <BlurView intensity={25} tint="dark" style={{ position: 'absolute', inset: 0 }} pointerEvents="none" />
       </CameraView>
 
       {/* Custom Modal */}

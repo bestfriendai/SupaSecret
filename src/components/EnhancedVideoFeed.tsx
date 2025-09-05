@@ -3,6 +3,7 @@ import { View, Text, Pressable, Dimensions, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
+import { BlurView } from "expo-blur";
 import { useConfessionStore } from "../state/confessionStore";
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
@@ -27,6 +28,7 @@ import PullToRefresh from "./PullToRefresh";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
 import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
 import VideoProgressIndicator from "./VideoProgressIndicator";
+import TikTokCaptionsOverlay from "./TikTokCaptionsOverlay";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useVideoPlayers } from "../hooks/useVideoPlayers";
 
@@ -254,12 +256,16 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
           <Animated.View style={[{ flex: 1 }, containerStyle]}>
             {/* Video Player */}
             {currentPlayer && (
-              <VideoView
-                player={currentPlayer}
-                style={{ flex: 1 }}
-                contentFit="cover"
-                nativeControls={false}
-              />
+              <>
+                <VideoView
+                  player={currentPlayer}
+                  style={{ flex: 1 }}
+                  contentFit="cover"
+                  nativeControls={false}
+                />
+                {/* Visual privacy overlay in Expo Go */}
+                <BlurView intensity={20} tint="dark" style={{ position: 'absolute', inset: 0 }} pointerEvents="none" />
+              </>
             )}
 
             {/* Pull to Refresh Indicator */}
@@ -394,11 +400,15 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                     </View>
                   </View>
 
-                  {/* Transcription */}
+                  {/* TikTok-style Captions */}
                   {currentVideo.transcription && (
-                    <Text className="text-white text-15 leading-5 mb-2">
-                      {currentVideo.transcription}
-                    </Text>
+                    <View className="bg-black/50 rounded-2xl px-3 py-2 mb-2">
+                      <TikTokCaptionsOverlay
+                        text={currentVideo.transcription}
+                        currentTime={currentPlayer?.currentTime || 0}
+                        duration={currentPlayer?.duration || 1}
+                      />
+                    </View>
                   )}
                   
                   {/* Video Info */}

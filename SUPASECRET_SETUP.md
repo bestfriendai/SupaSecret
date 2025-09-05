@@ -152,3 +152,22 @@ Your SupaSecret app now has:
 - ✅ Interactive features and smooth UX
 
 The app is ready for users to share anonymous secrets, reply to others, and engage with the community in a safe, anonymous environment!
+
+---
+
+## 🛠 Supabase Backend Setup (Required for Video Uploads)
+
+Run the SQL script at `supabase/setup.sql` in your Supabase project (SQL Editor → New query → paste → Run):
+
+- Creates private storage bucket `confessions`
+- Adds storage RLS so users can only write under `videos/{auth.uid()}/...`
+- Enables RLS and policies on all app tables
+- Adds unique constraints for likes and performance indices
+- Creates `public_confessions` view (safe columns)
+- Adds `toggle_confession_like` RPC to prevent like races and keep counts consistent
+
+After this, ensure your `.env` has valid `EXPO_PUBLIC_VIBECODE_SUPABASE_URL` and `EXPO_PUBLIC_VIBECODE_SUPABASE_ANON_KEY`, and test:
+
+1) Sign in → record a video → observe “Uploading video to secure storage…” progress → success toast
+2) Open “Videos” tab → play the freshly uploaded video (signed URL)
+3) Toggle like on any confession → count updates reliably
