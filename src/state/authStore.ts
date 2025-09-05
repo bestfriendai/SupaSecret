@@ -158,6 +158,14 @@ export const useAuthStore = create<AuthState>()(
       }),
       // Add version for migration support
       version: 1,
+      // Add migrate function to handle version changes
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0) {
+          // Migration from version 0 to 1 - no changes needed
+          return persistedState;
+        }
+        return persistedState;
+      },
       // Rehydrate the state properly
       onRehydrateStorage: () => (state) => {
         if (__DEV__ && state) {

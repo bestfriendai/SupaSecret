@@ -85,31 +85,31 @@ export const signUpUser = async (data: SignUpData): Promise<User> => {
     throw new AuthError("SIGNUP_ERROR", "Failed to create user account");
   }
 
-  // Update user profile with username - don't mark as onboarded yet
-  const profileUpdates: any = {};
+  // Update user profile with username and mark as onboarded
+  const profileUpdates: any = {
+    is_onboarded: true, // Mark user as onboarded after signup
+  };
 
   if (username?.trim()) {
     profileUpdates.username = username.trim();
   }
 
-  if (Object.keys(profileUpdates).length > 0) {
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .update(profileUpdates)
-      .eq('id', authData.user.id);
+  const { error: profileError } = await supabase
+    .from('user_profiles')
+    .update(profileUpdates)
+    .eq('id', authData.user.id);
 
-    if (profileError) {
-      console.warn("Failed to update user profile:", profileError);
-    }
+  if (profileError) {
+    console.warn("Failed to update user profile:", profileError);
   }
 
-  // Return user in our format - let them go through onboarding
+  // Return user in our format - mark as onboarded after successful signup
   const user: User = {
     id: authData.user.id,
     email: authData.user.email!,
     username: username?.trim() || undefined,
     createdAt: Date.now(),
-    isOnboarded: false, // Let user go through onboarding flow
+    isOnboarded: true, // Mark as onboarded after successful signup
     lastLoginAt: Date.now(),
   };
 
@@ -152,10 +152,13 @@ export const signInUser = async (credentials: AuthCredentials): Promise<User> =>
     .eq('id', authData.user.id)
     .single();
 
-  // Update last login
+  // Update last login and ensure user is marked as onboarded
   await supabase
     .from('user_profiles')
-    .update({ last_login_at: new Date().toISOString() })
+    .update({
+      last_login_at: new Date().toISOString(),
+      is_onboarded: true // Mark existing users as onboarded on sign in
+    })
     .eq('id', authData.user.id);
 
   // Return user in our format
@@ -164,7 +167,7 @@ export const signInUser = async (credentials: AuthCredentials): Promise<User> =>
     email: authData.user.email!,
     username: profileData?.username || undefined,
     createdAt: profileData?.created_at ? new Date(profileData.created_at).getTime() : Date.now(),
-    isOnboarded: profileData?.is_onboarded || false,
+    isOnboarded: true, // Always mark as onboarded for sign in
     lastLoginAt: Date.now(),
   };
 
