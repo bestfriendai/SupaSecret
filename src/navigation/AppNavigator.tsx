@@ -11,6 +11,7 @@ import CreateConfessionScreen from "../screens/CreateConfessionScreen";
 import VideoRecordScreen from "../screens/VideoRecordScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import VideoFeedScreen from "../screens/VideoFeedScreen";
+import TrendingScreen from "../screens/TrendingScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import SignInScreen from "../screens/SignInScreen";
@@ -34,6 +35,7 @@ export type TabParamList = {
   Home: undefined;
   Videos: undefined;
   Create: undefined;
+  Trending: undefined;
   Settings: undefined;
 };
 
@@ -86,6 +88,8 @@ function MainTabs() {
             iconName = focused ? "videocam" : "videocam-outline";
           } else if (route.name === "Create") {
             iconName = focused ? "add-circle" : "add-circle-outline";
+          } else if (route.name === "Trending") {
+            iconName = focused ? "stats-chart" : "stats-chart-outline";
           } else if (route.name === "Settings") {
             iconName = focused ? "settings" : "settings-outline";
           } else {
@@ -123,13 +127,18 @@ function MainTabs() {
         component={VideoFeedScreen}
         options={{ title: "Videos" }}
       />
-      <Tab.Screen 
-        name="Create" 
+      <Tab.Screen
+        name="Create"
         component={CreateConfessionScreen}
         options={{ title: "Compose" }}
       />
-      <Tab.Screen 
-        name="Settings" 
+      <Tab.Screen
+        name="Trending"
+        component={TrendingScreen}
+        options={{ title: "Trending" }}
+      />
+      <Tab.Screen
+        name="Settings"
         component={SettingsScreen}
         options={{ title: "Settings" }}
       />
