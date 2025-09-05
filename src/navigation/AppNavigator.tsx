@@ -14,11 +14,13 @@ import VideoFeedScreen from "../screens/VideoFeedScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import SignInScreen from "../screens/SignInScreen";
+import SecretDetailScreen from "../screens/SecretDetailScreen";
 import { useAuthStore } from "../state/authStore";
 
 export type RootStackParamList = {
   MainTabs: undefined;
   VideoRecord: undefined;
+  SecretDetail: { confessionId: string };
   AuthStack: undefined;
 };
 
@@ -40,8 +42,22 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
 function AuthStackNavigator() {
+  const { isAuthenticated, user } = useAuthStore();
+
+  // Determine initial route based on auth state
+  const getInitialRouteName = (): keyof AuthStackParamList => {
+    if (!isAuthenticated) {
+      return "Onboarding"; // Show onboarding for unauthenticated users
+    } else if (isAuthenticated && user && !user.isOnboarded) {
+      return "Onboarding"; // Show onboarding for authenticated but not onboarded users
+    } else {
+      return "Onboarding"; // Fallback to onboarding
+    }
+  };
+
   return (
     <AuthStack.Navigator
+      initialRouteName={getInitialRouteName()}
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
@@ -136,7 +152,19 @@ export default function AppNavigator() {
   }
 
   // Determine which stack to show
-  const shouldShowAuth = !isAuthenticated || (user && !user.isOnboarded);
+  // Show auth stack if: not authenticated OR authenticated but not onboarded
+  const shouldShowAuth = !isAuthenticated || (isAuthenticated && user && !user.isOnboarded);
+
+  // Debug logging (remove in production)
+  if (__DEV__) {
+    console.log('🔍 Navigation state:', {
+      isAuthenticated,
+      user: user ? `${user.email} (onboarded: ${user.isOnboarded})` : null,
+      shouldShowAuth,
+      reason: !isAuthenticated ? 'not authenticated' :
+              (isAuthenticated && user && !user.isOnboarded) ? 'not onboarded' : 'fully authenticated'
+    });
+  }
 
   return (
     <NavigationContainer
@@ -197,12 +225,20 @@ export default function AppNavigator() {
               component={MainTabs}
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="VideoRecord" 
+            <Stack.Screen
+              name="VideoRecord"
               component={VideoRecordScreen}
-              options={{ 
+              options={{
                 title: "Record Video",
                 presentation: "modal"
+              }}
+            />
+            <Stack.Screen
+              name="SecretDetail"
+              component={SecretDetailScreen}
+              options={{
+                title: "Secret",
+                headerShown: false
               }}
             />
           </>

@@ -4,6 +4,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { useAuthStore } from "./src/state/authStore";
+import { useConfessionStore } from "./src/state/confessionStore";
+
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
@@ -28,11 +30,29 @@ const openai_api_key = Constants.expoConfig.extra.apikey;
 
 export default function App() {
   const checkAuthState = useAuthStore((state) => state.checkAuthState);
+  const loadConfessions = useConfessionStore((state) => state.loadConfessions);
+  const loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
 
   useEffect(() => {
-    // Initialize auth state on app launch
-    checkAuthState();
-  }, [checkAuthState]);
+    const initializeApp = async () => {
+      try {
+        // Initialize auth state first
+        await checkAuthState();
+
+        // Load initial data
+        await loadConfessions();
+        await loadUserPreferences();
+
+        if (__DEV__) {
+          console.log('🚀 App initialization complete');
+        }
+      } catch (error) {
+        console.error('❌ App initialization failed:', error);
+      }
+    };
+
+    initializeApp();
+  }, [checkAuthState, loadConfessions, loadUserPreferences]);
 
   return (
     <GestureHandlerRootView className="flex-1">

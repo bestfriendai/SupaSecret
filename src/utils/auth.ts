@@ -1,21 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { User, AuthCredentials, SignUpData } from "../types/auth";
-import { v4 as uuidv4 } from "uuid";
-
-const USERS_STORAGE_KEY = "users_storage";
-const CURRENT_USER_KEY = "current_user";
-
-// Simple password hashing (for demo purposes - use proper hashing in production)
-const hashPassword = (password: string): string => {
-  // This is a very basic hash - in production, use bcrypt or similar
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return hash.toString();
-};
+import { supabase } from "../lib/supabase";
 
 // Email validation
 export const validateEmail = (email: string): boolean => {
@@ -69,119 +53,176 @@ export const getPasswordStrength = (password: string): { strength: number; label
   }
 };
 
-// Get all users from storage
-const getUsers = async (): Promise<Record<string, any>> => {
-  try {
-    const usersData = await AsyncStorage.getItem(USERS_STORAGE_KEY);
-    return usersData ? JSON.parse(usersData) : {};
-  } catch (error) {
-    console.error("Error getting users:", error);
-    return {};
-  }
-};
-
-// Save users to storage
-const saveUsers = async (users: Record<string, any>): Promise<void> => {
-  try {
-    await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  } catch (error) {
-    console.error("Error saving users:", error);
-    throw new Error("Failed to save user data");
-  }
-};
-
 // Sign up a new user
 export const signUpUser = async (data: SignUpData): Promise<User> => {
   const { email, password, confirmPassword, username } = data;
-  
+
   // Validate input
   if (!validateEmail(email)) {
     throw new AuthError("INVALID_EMAIL", "Please enter a valid email address");
   }
-  
+
   const passwordValidation = validatePassword(password);
   if (!passwordValidation.isValid) {
     throw new AuthError("WEAK_PASSWORD", passwordValidation.errors.join(". "));
   }
-  
+
   if (password !== confirmPassword) {
     throw new AuthError("PASSWORD_MISMATCH", "Passwords do not match");
   }
-  
-  // Check if user already exists
-  const users = await getUsers();
-  if (users[email]) {
-    throw new AuthError("USER_EXISTS", "An account with this email already exists");
-  }
-  
-  // Create new user
-  const user: User = {
-    id: uuidv4(),
+
+  // Sign up with Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
+    password,
+  });
+
+  if (authError) {
+    throw new AuthError(authError.message.includes('already registered') ? 'USER_EXISTS' : 'SIGNUP_ERROR', authError.message);
+  }
+
+  if (!authData.user) {
+    throw new AuthError("SIGNUP_ERROR", "Failed to create user account");
+  }
+
+  // Update user profile with username - don't mark as onboarded yet
+  const profileUpdates: any = {};
+
+  if (username?.trim()) {
+    profileUpdates.username = username.trim();
+  }
+
+  if (Object.keys(profileUpdates).length > 0) {
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .update(profileUpdates)
+      .eq('id', authData.user.id);
+
+    if (profileError) {
+      console.warn("Failed to update user profile:", profileError);
+    }
+  }
+
+  // Return user in our format - let them go through onboarding
+  const user: User = {
+    id: authData.user.id,
+    email: authData.user.email!,
     username: username?.trim() || undefined,
     createdAt: Date.now(),
-    isOnboarded: false,
+    isOnboarded: false, // Let user go through onboarding flow
     lastLoginAt: Date.now(),
   };
-  
-  // Save user with hashed password
-  users[email] = {
-    ...user,
-    passwordHash: hashPassword(password),
-  };
-  
-  await saveUsers(users);
-  await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  
+
   return user;
 };
 
 // Sign in existing user
 export const signInUser = async (credentials: AuthCredentials): Promise<User> => {
   const { email, password } = credentials;
-  
+
   if (!validateEmail(email)) {
     throw new AuthError("INVALID_EMAIL", "Please enter a valid email address");
   }
-  
+
   if (!password) {
     throw new AuthError("MISSING_PASSWORD", "Please enter your password");
   }
-  
-  const users = await getUsers();
-  const userData = users[email];
-  
-  if (!userData) {
-    throw new AuthError("USER_NOT_FOUND", "No account found with this email address");
+
+  // Sign in with Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (authError) {
+    if (authError.message.includes('Invalid login credentials')) {
+      throw new AuthError("INVALID_CREDENTIALS", "Invalid email or password");
+    }
+    throw new AuthError("SIGNIN_ERROR", authError.message);
   }
-  
-  const hashedPassword = hashPassword(password);
-  if (userData.passwordHash !== hashedPassword) {
-    throw new AuthError("INVALID_PASSWORD", "Incorrect password");
+
+  if (!authData.user) {
+    throw new AuthError("SIGNIN_ERROR", "Failed to sign in");
   }
-  
+
+  // Get user profile data
+  const { data: profileData } = await supabase
+    .from('user_profiles')
+    .select('username, is_onboarded, created_at')
+    .eq('id', authData.user.id)
+    .single();
+
   // Update last login
+  await supabase
+    .from('user_profiles')
+    .update({ last_login_at: new Date().toISOString() })
+    .eq('id', authData.user.id);
+
+  // Return user in our format
   const user: User = {
-    id: userData.id,
-    email: userData.email,
-    username: userData.username,
-    createdAt: userData.createdAt,
-    isOnboarded: userData.isOnboarded,
+    id: authData.user.id,
+    email: authData.user.email!,
+    username: profileData?.username || undefined,
+    createdAt: profileData?.created_at ? new Date(profileData.created_at).getTime() : Date.now(),
+    isOnboarded: profileData?.is_onboarded || false,
     lastLoginAt: Date.now(),
   };
-  
-  userData.lastLoginAt = Date.now();
-  await saveUsers(users);
-  await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  
+
   return user;
 };
 
 // Get current user
 export const getCurrentUser = async (): Promise<User | null> => {
   try {
-    const userData = await AsyncStorage.getItem(CURRENT_USER_KEY);
-    return userData ? JSON.parse(userData) : null;
+    // First check if we have a valid session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      if (__DEV__) {
+        console.log('🔍 No active session found');
+      }
+      return null;
+    }
+
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      if (__DEV__) {
+        console.log('🔍 No authenticated user found');
+      }
+      return null;
+    }
+
+    // Get user profile data
+    const { data: profileData, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('username, is_onboarded, created_at, last_login_at')
+      .eq('id', authUser.id)
+      .single();
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('Error fetching user profile:', profileError);
+    }
+
+    // Return user in our format
+    const user: User = {
+      id: authUser.id,
+      email: authUser.email!,
+      username: profileData?.username || undefined,
+      createdAt: profileData?.created_at ? new Date(profileData.created_at).getTime() : Date.now(),
+      isOnboarded: profileData?.is_onboarded || false,
+      lastLoginAt: profileData?.last_login_at ? new Date(profileData.last_login_at).getTime() : Date.now(),
+    };
+
+    if (__DEV__) {
+      console.log('🔍 Current user retrieved:', {
+        email: user.email,
+        isOnboarded: user.isOnboarded,
+        hasProfile: !!profileData
+      });
+    }
+
+    return user;
   } catch (error) {
     console.error("Error getting current user:", error);
     return null;
@@ -190,48 +231,41 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
 // Update user data
 export const updateUserData = async (userId: string, updates: Partial<User>): Promise<User> => {
-  const users = await getUsers();
   const currentUser = await getCurrentUser();
-  
+
   if (!currentUser || currentUser.id !== userId) {
     throw new AuthError("UNAUTHORIZED", "Not authorized to update this user");
   }
-  
-  // Find user by ID
-  let userEmail: string | null = null;
-  for (const [email, userData] of Object.entries(users)) {
-    if ((userData as any).id === userId) {
-      userEmail = email;
-      break;
-    }
+
+  // Prepare updates for the database
+  const profileUpdates: any = {};
+  if (updates.username !== undefined) profileUpdates.username = updates.username;
+  if (updates.isOnboarded !== undefined) profileUpdates.is_onboarded = updates.isOnboarded;
+
+  // Update user profile in Supabase
+  const { error } = await supabase
+    .from('user_profiles')
+    .update(profileUpdates)
+    .eq('id', userId);
+
+  if (error) {
+    throw new AuthError("UPDATE_ERROR", error.message);
   }
-  
-  if (!userEmail) {
-    throw new AuthError("USER_NOT_FOUND", "User not found");
-  }
-  
-  // Update user data
+
+  // Return updated user
   const updatedUser: User = {
     ...currentUser,
     ...updates,
   };
-  
-  users[userEmail] = {
-    ...users[userEmail],
-    ...updates,
-  };
-  
-  await saveUsers(users);
-  await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
-  
+
   return updatedUser;
 };
 
 // Sign out user
 export const signOutUser = async (): Promise<void> => {
-  try {
-    await AsyncStorage.removeItem(CURRENT_USER_KEY);
-  } catch (error) {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
     console.error("Error signing out:", error);
     throw new Error("Failed to sign out");
   }

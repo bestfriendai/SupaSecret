@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, Modal } from "react-native";
+import { View, Text, Pressable, Modal, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
+import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
@@ -20,6 +21,7 @@ export default function VideoRecordScreen() {
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "error">("success");
   const [modalButtons, setModalButtons] = useState<Array<{text: string, onPress?: () => void}>>([]);
+  const [audioPermission, setAudioPermission] = useState<boolean | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<Promise<any> | null>(null);
@@ -34,6 +36,21 @@ export default function VideoRecordScreen() {
     setShowModal(true);
   };
 
+  // Check audio permissions on mount
+  useEffect(() => {
+    const checkAudioPermission = async () => {
+      try {
+        const { status } = await Audio.requestPermissionsAsync();
+        setAudioPermission(status === 'granted');
+      } catch (error) {
+        console.error('Error checking audio permission:', error);
+        setAudioPermission(false);
+      }
+    };
+
+    checkAudioPermission();
+  }, []);
+
   // Cleanup effect - must be called after all other hooks
   useEffect(() => {
     return () => {
@@ -43,6 +60,48 @@ export default function VideoRecordScreen() {
     };
   }, []);
 
+  const requestAllPermissions = async () => {
+    try {
+      // Request camera permission
+      const cameraResult = await requestPermission();
+
+      // Request audio permission
+      const audioResult = await Audio.requestPermissionsAsync();
+      setAudioPermission(audioResult.status === 'granted');
+
+      if (!cameraResult.granted) {
+        Alert.alert(
+          "Camera Permission Required",
+          "Please enable camera access in your device settings to record video confessions.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => {
+              // On iOS, this will open the app settings
+              // On Android, you might need to use a different approach
+            }}
+          ]
+        );
+      }
+
+      if (audioResult.status !== 'granted') {
+        Alert.alert(
+          "Microphone Permission Required",
+          "Please enable microphone access in your device settings to record audio for your video confessions.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => {
+              // On iOS, this will open the app settings
+              // On Android, you might need to use a different approach
+            }}
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+      showMessage("Failed to request permissions. Please try again.", "error");
+    }
+  };
+
   const toggleCameraFacing = () => {
     setFacing(current => (current === "back" ? "front" : "back"));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -50,7 +109,13 @@ export default function VideoRecordScreen() {
 
   const startRecording = async () => {
     if (!cameraRef.current || isRecording) return;
-    
+
+    // Double-check permissions before recording
+    if (!permission.granted || audioPermission !== true) {
+      showMessage("Camera and microphone permissions are required to record video.", "error");
+      return;
+    }
+
     setIsRecording(true);
     setRecordingTime(0);
     
@@ -192,23 +257,35 @@ export default function VideoRecordScreen() {
   }
 
   // Render permission request screen
-  if (!permission.granted) {
+  if (!permission.granted || audioPermission === false) {
+    const needsCamera = !permission.granted;
+    const needsAudio = audioPermission === false;
+
     return (
       <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
         <View className="w-20 h-20 bg-gray-800 rounded-full items-center justify-center mb-6">
-          <Ionicons name="camera-outline" size={40} color="#8B98A5" />
+          <Ionicons
+            name={needsCamera ? "camera-outline" : "mic-outline"}
+            size={40}
+            color="#8B98A5"
+          />
         </View>
         <Text className="text-white text-xl font-semibold mt-4 text-center">
-          Camera Permission Required
+          {needsCamera && needsAudio
+            ? "Camera & Microphone Access Required"
+            : needsCamera
+            ? "Camera Permission Required"
+            : "Microphone Permission Required"
+          }
         </Text>
         <Text className="text-gray-400 text-base mt-2 text-center mb-8 leading-6">
-          We need camera and microphone access to record your anonymous video confession with privacy protection.
+          We need {needsCamera && needsAudio ? "camera and microphone" : needsCamera ? "camera" : "microphone"} access to record your anonymous video confession with privacy protection.
         </Text>
         <Pressable
           className="bg-blue-500 rounded-full px-8 py-4 mb-4"
-          onPress={requestPermission}
+          onPress={requestAllPermissions}
         >
-          <Text className="text-white font-semibold text-16">Grant Permission</Text>
+          <Text className="text-white font-semibold text-16">Grant Permissions</Text>
         </Pressable>
         <Pressable
           className="bg-gray-800 rounded-full px-6 py-3"

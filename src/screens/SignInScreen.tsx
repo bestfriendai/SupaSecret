@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView, Modal } from "react-native";
+import { View, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView, Modal, TouchableWithoutFeedback, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -90,17 +90,18 @@ export default function SignInScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-black">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView className="flex-1 bg-black">
+        <KeyboardAvoidingView
           className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           {/* Header */}
           <View className="flex-row items-center justify-between px-6 py-4">
             <Pressable
@@ -272,5 +273,6 @@ export default function SignInScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }

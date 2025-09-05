@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Modal } from "react-native";
+import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Modal, TouchableWithoutFeedback, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -52,7 +52,8 @@ export default function CreateConfessionScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-black">
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView className="flex-1 bg-black">
       {/* Header */}
       <View className="px-4 py-2 border-b border-gray-800 flex-row items-center justify-between">
         <Text className="text-white text-18 font-semibold">
@@ -182,5 +183,6 @@ export default function CreateConfessionScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
