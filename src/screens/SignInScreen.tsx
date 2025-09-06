@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
 
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
@@ -16,6 +16,7 @@ type NavigationProp = NativeStackNavigationProp<any>;
 export default function SignInScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { signIn, isLoading, clearError } = useAuthStore();
+  const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
   
   const [formData, setFormData] = useState({
     email: "",
@@ -64,20 +65,26 @@ export default function SignInScreen() {
     clearError();
 
     if (!validateForm()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      notificationAsync();
       return;
     }
 
     try {
-      console.log('🔍 Attempting sign in with:', formData.email);
+      if (__DEV__) {
+        console.log('🔍 Attempting sign in with:', formData.email);
+      }
       await signIn(formData);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      notificationAsync();
       // Navigation will be handled by the auth state change
     } catch (error) {
-      console.log('🔍 Sign in error caught:', error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (__DEV__) {
+        console.log('🔍 Sign in error caught:', error);
+      }
+      notificationAsync();
       if (error instanceof Error) {
-        console.log('🔍 Showing error modal:', error.message);
+        if (__DEV__) {
+          console.log('🔍 Showing error modal:', error.message);
+        }
         showMessage(error.message, "error");
       }
     }
@@ -85,7 +92,7 @@ export default function SignInScreen() {
 
   const handleSignUp = () => {
     navigation.navigate("SignUp");
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   };
 
   const handleForgotPassword = () => {

@@ -13,6 +13,7 @@ interface OptimizedVideoListProps {
 
 export default function OptimizedVideoList({ onClose }: OptimizedVideoListProps) {
   const confessions = useConfessionStore((state) => state.confessions);
+  const userPreferences = useConfessionStore((state) => state.userPreferences);
   const videoConfessions = useMemo(
     () => confessions.filter((c) => c.type === "video"),
     [confessions]
@@ -22,19 +23,23 @@ export default function OptimizedVideoList({ onClose }: OptimizedVideoListProps)
   const videoPlayersRef = useRef<Map<string, any>>(new Map());
 
   // Create video player for a specific item
-  const createVideoPlayer = useCallback((confessionId: string) => {
+  const createVideoPlayer = useCallback((confessionId: string, videoUri?: string) => {
     if (!videoPlayersRef.current.has(confessionId)) {
+      // Use actual video URI or fallback to placeholder for demo
+      const sourceUri = videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
       const player = useVideoPlayer(
-        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        sourceUri,
         (player) => {
           player.loop = true;
-          player.muted = false;
+          // Respect user's sound preference
+          player.muted = !userPreferences.soundEnabled;
         }
       );
       videoPlayersRef.current.set(confessionId, player);
     }
     return videoPlayersRef.current.get(confessionId);
-  }, []);
+  }, [userPreferences.soundEnabled]);
 
   // FlashList doesn't need getItemLayout as it handles layout automatically
 
@@ -71,7 +76,7 @@ export default function OptimizedVideoList({ onClose }: OptimizedVideoListProps)
 
   const renderItem = useCallback(
     ({ item, index }: { item: any; index: number }) => {
-      const player = createVideoPlayer(item.id);
+      const player = createVideoPlayer(item.id, item.videoUri);
       return (
         <EnhancedVideoItem
           confession={item}

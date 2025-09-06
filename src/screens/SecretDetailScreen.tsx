@@ -6,7 +6,9 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { format } from "date-fns";
 import { useConfessionStore } from "../state/confessionStore";
 import { useReplyStore } from "../state/replyStore";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
+import ReportModal from "../components/ReportModal";
+import HashtagText from "../components/HashtagText";
 
 type SecretDetailRouteProp = RouteProp<{
   SecretDetail: { confessionId: string };
@@ -16,9 +18,12 @@ export default function SecretDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute<SecretDetailRouteProp>();
   const { confessionId } = route.params;
-  
+  const { impactAsync } = usePreferenceAwareHaptics();
+
   const [newReply, setNewReply] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportingReplyId, setReportingReplyId] = useState<string | null>(null);
   
   const confessions = useConfessionStore((state) => state.confessions);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
@@ -56,7 +61,7 @@ export default function SecretDetailScreen() {
     try {
       await addReply(confessionId, newReply.trim(), true);
       setNewReply("");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
     } catch (error) {
       Alert.alert("Error", "Failed to add reply. Please try again.");
     } finally {
@@ -67,13 +72,30 @@ export default function SecretDetailScreen() {
   const handleToggleLike = async () => {
     if (confession) {
       await toggleLike(confession.id);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
     }
   };
 
   const handleToggleReplyLike = async (replyId: string) => {
     await toggleReplyLike(replyId, confessionId);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
+  };
+
+  const handleReportConfession = () => {
+    setReportingReplyId(null);
+    setReportModalVisible(true);
+    impactAsync();
+  };
+
+  const handleReportReply = (replyId: string) => {
+    setReportingReplyId(replyId);
+    setReportModalVisible(true);
+    impactAsync();
+  };
+
+  const handleReportModalClose = () => {
+    setReportModalVisible(false);
+    setReportingReplyId(null);
   };
 
   if (!confession) {
@@ -137,15 +159,17 @@ export default function SecretDetailScreen() {
                 </View>
                 
                 {confession.type === "text" ? (
-                  <Text className="text-white text-16 leading-6 mb-4">
-                    {confession.content}
-                  </Text>
+                  <HashtagText
+                    text={confession.content}
+                    className="text-white text-16 leading-6 mb-4"
+                  />
                 ) : (
                   <View>
                     {confession.transcription && (
-                      <Text className="text-white text-16 leading-6 mb-4">
-                        {confession.transcription}
-                      </Text>
+                      <HashtagText
+                        text={confession.transcription}
+                        className="text-white text-16 leading-6 mb-4"
+                      />
                     )}
                     <View className="bg-gray-900 border border-gray-700 rounded-2xl p-4 mb-4">
                       <View className="flex-row items-center justify-between">
@@ -167,26 +191,35 @@ export default function SecretDetailScreen() {
 
                 {/* Interaction Buttons */}
                 <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <Pressable
+                      className="flex-row items-center"
+                      onPress={handleToggleLike}
+                    >
+                      <Ionicons
+                        name={confession.isLiked ? "heart" : "heart-outline"}
+                        size={20}
+                        color={confession.isLiked ? "#EF4444" : "#8B98A5"}
+                      />
+                      <Text className={`ml-2 text-14 ${confession.isLiked ? "text-red-400" : "text-gray-400"}`}>
+                        {confession.likes || 0}
+                      </Text>
+                    </Pressable>
+
+                    <View className="flex-row items-center ml-6">
+                      <Ionicons name="chatbubble-outline" size={18} color="#8B98A5" />
+                      <Text className="text-gray-400 text-14 ml-2">
+                        {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                      </Text>
+                    </View>
+                  </View>
+
                   <Pressable
                     className="flex-row items-center"
-                    onPress={handleToggleLike}
+                    onPress={handleReportConfession}
                   >
-                    <Ionicons
-                      name={confession.isLiked ? "heart" : "heart-outline"}
-                      size={20}
-                      color={confession.isLiked ? "#EF4444" : "#8B98A5"}
-                    />
-                    <Text className={`ml-2 text-14 ${confession.isLiked ? "text-red-400" : "text-gray-400"}`}>
-                      {confession.likes || 0}
-                    </Text>
+                    <Ionicons name="flag-outline" size={18} color="#8B98A5" />
                   </Pressable>
-                  
-                  <View className="flex-row items-center">
-                    <Ionicons name="chatbubble-outline" size={18} color="#8B98A5" />
-                    <Text className="text-gray-400 text-14 ml-2">
-                      {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-                    </Text>
-                  </View>
                 </View>
               </View>
             </View>
@@ -223,22 +256,32 @@ export default function SecretDetailScreen() {
                           {format(new Date(reply.timestamp), "MMM d, h:mm a")}
                         </Text>
                       </View>
-                      <Text className="text-white text-15 leading-5 mb-2">
-                        {reply.content}
-                      </Text>
-                      <Pressable
-                        className="flex-row items-center"
-                        onPress={() => handleToggleReplyLike(reply.id)}
-                      >
-                        <Ionicons
-                          name={reply.isLiked ? "heart" : "heart-outline"}
-                          size={16}
-                          color={reply.isLiked ? "#EF4444" : "#8B98A5"}
-                        />
-                        <Text className={`ml-1 text-12 ${reply.isLiked ? "text-red-400" : "text-gray-400"}`}>
-                          {reply.likes}
-                        </Text>
-                      </Pressable>
+                      <HashtagText
+                        text={reply.content}
+                        className="text-white text-15 leading-5 mb-2"
+                      />
+                      <View className="flex-row items-center justify-between">
+                        <Pressable
+                          className="flex-row items-center"
+                          onPress={() => handleToggleReplyLike(reply.id)}
+                        >
+                          <Ionicons
+                            name={reply.isLiked ? "heart" : "heart-outline"}
+                            size={16}
+                            color={reply.isLiked ? "#EF4444" : "#8B98A5"}
+                          />
+                          <Text className={`ml-1 text-12 ${reply.isLiked ? "text-red-400" : "text-gray-400"}`}>
+                            {reply.likes}
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
+                          className="flex-row items-center"
+                          onPress={() => handleReportReply(reply.id)}
+                        >
+                          <Ionicons name="flag-outline" size={14} color="#8B98A5" />
+                        </Pressable>
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -276,6 +319,15 @@ export default function SecretDetailScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Report Modal */}
+      <ReportModal
+        isVisible={reportModalVisible}
+        onClose={handleReportModalClose}
+        confessionId={reportingReplyId ? undefined : confessionId}
+        replyId={reportingReplyId || undefined}
+        contentType={reportingReplyId ? "reply" : "confession"}
+      />
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );

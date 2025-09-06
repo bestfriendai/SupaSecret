@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
 import { processVideoConfession } from "../utils/videoProcessing";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { BlurView } from "expo-blur";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as Speech from "expo-speech";
@@ -14,6 +14,7 @@ import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
 
 export default function VideoRecordScreen() {
   // All hooks must be called at the top level, before any conditional logic
+  const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
   const [facing, setFacing] = useState<CameraType>("front");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -158,7 +159,7 @@ export default function VideoRecordScreen() {
 
   const toggleCameraFacing = () => {
     setFacing(current => (current === "back" ? "front" : "back"));
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   };
 
   const startRecording = async () => {
@@ -172,9 +173,9 @@ export default function VideoRecordScreen() {
 
     setIsRecording(true);
     setRecordingTime(0);
-    
+
     // Add haptic feedback
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    notificationAsync();
     
     // Start timer
     timerRef.current = setInterval(() => {
@@ -224,7 +225,7 @@ export default function VideoRecordScreen() {
   const stopRecording = () => {
     if (cameraRef.current && isRecording) {
       cameraRef.current.stopRecording();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
       setIsRecording(false);
       if (timerRef.current) {
         clearInterval(timerRef.current);

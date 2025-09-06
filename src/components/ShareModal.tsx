@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, Share, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { generateConfessionLink, generateShareMessage } from "../utils/links";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,6 +12,8 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useReportStore } from "../state/reportStore";
+import ReportModal from "./ReportModal";
 
 interface ShareModalProps {
   isVisible: boolean;
@@ -27,6 +30,8 @@ export default function ShareModal({
   confessionId,
   confessionText,
 }: ShareModalProps) {
+  const { impactAsync } = usePreferenceAwareHaptics();
+  const [reportModalVisible, setReportModalVisible] = useState(false);
   const translateY = useSharedValue(MODAL_HEIGHT);
   const backdropOpacity = useSharedValue(0);
 
@@ -65,12 +70,14 @@ export default function ShareModal({
 
   const handleNativeShare = async () => {
     try {
-      const shareUrl = `https://secrets.app/confession/${confessionId}`;
+      const shareUrl = generateConfessionLink(confessionId);
+      const shareMessage = generateShareMessage(confessionText, confessionId);
+
       await Share.share({
-        message: `Check out this anonymous confession: "${confessionText.substring(0, 100)}..." ${shareUrl}`,
+        message: shareMessage,
         url: shareUrl,
       });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
       onClose();
     } catch (error) {
       console.error("Share failed:", error);
@@ -79,10 +86,10 @@ export default function ShareModal({
 
   const handleCopyLink = async () => {
     try {
-      const shareUrl = `https://secrets.app/confession/${confessionId}`;
+      const shareUrl = generateConfessionLink(confessionId);
       await Clipboard.setStringAsync(shareUrl);
       Alert.alert("Copied!", "Link copied to clipboard");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
       onClose();
     } catch (error) {
       console.error("Copy failed:", error);
@@ -93,7 +100,7 @@ export default function ShareModal({
     try {
       await Clipboard.setStringAsync(confessionText);
       Alert.alert("Copied!", "Confession text copied to clipboard");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
       onClose();
     } catch (error) {
       console.error("Copy failed:", error);
@@ -101,21 +108,12 @@ export default function ShareModal({
   };
 
   const handleReport = () => {
-    Alert.alert(
-      "Report Content",
-      "Are you sure you want to report this confession?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Report",
-          style: "destructive",
-          onPress: () => {
-            Alert.alert("Reported", "Thank you for reporting. We'll review this content.");
-            onClose();
-          },
-        },
-      ]
-    );
+    setReportModalVisible(true);
+    impactAsync();
+  };
+
+  const handleReportModalClose = () => {
+    setReportModalVisible(false);
   };
 
   if (!isVisible) return null;
@@ -219,6 +217,14 @@ export default function ShareModal({
           </View>
         </Animated.View>
       </GestureDetector>
+
+      {/* Report Modal */}
+      <ReportModal
+        isVisible={reportModalVisible}
+        onClose={handleReportModalClose}
+        confessionId={confessionId}
+        contentType="confession"
+      />
     </View>
   );
 }

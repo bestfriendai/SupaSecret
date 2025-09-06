@@ -149,11 +149,11 @@ export const useReplyStore = create<ReplyState>()(
         const state = get();
         const replies = state.replies[confessionId] || [];
         const reply = replies.find(r => r.id === replyId);
-        
+
         if (!reply) return;
 
-        const newLikeCount = reply.isLiked ? reply.likes - 1 : reply.likes + 1;
         const newIsLiked = !reply.isLiked;
+        const optimisticLikes = reply.isLiked ? reply.likes - 1 : reply.likes + 1;
 
         // Optimistic update
         set((state) => ({
@@ -161,19 +161,39 @@ export const useReplyStore = create<ReplyState>()(
             ...state.replies,
             [confessionId]: replies.map(r =>
               r.id === replyId
-                ? { ...r, likes: newLikeCount, isLiked: newIsLiked }
+                ? { ...r, likes: optimisticLikes, isLiked: newIsLiked }
                 : r
             ),
           },
         }));
 
         try {
+          // Try RPC first for server-verified toggle
+          const { data: rpcData, error: rpcError } = await supabase.rpc('toggle_reply_like', { reply_uuid: replyId });
+
+          if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData[0]?.likes_count !== undefined) {
+            const serverCount = rpcData[0].likes_count as number;
+            set((state) => ({
+              replies: {
+                ...state.replies,
+                [confessionId]: replies.map(r =>
+                  r.id === replyId
+                    ? { ...r, likes: serverCount }
+                    : r
+                ),
+              },
+            }));
+            return;
+          }
+
+          // Fallback to direct update if RPC fails
           const { error } = await supabase
             .from('replies')
-            .update({ likes: newLikeCount })
+            .update({ likes: optimisticLikes })
             .eq('id', replyId);
 
           if (error) throw error;
+
         } catch (error) {
           // Revert optimistic update on error
           set((state) => ({
@@ -185,11 +205,8 @@ export const useReplyStore = create<ReplyState>()(
                   : r
               ),
             },
-          }));
-          
-          set({
             error: error instanceof Error ? error.message : 'Failed to update like'
-          });
+          }));
         }
       },
 

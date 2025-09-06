@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
 import { format } from "date-fns";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { useConfessionStore } from "../state/confessionStore";
 import AnimatedActionButton from "./AnimatedActionButton";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
@@ -27,6 +27,7 @@ export default function EnhancedVideoItem({
   onClose,
 }: EnhancedVideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
+  const { impactAsync } = usePreferenceAwareHaptics();
 
   return (
     <View style={{ height: screenHeight }} className="bg-black">
@@ -72,7 +73,7 @@ export default function EnhancedVideoItem({
             isActive={confession.isLiked}
             onPress={() => {
               toggleLike(confession.id);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              impactAsync();
             }}
           />
           
@@ -81,7 +82,7 @@ export default function EnhancedVideoItem({
             label="Reply"
             onPress={() => {
               // Present comment sheet from parent feed; placeholder for item usage
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              impactAsync();
             }}
           />
           
@@ -89,7 +90,7 @@ export default function EnhancedVideoItem({
             icon="share-outline"
             label="Share"
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              impactAsync();
             }}
           />
           
@@ -155,7 +156,7 @@ export default function EnhancedVideoItem({
           } else {
             player?.play();
           }
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          impactAsync();
         }}
       />
 

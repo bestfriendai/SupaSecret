@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Modal, TouchableWithoutFeedback, Keyboard } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -53,8 +52,8 @@ export default function CreateConfessionScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView className="flex-1 bg-black">
-      {/* Header */}
+      <View className="flex-1 bg-black">
+      {/* Action Bar */}
       <View className="px-4 py-2 border-b border-gray-800 flex-row items-center justify-between">
         <Text className="text-white text-18 font-semibold">
           Share Secret
@@ -182,7 +181,7 @@ export default function CreateConfessionScreen() {
           </View>
         </View>
       </Modal>
-      </SafeAreaView>
+      </View>
     </TouchableWithoutFeedback>
   );
 }

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, RefreshControl } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTrendingStore } from "../state/trendingStore";
 import {
@@ -165,11 +164,10 @@ export default function TrendingScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-black">
-      {/* Header */}
+    <View className="flex-1 bg-black">
+      {/* Search and Filters */}
       <View className="px-4 py-3 border-b border-gray-800">
         <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-white text-20 font-bold">Trending</Text>
           <Pressable onPress={handleClearSearch}>
             <Ionicons name="search" size={24} color="#8B98A5" />
           </Pressable>
@@ -303,6 +301,6 @@ export default function TrendingScreen() {
           </View>
         ) : null}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

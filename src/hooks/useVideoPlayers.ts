@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo } from "react";
 import { useVideoPlayer } from "expo-video";
+import { useConfessionStore } from "../state/confessionStore";
 
 interface VideoItem {
   id: string;
@@ -14,52 +15,54 @@ interface VideoPlayerManager {
   pauseAll: () => void;
   muteAll: () => void;
   unmuteAll: () => void;
+  updateMuteState: () => void;
   cleanup: () => void;
 }
 
 export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   const playersRef = useRef<Map<number, any>>(new Map());
   const currentPlayingRef = useRef<number>(-1);
+  const userPreferences = useConfessionStore((state) => state.userPreferences);
 
   // Create video players using individual hooks (following Rules of Hooks)
   const player0 = useVideoPlayer(videos.length > 0 ? videos[0]?.videoUri || null : null, (player) => {
     player.loop = true;
-    player.muted = false;
+    player.muted = !userPreferences.soundEnabled;
   });
 
   const player1 = useVideoPlayer(videos.length > 1 ? videos[1]?.videoUri || null : null, (player) => {
     player.loop = true;
-    player.muted = false;
+    player.muted = !userPreferences.soundEnabled;
   });
 
   const player2 = useVideoPlayer(videos.length > 2 ? videos[2]?.videoUri || null : null, (player) => {
     player.loop = true;
-    player.muted = false;
+    player.muted = !userPreferences.soundEnabled;
   });
 
   const player3 = useVideoPlayer(videos.length > 3 ? videos[3]?.videoUri || null : null, (player) => {
     player.loop = true;
-    player.muted = false;
+    player.muted = !userPreferences.soundEnabled;
   });
 
   const player4 = useVideoPlayer(videos.length > 4 ? videos[4]?.videoUri || null : null, (player) => {
     player.loop = true;
-    player.muted = false;
+    player.muted = !userPreferences.soundEnabled;
   });
 
   const player5 = useVideoPlayer(videos.length > 5 ? videos[5]?.videoUri || null : null, (player) => {
     player.loop = true;
-    player.muted = false;
+    player.muted = !userPreferences.soundEnabled;
   });
 
   const player6 = useVideoPlayer(videos.length > 6 ? videos[6]?.videoUri || null : null, (player) => {
     player.loop = true;
-    player.muted = false;
+    player.muted = !userPreferences.soundEnabled;
   });
 
   const player7 = useVideoPlayer(videos.length > 7 ? videos[7]?.videoUri || null : null, (player) => {
     player.loop = true;
-    player.muted = false;
+    player.muted = !userPreferences.soundEnabled;
   });
 
   // Store players in a stable array
@@ -78,37 +81,70 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     });
   }, [players, videos.length]);
 
+  // Update mute state when sound preference changes
+  useEffect(() => {
+    updateMuteState();
+  }, [userPreferences.soundEnabled]);
+
   const getPlayer = (index: number) => {
     return playersRef.current.get(index) || null;
   };
 
   const playVideo = (index: number) => {
-    const player = playersRef.current.get(index);
-    if (player) {
-      // Pause currently playing video
-      if (currentPlayingRef.current !== -1 && currentPlayingRef.current !== index) {
-        const currentPlayer = playersRef.current.get(currentPlayingRef.current);
-        currentPlayer?.pause();
+    try {
+      const player = playersRef.current.get(index);
+      if (player) {
+        // Pause currently playing video
+        if (currentPlayingRef.current !== -1 && currentPlayingRef.current !== index) {
+          const currentPlayer = playersRef.current.get(currentPlayingRef.current);
+          try {
+            if (currentPlayer && typeof currentPlayer.pause === 'function') {
+              currentPlayer.pause();
+            }
+          } catch (error) {
+            if (__DEV__) {
+              console.warn(`Failed to pause current player:`, error);
+            }
+          }
+        }
+
+        player.play();
+        currentPlayingRef.current = index;
       }
-      
-      player.play();
-      currentPlayingRef.current = index;
+    } catch (error) {
+      if (__DEV__) {
+        console.warn(`Failed to play video ${index}:`, error);
+      }
     }
   };
 
   const pauseVideo = (index: number) => {
-    const player = playersRef.current.get(index);
-    if (player) {
-      player.pause();
-      if (currentPlayingRef.current === index) {
-        currentPlayingRef.current = -1;
+    try {
+      const player = playersRef.current.get(index);
+      if (player && typeof player.pause === 'function') {
+        player.pause();
+        if (currentPlayingRef.current === index) {
+          currentPlayingRef.current = -1;
+        }
+      }
+    } catch (error) {
+      if (__DEV__) {
+        console.warn(`Failed to pause video ${index}:`, error);
       }
     }
   };
 
   const pauseAll = () => {
     playersRef.current.forEach((player) => {
-      player?.pause();
+      try {
+        if (player && typeof player.pause === 'function') {
+          player.pause();
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('Failed to pause player:', error);
+        }
+      }
     });
     currentPlayingRef.current = -1;
   };
@@ -116,7 +152,13 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   const muteAll = () => {
     playersRef.current.forEach((player) => {
       if (player) {
-        player.muted = true;
+        try {
+          player.muted = true;
+        } catch (error) {
+          if (__DEV__) {
+            console.warn('Failed to mute player:', error);
+          }
+        }
       }
     });
   };
@@ -125,6 +167,14 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     playersRef.current.forEach((player) => {
       if (player) {
         player.muted = false;
+      }
+    });
+  };
+
+  const updateMuteState = () => {
+    playersRef.current.forEach((player) => {
+      if (player) {
+        player.muted = !userPreferences.soundEnabled;
       }
     });
   };
@@ -148,6 +198,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     pauseAll,
     muteAll,
     unmuteAll,
+    updateMuteState,
     cleanup,
   };
 };

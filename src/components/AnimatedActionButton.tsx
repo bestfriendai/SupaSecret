@@ -52,11 +52,11 @@ export default function AnimatedActionButton({
 
   const buttonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-  }));
+  }), []);
 
   const heartStyle = useAnimatedStyle(() => ({
     transform: [{ scale: heartScale.value }],
-  }));
+  }), []);
 
   const iconColor = isActive ? (icon === "heart" ? "#FF3040" : activeColor) : inactiveColor;
 

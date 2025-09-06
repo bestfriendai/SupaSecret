@@ -2,12 +2,15 @@ import React, { useCallback, useMemo, useState } from "react";
 import { View, Text, Pressable, Share, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { generateConfessionLink, generateShareMessage } from "../utils/links";
 import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetBackdrop,
 } from "@gorhom/bottom-sheet";
+import { useReportStore } from "../state/reportStore";
+import ReportModal from "./ReportModal";
 import { BlurView } from "expo-blur";
 
 interface EnhancedShareBottomSheetProps {
@@ -21,7 +24,9 @@ export default function EnhancedShareBottomSheet({
   confessionText,
   bottomSheetModalRef,
 }: EnhancedShareBottomSheetProps) {
+  const { impactAsync } = usePreferenceAwareHaptics();
   const [showModal, setShowModal] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "confirm">("success");
   
@@ -49,12 +54,14 @@ export default function EnhancedShareBottomSheet({
 
   const handleNativeShare = useCallback(async () => {
     try {
-      const shareUrl = `https://secrets.app/confession/${confessionId}`;
+      const shareUrl = generateConfessionLink(confessionId);
+      const shareMessage = generateShareMessage(confessionText, confessionId);
+
       await Share.share({
-        message: `Check out this anonymous confession: "${confessionText.substring(0, 100)}..." ${shareUrl}`,
+        message: shareMessage,
         url: shareUrl,
       });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
       bottomSheetModalRef.current?.dismiss();
     } catch (error) {
       console.error("Share failed:", error);
@@ -63,10 +70,10 @@ export default function EnhancedShareBottomSheet({
 
   const handleCopyLink = useCallback(async () => {
     try {
-      const shareUrl = `https://secrets.app/confession/${confessionId}`;
+      const shareUrl = generateConfessionLink(confessionId);
       await Clipboard.setStringAsync(shareUrl);
       showMessage("Anonymous link copied to clipboard", "success");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
       bottomSheetModalRef.current?.dismiss();
     } catch (error) {
       console.error("Copy failed:", error);
@@ -77,7 +84,7 @@ export default function EnhancedShareBottomSheet({
     try {
       await Clipboard.setStringAsync(confessionText);
       showMessage("Anonymous confession copied to clipboard", "success");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
       bottomSheetModalRef.current?.dismiss();
     } catch (error) {
       console.error("Copy failed:", error);
@@ -85,18 +92,13 @@ export default function EnhancedShareBottomSheet({
   }, [confessionText, bottomSheetModalRef]);
 
   const handleReport = useCallback(() => {
-    showMessage(
-      "Are you sure you want to report this confession? Your report will be anonymous.",
-      "confirm"
-    );
+    setReportModalVisible(true);
+    bottomSheetModalRef.current?.dismiss();
+    impactAsync();
   }, []);
 
-  const confirmReport = () => {
-    setShowModal(false);
-    bottomSheetModalRef.current?.dismiss();
-    setTimeout(() => {
-      showMessage("Thank you for your anonymous report. We'll review this content.", "success");
-    }, 100);
+  const handleReportModalClose = () => {
+    setReportModalVisible(false);
   };
 
   const ShareOption = ({ 
@@ -225,7 +227,7 @@ export default function EnhancedShareBottomSheet({
                 </Pressable>
                 <Pressable
                   className="flex-1 py-3 px-4 rounded-full bg-red-600"
-                  onPress={confirmReport}
+                  onPress={() => setShowModal(false)}
                 >
                   <Text className="text-white font-semibold text-center">Report</Text>
                 </Pressable>
@@ -241,6 +243,14 @@ export default function EnhancedShareBottomSheet({
           </View>
         </View>
       </Modal>
+
+      {/* Report Modal */}
+      <ReportModal
+        isVisible={reportModalVisible}
+        onClose={handleReportModalClose}
+        confessionId={confessionId}
+        contentType="confession"
+      />
     </BottomSheetModal>
   );
 }

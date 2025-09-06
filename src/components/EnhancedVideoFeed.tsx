@@ -5,8 +5,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
 import { BlurView } from "expo-blur";
 import { useConfessionStore } from "../state/confessionStore";
+import { useSavedStore } from "../state/savedStore";
 import { format } from "date-fns";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { useFocusEffect } from "@react-navigation/native";
 import Animated, {
   useSharedValue,
@@ -59,11 +60,15 @@ interface EnhancedVideoFeedProps {
 export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const confessions = useConfessionStore((state) => state.confessions);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
+  const userPreferences = useConfessionStore((state) => state.userPreferences);
   const videoConfessions = confessions.filter((c) => c.type === "video") as VideoItem[];
+  const { impactAsync } = usePreferenceAwareHaptics();
+  const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
+  const [captionsEnabled, setCaptionsEnabled] = useState(userPreferences.captionsDefault);
   const commentSheetRef = useRef<BottomSheetModal | null>(null);
   const shareSheetRef = useRef<BottomSheetModal | null>(null);
   
@@ -109,7 +114,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     setCurrentIndex(newIndex);
     
     // Haptic feedback
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   }, [currentIndex, videoConfessions.length, videoPlayers]);
 
   const handleRefresh = useCallback(async () => {
@@ -117,7 +122,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     // Simulate refresh delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsRefreshing(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   }, []);
 
   const panGesture = Gesture.Pan()
@@ -192,7 +197,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
       
       runOnJS(() => {
         toggleLike(videoConfessions[currentIndex]?.id);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        impactAsync();
       })();
     });
 
@@ -308,12 +313,29 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                     <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                   </Pressable>
                   
-                  <View className="bg-black/50 rounded-full px-3 py-1">
-                    <Text className="text-white text-13 font-medium">
-                      {currentIndex + 1}/{videoConfessions.length}
-                    </Text>
+                  <View className="flex-row items-center space-x-2">
+                    <View className="bg-black/50 rounded-full px-3 py-1">
+                      <Text className="text-white text-13 font-medium">
+                        {currentIndex + 1}/{videoConfessions.length}
+                      </Text>
+                    </View>
+
+                    {/* CC Toggle */}
+                    {currentVideo.transcription && (
+                      <Pressable
+                        className={`rounded-full px-2 py-1 ${captionsEnabled ? 'bg-blue-500' : 'bg-black/50'}`}
+                        onPress={() => {
+                          setCaptionsEnabled(!captionsEnabled);
+                          impactAsync();
+                        }}
+                      >
+                        <Text className={`text-11 font-medium ${captionsEnabled ? 'text-white' : 'text-gray-300'}`}>
+                          CC
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
-                  
+
                   <Pressable className="bg-black/50 rounded-full p-2">
                     <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
                   </Pressable>
@@ -336,7 +358,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   isActive={currentVideo.isLiked}
                   onPress={() => {
                     toggleLike(currentVideo.id);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    impactAsync();
                   }}
                 />
                 
@@ -345,7 +367,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   label="Reply"
                   onPress={() => {
                     commentSheetRef.current?.present();
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    impactAsync();
                   }}
                 />
                 
@@ -354,15 +376,21 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   label="Share"
                   onPress={() => {
                     shareSheetRef.current?.present();
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    impactAsync();
                   }}
                 />
                 
                 <AnimatedActionButton
-                  icon="bookmark-outline"
+                  icon={isSaved(currentVideo.id) ? "bookmark" : "bookmark-outline"}
                   label="Save"
+                  isActive={isSaved(currentVideo.id)}
                   onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (isSaved(currentVideo.id)) {
+                      unsaveConfession(currentVideo.id);
+                    } else {
+                      saveConfession(currentVideo.id);
+                    }
+                    impactAsync();
                   }}
                 />
               </View>
@@ -401,7 +429,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   </View>
 
                   {/* TikTok-style Captions */}
-                  {currentVideo.transcription && (
+                  {currentVideo.transcription && captionsEnabled && (
                     <View className="bg-black/50 rounded-2xl px-3 py-2 mb-2">
                       <TikTokCaptionsOverlay
                         text={currentVideo.transcription}
@@ -436,7 +464,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                 } else {
                   videoPlayers.playVideo(currentIndex);
                 }
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                impactAsync();
               }}
             />
           </Animated.View>

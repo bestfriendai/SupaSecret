@@ -22,6 +22,9 @@ export interface UserPreferences {
   soundEnabled: boolean;
   qualityPreference: "auto" | "high" | "medium" | "low";
   dataUsageMode: "unlimited" | "wifi-only" | "minimal";
+  captionsDefault: boolean;
+  hapticsEnabled: boolean;
+  reducedMotion: boolean;
 }
 
 export interface ConfessionState {
@@ -29,10 +32,13 @@ export interface ConfessionState {
   videoAnalytics: Record<string, VideoAnalytics>;
   userPreferences: UserPreferences;
   isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
   error: string | null;
 
   // Async methods for Supabase operations
   loadConfessions: () => Promise<void>;
+  loadMoreConfessions: () => Promise<void>;
   addConfession: (
     confession: Omit<Confession, "id" | "timestamp">,
     opts?: { onUploadProgress?: (progressPercent: number) => void }

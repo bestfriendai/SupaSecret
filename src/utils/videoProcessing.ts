@@ -1,6 +1,29 @@
 import * as FileSystem from "expo-file-system";
 import { transcribeAudio } from "../api/transcribe-audio";
 
+// Global FFmpeg availability check
+let ffmpegAvailable: boolean | null = null;
+
+const checkFFmpegAvailability = async (): Promise<boolean> => {
+  if (ffmpegAvailable !== null) {
+    return ffmpegAvailable;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const ff = require('ffmpeg-kit-react-native');
+    ffmpegAvailable = !!(ff && ff.FFmpegKit);
+    if (ffmpegAvailable) {
+      // Set global flag for runFfmpeg function
+      (global as any).__ffmpegAvailable = true;
+    }
+  } catch (error) {
+    ffmpegAvailable = false;
+  }
+
+  return ffmpegAvailable;
+};
+
 export interface ProcessedVideo {
   uri: string;
   transcription: string;
@@ -44,10 +67,16 @@ export const processVideoConfession = async (
     }
 
     onProgress?.(5, "Cleaning up old temporary files...");
-    
+
+    // Check FFmpeg availability
+    const hasFFmpeg = await checkFFmpegAvailability();
+    if (!hasFFmpeg && __DEV__) {
+      console.warn("FFmpeg not available, using fallback processing");
+    }
+
     // Clean up old temporary files to free space
     await cleanupTemporaryFiles();
-    
+
     onProgress?.(10, "Initializing video processing...");
 
     // Process with FFmpeg: full-frame blur + voice anonymization
@@ -164,7 +193,16 @@ const extractAudioFromVideo = async (videoUri: string): Promise<string> => {
 
     const cmd = `-y -i "${inPath}" -vn -c:a aac -b:a 128k "${outPath}"`;
     const ok = await runFfmpeg(cmd);
-    if (!ok) throw new Error("FFmpeg failed to extract audio");
+    if (!ok) {
+      // FFmpeg not available, create a mock audio file for development
+      if (__DEV__) {
+        console.warn("FFmpeg not available, creating mock audio file for development");
+        // Create an empty file to simulate audio extraction
+        await FileSystem.writeAsStringAsync(audioUri, "", { encoding: FileSystem.EncodingType.Base64 });
+        return audioUri;
+      }
+      throw new Error("FFmpeg failed to extract audio");
+    }
 
     return audioUri;
   } catch (error) {
@@ -187,7 +225,11 @@ export const extractAndTranscribeAudio = async (videoUri: string): Promise<strin
     
     return transcription;
   } catch (error) {
-    console.error("Audio extraction/transcription error:", error);
+    if (__DEV__) {
+      console.warn("Audio extraction/transcription error, using fallback:", error);
+      // Return a fallback transcription for development
+      return "This is a simulated transcription for development purposes. In production, this would contain the actual transcribed audio content.";
+    }
     throw new Error("Failed to transcribe video audio");
   }
 };
@@ -251,14 +293,33 @@ const pathForFFmpeg = (uri: string) => (uri.startsWith('file://') ? uri.replace(
 
 const runFfmpeg = async (command: string): Promise<boolean> => {
   try {
+    // Check if we're in Expo Go or if FFmpeg is available
+    if (__DEV__ && !global.__ffmpegAvailable) {
+      if (__DEV__) {
+        console.warn('FFmpeg not available in development environment, skipping processing');
+      }
+      return false;
+    }
+
     // Dynamically require to avoid crashing in Expo Go
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const ff = require('ffmpeg-kit-react-native');
+
+    // Check if FFmpegKit is properly initialized
+    if (!ff || !ff.FFmpegKit) {
+      if (__DEV__) {
+        console.warn('FFmpegKit not properly initialized');
+      }
+      return false;
+    }
+
     const session = await ff.FFmpegKit.execute(command);
     const returnCode = await session.getReturnCode();
     return ff.ReturnCode.isSuccess(returnCode);
   } catch (e) {
-    console.warn('FFmpeg unavailable or command failed; falling back.', e);
+    if (__DEV__) {
+      console.warn('FFmpeg unavailable or command failed; falling back.', e);
+    }
     return false;
   }
 };

@@ -100,22 +100,29 @@ export const useConfessionStore = create<ConfessionState>()(
         soundEnabled: true,
         qualityPreference: "auto",
         dataUsageMode: "unlimited",
+        captionsDefault: true,
+        hapticsEnabled: true,
+        reducedMotion: false,
       },
       isLoading: false,
+      isLoadingMore: false,
+      hasMore: true,
       error: null,
 
       loadConfessions: async () => {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, hasMore: true });
         try {
+          const INITIAL_LIMIT = 20;
           const { data, error } = await supabase
             .from('confessions')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(INITIAL_LIMIT);
 
           if (error) throw error;
 
           const confessions: Confession[] = await Promise.all(
-            data.map(async (item) => {
+            (data || []).map(async (item) => {
               const base: Confession = {
                 id: item.id,
                 type: item.type as 'text' | 'video',
@@ -136,11 +143,68 @@ export const useConfessionStore = create<ConfessionState>()(
             })
           );
 
-          set({ confessions, isLoading: false });
+          set({
+            confessions,
+            isLoading: false,
+            hasMore: (data?.length || 0) >= INITIAL_LIMIT
+          });
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Failed to load confessions',
             isLoading: false
+          });
+        }
+      },
+
+      loadMoreConfessions: async () => {
+        const { confessions, isLoadingMore, hasMore } = get();
+        if (isLoadingMore || !hasMore) return;
+
+        set({ isLoadingMore: true, error: null });
+        try {
+          const LOAD_MORE_LIMIT = 10;
+          const lastConfession = confessions[confessions.length - 1];
+
+          const { data, error } = await supabase
+            .from('confessions')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .lt('created_at', new Date(lastConfession.timestamp).toISOString())
+            .limit(LOAD_MORE_LIMIT);
+
+          if (error) throw error;
+
+          const newConfessions: Confession[] = await Promise.all(
+            (data || []).map(async (item) => {
+              const base: Confession = {
+                id: item.id,
+                type: item.type as 'text' | 'video',
+                content: item.content,
+                videoUri: undefined,
+                transcription: item.transcription || undefined,
+                timestamp: new Date(item.created_at).getTime(),
+                isAnonymous: item.is_anonymous,
+                likes: item.likes,
+                isLiked: false,
+              };
+
+              if (base.type === 'video' && item.video_uri) {
+                base.videoUri = await ensureSignedVideoUrl(item.video_uri);
+              }
+
+              return base;
+            })
+          );
+
+          set({
+            confessions: [...confessions, ...newConfessions],
+            isLoadingMore: false,
+            hasMore: (data?.length || 0) >= LOAD_MORE_LIMIT
+          });
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to load more confessions',
+            isLoadingMore: false
           });
         }
       },
@@ -253,48 +317,19 @@ export const useConfessionStore = create<ConfessionState>()(
         }
       },
       toggleLike: async (id) => {
-        set({ isLoading: true, error: null });
         try {
           const state = get();
           const curr = state.confessions.find(c => c.id === id);
           if (!curr) throw new Error('Confession not found');
 
-          // Try RPC first for server-verified toggle
-          const { data: rpcData, error: rpcError } = await supabase.rpc('toggle_confession_like', { confession_uuid: id });
-
-          if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData[0]?.likes_count !== undefined) {
-            const serverCount = rpcData[0].likes_count as number;
-            set((state) => ({
-              confessions: state.confessions.map((c) =>
-                c.id === id
-                  ? { ...c, isLiked: !c.isLiked, likes: serverCount }
-                  : c
-              ),
-              videoAnalytics: {
-                ...state.videoAnalytics,
-                [id]: {
-                  ...state.videoAnalytics[id],
-                  interactions: (state.videoAnalytics[id]?.interactions || 0) + 1,
-                },
-              },
-              isLoading: false,
-            }));
-            return;
-          }
-
-          // Fallback to optimistic client update
-          const newLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
-          const { error } = await supabase
-            .from('confessions')
-            .update({ likes: newLikes })
-            .eq('id', id);
-
-          if (error) throw error;
+          // Optimistic update first
+          const newIsLiked = !curr.isLiked;
+          const optimisticLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
 
           set((state) => ({
             confessions: state.confessions.map((c) =>
               c.id === id
-                ? { ...c, isLiked: !c.isLiked, likes: newLikes }
+                ? { ...c, isLiked: newIsLiked, likes: optimisticLikes }
                 : c
             ),
             videoAnalytics: {
@@ -304,20 +339,59 @@ export const useConfessionStore = create<ConfessionState>()(
                 interactions: (state.videoAnalytics[id]?.interactions || 0) + 1,
               },
             },
-            isLoading: false,
           }));
+
+          // Try RPC first for server-verified toggle
+          const { data: rpcData, error: rpcError } = await supabase.rpc('toggle_confession_like', { confession_uuid: id });
+
+          if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData[0]?.likes_count !== undefined) {
+            const serverCount = rpcData[0].likes_count as number;
+            set((state) => ({
+              confessions: state.confessions.map((c) =>
+                c.id === id
+                  ? { ...c, likes: serverCount }
+                  : c
+              ),
+            }));
+            return;
+          }
+
+          // Fallback to direct update if RPC fails
+          const { error } = await supabase
+            .from('confessions')
+            .update({ likes: optimisticLikes })
+            .eq('id', id);
+
+          if (error) throw error;
+
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to toggle like',
-            isLoading: false
-          });
+          // Revert optimistic update on error
+          const state = get();
+          const curr = state.confessions.find(c => c.id === id);
+          if (curr) {
+            const revertedLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
+            set((state) => ({
+              confessions: state.confessions.map((c) =>
+                c.id === id
+                  ? { ...c, isLiked: !curr.isLiked, likes: revertedLikes }
+                  : c
+              ),
+              error: error instanceof Error ? error.message : 'Failed to toggle like',
+            }));
+          }
           throw error;
         }
       },
 
       updateLikes: async (id, likes) => {
-        set({ isLoading: true, error: null });
         try {
+          // Optimistic update first
+          set((state) => ({
+            confessions: state.confessions.map((confession) =>
+              confession.id === id ? { ...confession, likes } : confession
+            ),
+          }));
+
           const { error } = await supabase
             .from('confessions')
             .update({ likes })
@@ -325,17 +399,18 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
-          set((state) => ({
-            confessions: state.confessions.map((confession) =>
-              confession.id === id ? { ...confession, likes } : confession
-            ),
-            isLoading: false,
-          }));
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Failed to update likes',
-            isLoading: false
-          });
+          // Revert optimistic update on error
+          const state = get();
+          const curr = state.confessions.find(c => c.id === id);
+          if (curr) {
+            set((state) => ({
+              confessions: state.confessions.map((confession) =>
+                confession.id === id ? { ...confession, likes: curr.likes } : confession
+              ),
+              error: error instanceof Error ? error.message : 'Failed to update likes',
+            }));
+          }
           throw error;
         }
       },
@@ -399,6 +474,9 @@ export const useConfessionStore = create<ConfessionState>()(
               soundEnabled: data.sound_enabled,
               qualityPreference: data.quality_preference as "auto" | "high" | "medium" | "low",
               dataUsageMode: data.data_usage_mode as "unlimited" | "wifi-only" | "minimal",
+              captionsDefault: data.captions_default ?? true,
+              hapticsEnabled: data.haptics_enabled ?? true,
+              reducedMotion: data.reduced_motion ?? false,
             };
             set({ userPreferences: preferences, isLoading: false });
           } else {
@@ -426,6 +504,9 @@ export const useConfessionStore = create<ConfessionState>()(
               sound_enabled: preferences.soundEnabled,
               quality_preference: preferences.qualityPreference,
               data_usage_mode: preferences.dataUsageMode,
+              captions_default: preferences.captionsDefault,
+              haptics_enabled: preferences.hapticsEnabled,
+              reduced_motion: preferences.reducedMotion,
             });
 
           if (error) throw error;

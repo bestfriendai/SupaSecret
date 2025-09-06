@@ -80,7 +80,9 @@ export const useTrendingStore = create<TrendingState>()(
           }
 
           // Fallback to client-side calculation
-          console.log('Using client-side hashtag calculation');
+          if (__DEV__) {
+            console.log('Using client-side hashtag calculation');
+          }
           const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
           
           const { data: confessions, error } = await supabase
@@ -182,7 +184,9 @@ export const useTrendingStore = create<TrendingState>()(
           }
 
           // Fallback to client-side calculation
-          console.log('Using client-side trending calculation');
+          if (__DEV__) {
+            console.log('Using client-side trending calculation');
+          }
           const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
           
           const { data: confessions, error } = await supabase
@@ -264,7 +268,9 @@ export const useTrendingStore = create<TrendingState>()(
           }
 
           // Fallback to client-side search
-          console.log('Using client-side hashtag search');
+          if (__DEV__) {
+            console.log('Using client-side hashtag search');
+          }
           const normalizedHashtag = hashtag.toLowerCase().startsWith('#') 
             ? hashtag.toLowerCase() 
             : `#${hashtag.toLowerCase()}`;

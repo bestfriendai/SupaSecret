@@ -180,3 +180,42 @@ create trigger trg_confessions_set_user
 before insert on public.confessions
 for each row execute function public.set_confession_user_id();
 
+-- 8) RPC to toggle reply likes atomically and return count
+create or replace function public.toggle_reply_like(reply_uuid uuid)
+returns table (likes_count integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_exists boolean;
+begin
+  if v_user is null then
+    raise exception 'Not authenticated' using errcode = '28000';
+  end if;
+
+  select exists(
+    select 1 from public.user_likes ul
+    where ul.user_id = v_user and ul.reply_id = reply_uuid
+  ) into v_exists;
+
+  if v_exists then
+    delete from public.user_likes where user_id = v_user and reply_id = reply_uuid;
+  else
+    insert into public.user_likes (id, user_id, reply_id)
+    values (gen_random_uuid(), v_user, reply_uuid);
+  end if;
+
+  return query
+  with cnt as (
+    select count(*)::int as c from public.user_likes where reply_id = reply_uuid
+  )
+  update public.replies r
+  set likes = cnt.c
+  from cnt
+  where r.id = reply_uuid
+  returning cnt.c as likes_count;
+end;
+$$;
+

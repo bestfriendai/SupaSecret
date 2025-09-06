@@ -1,22 +1,40 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { View, Text, Pressable } from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import type { NavigationProp } from "@react-navigation/native";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useConfessionStore } from "../state/confessionStore";
 import { useReplyStore } from "../state/replyStore";
+import { useSavedStore } from "../state/savedStore";
 import { format } from "date-fns";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
+import ReportModal from "../components/ReportModal";
+import FeedActionSheet from "../components/FeedActionSheet";
+import ConfessionSkeleton from "../components/ConfessionSkeleton";
+import HashtagText from "../components/HashtagText";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const confessions = useConfessionStore((state) => state.confessions);
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
+  const loadMoreConfessions = useConfessionStore((state) => state.loadMoreConfessions);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const isLoading = useConfessionStore((state) => state.isLoading);
+  const isLoadingMore = useConfessionStore((state) => state.isLoadingMore);
+  const hasMore = useConfessionStore((state) => state.hasMore);
   const { getRepliesForConfession, loadReplies } = useReplyStore();
+  const { isSaved } = useSavedStore();
   const insets = useSafeAreaInsets();
+  const { impactAsync } = usePreferenceAwareHaptics();
   const [refreshing, setRefreshing] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportingConfessionId, setReportingConfessionId] = useState<string | null>(null);
+  const [selectedConfessionText, setSelectedConfessionText] = useState<string>("");
+  const actionSheetRef = useRef<BottomSheetModal | null>(null);
 
   // Load replies for all confessions when component mounts
   useEffect(() => {
@@ -25,7 +43,7 @@ export default function HomeScreen() {
     });
   }, [confessions, loadReplies]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await loadConfessions();
@@ -34,28 +52,61 @@ export default function HomeScreen() {
         loadReplies(confession.id);
       });
     } catch (error) {
-      console.error('Error refreshing:', error);
+      if (__DEV__) {
+        console.error('Error refreshing:', error);
+      }
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [loadConfessions, confessions, loadReplies]);
+
+  const onEndReached = useCallback(async () => {
+    if (!isLoadingMore && hasMore) {
+      try {
+        await loadMoreConfessions();
+      } catch (error) {
+        if (__DEV__) {
+          console.error('Error loading more:', error);
+        }
+      }
+    }
+  }, [isLoadingMore, hasMore, loadMoreConfessions]);
 
   const handleToggleLike = async (confessionId: string) => {
     await toggleLike(confessionId);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   };
 
   const handleSecretPress = (confessionId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
     navigation.navigate('SecretDetail', { confessionId });
   };
 
-  const renderConfession = (confession: any) => {
+  const handleReportPress = (confessionId: string, event: any) => {
+    event.stopPropagation(); // Prevent navigation to detail screen
+    setReportingConfessionId(confessionId);
+    setReportModalVisible(true);
+    impactAsync();
+  };
+
+  const handleActionSheetPress = (confessionId: string, confessionText: string, event: any) => {
+    event.stopPropagation();
+    setReportingConfessionId(confessionId);
+    setSelectedConfessionText(confessionText);
+    impactAsync();
+    actionSheetRef.current?.present();
+  };
+
+  const handleReportModalClose = () => {
+    setReportModalVisible(false);
+    setReportingConfessionId(null);
+  };
+
+  const renderItem = useCallback(({ item: confession }: { item: any }) => {
     const replies = getRepliesForConfession(confession.id);
 
     return (
       <Pressable
-        key={confession.id}
         className="border-b border-gray-800 px-4 py-3"
         onPress={() => handleSecretPress(confession.id)}
       >
@@ -86,15 +137,17 @@ export default function HomeScreen() {
           
           {/* Content */}
           {confession.type === "text" ? (
-            <Text className="text-white text-15 leading-5 mb-3">
-              {confession.content}
-            </Text>
+            <HashtagText
+              text={confession.content}
+              className="text-white text-15 leading-5 mb-3"
+            />
           ) : (
             <View>
               {confession.transcription && (
-                <Text className="text-white text-15 leading-5 mb-3">
-                  {confession.transcription}
-                </Text>
+                <HashtagText
+                  text={confession.transcription}
+                  className="text-white text-15 leading-5 mb-3"
+                />
               )}
               <View className="bg-gray-900 border border-gray-700 rounded-2xl p-3 mb-3">
                 <View className="flex-row items-center">
@@ -131,48 +184,100 @@ export default function HomeScreen() {
                   {replies.length}
                 </Text>
               </View>
+              <Pressable
+                className="flex-row items-center ml-6"
+                onPress={(event) => handleReportPress(confession.id, event)}
+              >
+                <Ionicons name="flag-outline" size={16} color="#8B98A5" />
+              </Pressable>
             </View>
-            <Pressable className="flex-row items-center">
-              <Ionicons name="bookmark-outline" size={18} color="#8B98A5" />
+            <Pressable
+              className="flex-row items-center"
+              onPress={(event) => handleActionSheetPress(confession.id, confession.content, event)}
+            >
+              <Ionicons
+                name={isSaved(confession.id) ? "bookmark" : "bookmark-outline"}
+                size={18}
+                color={isSaved(confession.id) ? "#F59E0B" : "#8B98A5"}
+              />
             </Pressable>
           </View>
         </View>
       </View>
     </Pressable>
   );
-};
+  }, [getRepliesForConfession, handleSecretPress, handleToggleLike, handleReportPress, handleActionSheetPress, isSaved]);
+
+  const renderFooter = useCallback(() => {
+    if (!isLoadingMore) return null;
+    return (
+      <View className="py-4">
+        <ConfessionSkeleton />
+        <ConfessionSkeleton />
+      </View>
+    );
+  }, [isLoadingMore]);
+
+  const renderEmpty = useCallback(() => {
+    if (isLoading) {
+      return (
+        <View className="flex-1">
+          <ConfessionSkeleton />
+          <ConfessionSkeleton showVideo />
+          <ConfessionSkeleton />
+          <ConfessionSkeleton />
+          <ConfessionSkeleton showVideo />
+        </View>
+      );
+    }
+
+    return (
+      <View className="flex-1 items-center justify-center px-6 py-20">
+        <Ionicons name="lock-closed-outline" size={64} color="#8B98A5" />
+        <Text className="text-white text-20 font-bold mt-6 text-center">
+          No secrets shared yet
+        </Text>
+        <Text className="text-gray-500 text-15 mt-2 text-center leading-5">
+          Be the first to share an anonymous confession with the community
+        </Text>
+      </View>
+    );
+  }, [isLoading]);
 
   return (
-    <SafeAreaView className="flex-1 bg-black">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+    <View className="flex-1 bg-black">
+      <FlashList
+        data={confessions}
+        renderItem={renderItem}
+        estimatedItemSize={200}
+        keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#1D9BF0"
-            colors={["#1D9BF0"]}
-          />
-        }
-      >
-        {confessions.length === 0 ? (
-          <View className="flex-1 items-center justify-center px-6 py-20">
-            <Ionicons name="lock-closed-outline" size={64} color="#8B98A5" />
-            <Text className="text-white text-20 font-bold mt-6 text-center">
-              No secrets shared yet
-            </Text>
-            <Text className="text-gray-500 text-15 mt-2 text-center leading-5">
-              Be the first to share an anonymous confession with the community
-            </Text>
-          </View>
-        ) : (
-          <View>
-            {confessions.map(renderConfession)}
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        extraData={{ refreshing, isLoadingMore }}
+      />
+
+      {/* Report Modal */}
+      <ReportModal
+        isVisible={reportModalVisible}
+        onClose={handleReportModalClose}
+        confessionId={reportingConfessionId || undefined}
+        contentType="confession"
+      />
+
+      {/* Feed Action Sheet */}
+      {reportingConfessionId && (
+        <FeedActionSheet
+          confessionId={reportingConfessionId}
+          confessionText={selectedConfessionText}
+          bottomSheetModalRef={actionSheetRef}
+        />
+      )}
+    </View>
   );
 }

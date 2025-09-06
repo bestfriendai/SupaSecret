@@ -78,7 +78,19 @@ export const signUpUser = async (data: SignUpData): Promise<User> => {
   });
 
   if (authError) {
-    throw new AuthError(authError.message.includes('already registered') ? 'USER_EXISTS' : 'SIGNUP_ERROR', authError.message);
+    if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
+      throw new AuthError('USER_EXISTS', 'An account with this email already exists. Please sign in instead.');
+    }
+    if (authError.message.includes('Password should be at least')) {
+      throw new AuthError('WEAK_PASSWORD', 'Password must be at least 6 characters long.');
+    }
+    if (authError.message.includes('Unable to validate email address')) {
+      throw new AuthError('INVALID_EMAIL', 'Please enter a valid email address.');
+    }
+    if (authError.message.includes('Network')) {
+      throw new AuthError('NETWORK_ERROR', 'Network error. Please check your connection and try again.');
+    }
+    throw new AuthError('SIGNUP_ERROR', 'Failed to create account. Please try again.');
   }
 
   if (!authData.user) {
@@ -100,7 +112,9 @@ export const signUpUser = async (data: SignUpData): Promise<User> => {
     .eq('id', authData.user.id);
 
   if (profileError) {
-    console.warn("Failed to update user profile:", profileError);
+    if (__DEV__) {
+      console.warn("Failed to update user profile:", profileError);
+    }
   }
 
   // Return user in our format - mark as onboarded after successful signup
@@ -144,9 +158,18 @@ export const signInUser = async (credentials: AuthCredentials): Promise<User> =>
 
   if (authError) {
     if (authError.message.includes('Invalid login credentials')) {
-      throw new AuthError("INVALID_CREDENTIALS", "Invalid email or password");
+      throw new AuthError("INVALID_CREDENTIALS", "Invalid email or password. Please check your credentials and try again.");
     }
-    throw new AuthError("SIGNIN_ERROR", authError.message);
+    if (authError.message.includes('Email not confirmed')) {
+      throw new AuthError("EMAIL_NOT_CONFIRMED", "Please check your email and click the confirmation link before signing in.");
+    }
+    if (authError.message.includes('Too many requests')) {
+      throw new AuthError("TOO_MANY_REQUESTS", "Too many sign-in attempts. Please wait a moment and try again.");
+    }
+    if (authError.message.includes('Network')) {
+      throw new AuthError("NETWORK_ERROR", "Network error. Please check your connection and try again.");
+    }
+    throw new AuthError("SIGNIN_ERROR", "Sign in failed. Please try again.");
   }
 
   if (!authData.user) {
@@ -221,7 +244,9 @@ export const getCurrentUser = async (): Promise<User | null> => {
     }
 
     if (profileError && profileError.code !== 'PGRST116') {
-      console.error('Error fetching user profile:', profileError);
+      if (__DEV__) {
+        console.error('Error fetching user profile:', profileError);
+      }
     }
 
     // Return user in our format
@@ -244,7 +269,9 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
     return user;
   } catch (error) {
-    console.error("Error getting current user:", error);
+    if (__DEV__) {
+      console.error("Error getting current user:", error);
+    }
     return null;
   }
 };
@@ -286,7 +313,9 @@ export const signOutUser = async (): Promise<void> => {
   const { error } = await supabase.auth.signOut();
 
   if (error) {
-    console.error("Error signing out:", error);
+    if (__DEV__) {
+      console.error("Error signing out:", error);
+    }
     throw new Error("Failed to sign out");
   }
 };

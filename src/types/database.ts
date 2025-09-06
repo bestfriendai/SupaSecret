@@ -240,6 +240,74 @@ export interface Database {
           }
         ]
       }
+      reports: {
+        Row: {
+          id: string
+          confession_id: string | null
+          reply_id: string | null
+          reporter_user_id: string
+          reason: 'inappropriate_content' | 'spam' | 'harassment' | 'false_information' | 'violence' | 'hate_speech' | 'other'
+          additional_details: string | null
+          status: 'pending' | 'reviewed' | 'resolved' | 'dismissed'
+          created_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+        }
+        Insert: {
+          id?: string
+          confession_id?: string | null
+          reply_id?: string | null
+          reporter_user_id: string
+          reason: 'inappropriate_content' | 'spam' | 'harassment' | 'false_information' | 'violence' | 'hate_speech' | 'other'
+          additional_details?: string | null
+          status?: 'pending' | 'reviewed' | 'resolved' | 'dismissed'
+          created_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Update: {
+          id?: string
+          confession_id?: string | null
+          reply_id?: string | null
+          reporter_user_id?: string
+          reason?: 'inappropriate_content' | 'spam' | 'harassment' | 'false_information' | 'violence' | 'hate_speech' | 'other'
+          additional_details?: string | null
+          status?: 'pending' | 'reviewed' | 'resolved' | 'dismissed'
+          created_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_confession_id_fkey"
+            columns: ["confession_id"]
+            isOneToOne: false
+            referencedRelation: "confessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reporter_user_id_fkey"
+            columns: ["reporter_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

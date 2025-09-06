@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, Pressable, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -40,6 +40,7 @@ const generateAnonymousId = () => {
 export default function EnhancedCommentBottomSheet({
   bottomSheetModalRef,
 }: EnhancedCommentBottomSheetProps) {
+  const { impactAsync } = usePreferenceAwareHaptics();
   const [comments, setComments] = useState<Comment[]>([
     {
       id: "1",
@@ -100,7 +101,7 @@ export default function EnhancedCommentBottomSheet({
       };
       setComments(prev => [comment, ...prev]);
       setNewComment("");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
     }
   }, [newComment]);
 
@@ -116,7 +117,7 @@ export default function EnhancedCommentBottomSheet({
           : comment
       )
     );
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   }, []);
 
   // Anonymous avatar component

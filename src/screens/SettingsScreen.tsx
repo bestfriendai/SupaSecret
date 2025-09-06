@@ -1,17 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, ScrollView, Modal } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useConfessionStore } from "../state/confessionStore";
 import { useAuthStore } from "../state/authStore";
+import { useNavigation } from "@react-navigation/native";
+import type { NavigationProp } from "@react-navigation/native";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 import { format } from "date-fns";
+import SettingsToggle from "../components/SettingsToggle";
+import SettingsPicker from "../components/SettingsPicker";
 
 export default function SettingsScreen() {
-  const { confessions, clearAllConfessions } = useConfessionStore();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const {
+    confessions,
+    clearAllConfessions,
+    userPreferences,
+    updateUserPreferences,
+    loadUserPreferences
+  } = useConfessionStore();
   const { user, signOut } = useAuthStore();
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"confirm" | "success" | "signout">("confirm");
+
+  useEffect(() => {
+    loadUserPreferences();
+  }, [loadUserPreferences]);
 
   const showMessage = (message: string, type: "confirm" | "success" | "signout") => {
     setModalMessage(message);
@@ -43,18 +58,24 @@ export default function SettingsScreen() {
       await signOut();
       setShowModal(false);
     } catch (error) {
-      console.error("Sign out error:", error);
+      if (__DEV__) {
+        console.error("Sign out error:", error);
+      }
+    }
+  };
+
+  const handlePreferenceUpdate = async (key: keyof typeof userPreferences, value: any) => {
+    try {
+      await updateUserPreferences({ [key]: value });
+    } catch (error) {
+      if (__DEV__) {
+        console.error("Failed to update preference:", error);
+      }
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-black">
-      {/* Header */}
-      <View className="px-4 py-2 border-b border-gray-800">
-        <Text className="text-white text-18 font-semibold">
-          Settings
-        </Text>
-      </View>
+    <View className="flex-1 bg-black">
 
       <ScrollView className="flex-1">
         {/* Account Section */}
@@ -96,6 +117,96 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+
+        {/* Navigation Section */}
+        <View className="border-b border-gray-800">
+          <View className="px-4 py-4">
+            <Text className="text-white text-17 font-bold mb-4">
+              Content
+            </Text>
+            <Pressable
+              className="flex-row items-center justify-between py-3"
+              onPress={() => navigation.navigate('Saved')}
+            >
+              <View className="flex-row items-center">
+                <Ionicons name="bookmark" size={20} color="#F59E0B" />
+                <Text className="text-white text-15 font-medium ml-3">Saved Secrets</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Preferences Section */}
+        <View className="border-b border-gray-800">
+          <View className="px-4 py-4">
+            <Text className="text-white text-17 font-bold mb-4">
+              Preferences
+            </Text>
+            <View className="space-y-1">
+              <SettingsToggle
+                title="Autoplay Videos"
+                description="Automatically play videos when scrolling"
+                value={userPreferences.autoplay}
+                onValueChange={(value) => handlePreferenceUpdate('autoplay', value)}
+                icon="play-circle"
+              />
+              <SettingsToggle
+                title="Sound Enabled"
+                description="Play audio for videos and interactions"
+                value={userPreferences.soundEnabled}
+                onValueChange={(value) => handlePreferenceUpdate('soundEnabled', value)}
+                icon="volume-high"
+              />
+              <SettingsToggle
+                title="Captions by Default"
+                description="Show captions on videos when available"
+                value={userPreferences.captionsDefault}
+                onValueChange={(value) => handlePreferenceUpdate('captionsDefault', value)}
+                icon="text"
+              />
+              <SettingsToggle
+                title="Haptic Feedback"
+                description="Vibrate on interactions and gestures"
+                value={userPreferences.hapticsEnabled}
+                onValueChange={(value) => handlePreferenceUpdate('hapticsEnabled', value)}
+                icon="phone-portrait"
+              />
+              <SettingsToggle
+                title="Reduce Motion"
+                description="Minimize animations and transitions"
+                value={userPreferences.reducedMotion}
+                onValueChange={(value) => handlePreferenceUpdate('reducedMotion', value)}
+                icon="speedometer"
+              />
+              <SettingsPicker
+                title="Video Quality"
+                description="Choose video playback quality"
+                value={userPreferences.qualityPreference}
+                onValueChange={(value) => handlePreferenceUpdate('qualityPreference', value)}
+                icon="videocam"
+                options={[
+                  { value: "auto", label: "Auto", description: "Adjust quality based on connection" },
+                  { value: "high", label: "High", description: "Best quality, uses more data" },
+                  { value: "medium", label: "Medium", description: "Balanced quality and data usage" },
+                  { value: "low", label: "Low", description: "Lower quality, saves data" },
+                ]}
+              />
+              <SettingsPicker
+                title="Data Usage"
+                description="Control when to use mobile data"
+                value={userPreferences.dataUsageMode}
+                onValueChange={(value) => handlePreferenceUpdate('dataUsageMode', value)}
+                icon="cellular"
+                options={[
+                  { value: "unlimited", label: "Unlimited", description: "Use data freely" },
+                  { value: "wifi-only", label: "Wi-Fi Only", description: "Only load content on Wi-Fi" },
+                  { value: "minimal", label: "Data Saver", description: "Reduce data usage" },
+                ]}
+              />
+            </View>
+          </View>
+        </View>
 
         {/* Stats Section */}
         <View className="border-b border-gray-800">
@@ -264,6 +375,6 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

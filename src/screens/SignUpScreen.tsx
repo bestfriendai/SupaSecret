@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
 
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
@@ -16,6 +16,7 @@ type NavigationProp = NativeStackNavigationProp<any>;
 export default function SignUpScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { signUp, isLoading, clearError } = useAuthStore();
+  const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
   
   const [formData, setFormData] = useState({
     email: "",
@@ -80,7 +81,7 @@ export default function SignUpScreen() {
     clearError();
     
     if (!validateForm()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      notificationAsync();
       return;
     }
 
@@ -91,10 +92,10 @@ export default function SignUpScreen() {
 
     try {
       await signUp(formData);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      notificationAsync();
       // Navigation will be handled automatically by auth state change
     } catch (error) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      notificationAsync();
       if (error instanceof Error) {
         showMessage(error.message, "error");
       }
@@ -103,7 +104,7 @@ export default function SignUpScreen() {
 
   const handleSignIn = () => {
     navigation.navigate("SignIn");
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   };
 
   const passwordStrength = getPasswordStrength(formData.password);

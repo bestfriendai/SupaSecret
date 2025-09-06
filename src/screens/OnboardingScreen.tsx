@@ -11,7 +11,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
 
 import OnboardingSlide from "../components/OnboardingSlide";
 import ProgressIndicator from "../components/ProgressIndicator";
@@ -62,6 +62,7 @@ const onboardingSlides: OnboardingSlideType[] = [
 export default function OnboardingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, setOnboarded } = useAuthStore();
+  const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
   const scrollViewRef = useRef<Animated.ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useSharedValue(0);
@@ -81,7 +82,7 @@ export default function OnboardingScreen() {
         x: nextIndex * screenWidth,
         animated: true,
       });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      impactAsync();
     } else {
       handleGetStarted();
     }
@@ -89,7 +90,7 @@ export default function OnboardingScreen() {
 
   const handleSkip = () => {
     navigation.navigate("SignUp");
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   };
 
   const handleGetStarted = async () => {
@@ -97,20 +98,20 @@ export default function OnboardingScreen() {
       // User is already signed up, mark as onboarded
       try {
         await setOnboarded();
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        notificationAsync();
       } catch (error) {
         console.error("Error setting onboarded:", error);
       }
     } else {
       // User needs to sign up
       navigation.navigate("SignUp");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      notificationAsync();
     }
   };
 
   const handleSignIn = () => {
     navigation.navigate("SignIn");
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impactAsync();
   };
 
   const skipButtonStyle = useAnimatedStyle(() => {
@@ -194,7 +195,7 @@ export default function OnboardingScreen() {
                     x: prevIndex * screenWidth,
                     animated: true,
                   });
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  impactAsync();
                 }
               }}
               className="flex-row items-center px-4 py-3"

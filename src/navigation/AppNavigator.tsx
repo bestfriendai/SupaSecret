@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import HomeScreen from "../screens/HomeScreen";
 import CreateConfessionScreen from "../screens/CreateConfessionScreen";
@@ -16,12 +17,16 @@ import OnboardingScreen from "../screens/OnboardingScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import SignInScreen from "../screens/SignInScreen";
 import SecretDetailScreen from "../screens/SecretDetailScreen";
+import SavedScreen from "../screens/SavedScreen";
 import { useAuthStore } from "../state/authStore";
+import TrendingBar from "../components/TrendingBar";
+import AppHeader from "../components/AppHeader";
 
 export type RootStackParamList = {
   MainTabs: undefined;
   VideoRecord: undefined;
   SecretDetail: { confessionId: string };
+  Saved: undefined;
   AuthStack: undefined;
 };
 
@@ -117,30 +122,45 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={HomeScreen}
-        options={{ title: "Secrets" }}
+        options={{
+          title: "Secrets",
+          header: () => <AppHeader title="Secrets" showTrendingBar={true} />,
+        }}
       />
-      <Tab.Screen 
-        name="Videos" 
+      <Tab.Screen
+        name="Videos"
         component={VideoFeedScreen}
-        options={{ title: "Videos" }}
+        options={{
+          title: "Videos",
+          header: () => <AppHeader title="Videos" showTrendingBar={true} />,
+        }}
       />
       <Tab.Screen
         name="Create"
         component={CreateConfessionScreen}
-        options={{ title: "Compose" }}
+        options={{
+          title: "Compose",
+          header: () => <AppHeader title="Compose" showTrendingBar={true} />,
+        }}
       />
       <Tab.Screen
         name="Trending"
         component={TrendingScreen}
-        options={{ title: "Trending" }}
+        options={{
+          title: "Trending",
+          header: () => <AppHeader title="Trending" showTrendingBar={false} />,
+        }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: "Settings" }}
+        options={{
+          title: "Settings",
+          header: () => <AppHeader title="Settings" showTrendingBar={false} />,
+        }}
       />
     </Tab.Navigator>
   );
@@ -249,6 +269,14 @@ export default function AppNavigator() {
               component={SecretDetailScreen}
               options={{
                 title: "Secret",
+                headerShown: false
+              }}
+            />
+            <Stack.Screen
+              name="Saved"
+              component={SavedScreen}
+              options={{
+                title: "Saved Secrets",
                 headerShown: false
               }}
             />

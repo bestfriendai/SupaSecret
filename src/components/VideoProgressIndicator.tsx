@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,6 +18,7 @@ export default function VideoProgressIndicator({
   duration,
   isVisible = true,
 }: VideoProgressIndicatorProps) {
+  const insets = useSafeAreaInsets();
   const progress = useSharedValue(0);
   const opacity = useSharedValue(isVisible ? 1 : 0);
 
@@ -32,18 +34,18 @@ export default function VideoProgressIndicator({
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${interpolate(progress.value, [0, 1], [0, 100])}%`,
-  }));
+  }), []);
 
   const containerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-  }));
+  }), []);
 
   return (
     <Animated.View
       style={[
         {
           position: "absolute",
-          bottom: 120,
+          bottom: 120 + insets.bottom,
           left: 16,
           right: 90,
           height: 3,
