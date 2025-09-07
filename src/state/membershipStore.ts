@@ -83,16 +83,18 @@ export const useMembershipStore = create<MembershipState>()(
           // Simulate purchase success for demo
           const expiresAt = new Date();
           if (plan.interval === "month") {
-            expiresAt.setMonth(expiresAt.getMonth() + 1);
+            // Add 30 days to avoid month boundary issues
+            expiresAt.setTime(expiresAt.getTime() + (30 * 24 * 60 * 60 * 1000));
           } else {
-            expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+            // Add 365 days for yearly subscription
+            expiresAt.setTime(expiresAt.getTime() + (365 * 24 * 60 * 60 * 1000));
           }
 
           const membership: UserMembership = {
             user_id: user.id,
             tier: plan.tier,
             plan_id: planId,
-            subscription_id: `demo_${Date.now()}`,
+            subscription_id: null, // Will be set by actual payment processor
             expires_at: expiresAt.toISOString(),
             auto_renew: true,
             created_at: new Date().toISOString(),

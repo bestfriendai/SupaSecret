@@ -39,9 +39,11 @@ export default function TrendingSkeleton() {
           {[1, 2, 3, 4, 5].map((index) => (
             <View key={index} className="mr-2 mb-2">
               <Animated.View 
-                style={shimmerStyle}
+                style={[
+                  shimmerStyle,
+                  { width: Math.random() * 40 + 60 }
+                ]}
                 className="bg-gray-700 rounded-full px-3 py-1 h-8"
-                style={{ width: Math.random() * 40 + 60 }}
               />
             </View>
           ))}

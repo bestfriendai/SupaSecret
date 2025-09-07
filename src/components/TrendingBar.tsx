@@ -118,7 +118,6 @@ export default function TrendingBar({ visible = true }: TrendingBarProps) {
         horizontal
         showsHorizontalScrollIndicator={false}
         className="px-4 pb-3"
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#1D9BF0" />}
       >
         {trendingHashtags.length > 0 ? (
           trendingHashtags.map((hashtag, index) => (

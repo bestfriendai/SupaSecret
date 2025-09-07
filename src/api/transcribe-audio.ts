@@ -7,7 +7,8 @@ You can use this function to transcribe audio files, and it will return the text
 // Development fallback constants
 const DEV_FALLBACK_TRANSCRIPTION =
   "This is a simulated transcription for development purposes. The actual audio content would be transcribed here in production with a valid API key.";
-const isDevFallbackEnabled = process.env.NODE_ENV === "development";
+// @ts-ignore - __DEV__ may not be defined in all environments
+const isDevFallbackEnabled = typeof __DEV__ !== 'undefined' && __DEV__ === true && process.env.ENABLE_DEV_FALLBACK === "true";
 
 /**
  * Transcribe an audio file via server-side endpoint
@@ -41,11 +42,21 @@ export const transcribeAudio = async (localAudioUri: string) => {
     formData.append("model", "gpt-4o-transcribe");
     formData.append("language", "en");
 
-    // Call server-side endpoint (no API keys in client)
-    const response = await fetch(SERVER_TRANSCRIPTION_ENDPOINT, {
-      method: "POST",
-      body: formData,
-    });
+    // Call server-side endpoint with timeout (no API keys in client)
+    const controller = new AbortController();
+    const timeoutMs = 15000; // 15 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    let response;
+    try {
+      response = await fetch(SERVER_TRANSCRIPTION_ENDPOINT, {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -60,9 +71,30 @@ export const transcribeAudio = async (localAudioUri: string) => {
     }
 
     const result = await response.json();
+    
+    // Validate response shape
+    if (typeof result !== 'object' || result === null || typeof result.text !== 'string') {
+      console.error("Invalid response format from transcription API:", result);
+      
+      if (isDevFallbackEnabled) {
+        console.warn("Using dev fallback due to invalid response format");
+        return DEV_FALLBACK_TRANSCRIPTION;
+      }
+      throw new Error("Invalid response format from transcription service");
+    }
+    
     return result.text;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Transcription error:", error);
+
+    // Handle abort errors specifically
+    if (error?.name === 'AbortError') {
+      if (isDevFallbackEnabled) {
+        console.warn("Using dev fallback due to timeout");
+        return DEV_FALLBACK_TRANSCRIPTION;
+      }
+      throw new Error("Transcription request timed out. Please try again.");
+    }
 
     // Strict handling: only return fallback in dev mode, otherwise re-throw
     if (isDevFallbackEnabled) {

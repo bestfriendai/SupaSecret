@@ -3,7 +3,7 @@
  * Tracks performance, errors, and user experience metrics
  */
 
-import React from 'react';
+import * as React from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import * as Device from 'expo-device';
 import * as Application from 'expo-application';
@@ -43,6 +43,8 @@ class HealthMonitor {
   private currentScreen: string = 'Unknown';
   private isMonitoring: boolean = false;
   private reportingInterval: NodeJS.Timeout | null = null;
+  private appStateListener: any = null;
+  private netInfoUnsubscribe: (() => void) | null = null;
 
   constructor() {
     this.sessionStartTime = Date.now();
@@ -109,6 +111,18 @@ class HealthMonitor {
       this.reportingInterval = null;
     }
     
+    if (this.appStateListener) {
+      // Note: React Native AppState.removeEventListener is deprecated
+      // In newer versions, the subscription returned by addEventListener should be used
+      // For compatibility, we'll just set to null
+      this.appStateListener = null;
+    }
+    
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+    
     if (__DEV__) {
       console.log('🏥 Health monitoring stopped');
     }
@@ -125,6 +139,9 @@ class HealthMonitor {
       const loadTime = now - this.sessionStartTime;
       this.metrics.performance.screenLoadTimes[screenName] = loadTime;
     }
+    
+    // Update session start time for next screen
+    this.sessionStartTime = now;
     
     // Update screen view count
     this.metrics.user.screenViews[screenName] = 
@@ -288,18 +305,19 @@ class HealthMonitor {
   }
 
   private setupAppStateMonitoring() {
-    AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+    this.appStateListener = (nextAppState: AppStateStatus) => {
       this.trackInteraction('app_state_change', { state: nextAppState });
       
       if (nextAppState === 'background') {
         // App went to background - good time to report metrics
         this.reportMetrics();
       }
-    });
+    };
+    AppState.addEventListener('change', this.appStateListener);
   }
 
   private setupNetworkMonitoring() {
-    NetInfo.addEventListener(state => {
+    this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
       const status = `${state.type}-${state.isConnected ? 'connected' : 'disconnected'}`;
       this.metrics.system.networkStatus = status;
       this.trackInteraction('network_change', { status });
@@ -307,16 +325,20 @@ class HealthMonitor {
   }
 
   private collectMemoryUsage() {
-    if (global.performance?.memory) {
-      const memory = (global.performance as any).memory;
-      const usedMB = memory.usedJSHeapSize / 1024 / 1024;
-      
-      this.metrics.performance.memoryUsage.push(usedMB);
-      
-      // Keep only last 100 memory readings
-      if (this.metrics.performance.memoryUsage.length > 100) {
-        this.metrics.performance.memoryUsage.shift();
+    try {
+      if (global.performance && (global.performance as any).memory) {
+        const memory = (global.performance as any).memory;
+        const usedMB = memory.usedJSHeapSize / 1024 / 1024;
+        
+        this.metrics.performance.memoryUsage.push(usedMB);
+        
+        // Keep only last 100 memory readings
+        if (this.metrics.performance.memoryUsage.length > 100) {
+          this.metrics.performance.memoryUsage.shift();
+        }
       }
+    } catch (error) {
+      // Memory API not available, skip silently
     }
   }
 

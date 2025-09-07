@@ -91,7 +91,7 @@ export const DEFAULT_PLANS: MembershipPlan[] = [
     id: "supasecret_plus_yearly",
     tier: "plus",
     name: "SupaSecret Plus (Annual)",
-    description: "Save 40% with annual billing",
+    description: "Save 50% with annual billing",
     price: 2999, // $29.99 (vs $59.88 monthly)
     currency: "USD",
     interval: "year",

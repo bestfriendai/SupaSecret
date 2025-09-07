@@ -59,6 +59,10 @@ export const useNotificationStore = create<NotificationState>()(
 
       loadNotifications: async () => {
         set({ isLoading: true, error: null });
+        
+        // Set up real-time subscriptions if not already done
+        setupNotificationSubscriptions();
+        
         try {
           const {
             data: { user },
@@ -314,18 +318,22 @@ const cleanupNotificationSubscriptions = () => {
   }
 };
 
-// Set up real-time subscriptions for notifications
-notificationChannel = supabase
-  .channel("notifications")
-  .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
-    const { loadNotifications } = useNotificationStore.getState();
-    loadNotifications(); // Reload notifications when new ones are added
-  })
-  .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, (payload) => {
-    const { loadNotifications } = useNotificationStore.getState();
-    loadNotifications(); // Reload notifications when they're updated
-  })
-  .subscribe();
+// Function to set up real-time subscriptions for notifications
+const setupNotificationSubscriptions = () => {
+  if (notificationChannel) return; // Already set up
+  
+  notificationChannel = supabase
+    .channel("notifications")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
+      const { loadNotifications } = useNotificationStore.getState();
+      loadNotifications(); // Reload notifications when new ones are added
+    })
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, (payload) => {
+      const { loadNotifications } = useNotificationStore.getState();
+      loadNotifications(); // Reload notifications when they're updated
+    })
+    .subscribe();
+};
 
-// Export cleanup function for app-level cleanup
-export { cleanupNotificationSubscriptions };
+// Export functions for app-level management
+export { cleanupNotificationSubscriptions, setupNotificationSubscriptions };

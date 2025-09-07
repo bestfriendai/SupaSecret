@@ -22,7 +22,7 @@ import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11y
 import { useDebouncedRefresh, useDebouncedLikeToggle } from "../utils/debounce";
 import Animated, { useSharedValue, useAnimatedScrollHandler, runOnJS } from "react-native-reanimated";
 
-const AnimatedFlashList: any = Animated.createAnimatedComponent(FlashList as any);
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList);
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function HomeScreen() {
@@ -35,7 +35,7 @@ export default function HomeScreen() {
   const isLoadingMore = useConfessionStore((state) => state.isLoadingMore);
 
   // Debounced refresh and like toggle
-  const { isRefreshing, refresh } = useDebouncedRefresh(loadConfessions, 1000);
+  const { refresh } = useDebouncedRefresh(loadConfessions, 1000);
   const debouncedToggleLike = useDebouncedLikeToggle(toggleLike, 500);
   const hasMore = useConfessionStore((state) => state.hasMore);
   const { getRepliesForConfession, loadReplies } = useReplyStore();
@@ -56,8 +56,14 @@ export default function HomeScreen() {
 
   // Load replies for all confessions when component mounts
   useEffect(() => {
-    confessions.forEach((confession) => {
-      loadReplies(confession.id);
+    confessions.forEach(async (confession) => {
+      try {
+        await loadReplies(confession.id);
+      } catch (error) {
+        if (__DEV__) {
+          console.error("Error loading replies for confession:", confession.id, error);
+        }
+      }
     });
   }, [confessions, loadReplies]);
 
@@ -67,8 +73,14 @@ export default function HomeScreen() {
     try {
       await refresh(); // Use debounced refresh
       // Reload replies for all confessions
-      confessions.forEach((confession) => {
-        loadReplies(confession.id);
+      confessions.forEach(async (confession) => {
+        try {
+          await loadReplies(confession.id);
+        } catch (error) {
+          if (__DEV__) {
+            console.error("Error loading replies for confession during refresh:", confession.id, error);
+          }
+        }
       });
     } catch (error) {
       if (__DEV__) {

@@ -105,6 +105,7 @@ export default function CreateConfessionScreen() {
               </View>
               <View className="flex-1">
                 <TextInput
+                  {...getOptimizedTextInputProps('text')}
                   className="text-white text-20 leading-6"
                   placeholder="What's your secret?"
                   placeholderTextColor="#8B98A5"
@@ -114,7 +115,6 @@ export default function CreateConfessionScreen() {
                   onChangeText={setTextContent}
                   maxLength={280}
                   style={{ minHeight: 120 }}
-                  {...getOptimizedTextInputProps('text')}
                 />
 
                 {/* Character counter with progressive warnings */}

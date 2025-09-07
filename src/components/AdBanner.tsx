@@ -5,6 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useFeatureAccess } from "./FeatureGate";
+import { calculateAdFrequency } from "../utils/adFrequency";
 
 interface AdBannerProps {
   placement: "home-feed" | "video-feed" | "trending";
@@ -22,9 +23,9 @@ export default function AdBanner({ placement, index = 0 }: AdBannerProps) {
   useEffect(() => {
     if (!shouldShowAd) return;
 
-    // Frequency capping: show ads every 8-12 items
-    const showFrequency = placement === "video-feed" ? 0 : 10; // No ads in video feed
-    const shouldShow = index > 0 && index % showFrequency === 0;
+    // Use shared utility for ad frequency calculation
+    const freq = calculateAdFrequency(placement);
+    const shouldShow = freq > 0 && index > 0 && index % freq === 0;
 
     setIsVisible(shouldShow);
   }, [shouldShowAd, placement, index]);
@@ -74,23 +75,9 @@ export const useAdPlacement = () => {
   const { hasFeature } = useFeatureAccess();
 
   const shouldShowAd = (index: number, placement: string) => {
-    // No ads for premium users
-    if (hasFeature("adFree")) return false;
-
-    // No ads in video feed (full-screen experience)
-    if (placement === "video-feed") return false;
-
-    // Show ads every 10 items in home feed
-    if (placement === "home-feed") {
-      return index > 0 && index % 10 === 0;
-    }
-
-    // Show ads every 8 items in trending
-    if (placement === "trending") {
-      return index > 0 && index % 8 === 0;
-    }
-
-    return false;
+    // Use shared utility for ad frequency calculation
+    const freq = calculateAdFrequency(placement);
+    return !hasFeature("adFree") && freq > 0 && index > 0 && index % freq === 0;
   };
 
   return {

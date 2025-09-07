@@ -28,37 +28,54 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
 
   useEffect(() => {
     loadAvailablePlans();
-    // Auto-select the popular plan
-    const popularPlan = availablePlans.find((p) => p.popular);
-    if (popularPlan) {
-      setSelectedPlan(popularPlan.id);
-    } else if (availablePlans.length > 0) {
-      setSelectedPlan(availablePlans[0].id);
+  }, [loadAvailablePlans]);
+
+  // Auto-select the popular plan when plans are loaded
+  useEffect(() => {
+    if (availablePlans.length > 0) {
+      const popularPlan = availablePlans.find((p) => p.popular);
+      if (popularPlan) {
+        setSelectedPlan(popularPlan.id);
+      } else {
+        setSelectedPlan(availablePlans[0].id);
+      }
     }
-  }, [loadAvailablePlans, availablePlans]);
+  }, [availablePlans]);
 
   const handlePurchase = async () => {
     if (!selectedPlan) return;
 
     impactAsync();
-    const success = await purchaseSubscription(selectedPlan);
+    try {
+      const success = await purchaseSubscription(selectedPlan);
 
-    if (success) {
-      Alert.alert("Welcome to Plus!", "Your subscription is now active. Enjoy all premium features!", [
-        {
-          text: "Continue",
-          onPress: () => navigation.goBack(),
-        },
-      ]);
-    } else if (error) {
-      Alert.alert("Purchase Failed", error);
+      if (success) {
+        Alert.alert("Welcome to Plus!", "Your subscription is now active. Enjoy all premium features!", [
+          {
+            text: "Continue",
+            onPress: () => navigation.goBack(),
+          },
+        ]);
+      } else {
+        Alert.alert("Purchase Failed", error || "Unable to complete purchase. Please try again.");
+      }
+    } catch (err) {
+      Alert.alert("Purchase Error", "An unexpected error occurred. Please try again.");
     }
   };
 
   const handleRestore = async () => {
     impactAsync();
-    await restorePurchases();
-    Alert.alert("Restore Complete", "Your purchases have been restored.");
+    try {
+      const success = await restorePurchases();
+      if (success) {
+        Alert.alert("Restore Complete", "Your purchases have been restored successfully.");
+      } else {
+        Alert.alert("No Purchases Found", "No previous purchases were found to restore.");
+      }
+    } catch (err) {
+      Alert.alert("Restore Failed", "Unable to restore purchases. Please try again.");
+    }
   };
 
   const formatPrice = (plan: MembershipPlan) => {

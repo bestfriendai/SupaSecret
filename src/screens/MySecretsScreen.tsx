@@ -46,7 +46,7 @@ export default function MySecretsScreen() {
       const query = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(
         (c) =>
-          c.content.toLowerCase().includes(query) || (c.transcription && c.transcription.toLowerCase().includes(query)),
+          c.content?.toLowerCase().includes(query) || (c.transcription && c.transcription.toLowerCase().includes(query)),
       );
     }
 

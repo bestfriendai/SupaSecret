@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Modal,
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
@@ -18,6 +17,7 @@ import { usePreferenceAwareHaptics } from "../utils/haptics";
 
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
+import { AlertModal } from "../components/AnimatedModal";
 import { useAuthStore } from "../state/authStore";
 import { validateEmail, validatePassword, getPasswordStrength } from "../utils/auth";
 
@@ -247,8 +247,26 @@ export default function SignUpScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-gray-400 text-14 leading-5">
-                    I agree to the <Text className="text-blue-400 underline">Terms of Service</Text> and{" "}
-                    <Text className="text-blue-400 underline">Privacy Policy</Text>
+                    I agree to the{" "}
+                    <Text 
+                      className="text-blue-400 underline"
+                      onPress={() => {
+                        // TODO: Navigate to Terms of Service screen
+                        console.log("Navigate to Terms of Service");
+                      }}
+                    >
+                      Terms of Service
+                    </Text>{" "}
+                    and{" "}
+                    <Text 
+                      className="text-blue-400 underline"
+                      onPress={() => {
+                        // TODO: Navigate to Privacy Policy screen
+                        console.log("Navigate to Privacy Policy");
+                      }}
+                    >
+                      Privacy Policy
+                    </Text>
                   </Text>
                 </View>
               </Pressable>
@@ -285,24 +303,14 @@ export default function SignUpScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Custom Modal */}
-        <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
-          <View className="flex-1 bg-black/50 items-center justify-center px-6">
-            <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
-              <View className="items-center mb-4">
-                <Ionicons
-                  name={modalType === "success" ? "checkmark-circle" : "alert-circle"}
-                  size={48}
-                  color={modalType === "success" ? "#10B981" : "#EF4444"}
-                />
-              </View>
-              <Text className="text-white text-16 text-center mb-6 leading-5">{modalMessage}</Text>
-              <Pressable className="bg-blue-500 rounded-full py-3 px-6" onPress={() => setShowModal(false)}>
-                <Text className="text-white font-semibold text-center">OK</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
+        {/* Animated Modal */}
+        <AlertModal
+          visible={showModal}
+          onClose={() => setShowModal(false)}
+          title={modalType === "success" ? "Success!" : "Error"}
+          message={modalMessage}
+          confirmText="OK"
+        />
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );

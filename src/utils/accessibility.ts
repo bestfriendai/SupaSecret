@@ -58,7 +58,7 @@ export const getButtonA11yProps = (
   accessibilityHint: hint,
   accessibilityState: {
     disabled,
-    pressed,
+    selected: pressed,
   },
 });
 
@@ -170,7 +170,6 @@ export const getTextInputA11yProps = (
   accessibilityRole: multiline ? 'none' : 'text',
   accessibilityLabel: label,
   accessibilityHint: hint,
-  accessibilityRequired: required,
 });
 
 /**
@@ -235,7 +234,7 @@ export const getProgressA11yProps = (
     min: 0,
     max,
     now: current,
-    text: `${Math.round((current / max) * 100)}% complete`,
+    text: max > 0 ? `${Math.round((current / max) * 100)}% complete` : '0% complete',
   },
 });
 
@@ -270,7 +269,7 @@ export const getListItemA11yProps = (
   index: number,
   total: number
 ): A11yProps => ({
-  accessibilityRole: A11Y_ROLES.listitem,
+  accessibilityRole: 'none',
   accessibilityLabel: `${label}, item ${index + 1} of ${total}`,
 });
 

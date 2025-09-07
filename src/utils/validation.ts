@@ -21,7 +21,7 @@ export interface ValidationRule<T = any> {
  */
 export const VALIDATION_PATTERNS = {
   email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/,
+  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*(),.?":{}|<>]{8,}$/,
   username: /^[a-zA-Z0-9_]{3,20}$/,
   hashtag: /^#[a-zA-Z0-9_]+$/,
   url: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/,
@@ -76,24 +76,23 @@ export const validators = {
         return { isValid: false, error: 'Password must be a string' };
       }
 
-      const warnings: string[] = [];
-      
       if (value.length < 8) {
         return { isValid: false, error: 'Password must be at least 8 characters long' };
       }
       
       if (!/[a-z]/.test(value)) {
-        warnings.push('Consider adding lowercase letters');
+        return { isValid: false, error: 'Password must contain at least one lowercase letter' };
       }
       
       if (!/[A-Z]/.test(value)) {
-        warnings.push('Consider adding uppercase letters');
+        return { isValid: false, error: 'Password must contain at least one uppercase letter' };
       }
       
       if (!/\d/.test(value)) {
-        warnings.push('Consider adding numbers');
+        return { isValid: false, error: 'Password must contain at least one number' };
       }
-      
+
+      const warnings: string[] = [];
       if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
         warnings.push('Consider adding special characters for extra security');
       }
@@ -101,7 +100,8 @@ export const validators = {
       const isStrong = VALIDATION_PATTERNS.password.test(value);
       
       return {
-        isValid: true,
+        isValid: isStrong,
+        error: isStrong ? undefined : message,
         warnings: warnings.length > 0 ? warnings : undefined,
       };
     },
@@ -270,7 +270,7 @@ export function useFormValidation<T extends Record<string, any>>(
   const [warnings, setWarnings] = React.useState<Partial<Record<keyof T, string[]>>>({});
   const [touched, setTouched] = React.useState<Partial<Record<keyof T, boolean>>>({});
 
-  const validateField = React.useCallback((field: keyof T, value: T[keyof T]) => {
+  const validateFormField = React.useCallback((field: keyof T, value: T[keyof T]) => {
     const fieldRules = rules[field];
     if (!fieldRules) return { isValid: true };
 
@@ -293,14 +293,14 @@ export function useFormValidation<T extends Record<string, any>>(
     setData(prev => ({ ...prev, [field]: value }));
     
     if (touched[field]) {
-      validateField(field, value);
+      validateFormField(field, value);
     }
-  }, [touched, validateField]);
+  }, [touched, validateFormField]);
 
   const touchField = React.useCallback((field: keyof T) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    validateField(field, data[field]);
-  }, [data, validateField]);
+    validateFormField(field, data[field]);
+  }, [data, validateFormField]);
 
   const validateAll = React.useCallback(() => {
     const results = validateObject(data, rules);

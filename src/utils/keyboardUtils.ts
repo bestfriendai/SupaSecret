@@ -67,8 +67,11 @@ export const dismissKeyboard = (withHaptics = false) => {
   
   if (withHaptics && Platform.OS === 'ios') {
     // Add subtle haptic feedback on keyboard dismiss
-    const { HapticFeedback } = require('expo-haptics');
-    HapticFeedback.impactAsync(HapticFeedback.ImpactFeedbackStyle.Light);
+    import('expo-haptics').then(({ impactAsync, ImpactFeedbackStyle }) => {
+      impactAsync(ImpactFeedbackStyle.Light);
+    }).catch(() => {
+      // Haptics not available - silently fail
+    });
   }
 };
 

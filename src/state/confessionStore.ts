@@ -144,29 +144,14 @@ export const useConfessionStore = create<ConfessionState>()(
         set({ isLoading: true, error: null, hasMore: true });
         try {
           const INITIAL_LIMIT = 20;
-          const data = await selectWithRetry<any>(
-            "confessions",
-            "*",
-            {
-              maxAttempts: 3,
-              initialDelay: 1000,
-              onRetry: (error, attempt) => {
-                if (__DEV__) {
-                  console.warn(`[ConfessionStore] Load confessions retry attempt ${attempt}:`, error);
-                }
-              }
-            }
-          );
 
-          // Apply ordering and limit (since selectWithRetry doesn't support these yet)
-          const { data: orderedData, error } = await supabase
+          const { data: finalData, error } = await supabase
             .from("confessions")
             .select("*")
             .order("created_at", { ascending: false })
             .limit(INITIAL_LIMIT);
 
           if (error) throw error;
-          const finalData = orderedData;
 
           const confessions: Confession[] = await Promise.all(
             (finalData || []).map(async (item) => {
@@ -193,7 +178,7 @@ export const useConfessionStore = create<ConfessionState>()(
           set({
             confessions,
             isLoading: false,
-            hasMore: (data?.length || 0) >= INITIAL_LIMIT,
+            hasMore: (finalData?.length || 0) >= INITIAL_LIMIT,
           });
         } catch (error) {
           set({

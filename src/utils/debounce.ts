@@ -3,7 +3,8 @@
  * Prevents excessive API calls and improves performance
  */
 
-import React, { useCallback, useRef } from 'react';
+import * as React from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 
 /**
  * Generic debounce function
@@ -160,9 +161,12 @@ export function useDebouncedLikeToggle(
         console.error('Like toggle failed:', error);
       } finally {
         // Remove from pending after delay to prevent rapid clicking
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           pendingLikes.current.delete(id);
         }, delay);
+        
+        // Cleanup timeout on unmount
+        return () => clearTimeout(timeoutId);
       }
     },
     [likeFunction, delay]

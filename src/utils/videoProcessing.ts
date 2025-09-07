@@ -256,8 +256,15 @@ export const cleanupTemporaryFiles = async (): Promise<void> => {
         const filePath = `${documentDirectory}${file}`;
         const fileInfo = await FileSystem.getInfoAsync(filePath);
 
-        if (fileInfo.exists && fileInfo.modificationTime && fileInfo.modificationTime < oneHourAgo) {
-          await FileSystem.deleteAsync(filePath, { idempotent: true });
+        if (fileInfo.exists && fileInfo.modificationTime) {
+          // Normalize modificationTime to milliseconds (FileSystem might return seconds)
+          const modificationTimeMs = fileInfo.modificationTime > 1e10 
+            ? fileInfo.modificationTime 
+            : fileInfo.modificationTime * 1000;
+          
+          if (modificationTimeMs < oneHourAgo) {
+            await FileSystem.deleteAsync(filePath, { idempotent: true });
+          }
         }
       } catch (error) {
         console.warn(`Failed to clean up temp file ${file}:`, error);
@@ -291,10 +298,11 @@ const pathForFFmpeg = (uri: string) => (uri.startsWith("file://") ? uri.replace(
 
 const runFfmpeg = async (command: string): Promise<boolean> => {
   try {
-    // Check if we're in Expo Go or if FFmpeg is available
-    if (__DEV__ && !(global as any).__ffmpegAvailable) {
+    // First check if FFmpeg is available using our global availability check
+    const isAvailable = await checkFFmpegAvailability();
+    if (!isAvailable) {
       if (__DEV__) {
-        console.warn("FFmpeg not available in development environment, skipping processing");
+        console.warn("FFmpeg not available, skipping processing");
       }
       return false;
     }
@@ -303,7 +311,7 @@ const runFfmpeg = async (command: string): Promise<boolean> => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const ff = require("ffmpeg-kit-react-native");
 
-    // Check if FFmpegKit is properly initialized
+    // Double-check FFmpegKit is properly initialized
     if (!ff || !ff.FFmpegKit) {
       if (__DEV__) {
         console.warn("FFmpegKit not properly initialized");

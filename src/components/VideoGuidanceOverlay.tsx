@@ -9,6 +9,7 @@ import Animated, {
   withSequence,
   withDelay,
   withRepeat,
+  cancelAnimation,
 } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -47,8 +48,22 @@ export default function VideoGuidanceOverlay({ isVisible, onDismiss }: VideoGuid
         withRepeat(withSequence(withTiming(1.2, { duration: 300 }), withTiming(1, { duration: 300 })), -1, true),
       );
     } else {
+      // Cancel all animations when hiding
+      cancelAnimation(overlayOpacity);
+      cancelAnimation(swipeIndicatorY);
+      cancelAnimation(heartScale);
+      
       overlayOpacity.value = withTiming(0, { duration: 300 });
+      swipeIndicatorY.value = 0;
+      heartScale.value = 0;
     }
+
+    // Cleanup function to cancel animations on unmount
+    return () => {
+      cancelAnimation(overlayOpacity);
+      cancelAnimation(swipeIndicatorY);
+      cancelAnimation(heartScale);
+    };
   }, [isVisible, showGuidance]);
 
   const checkShouldShowGuidance = async () => {

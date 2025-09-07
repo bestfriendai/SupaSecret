@@ -36,7 +36,6 @@ class VideoCacheManager {
     // Initialize LRU cache for metadata
     this.lruCache = new LRUCache<CacheEntry>({
       maxSize: this.config.maxEntries,
-      maxMemory: this.config.maxCacheSize,
       ttl: 24 * 60 * 60 * 1000, // 24 hours
       onEvict: (key, entry) => this.handleEviction(key, entry),
       getSizeOf: (entry) => entry.size,
@@ -143,9 +142,20 @@ class VideoCacheManager {
         return bPriority - aPriority; // Higher priority first (keep)
       }
 
-      // Access frequency and recency
-      const aScore = a.accessCount * 0.7 + (Date.now() - a.timestamp) * -0.3;
-      const bScore = b.accessCount * 0.7 + (Date.now() - b.timestamp) * -0.3;
+      // Calculate normalized recency score (0-1, where 1 is most recent)
+      const now = Date.now();
+      const maxAge = Math.max(...entries.map(([, entry]) => now - entry.timestamp), 1);
+      const aRecency = 1 - ((now - a.timestamp) / maxAge);
+      const bRecency = 1 - ((now - b.timestamp) / maxAge);
+
+      // Calculate normalized access frequency score (0-1)
+      const maxAccess = Math.max(...entries.map(([, entry]) => entry.accessCount), 1);
+      const aFrequency = a.accessCount / maxAccess;
+      const bFrequency = b.accessCount / maxAccess;
+
+      // Combined score with proper weighting
+      const aScore = aFrequency * 0.6 + aRecency * 0.4;
+      const bScore = bFrequency * 0.6 + bRecency * 0.4;
 
       return aScore - bScore; // Lower score first (evict)
     });

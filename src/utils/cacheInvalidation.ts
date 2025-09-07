@@ -205,15 +205,15 @@ export const batchInvalidateCache = (events: Array<{ event: InvalidationEvent; d
     if (callbacks) {
       callbacks.forEach(callback => {
         try {
-          // Call with the first event that affects this cache
-          const relevantEvent = events.find(({ event }) => 
+          // Call with all events that affect this cache
+          const relevantEvents = events.filter(({ event }) => 
             INVALIDATION_RULES.some(rule => 
               rule.event === event && rule.affectedCaches.includes(cacheKey)
             )
           );
-          if (relevantEvent) {
+          relevantEvents.forEach(relevantEvent => {
             callback(relevantEvent.event, relevantEvent.data);
-          }
+          });
         } catch (error) {
           if (__DEV__) {
             console.error(`[Cache Invalidation] Error in batch callback for ${cacheKey}:`, error);

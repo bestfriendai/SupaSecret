@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
@@ -15,7 +15,7 @@ interface SegmentedTabsProps {
   tabs: TabItem[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
-  style?: any;
+  style?: ViewStyle;
 }
 
 export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: SegmentedTabsProps) {

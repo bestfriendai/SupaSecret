@@ -193,11 +193,35 @@ export class PushNotificationManager {
    * Check if current time is within quiet hours
    */
   isWithinQuietHours(quietStart: string, quietEnd: string): boolean {
+    // Input validation
+    if (!quietStart || !quietEnd || typeof quietStart !== 'string' || typeof quietEnd !== 'string') {
+      console.warn('Invalid quiet hours parameters:', { quietStart, quietEnd });
+      return false;
+    }
+
+    // Validate time format (HH:MM)
+    const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timePattern.test(quietStart) || !timePattern.test(quietEnd)) {
+      console.warn('Invalid time format for quiet hours:', { quietStart, quietEnd });
+      return false;
+    }
+
     const now = new Date();
     const currentTime = now.getHours() * 60 + now.getMinutes();
 
-    const [startHour, startMin] = quietStart.split(":").map(Number);
-    const [endHour, endMin] = quietEnd.split(":").map(Number);
+    const startParts = quietStart.split(":");
+    const endParts = quietEnd.split(":");
+    
+    const startHour = parseInt(startParts[0], 10);
+    const startMin = parseInt(startParts[1], 10);
+    const endHour = parseInt(endParts[0], 10);
+    const endMin = parseInt(endParts[1], 10);
+
+    // Additional validation for parsed values
+    if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
+      console.warn('Failed to parse time values:', { quietStart, quietEnd });
+      return false;
+    }
 
     const startTime = startHour * 60 + startMin;
     const endTime = endHour * 60 + endMin;

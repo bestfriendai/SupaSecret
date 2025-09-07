@@ -94,10 +94,12 @@ export default function AnimatedModal({
         }
       });
     } else {
-      // Fade animation
-      setTimeout(() => {
-        onClose();
-      }, animationConfig.duration);
+      // Fade animation - use animation completion callback
+      backdropOpacityValue.value = withTiming(0, animationConfig, (finished) => {
+        if (finished) {
+          runOnJS(onClose)();
+        }
+      });
     }
   };
 

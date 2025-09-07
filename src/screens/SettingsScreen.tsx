@@ -385,7 +385,7 @@ export default function SettingsScreen() {
         <ConfirmModal
           visible={showModal}
           onClose={() => setShowModal(false)}
-          title="Clear All Notifications"
+          title="Clear All Confessions"
           message={modalMessage}
           confirmText="Clear All"
           cancelText="Cancel"

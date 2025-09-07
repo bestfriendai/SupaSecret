@@ -2,10 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Database } from "../types/database";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL || "https://xhtqobjcbjgzxkgfyvdj.supabase.co";
-const supabaseAnonKey =
-  process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhodHFvYmpjYmpnenhrZ2Z5dmRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NDg3MjAsImV4cCI6MjA3MDEyNDcyMH0.pRMiejad4ILuHM5N7z9oBMcbCekjSl-1cM41lP1o9-g";
+const supabaseUrl = process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing required Supabase environment variables. Please check your .env file.');
+}
 
 // 2025 Best Practices: Enhanced Supabase configuration with proper storage and error handling
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -15,8 +17,13 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
-    // Note: PKCE flow might cause issues with React Native, using default for now
-    // flowType: 'pkce', // Use PKCE flow for better security
+    // Enhanced React Native specific options
+    flowType: 'pkce', // Use PKCE flow for better security in React Native
+    debug: __DEV__, // Enable debug mode in development
+    storageKey: 'supabase-auth-token', // Custom storage key
+    // Improved session management
+    sessionRefreshInterval: 1000 * 60 * 30, // 30 minutes
+    retryOnFailure: true,
   },
   // Global configuration for better performance
   global: {

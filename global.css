@@ -1,6 +1,5 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities;
 
 /* Global component classes for consistent spacing and accessibility */
 @layer components {
@@ -53,7 +52,7 @@
 
   /* Modal classes */
   .modal-container {
-    @apply flex-1 justify-center items-center bg-black/50 p-5;
+    @apply fixed inset-0 flex justify-center items-center bg-black/50 p-5 z-50;
   }
 
   .modal-content {
@@ -101,13 +100,12 @@
     @apply animate-in zoom-in duration-200;
   }
 
-  /* Accessibility classes */
-  .sr-only {
-    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
-  }
+  /* Accessibility classes - removed custom .sr-only to use Tailwind's built-in */
 
-  /* Focus visible for keyboard navigation */
-  .focus-visible {
-    @apply focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2;
+  /* Focus ring helper for keyboard navigation */
+  .focus-ring {
+    @apply focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 ring-2 ring-blue-300 ring-offset-2;
   }
 }
+
+@tailwind utilities;

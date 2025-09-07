@@ -63,7 +63,12 @@ export const processError = (
     }
 
     // Handle network errors
-    if (error.message.includes("fetch") || error.message.includes("NetworkError")) {
+    if (error.name === "NetworkError" || 
+        error.message.toLowerCase().includes("network") ||
+        error.message.toLowerCase().includes("fetch") ||
+        error.message.toLowerCase().includes("connection") ||
+        error.message.toLowerCase().includes("unreachable") ||
+        (error as any).code === "NETWORK_ERROR") {
       code = "NETWORK_ERROR";
       message = customMessage || "Network connection failed. Please check your internet connection.";
       isRetryable = true;

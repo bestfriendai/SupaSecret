@@ -7,6 +7,7 @@ import Animated, {
   withRepeat,
   withTiming,
   interpolate,
+  cancelAnimation,
 } from "react-native-reanimated";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -22,8 +23,15 @@ export default function VideoSkeleton({ isVisible }: VideoSkeletonProps) {
     if (isVisible) {
       shimmerTranslateX.value = withRepeat(withTiming(screenWidth, { duration: 1500 }), -1, false);
     } else {
+      // Cancel animation when hidden
+      cancelAnimation(shimmerTranslateX);
       shimmerTranslateX.value = -screenWidth;
     }
+
+    // Cleanup function to cancel animation on unmount
+    return () => {
+      cancelAnimation(shimmerTranslateX);
+    };
   }, [isVisible]);
 
   const shimmerStyle = useAnimatedStyle(() => {
