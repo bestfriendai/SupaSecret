@@ -2,13 +2,11 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTrendingStore } from "../state/trendingStore";
-import {
-  getTimePeriodText,
-  formatEngagementScore,
-  HashtagData,
-  TrendingSecret
-} from "../utils/trending";
+import { getTimePeriodText, formatEngagementScore, HashtagData, TrendingSecret } from "../utils/trending";
 import { format } from "date-fns";
+import TrendingSkeleton from "../components/TrendingSkeleton";
+import { getButtonA11yProps, getCloseButtonA11yProps } from "../utils/accessibility";
+import { useDebouncedSearch } from "../utils/debounce";
 
 type TimePeriod = 24 | 168 | 720; // 24h, 1w, 1m
 type ViewMode = "hashtags" | "secrets";
@@ -16,8 +14,6 @@ type ViewMode = "hashtags" | "secrets";
 export default function TrendingScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>("hashtags");
   const [timePeriod, setTimePeriod] = useState<TimePeriod>(24);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
 
   const {
     trendingHashtags,
@@ -31,8 +27,20 @@ export default function TrendingScreen() {
     searchByHashtag,
     refreshAll,
     clearSearch,
-    clearError
+    clearError,
   } = useTrendingStore();
+
+  // Debounced search functionality
+  const { searchQuery, isSearching, handleSearchChange, setSearchQuery } = useDebouncedSearch(
+    async (query: string) => {
+      if (query.trim()) {
+        await searchByHashtag(query.trim());
+      } else {
+        clearSearch();
+      }
+    },
+    300 // 300ms debounce delay
+  );
 
   // Load initial data
   useEffect(() => {
@@ -48,52 +56,30 @@ export default function TrendingScreen() {
     }
   };
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    setIsSearching(query.length > 0);
-
-    if (query.trim()) {
-      await searchByHashtag(query.trim());
-    } else {
-      clearSearch();
-    }
-  };
-
   const handleClearSearch = () => {
     setSearchQuery("");
-    setIsSearching(false);
     clearSearch();
   };
 
   const TimePeriodButton = ({ period, label }: { period: TimePeriod; label: string }) => (
     <Pressable
-      className={`px-4 py-2 rounded-full ${
-        timePeriod === period ? "bg-blue-500" : "bg-gray-800"
-      }`}
+      className={`px-4 py-2 rounded-full ${timePeriod === period ? "bg-blue-500" : "bg-gray-800"}`}
       onPress={() => {
         setTimePeriod(period);
         // Clear error when changing time period
         if (error) clearError();
       }}
     >
-      <Text className={`text-14 font-medium ${
-        timePeriod === period ? "text-white" : "text-gray-400"
-      }`}>
-        {label}
-      </Text>
+      <Text className={`text-14 font-medium ${timePeriod === period ? "text-white" : "text-gray-400"}`}>{label}</Text>
     </Pressable>
   );
 
   const ViewModeButton = ({ mode, label }: { mode: ViewMode; label: string }) => (
     <Pressable
-      className={`flex-1 py-3 ${
-        viewMode === mode ? "border-b-2 border-blue-500" : ""
-      }`}
+      className={`flex-1 py-3 ${viewMode === mode ? "border-b-2 border-blue-500" : ""}`}
       onPress={() => setViewMode(mode)}
     >
-      <Text className={`text-center text-16 font-medium ${
-        viewMode === mode ? "text-white" : "text-gray-400"
-      }`}>
+      <Text className={`text-center text-16 font-medium ${viewMode === mode ? "text-white" : "text-gray-400"}`}>
         {label}
       </Text>
     </Pressable>
@@ -102,7 +88,7 @@ export default function TrendingScreen() {
   const HashtagItem = ({ item }: { item: HashtagData }) => (
     <Pressable
       className="flex-row items-center justify-between py-3 px-4 bg-gray-900 rounded-xl mb-2"
-      onPress={() => handleSearch(item.hashtag)}
+      onPress={() => handleSearchChange(item.hashtag)}
     >
       <View className="flex-1">
         <Text className="text-white text-16 font-medium">{item.hashtag}</Text>
@@ -111,11 +97,9 @@ export default function TrendingScreen() {
         </Text>
       </View>
       <View className="items-end">
-        <Text className="text-blue-400 text-14 font-bold">
-          {item.percentage.toFixed(1)}%
-        </Text>
+        <Text className="text-blue-400 text-14 font-bold">{item.percentage.toFixed(1)}%</Text>
         <View className="w-16 h-2 bg-gray-700 rounded-full mt-1">
-          <View 
+          <View
             className="h-full bg-blue-500 rounded-full"
             style={{ width: `${Math.min(item.percentage * 2, 100)}%` }}
           />
@@ -133,31 +117,19 @@ export default function TrendingScreen() {
           </Text>
         </View>
         <View className="ml-3 items-end">
-          <Text className="text-blue-400 text-12 font-bold">
-            Score: {formatEngagementScore(item.engagementScore)}
-          </Text>
+          <Text className="text-blue-400 text-12 font-bold">Score: {formatEngagementScore(item.engagementScore)}</Text>
         </View>
       </View>
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
           <Ionicons name="heart" size={14} color="#EF4444" />
-          <Text className="text-gray-400 text-12 ml-1">
-            {item.confession.likes || 0}
-          </Text>
+          <Text className="text-gray-400 text-12 ml-1">{item.confession.likes || 0}</Text>
           <Ionicons name="time" size={14} color="#8B98A5" className="ml-3" />
-          <Text className="text-gray-400 text-12 ml-1">
-            {format(item.confession.timestamp, "MMM d, h:mm a")}
-          </Text>
+          <Text className="text-gray-400 text-12 ml-1">{format(item.confession.timestamp, "MMM d, h:mm a")}</Text>
         </View>
         <View className="flex-row items-center">
-          <Ionicons 
-            name={item.confession.type === "video" ? "videocam" : "document-text"} 
-            size={14} 
-            color="#8B98A5" 
-          />
-          <Text className="text-gray-400 text-12 ml-1 capitalize">
-            {item.confession.type}
-          </Text>
+          <Ionicons name={item.confession.type === "video" ? "videocam" : "document-text"} size={14} color="#8B98A5" />
+          <Text className="text-gray-400 text-12 ml-1 capitalize">{item.confession.type}</Text>
         </View>
       </View>
     </View>
@@ -181,10 +153,13 @@ export default function TrendingScreen() {
             placeholder="Search hashtags..."
             placeholderTextColor="#8B98A5"
             value={searchQuery}
-            onChangeText={handleSearch}
+            onChangeText={handleSearchChange}
           />
           {searchQuery.length > 0 && (
-            <Pressable onPress={handleClearSearch}>
+            <Pressable
+              onPress={handleClearSearch}
+              {...getCloseButtonA11yProps()}
+            >
               <Ionicons name="close-circle" size={16} color="#8B98A5" />
             </Pressable>
           )}
@@ -216,7 +191,10 @@ export default function TrendingScreen() {
           <View className="flex-row items-center">
             <Ionicons name="warning" size={16} color="#EF4444" />
             <Text className="text-red-400 text-14 ml-2 flex-1">{error}</Text>
-            <Pressable onPress={clearError}>
+            <Pressable
+              onPress={clearError}
+              {...getButtonA11yProps('Dismiss error', 'Double tap to dismiss error message')}
+            >
               <Ionicons name="close" size={16} color="#EF4444" />
             </Pressable>
           </View>
@@ -226,19 +204,10 @@ export default function TrendingScreen() {
       {/* Content */}
       <ScrollView
         className="flex-1 px-4"
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor="#1D9BF0"
-          />
-        }
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#1D9BF0" />}
       >
         {isLoading && !isRefreshing && (
-          <View className="items-center py-8">
-            <Ionicons name="refresh" size={32} color="#1D9BF0" />
-            <Text className="text-gray-400 text-14 mt-2">Loading trending data...</Text>
-          </View>
+          <TrendingSkeleton />
         )}
 
         {!isLoading && isSearching ? (
@@ -248,10 +217,7 @@ export default function TrendingScreen() {
               {searchResults.length} results for "{searchQuery}"
             </Text>
             {searchResults.map((confession) => (
-              <SecretItem 
-                key={confession.id} 
-                item={{ confession, engagementScore: 0 }} 
-              />
+              <SecretItem key={confession.id} item={{ confession, engagementScore: 0 }} />
             ))}
             {searchResults.length === 0 && (
               <View className="items-center py-8">
@@ -263,10 +229,8 @@ export default function TrendingScreen() {
         ) : !isLoading ? (
           /* Trending Content */
           <View className="py-4">
-            <Text className="text-gray-400 text-14 mb-3">
-              {getTimePeriodText(timePeriod)}
-            </Text>
-            
+            <Text className="text-gray-400 text-14 mb-3">{getTimePeriodText(timePeriod)}</Text>
+
             {viewMode === "hashtags" ? (
               <View>
                 {trendingHashtags.map((hashtag, index) => (

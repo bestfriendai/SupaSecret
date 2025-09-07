@@ -2,13 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, TextInput, Alert, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useReportStore } from "../state/reportStore";
 import { ReportReason, REPORT_REASON_LABELS, REPORT_REASON_DESCRIPTIONS } from "../types/report";
@@ -24,28 +18,22 @@ interface ReportModalProps {
 const MODAL_HEIGHT = 500;
 
 const REPORT_REASONS: ReportReason[] = [
-  'inappropriate_content',
-  'spam',
-  'harassment',
-  'false_information',
-  'violence',
-  'hate_speech',
-  'other'
+  "inappropriate_content",
+  "spam",
+  "harassment",
+  "false_information",
+  "violence",
+  "hate_speech",
+  "other",
 ];
 
-export default function ReportModal({
-  isVisible,
-  onClose,
-  confessionId,
-  replyId,
-  contentType,
-}: ReportModalProps) {
+export default function ReportModal({ isVisible, onClose, confessionId, replyId, contentType }: ReportModalProps) {
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [additionalDetails, setAdditionalDetails] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const { createReport, isLoading, error, clearError } = useReportStore();
-  
+
   const translateY = useSharedValue(MODAL_HEIGHT);
   const backdropOpacity = useSharedValue(0);
 
@@ -99,13 +87,13 @@ export default function ReportModal({
       return;
     }
 
-    if (selectedReason === 'other' && !additionalDetails.trim()) {
+    if (selectedReason === "other" && !additionalDetails.trim()) {
       Alert.alert("Error", "Please provide additional details for 'Other' reason");
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       await createReport({
         confessionId,
@@ -116,9 +104,9 @@ export default function ReportModal({
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert(
-        "Report Submitted", 
+        "Report Submitted",
         `Thank you for reporting this ${contentType}. We'll review it and take appropriate action.`,
-        [{ text: "OK", onPress: onClose }]
+        [{ text: "OK", onPress: onClose }],
       );
     } catch (error) {
       // Error is handled by the store and useEffect above
@@ -189,18 +177,14 @@ export default function ReportModal({
 
           <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
             {/* Reason Selection */}
-            <Text className="text-white text-16 font-medium mb-4">
-              Why are you reporting this {contentType}?
-            </Text>
+            <Text className="text-white text-16 font-medium mb-4">Why are you reporting this {contentType}?</Text>
 
             <View className="space-y-2 mb-6">
               {REPORT_REASONS.map((reason) => (
                 <Pressable
                   key={reason}
                   className={`flex-row items-center p-3 rounded-lg border ${
-                    selectedReason === reason
-                      ? "border-red-500 bg-red-500/10"
-                      : "border-gray-700 bg-gray-800/50"
+                    selectedReason === reason ? "border-red-500 bg-red-500/10" : "border-gray-700 bg-gray-800/50"
                   }`}
                   onPress={() => handleReasonSelect(reason)}
                 >
@@ -212,22 +196,18 @@ export default function ReportModal({
                     />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-white text-15 font-medium">
-                      {REPORT_REASON_LABELS[reason]}
-                    </Text>
-                    <Text className="text-gray-400 text-13 mt-1">
-                      {REPORT_REASON_DESCRIPTIONS[reason]}
-                    </Text>
+                    <Text className="text-white text-15 font-medium">{REPORT_REASON_LABELS[reason]}</Text>
+                    <Text className="text-gray-400 text-13 mt-1">{REPORT_REASON_DESCRIPTIONS[reason]}</Text>
                   </View>
                 </Pressable>
               ))}
             </View>
 
             {/* Additional Details */}
-            {(selectedReason === 'other' || selectedReason) && (
+            {(selectedReason === "other" || selectedReason) && (
               <View className="mb-6">
                 <Text className="text-white text-16 font-medium mb-3">
-                  Additional Details {selectedReason === 'other' ? '(Required)' : '(Optional)'}
+                  Additional Details {selectedReason === "other" ? "(Required)" : "(Optional)"}
                 </Text>
                 <TextInput
                   className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-white text-15"
@@ -247,9 +227,7 @@ export default function ReportModal({
           <View className="pt-4 pb-6">
             <Pressable
               className={`rounded-lg py-4 ${
-                selectedReason && !isSubmitting && !isLoading
-                  ? "bg-red-500"
-                  : "bg-gray-700"
+                selectedReason && !isSubmitting && !isLoading ? "bg-red-500" : "bg-gray-700"
               }`}
               onPress={handleSubmit}
               disabled={!selectedReason || isSubmitting || isLoading}

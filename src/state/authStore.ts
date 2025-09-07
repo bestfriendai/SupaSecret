@@ -2,14 +2,9 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthState, User, AuthCredentials, SignUpData, AuthError } from "../types/auth";
-import {
-  signUpUser,
-  signInUser,
-  signOutUser,
-  getCurrentUser,
-  updateUserData,
-} from "../utils/auth";
+import { signUpUser, signInUser, signOutUser, getCurrentUser, updateUserData } from "../utils/auth";
 import { supabase } from "../lib/supabase";
+import { handleStoreError, clearStoreError, withErrorHandling, type StandardError } from "../utils/errorHandling";
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -20,55 +15,51 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       signUp: async (data: SignUpData) => {
-        set({ isLoading: true, error: null });
-        try {
-          const user = await signUpUser(data);
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-        } catch (error) {
-          const authError: AuthError = {
-            code: error instanceof Error && "code" in error ? (error as any).code : "UNKNOWN_ERROR",
-            message: error instanceof Error ? error.message : "An unknown error occurred",
-          };
-          set({
-            isLoading: false,
-            error: authError,
-          });
-          throw error;
-        }
+        await withErrorHandling(
+          set,
+          async () => {
+            const user = await signUpUser(data);
+            set({
+              user,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+          },
+          {
+            shouldThrow: true,
+            context: "signUp",
+            customMessage: "Failed to create account. Please try again.",
+          }
+        );
       },
 
       signIn: async (credentials: AuthCredentials) => {
-        set({ isLoading: true, error: null });
-        try {
-          const user = await signInUser(credentials);
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-        } catch (error) {
-          const authError: AuthError = {
-            code: error instanceof Error && "code" in error ? (error as any).code : "UNKNOWN_ERROR",
-            message: error instanceof Error ? error.message : "An unknown error occurred",
-          };
-          set({
-            isLoading: false,
-            error: authError,
-          });
-          throw error;
-        }
+        await withErrorHandling(
+          set,
+          async () => {
+            const user = await signInUser(credentials);
+            set({
+              user,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null,
+            });
+          },
+          {
+            shouldThrow: true,
+            context: "signIn",
+            customMessage: "Failed to sign in. Please check your credentials.",
+          }
+        );
       },
 
       signOut: async () => {
         set({ isLoading: true });
         try {
           await signOutUser();
+          // Cleanup auth listener on sign out
+          cleanupAuthListener();
           set({
             user: null,
             isAuthenticated: false,
@@ -117,21 +108,22 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearError: () => {
-        set({ error: null });
+        clearStoreError(set);
       },
 
       checkAuthState: async () => {
         if (__DEV__) {
-          console.log('🔍 Starting auth state check...');
+          console.log("🔍 Starting auth state check...");
         }
         set({ isLoading: true });
         try {
           const user = await getCurrentUser();
 
           if (__DEV__) {
-            console.log('🔍 Auth state check result:', {
-              user: user ? `${user.email} (onboarded: ${user.isOnboarded})` : null,
-              isAuthenticated: !!user
+            console.log("🔍 Auth state check result:", {
+              hasUser: !!user,
+              isOnboarded: user?.isOnboarded || false,
+              isAuthenticated: !!user,
             });
           }
 
@@ -142,7 +134,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error) {
-          console.error('❌ Auth state check failed:', error);
+          console.error("❌ Auth state check failed:", error);
           set({
             user: null,
             isAuthenticated: false,
@@ -172,28 +164,40 @@ export const useAuthStore = create<AuthState>()(
       // Rehydrate the state properly
       onRehydrateStorage: () => (state) => {
         if (__DEV__ && state) {
-          console.log('🔍 Auth state rehydrated:', {
-            user: state.user ? `${state.user.email} (onboarded: ${state.user.isOnboarded})` : null,
-            isAuthenticated: state.isAuthenticated
+          console.log("🔍 Auth state rehydrated:", {
+            hasUser: !!state.user,
+            isOnboarded: state.user?.isOnboarded || false,
+            isAuthenticated: state.isAuthenticated,
           });
         }
       },
-    }
-  )
+    },
+  ),
 );
 
+// Auth listener management
+let authListener: { data: { subscription: any } } | null = null;
+
+// Cleanup function for auth listener
+const cleanupAuthListener = () => {
+  if (authListener) {
+    authListener.data.subscription.unsubscribe();
+    authListener = null;
+  }
+};
+
 // Listen to auth state changes
-supabase.auth.onAuthStateChange(async (event, session) => {
+authListener = supabase.auth.onAuthStateChange(async (event, session) => {
   if (__DEV__) {
-    console.log('🔍 Supabase auth event:', event, session ? 'with session' : 'no session');
+    console.log("🔍 Supabase auth event:", event, session ? "with session" : "no session");
   }
 
   const { checkAuthState } = useAuthStore.getState();
 
-  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+  if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
     // User signed in or token refreshed - update our auth state
     await checkAuthState();
-  } else if (event === 'SIGNED_OUT') {
+  } else if (event === "SIGNED_OUT") {
     // User signed out - clear our auth state
     useAuthStore.setState({
       user: null,
@@ -201,7 +205,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       isLoading: false,
       error: null,
     });
-  } else if (event === 'INITIAL_SESSION') {
+  } else if (event === "INITIAL_SESSION") {
     // Initial session check - this happens on app startup
     if (session) {
       await checkAuthState();
@@ -216,3 +220,6 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     }
   }
 });
+
+// Export cleanup function for app-level cleanup
+export { cleanupAuthListener };

@@ -11,7 +11,7 @@ const checkFFmpegAvailability = async (): Promise<boolean> => {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const ff = require('ffmpeg-kit-react-native');
+    const ff = require("ffmpeg-kit-react-native");
     ffmpegAvailable = !!(ff && ff.FFmpegKit);
     if (ffmpegAvailable) {
       // Set global flag for runFfmpeg function
@@ -51,14 +51,10 @@ export interface VideoProcessingOptions {
  */
 export const processVideoConfession = async (
   videoUri: string,
-  options: VideoProcessingOptions = {}
+  options: VideoProcessingOptions = {},
 ): Promise<ProcessedVideo> => {
   try {
-    const {
-      enableTranscription = true,
-      quality = "medium",
-      onProgress
-    } = options;
+    const { enableTranscription = true, quality = "medium", onProgress } = options;
 
     // Check if video file exists
     const fileInfo = await FileSystem.getInfoAsync(videoUri);
@@ -97,19 +93,19 @@ export const processVideoConfession = async (
       // FFmpeg unavailable (likely Expo Go). Fall back to copy as processed.
       await FileSystem.copyAsync({ from: videoUri, to: processedVideoUri });
     }
-    
+
     let transcription = "";
-    
+
     if (enableTranscription) {
       try {
         onProgress?.(50, "Extracting audio for transcription...");
-        
+
         // Extract audio from PROCESSED video and transcribe
         const audioUri = await extractAudioFromVideo(processedVideoUri);
-        
+
         onProgress?.(70, "Transcribing audio...");
         transcription = await transcribeAudio(audioUri);
-        
+
         // Clean up temporary audio file
         await FileSystem.deleteAsync(audioUri, { idempotent: true });
       } catch (error) {
@@ -118,16 +114,16 @@ export const processVideoConfession = async (
         transcription = generateMockTranscription();
       }
     }
-    
+
     onProgress?.(85, "Finalizing video processing...");
-    
+
     onProgress?.(95, "Generating thumbnail...");
-    
+
     // Generate thumbnail (mock implementation)
     const thumbnailUri = await generateVideoThumbnail(processedVideoUri);
-    
+
     onProgress?.(100, "Processing complete!");
-    
+
     return {
       uri: processedVideoUri,
       transcription,
@@ -136,7 +132,7 @@ export const processVideoConfession = async (
     };
   } catch (error) {
     console.error("Video processing error:", error);
-    throw new Error(`Failed to process video confession: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to process video confession: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 };
 
@@ -151,7 +147,7 @@ const generateVideoThumbnail = async (videoUri: string): Promise<string> => {
     if (!fileInfo.exists) {
       throw new Error("Video file does not exist");
     }
-    
+
     // For now, return empty string as we don't have thumbnail generation
     // In a real implementation:
     // import { VideoThumbnails } from 'expo-video-thumbnails';
@@ -159,7 +155,7 @@ const generateVideoThumbnail = async (videoUri: string): Promise<string> => {
     //   time: 1000,
     // });
     // return uri;
-    
+
     return "";
   } catch (error) {
     console.error("Thumbnail generation failed:", error);
@@ -177,15 +173,16 @@ const extractAudioFromVideo = async (videoUri: string): Promise<string> => {
     if (!fileInfo.exists) {
       throw new Error("Video file does not exist");
     }
-    
+
     // Check available storage space
     const freeSpace = await FileSystem.getFreeDiskStorageAsync();
     const videoSize = fileInfo.size || 0;
-    
-    if (freeSpace < videoSize * 2) { // Need at least 2x video size for processing
+
+    if (freeSpace < videoSize * 2) {
+      // Need at least 2x video size for processing
       throw new Error("Insufficient storage space for video processing");
     }
-    
+
     // Create temporary audio file path
     const audioUri = `${FileSystem.documentDirectory}temp_audio_${Date.now()}.m4a`;
     const inPath = pathForFFmpeg(videoUri);
@@ -207,7 +204,7 @@ const extractAudioFromVideo = async (videoUri: string): Promise<string> => {
     return audioUri;
   } catch (error) {
     console.error("Audio extraction error:", error);
-    throw new Error(`Failed to extract audio from video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to extract audio from video: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 };
 
@@ -219,10 +216,10 @@ export const extractAndTranscribeAudio = async (videoUri: string): Promise<strin
   try {
     const audioUri = await extractAudioFromVideo(videoUri);
     const transcription = await transcribeAudio(audioUri);
-    
+
     // Clean up temporary audio file
     await FileSystem.deleteAsync(audioUri, { idempotent: true });
-    
+
     return transcription;
   } catch (error) {
     if (__DEV__) {
@@ -241,23 +238,24 @@ export const cleanupTemporaryFiles = async (): Promise<void> => {
   try {
     const documentDirectory = FileSystem.documentDirectory;
     if (!documentDirectory) return;
-    
+
     const files = await FileSystem.readDirectoryAsync(documentDirectory);
-    const tempFiles = files.filter(file => 
-      file.startsWith('temp_audio_') || 
-      file.startsWith('temp_video_') ||
-      file.startsWith('thumbnail_') ||
-      file.startsWith('processed_')
+    const tempFiles = files.filter(
+      (file) =>
+        file.startsWith("temp_audio_") ||
+        file.startsWith("temp_video_") ||
+        file.startsWith("thumbnail_") ||
+        file.startsWith("processed_"),
     );
-    
+
     // Clean up files older than 1 hour
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+
     for (const file of tempFiles) {
       try {
         const filePath = `${documentDirectory}${file}`;
         const fileInfo = await FileSystem.getInfoAsync(filePath);
-        
+
         if (fileInfo.exists && fileInfo.modificationTime && fileInfo.modificationTime < oneHourAgo) {
           await FileSystem.deleteAsync(filePath, { idempotent: true });
         }
@@ -284,31 +282,31 @@ const generateMockTranscription = (): string => {
     "I pretend to understand things in meetings at work when I'm actually completely lost most of the time.",
     "I've been eating my feelings and gained weight, but I tell everyone I'm fine when I'm really not.",
   ];
-  
+
   return mockConfessions[Math.floor(Math.random() * mockConfessions.length)];
 };
 
 // Helpers
-const pathForFFmpeg = (uri: string) => (uri.startsWith('file://') ? uri.replace('file://', '') : uri);
+const pathForFFmpeg = (uri: string) => (uri.startsWith("file://") ? uri.replace("file://", "") : uri);
 
 const runFfmpeg = async (command: string): Promise<boolean> => {
   try {
     // Check if we're in Expo Go or if FFmpeg is available
-    if (__DEV__ && !global.__ffmpegAvailable) {
+    if (__DEV__ && !(global as any).__ffmpegAvailable) {
       if (__DEV__) {
-        console.warn('FFmpeg not available in development environment, skipping processing');
+        console.warn("FFmpeg not available in development environment, skipping processing");
       }
       return false;
     }
 
     // Dynamically require to avoid crashing in Expo Go
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const ff = require('ffmpeg-kit-react-native');
+    const ff = require("ffmpeg-kit-react-native");
 
     // Check if FFmpegKit is properly initialized
     if (!ff || !ff.FFmpegKit) {
       if (__DEV__) {
-        console.warn('FFmpegKit not properly initialized');
+        console.warn("FFmpegKit not properly initialized");
       }
       return false;
     }
@@ -318,7 +316,7 @@ const runFfmpeg = async (command: string): Promise<boolean> => {
     return ff.ReturnCode.isSuccess(returnCode);
   } catch (e) {
     if (__DEV__) {
-      console.warn('FFmpeg unavailable or command failed; falling back.', e);
+      console.warn("FFmpeg unavailable or command failed; falling back.", e);
     }
     return false;
   }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { View, Text, Pressable, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,55 +7,61 @@ import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { useConfessionStore } from "../state/confessionStore";
 import AnimatedActionButton from "./AnimatedActionButton";
-import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
-import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useVideoPlayer } from "expo-video";
 
 const { height: screenHeight } = Dimensions.get("window");
 
 interface EnhancedVideoItemProps {
   confession: any;
-  player: any;
   isActive: boolean;
   onClose: () => void;
 }
 
-export default function EnhancedVideoItem({
-  confession,
-  player,
-  isActive,
-  onClose,
-}: EnhancedVideoItemProps) {
+export default function EnhancedVideoItem({ confession, isActive, onClose }: EnhancedVideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const { impactAsync } = usePreferenceAwareHaptics();
+
+  const sourceUri =
+    confession.videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
+  const player = useVideoPlayer(sourceUri, (p) => {
+    p.loop = true;
+  });
+
+  // Control playback based on visibility
+  useEffect(() => {
+    try {
+      if (isActive) {
+        if (player && typeof player.play === "function") {
+          player.play();
+        }
+      } else {
+        if (player && typeof player.pause === "function") {
+          player.pause();
+        }
+      }
+    } catch (e) {
+      if (__DEV__) console.warn("VideoItem play/pause failed:", e);
+    }
+  }, [isActive, player]);
 
   return (
     <View style={{ height: screenHeight }} className="bg-black">
       {/* Video Player */}
-      <VideoView
-        player={player}
-        style={{ flex: 1 }}
-        contentFit="cover"
-        nativeControls={false}
-      />
+      <VideoView player={player} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
 
       {/* Top Overlay */}
       <View className="absolute top-0 left-0 right-0 z-10">
         <SafeAreaView>
           <View className="flex-row items-center justify-between px-4 py-2">
-            <Pressable
-              className="bg-black/50 rounded-full p-2"
-              onPress={onClose}
-            >
+            <Pressable className="bg-black/50 rounded-full p-2" onPress={onClose}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </Pressable>
-            
+
             <View className="bg-black/50 rounded-full px-3 py-1">
-              <Text className="text-white text-13 font-medium">
-                Video Secret
-              </Text>
+              <Text className="text-white text-13 font-medium">Video Secret</Text>
             </View>
-            
+
             <Pressable className="bg-black/50 rounded-full p-2">
               <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
             </Pressable>
@@ -76,7 +82,7 @@ export default function EnhancedVideoItem({
               impactAsync();
             }}
           />
-          
+
           <AnimatedActionButton
             icon="chatbubble-outline"
             label="Reply"
@@ -85,7 +91,7 @@ export default function EnhancedVideoItem({
               impactAsync();
             }}
           />
-          
+
           <AnimatedActionButton
             icon="share-outline"
             label="Share"
@@ -93,12 +99,12 @@ export default function EnhancedVideoItem({
               impactAsync();
             }}
           />
-          
+
           <AnimatedActionButton
             icon="bookmark-outline"
             label="Save"
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              impactAsync();
             }}
           />
         </View>
@@ -117,9 +123,7 @@ export default function EnhancedVideoItem({
                 <View className="flex-row items-center">
                   <Text className="text-white font-bold text-15">Anonymous</Text>
                   <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                  <Text className="text-gray-400 text-13">
-                    {format(new Date(confession.timestamp), "MMM d")}
-                  </Text>
+                  <Text className="text-gray-400 text-13">{format(new Date(confession.timestamp), "MMM d")}</Text>
                 </View>
                 <View className="flex-row items-center mt-1">
                   <Ionicons name="eye-off" size={12} color="#10B981" />
@@ -133,11 +137,9 @@ export default function EnhancedVideoItem({
 
             {/* Transcription */}
             {confession.transcription && (
-              <Text className="text-white text-15 leading-5 mb-2">
-                {confession.transcription}
-              </Text>
+              <Text className="text-white text-15 leading-5 mb-2">{confession.transcription}</Text>
             )}
-            
+
             {/* Video Info */}
             <View className="flex-row items-center">
               <Ionicons name="videocam" size={14} color="#1D9BF0" />
@@ -151,17 +153,20 @@ export default function EnhancedVideoItem({
       <Pressable
         className="absolute inset-0 z-5"
         onPress={() => {
-          if (player?.playing) {
-            player.pause();
-          } else {
-            player?.play();
+          try {
+            if (player && player.playing && typeof player.pause === "function") {
+              player.pause();
+            } else if (player && typeof player.play === "function") {
+              player.play();
+            }
+          } catch (e) {
+            if (__DEV__) console.warn("Toggle play failed:", e);
           }
           impactAsync();
         }}
       />
 
       {/* Bottom Sheets */}
-      
     </View>
   );
 }

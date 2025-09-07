@@ -26,8 +26,8 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: AuthError | null;
-  
+  error: import("../utils/errorHandling").StandardError | null;
+
   // Actions
   signUp: (data: SignUpData) => Promise<void>;
   signIn: (credentials: AuthCredentials) => Promise<void>;

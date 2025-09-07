@@ -5,7 +5,7 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { useAuthStore } from "./src/state/authStore";
 import { useConfessionStore } from "./src/state/confessionStore";
-
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
@@ -44,10 +44,10 @@ export default function App() {
         await loadUserPreferences();
 
         if (__DEV__) {
-          console.log('🚀 App initialization complete');
+          console.log("🚀 App initialization complete");
         }
       } catch (error) {
-        console.error('❌ App initialization failed:', error);
+        console.error("❌ App initialization failed:", error);
       }
     };
 
@@ -55,12 +55,20 @@ export default function App() {
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
 
   return (
-    <GestureHandlerRootView className="flex-1">
-      <SafeAreaProvider>
-        <BottomSheetModalProvider>
-          <AppNavigator />
-        </BottomSheetModalProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log to crash analytics in production
+        console.error('App-level error:', error, errorInfo);
+      }}
+      resetOnPropsChange={true}
+    >
+      <GestureHandlerRootView className="flex-1">
+        <SafeAreaProvider>
+          <BottomSheetModalProvider>
+            <AppNavigator />
+          </BottomSheetModalProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

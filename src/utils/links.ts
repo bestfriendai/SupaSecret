@@ -1,4 +1,4 @@
-import * as Linking from 'expo-linking';
+import * as Linking from "expo-linking";
 
 /**
  * Centralized link generation utility for share flows and deep linking
@@ -7,8 +7,8 @@ import * as Linking from 'expo-linking';
 // Configuration for link generation
 const LINK_CONFIG = {
   // Use app deep link for production, fallback to web URL for sharing
-  appScheme: 'supasecret',
-  webDomain: 'secrets.app',
+  appScheme: "supasecret",
+  webDomain: "secrets.app",
   // You can configure this based on environment
   useDeepLinks: true,
 };
@@ -36,8 +36,8 @@ export function generateConfessionLink(confessionId: string, useAppLink: boolean
  * @returns The shareable URL
  */
 export function generateHashtagLink(hashtag: string, useAppLink: boolean = false): string {
-  const cleanHashtag = hashtag.replace('#', '');
-  
+  const cleanHashtag = hashtag.replace("#", "");
+
   if (useAppLink && LINK_CONFIG.useDeepLinks) {
     return Linking.createURL(`/trending?hashtag=${encodeURIComponent(cleanHashtag)}`);
   } else {
@@ -53,15 +53,14 @@ export function generateHashtagLink(hashtag: string, useAppLink: boolean = false
  * @returns The formatted share message
  */
 export function generateShareMessage(
-  confessionText: string, 
-  confessionId: string, 
-  maxTextLength: number = 100
+  confessionText: string,
+  confessionId: string,
+  maxTextLength: number = 100,
 ): string {
   const shareUrl = generateConfessionLink(confessionId);
-  const truncatedText = confessionText.length > maxTextLength 
-    ? `${confessionText.substring(0, maxTextLength)}...` 
-    : confessionText;
-  
+  const truncatedText =
+    confessionText.length > maxTextLength ? `${confessionText.substring(0, maxTextLength)}...` : confessionText;
+
   return `Check out this anonymous confession: "${truncatedText}" ${shareUrl}`;
 }
 
@@ -73,31 +72,31 @@ export function generateShareMessage(
 export function parseDeepLink(url: string): { route: string; params: Record<string, string> } | null {
   try {
     const parsed = Linking.parse(url);
-    
+
     if (!parsed.path) return null;
-    
+
     // Handle confession links
     const confessionMatch = parsed.path.match(/^\/confession\/(.+)$/);
     if (confessionMatch) {
       return {
-        route: 'SecretDetail',
-        params: { confessionId: confessionMatch[1] }
+        route: "SecretDetail",
+        params: { confessionId: confessionMatch[1] },
       };
     }
-    
+
     // Handle trending links
     const trendingMatch = parsed.path.match(/^\/trending$/);
     if (trendingMatch && parsed.queryParams?.hashtag) {
       return {
-        route: 'Trending',
-        params: { hashtag: parsed.queryParams.hashtag as string }
+        route: "Trending",
+        params: { hashtag: parsed.queryParams.hashtag as string },
       };
     }
-    
+
     return null;
   } catch (error) {
     if (__DEV__) {
-      console.warn('Failed to parse deep link:', error);
+      console.warn("Failed to parse deep link:", error);
     }
     return null;
   }

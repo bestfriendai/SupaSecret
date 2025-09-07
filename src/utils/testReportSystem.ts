@@ -27,60 +27,59 @@ export async function testReportSystem() {
         return false;
       }
     }
-    
+
     console.log("✅ Reports table exists and is accessible");
-    
+
     // Test 2: Check if user is authenticated
     console.log("2. Checking authentication...");
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
     if (userError || !user) {
       console.log("⚠️  User not authenticated - some tests will be skipped");
       console.log("   Sign in to test report creation functionality");
       return true;
     }
-    
+
     console.log("✅ User authenticated:", user.email);
-    
+
     // Test 3: Check if confessions exist to report
     console.log("3. Checking for existing confessions...");
-    const { data: confessions, error: confessionsError } = await supabase
-      .from('confessions')
-      .select('id')
-      .limit(1);
-    
+    const { data: confessions, error: confessionsError } = await supabase.from("confessions").select("id").limit(1);
+
     if (confessionsError) {
       console.error("❌ Error fetching confessions:", confessionsError.message);
       return false;
     }
-    
+
     if (!confessions || confessions.length === 0) {
       console.log("⚠️  No confessions found - create some confessions first to test reporting");
       return true;
     }
-    
+
     console.log("✅ Found confessions to test with");
-    
+
     // Test 4: Test report store initialization
     console.log("4. Testing report store...");
     const reportStore = useReportStore.getState();
-    
-    if (typeof reportStore.createReport !== 'function') {
+
+    if (typeof reportStore.createReport !== "function") {
       console.error("❌ Report store not properly initialized");
       return false;
     }
-    
+
     console.log("✅ Report store initialized correctly");
-    
+
     console.log("🎉 Report system tests completed successfully!");
     console.log("📱 You can now test the UI by:");
     console.log("   1. Tapping the flag icon next to any secret");
     console.log("   2. Selecting a report reason");
     console.log("   3. Submitting the report");
     console.log("   4. Checking that it saves to the database");
-    
+
     return true;
-    
   } catch (error) {
     console.error("❌ Unexpected error during testing:", error);
     return false;
@@ -92,19 +91,18 @@ export async function testReportSystem() {
  */
 export async function testCreateReport(confessionId: string) {
   console.log("🧪 Testing report creation...");
-  
+
   try {
     const reportStore = useReportStore.getState();
-    
+
     await reportStore.createReport({
       confessionId,
-      reason: 'inappropriate_content',
-      additionalDetails: 'Test report created by testCreateReport function'
+      reason: "inappropriate_content",
+      additionalDetails: "Test report created by testCreateReport function",
     });
-    
+
     console.log("✅ Report created successfully");
     return true;
-    
   } catch (error) {
     console.error("❌ Error creating report:", error);
     return false;

@@ -31,7 +31,7 @@ export default function SettingsPicker({
   const { impactAsync } = usePreferenceAwareHaptics();
   const [modalVisible, setModalVisible] = useState(false);
 
-  const selectedOption = options.find(option => option.value === value);
+  const selectedOption = options.find((option) => option.value === value);
 
   const handleOptionSelect = (optionValue: string) => {
     impactAsync();
@@ -54,43 +54,24 @@ export default function SettingsPicker({
         disabled={disabled}
       >
         <View className="flex-row items-center flex-1">
-          {icon && (
-            <Ionicons 
-              name={icon} 
-              size={20} 
-              color="#8B98A5" 
-              style={{ marginRight: 12 }}
-            />
-          )}
+          {icon && <Ionicons name={icon} size={20} color="#8B98A5" style={{ marginRight: 12 }} />}
           <View className="flex-1">
             <Text className="text-white text-15 font-medium">{title}</Text>
-            {description && (
-              <Text className="text-gray-500 text-13 mt-1">{description}</Text>
-            )}
+            {description && <Text className="text-gray-500 text-13 mt-1">{description}</Text>}
           </View>
         </View>
         <View className="flex-row items-center">
-          <Text className="text-blue-400 text-14 mr-2">
-            {selectedOption?.label || value}
-          </Text>
+          <Text className="text-blue-400 text-14 mr-2">{selectedOption?.label || value}</Text>
           <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
         </View>
       </Pressable>
 
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-gray-900 rounded-t-3xl">
             <View className="flex-row items-center justify-between p-4 border-b border-gray-700">
               <Text className="text-white text-18 font-bold">{title}</Text>
-              <Pressable
-                onPress={() => setModalVisible(false)}
-                className="p-2"
-              >
+              <Pressable onPress={() => setModalVisible(false)} className="p-2">
                 <Ionicons name="close" size={24} color="#8B98A5" />
               </Pressable>
             </View>
@@ -102,18 +83,10 @@ export default function SettingsPicker({
                   onPress={() => handleOptionSelect(option.value)}
                 >
                   <View className="flex-1">
-                    <Text className="text-white text-16 font-medium">
-                      {option.label}
-                    </Text>
-                    {option.description && (
-                      <Text className="text-gray-500 text-13 mt-1">
-                        {option.description}
-                      </Text>
-                    )}
+                    <Text className="text-white text-16 font-medium">{option.label}</Text>
+                    {option.description && <Text className="text-gray-500 text-13 mt-1">{option.description}</Text>}
                   </View>
-                  {value === option.value && (
-                    <Ionicons name="checkmark" size={20} color="#1D9BF0" />
-                  )}
+                  {value === option.value && <Ionicons name="checkmark" size={20} color="#1D9BF0" />}
                 </Pressable>
               ))}
             </ScrollView>

@@ -1,16 +1,36 @@
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
-This is a custom audio transcription service that uses a custom API endpoint maintained by Vibecode.
+This is a custom audio transcription service that uses a server-side API endpoint.
 You can use this function to transcribe audio files, and it will return the text of the audio file.
 */
 
+// Development fallback constants
+const DEV_FALLBACK_TRANSCRIPTION =
+  "This is a simulated transcription for development purposes. The actual audio content would be transcribed here in production with a valid API key.";
+const isDevFallbackEnabled = process.env.NODE_ENV === "development";
+
 /**
- * Transcribe an audio file
+ * Transcribe an audio file via server-side endpoint
  * @param localAudioUri - The local URI of the audio file to transcribe. Obtained via the expo-av library.
  * @returns The text of the audio file
+ * @throws Error if transcription fails and dev fallback is disabled
  */
 export const transcribeAudio = async (localAudioUri: string) => {
   try {
+    // Get server endpoint URL - should be configured server-side
+    const SERVER_TRANSCRIPTION_ENDPOINT = process.env.EXPO_PUBLIC_SERVER_URL
+      ? `${process.env.EXPO_PUBLIC_SERVER_URL}/api/transcribe`
+      : null;
+
+    if (!SERVER_TRANSCRIPTION_ENDPOINT) {
+      // Strict handling: only return fallback in dev mode, otherwise throw
+      if (isDevFallbackEnabled) {
+        console.warn("Server transcription endpoint not configured, using dev fallback");
+        return DEV_FALLBACK_TRANSCRIPTION;
+      }
+      throw new Error("Transcription service not configured. Please contact support.");
+    }
+
     // Create FormData for the audio file
     const formData = new FormData();
     formData.append("file", {
@@ -21,35 +41,36 @@ export const transcribeAudio = async (localAudioUri: string) => {
     formData.append("model", "gpt-4o-transcribe");
     formData.append("language", "en");
 
-    const OPENAI_API_KEY = process.env.EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY;
-    if (!OPENAI_API_KEY) {
-      console.warn("OPENAI_API_KEY is not set, using fallback transcription");
-      return "This is a simulated transcription for development purposes. The actual audio content would be transcribed here in production with a valid API key.";
-    }
-
-    // API call to OpenAI's gpt-4o-transcribe
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    // Call server-side endpoint (no API keys in client)
+    const response = await fetch(SERVER_TRANSCRIPTION_ENDPOINT, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
       body: formData,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.warn("Transcription API failed, using fallback:", errorText);
+      console.error("Server transcription failed:", errorText);
 
-      // Return fallback transcription instead of throwing error
-      return "This is a simulated transcription for development purposes. The actual audio content would be transcribed here in production with a valid API key.";
+      // Strict handling: only return fallback in dev mode, otherwise throw
+      if (isDevFallbackEnabled) {
+        console.warn("Using dev fallback due to server error");
+        return DEV_FALLBACK_TRANSCRIPTION;
+      }
+      throw new Error("Transcription service temporarily unavailable. Please try again later.");
     }
 
     const result = await response.json();
     return result.text;
   } catch (error) {
-    console.warn("Transcription error, using fallback:", error);
+    console.error("Transcription error:", error);
 
-    // Return fallback transcription instead of throwing error
-    return "This is a simulated transcription for development purposes. The actual audio content would be transcribed here in production with a valid API key.";
+    // Strict handling: only return fallback in dev mode, otherwise re-throw
+    if (isDevFallbackEnabled) {
+      console.warn("Using dev fallback due to error:", error);
+      return DEV_FALLBACK_TRANSCRIPTION;
+    }
+
+    // Re-throw the error for proper error handling by callers
+    throw error;
   }
 };

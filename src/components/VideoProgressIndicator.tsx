@@ -1,11 +1,6 @@
 import React, { useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  interpolate,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, interpolate } from "react-native-reanimated";
 
 interface VideoProgressIndicatorProps {
   currentTime: number;
@@ -32,13 +27,19 @@ export default function VideoProgressIndicator({
     opacity.value = withTiming(isVisible ? 1 : 0, { duration: 300 });
   }, [isVisible]);
 
-  const progressStyle = useAnimatedStyle(() => ({
-    width: `${interpolate(progress.value, [0, 1], [0, 100])}%`,
-  }), []);
+  const progressStyle = useAnimatedStyle(
+    () => ({
+      width: `${interpolate(progress.value, [0, 1], [0, 100])}%`,
+    }),
+    [],
+  );
 
-  const containerStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }), []);
+  const containerStyle = useAnimatedStyle(
+    () => ({
+      opacity: opacity.value,
+    }),
+    [],
+  );
 
   return (
     <Animated.View

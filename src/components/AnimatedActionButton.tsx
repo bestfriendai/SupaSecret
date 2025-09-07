@@ -37,44 +37,41 @@ export default function AnimatedActionButton({
     if (isActive && icon === "heart") {
       heartScale.value = withSequence(
         withTiming(1.3, { duration: 150 }),
-        withSpring(1, { damping: 10, stiffness: 200 })
+        withSpring(1, { damping: 10, stiffness: 200 }),
       );
     }
   }, [isActive, icon]);
 
   const handlePress = () => {
-    scale.value = withSequence(
-      withTiming(0.8, { duration: 100 }),
-      withSpring(1, { damping: 10, stiffness: 200 })
-    );
+    scale.value = withSequence(withTiming(0.8, { duration: 100 }), withSpring(1, { damping: 10, stiffness: 200 }));
     onPress();
   };
 
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }), []);
+  const buttonStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ scale: scale.value }],
+    }),
+    [],
+  );
 
-  const heartStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: heartScale.value }],
-  }), []);
+  const heartStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ scale: heartScale.value }],
+    }),
+    [],
+  );
 
   const iconColor = isActive ? (icon === "heart" ? "#FF3040" : activeColor) : inactiveColor;
 
   return (
-    <AnimatedPressable
-      className="items-center"
-      onPress={handlePress}
-      style={buttonStyle}
-    >
-      <Animated.View 
+    <AnimatedPressable className="items-center" onPress={handlePress} style={buttonStyle}>
+      <Animated.View
         className="w-12 h-12 bg-black/50 rounded-full items-center justify-center mb-1"
         style={icon === "heart" ? heartStyle : undefined}
       >
         <Ionicons name={icon} size={24} color={iconColor} />
       </Animated.View>
-      <Text className="text-white text-11">
-        {count !== undefined ? count : label}
-      </Text>
+      <Text className="text-white text-11">{count !== undefined ? count : label}</Text>
     </AnimatedPressable>
   );
 }

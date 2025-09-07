@@ -11,6 +11,7 @@ import HomeScreen from "../screens/HomeScreen";
 import CreateConfessionScreen from "../screens/CreateConfessionScreen";
 import VideoRecordScreen from "../screens/VideoRecordScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 import VideoFeedScreen from "../screens/VideoFeedScreen";
 import TrendingScreen from "../screens/TrendingScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
@@ -18,6 +19,7 @@ import SignUpScreen from "../screens/SignUpScreen";
 import SignInScreen from "../screens/SignInScreen";
 import SecretDetailScreen from "../screens/SecretDetailScreen";
 import SavedScreen from "../screens/SavedScreen";
+import PaywallScreen from "../screens/PaywallScreen";
 import { useAuthStore } from "../state/authStore";
 import TrendingBar from "../components/TrendingBar";
 import AppHeader from "../components/AppHeader";
@@ -27,6 +29,7 @@ export type RootStackParamList = {
   VideoRecord: undefined;
   SecretDetail: { confessionId: string };
   Saved: undefined;
+  Paywall: { feature?: string; source?: string };
   AuthStack: undefined;
 };
 
@@ -41,7 +44,7 @@ export type TabParamList = {
   Videos: undefined;
   Create: undefined;
   Trending: undefined;
-  Settings: undefined;
+  Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -95,8 +98,8 @@ function MainTabs() {
             iconName = focused ? "add-circle" : "add-circle-outline";
           } else if (route.name === "Trending") {
             iconName = focused ? "stats-chart" : "stats-chart-outline";
-          } else if (route.name === "Settings") {
-            iconName = focused ? "settings" : "settings-outline";
+          } else if (route.name === "Profile") {
+            iconName = focused ? "person" : "person-outline";
           } else {
             iconName = "help-outline";
           }
@@ -155,11 +158,11 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
+        name="Profile"
+        component={ProfileScreen}
         options={{
-          title: "Settings",
-          header: () => <AppHeader title="Settings" showTrendingBar={false} />,
+          title: "Profile",
+          header: () => <AppHeader title="Profile" showTrendingBar={false} />,
         }}
       />
     </Tab.Navigator>
@@ -188,12 +191,15 @@ export default function AppNavigator() {
 
   // Debug logging (remove in production)
   if (__DEV__) {
-    console.log('🔍 Navigation state:', {
+    console.log("🔍 Navigation state:", {
       isAuthenticated,
       user: user ? `${user.email} (onboarded: ${user.isOnboarded})` : null,
       shouldShowAuth,
-      reason: !isAuthenticated ? 'not authenticated' :
-              (isAuthenticated && user && !user.isOnboarded) ? 'not onboarded' : 'fully authenticated'
+      reason: !isAuthenticated
+        ? "not authenticated"
+        : isAuthenticated && user && !user.isOnboarded
+          ? "not onboarded"
+          : "fully authenticated",
     });
   }
 
@@ -244,24 +250,16 @@ export default function AppNavigator() {
         }}
       >
         {shouldShowAuth ? (
-          <Stack.Screen 
-            name="AuthStack" 
-            component={AuthStackNavigator}
-            options={{ headerShown: false }}
-          />
+          <Stack.Screen name="AuthStack" component={AuthStackNavigator} options={{ headerShown: false }} />
         ) : (
           <>
-            <Stack.Screen 
-              name="MainTabs" 
-              component={MainTabs}
-              options={{ headerShown: false }}
-            />
+            <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
             <Stack.Screen
               name="VideoRecord"
               component={VideoRecordScreen}
               options={{
                 title: "Record Video",
-                presentation: "modal"
+                presentation: "modal",
               }}
             />
             <Stack.Screen
@@ -269,7 +267,7 @@ export default function AppNavigator() {
               component={SecretDetailScreen}
               options={{
                 title: "Secret",
-                headerShown: false
+                headerShown: false,
               }}
             />
             <Stack.Screen
@@ -277,7 +275,15 @@ export default function AppNavigator() {
               component={SavedScreen}
               options={{
                 title: "Saved Secrets",
-                headerShown: false
+                presentation: "modal",
+              }}
+            />
+            <Stack.Screen
+              name="Paywall"
+              component={PaywallScreen}
+              options={{
+                title: "SupaSecret Plus",
+                headerShown: false,
               }}
             />
           </>

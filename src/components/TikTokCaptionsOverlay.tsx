@@ -23,15 +23,13 @@ export default function TikTokCaptionsOverlay({ text, currentTime, duration }: P
   return (
     <View>
       {/* Revealed words */}
-      <Text
-        className="text-white text-15 leading-6"
-        style={{ fontWeight: "600" }}
-      >
+      <Text className="text-white text-15 leading-6" style={{ fontWeight: "600" }}>
         {revealed}
         {remaining.length > 0 ? " " : ""}
-        <Text className="text-gray-400" style={{ fontWeight: "400" }}>{remaining}</Text>
+        <Text className="text-gray-400" style={{ fontWeight: "400" }}>
+          {remaining}
+        </Text>
       </Text>
     </View>
   );
 }
-

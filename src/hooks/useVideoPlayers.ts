@@ -66,10 +66,10 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   });
 
   // Store players in a stable array
-  const players = useMemo(() => [
-    player0, player1, player2, player3, 
-    player4, player5, player6, player7
-  ], [player0, player1, player2, player3, player4, player5, player6, player7]);
+  const players = useMemo(
+    () => [player0, player1, player2, player3, player4, player5, player6, player7],
+    [player0, player1, player2, player3, player4, player5, player6, player7],
+  );
 
   // Initialize players map
   useEffect(() => {
@@ -90,6 +90,38 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     return playersRef.current.get(index) || null;
   };
 
+  const preloadNeighbors = (currentIndex: number) => {
+    // Preload previous video
+    if (currentIndex > 0) {
+      const prevPlayer = playersRef.current.get(currentIndex - 1);
+      if (prevPlayer) {
+        try {
+          // Load the video without playing
+          prevPlayer.currentTime = 0;
+        } catch (error) {
+          if (__DEV__) {
+            console.warn(`Failed to preload previous video:`, error);
+          }
+        }
+      }
+    }
+
+    // Preload next video
+    if (currentIndex < videos.length - 1) {
+      const nextPlayer = playersRef.current.get(currentIndex + 1);
+      if (nextPlayer) {
+        try {
+          // Load the video without playing
+          nextPlayer.currentTime = 0;
+        } catch (error) {
+          if (__DEV__) {
+            console.warn(`Failed to preload next video:`, error);
+          }
+        }
+      }
+    }
+  };
+
   const playVideo = (index: number) => {
     try {
       const player = playersRef.current.get(index);
@@ -98,7 +130,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
         if (currentPlayingRef.current !== -1 && currentPlayingRef.current !== index) {
           const currentPlayer = playersRef.current.get(currentPlayingRef.current);
           try {
-            if (currentPlayer && typeof currentPlayer.pause === 'function') {
+            if (currentPlayer && typeof currentPlayer.pause === "function") {
               currentPlayer.pause();
             }
           } catch (error) {
@@ -110,6 +142,9 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
 
         player.play();
         currentPlayingRef.current = index;
+
+        // Preload neighboring videos for smoother experience
+        preloadNeighbors(index);
       }
     } catch (error) {
       if (__DEV__) {
@@ -121,7 +156,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   const pauseVideo = (index: number) => {
     try {
       const player = playersRef.current.get(index);
-      if (player && typeof player.pause === 'function') {
+      if (player && typeof player.pause === "function") {
         player.pause();
         if (currentPlayingRef.current === index) {
           currentPlayingRef.current = -1;
@@ -137,12 +172,12 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   const pauseAll = () => {
     playersRef.current.forEach((player) => {
       try {
-        if (player && typeof player.pause === 'function') {
+        if (player && typeof player.pause === "function") {
           player.pause();
         }
       } catch (error) {
         if (__DEV__) {
-          console.warn('Failed to pause player:', error);
+          console.warn("Failed to pause player:", error);
         }
       }
     });
@@ -156,7 +191,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
           player.muted = true;
         } catch (error) {
           if (__DEV__) {
-            console.warn('Failed to mute player:', error);
+            console.warn("Failed to mute player:", error);
           }
         }
       }

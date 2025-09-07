@@ -29,7 +29,8 @@ const onboardingSlides: OnboardingSlideType[] = [
     id: "1",
     title: "Welcome to Secrets",
     subtitle: "Share Anonymously",
-    description: "A safe space to share your thoughts, feelings, and experiences completely anonymously. No judgment, just understanding.",
+    description:
+      "A safe space to share your thoughts, feelings, and experiences completely anonymously. No judgment, just understanding.",
     icon: "lock-closed",
     color: "#1D9BF0",
   },
@@ -37,7 +38,8 @@ const onboardingSlides: OnboardingSlideType[] = [
     id: "2",
     title: "Complete Privacy",
     subtitle: "Your Identity Protected",
-    description: "Advanced face blur and voice change technology ensures your video confessions remain completely anonymous and secure.",
+    description:
+      "Advanced face blur and voice change technology ensures your video confessions remain completely anonymous and secure.",
     icon: "shield-checkmark",
     color: "#10B981",
   },
@@ -45,7 +47,8 @@ const onboardingSlides: OnboardingSlideType[] = [
     id: "3",
     title: "Supportive Community",
     subtitle: "Connect & Support",
-    description: "Like, comment, and share support with others anonymously. Build connections without revealing your identity.",
+    description:
+      "Like, comment, and share support with others anonymously. Build connections without revealing your identity.",
     icon: "people",
     color: "#8B5CF6",
   },
@@ -53,7 +56,8 @@ const onboardingSlides: OnboardingSlideType[] = [
     id: "4",
     title: "Ready to Begin?",
     subtitle: "Join the Community",
-    description: "Create your account and start sharing your story. Remember, everything you share remains completely anonymous.",
+    description:
+      "Create your account and start sharing your story. Remember, everything you share remains completely anonymous.",
     icon: "rocket",
     color: "#F59E0B",
   },
@@ -115,12 +119,7 @@ export default function OnboardingScreen() {
   };
 
   const skipButtonStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollX.value,
-      [0, (onboardingSlides.length - 1) * screenWidth],
-      [1, 0],
-      "clamp"
-    );
+    const opacity = interpolate(scrollX.value, [0, (onboardingSlides.length - 1) * screenWidth], [1, 0], "clamp");
     return { opacity };
   });
 
@@ -133,11 +132,7 @@ export default function OnboardingScreen() {
         <Pressable onPress={debugAuthState} className="px-2 py-1">
           <Text className="text-gray-500 text-12">Debug</Text>
         </Pressable>
-        <ProgressIndicator
-          totalSlides={onboardingSlides.length}
-          scrollX={scrollX}
-          screenWidth={screenWidth}
-        />
+        <ProgressIndicator totalSlides={onboardingSlides.length} scrollX={scrollX} screenWidth={screenWidth} />
         <Animated.View style={skipButtonStyle}>
           <Pressable onPress={handleSkip} className="px-4 py-2">
             <Text className="text-gray-400 text-16 font-medium">Skip</Text>
@@ -158,12 +153,7 @@ export default function OnboardingScreen() {
           decelerationRate="fast"
         >
           {onboardingSlides.map((slide, index) => (
-            <OnboardingSlide
-              key={slide.id}
-              slide={slide}
-              index={index}
-              scrollX={scrollX}
-            />
+            <OnboardingSlide key={slide.id} slide={slide} index={index} scrollX={scrollX} />
           ))}
         </Animated.ScrollView>
       </View>
@@ -172,12 +162,7 @@ export default function OnboardingScreen() {
       <View className="px-6 pb-8">
         {isLastSlide ? (
           <View className="space-y-4">
-            <AuthButton
-              title="Get Started"
-              onPress={handleGetStarted}
-              leftIcon="rocket"
-              variant="primary"
-            />
+            <AuthButton title="Get Started" onPress={handleGetStarted} leftIcon="rocket" variant="primary" />
             <View className="flex-row items-center justify-center">
               <Text className="text-gray-400 text-15">Already have an account? </Text>
               <Pressable onPress={handleSignIn}>
@@ -201,16 +186,8 @@ export default function OnboardingScreen() {
               className="flex-row items-center px-4 py-3"
               disabled={currentIndex === 0}
             >
-              <Ionicons
-                name="chevron-back"
-                size={20}
-                color={currentIndex === 0 ? "#4B5563" : "#8B98A5"}
-              />
-              <Text
-                className={`ml-2 text-16 font-medium ${
-                  currentIndex === 0 ? "text-gray-600" : "text-gray-400"
-                }`}
-              >
+              <Ionicons name="chevron-back" size={20} color={currentIndex === 0 ? "#4B5563" : "#8B98A5"} />
+              <Text className={`ml-2 text-16 font-medium ${currentIndex === 0 ? "text-gray-600" : "text-gray-400"}`}>
                 Back
               </Text>
             </Pressable>

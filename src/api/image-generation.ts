@@ -6,9 +6,23 @@ This endpoint uses openai's latest image generation API, AKA gpt4o, AKA gpt-imag
 Does not support video and audio generation.
 */
 
+import { createApiRetry } from "../utils/retryLogic";
+
 // API endpoint configuration
 const baseUrl = "https://api.vibecodeapp.com";
 const endpoint = "/api/storage/generate-image";
+
+// Create retry wrapper for API calls
+const apiRetry = createApiRetry({
+  maxAttempts: 3,
+  initialDelay: 2000, // Longer delay for image generation
+  maxDelay: 15000,
+  onRetry: (error, attempt, delay) => {
+    if (__DEV__) {
+      console.warn(`[API Retry] Image generation attempt ${attempt} failed, retrying in ${delay}ms:`, error);
+    }
+  }
+});
 
 /**
  * Generate an image using the custom API endpoint
@@ -23,9 +37,10 @@ export async function generateImage(
     quality?: "low" | "medium" | "high" | "auto";
     format?: "png" | "jpeg" | "webp";
     background?: undefined | "transparent";
-  }
+  },
 ): Promise<string> {
-  try {
+  return apiRetry(async () => {
+    try {
     // Create request body
     const requestBody = {
       projectId: process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID,
@@ -51,19 +66,26 @@ export async function generateImage(
     }
 
     const result = await response.json();
-    console.log("[AssetGenerationService] Image generated successfully");
+    if (__DEV__) {
+      console.log("[AssetGenerationService] Image generated successfully");
+    }
 
     // Return the image data from the response
     if (result.success && result.data) {
       return result.data.imageUrl as string;
     } else {
-      console.error("[AssetGenerationService] Invalid response format:", result);
+      if (__DEV__) {
+        console.error("[AssetGenerationService] Invalid response format:", result);
+      }
       throw new Error("Invalid response format from API");
     }
-  } catch (error) {
-    console.error("Image Generation Error:", error);
-    throw error;
-  }
+    } catch (error) {
+      if (__DEV__) {
+        console.error("Image Generation Error:", error);
+      }
+      throw error;
+    }
+  });
 }
 
 /**

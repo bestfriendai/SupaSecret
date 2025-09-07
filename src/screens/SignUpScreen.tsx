@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView, Modal, TouchableWithoutFeedback, Keyboard } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Modal,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -17,20 +27,20 @@ export default function SignUpScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { signUp, isLoading, clearError } = useAuthStore();
   const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
-  
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     confirmPassword: "",
     username: "",
   });
-  
+
   const [formErrors, setFormErrors] = useState({
     email: "",
     password: "",
     confirmPassword: "",
   });
-  
+
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "error">("success");
@@ -74,12 +84,12 @@ export default function SignUpScreen() {
     }
 
     setFormErrors(errors);
-    return !Object.values(errors).some(error => error !== "");
+    return !Object.values(errors).some((error) => error !== "");
   };
 
   const handleSignUp = async () => {
     clearError();
-    
+
     if (!validateForm()) {
       notificationAsync();
       return;
@@ -112,216 +122,187 @@ export default function SignUpScreen() {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView className="flex-1 bg-black">
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <ScrollView
             className="flex-1"
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-          {/* Header */}
-          <View className="flex-row items-center justify-between px-6 py-4">
-            <Pressable
-              onPress={() => navigation.goBack()}
-              className="w-10 h-10 items-center justify-center rounded-full bg-gray-900"
-            >
-              <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-            </Pressable>
-            <Text className="text-white text-18 font-semibold">Create Account</Text>
-            <View className="w-10" />
-          </View>
-
-          {/* Content */}
-          <View className="flex-1 px-6 py-8">
-            {/* Welcome Text */}
-            <View className="mb-8">
-              <Text className="text-white text-28 font-bold mb-2">
-                Join Secrets
-              </Text>
-              <Text className="text-gray-400 text-16 leading-6">
-                Create your account to start sharing anonymously and connect with others safely.
-              </Text>
+            {/* Header */}
+            <View className="flex-row items-center justify-between px-6 py-4">
+              <Pressable
+                onPress={() => navigation.goBack()}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-900"
+              >
+                <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+              </Pressable>
+              <Text className="text-white text-18 font-semibold">Create Account</Text>
+              <View className="w-10" />
             </View>
 
-            {/* Form */}
-            <View className="space-y-4 mb-6">
-              <AuthInput
-                label="Email Address"
-                value={formData.email}
-                onChangeText={(text) => {
-                  setFormData({ ...formData, email: text });
-                  if (formErrors.email) {
-                    setFormErrors({ ...formErrors, email: "" });
-                  }
-                }}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoComplete="email"
-                leftIcon="mail"
-                error={formErrors.email}
-              />
+            {/* Content */}
+            <View className="flex-1 px-6 py-8">
+              {/* Welcome Text */}
+              <View className="mb-8">
+                <Text className="text-white text-28 font-bold mb-2">Join Secrets</Text>
+                <Text className="text-gray-400 text-16 leading-6">
+                  Create your account to start sharing anonymously and connect with others safely.
+                </Text>
+              </View>
 
-              <AuthInput
-                label="Username (Optional)"
-                value={formData.username}
-                onChangeText={(text) => setFormData({ ...formData, username: text })}
-                placeholder="Choose a username"
-                autoComplete="username"
-                leftIcon="person"
-              />
-
-              <View>
+              {/* Form */}
+              <View className="space-y-4 mb-6">
                 <AuthInput
-                  label="Password"
-                  value={formData.password}
+                  label="Email Address"
+                  value={formData.email}
                   onChangeText={(text) => {
-                    setFormData({ ...formData, password: text });
-                    if (formErrors.password) {
-                      setFormErrors({ ...formErrors, password: "" });
+                    setFormData({ ...formData, email: text });
+                    if (formErrors.email) {
+                      setFormErrors({ ...formErrors, email: "" });
                     }
                   }}
-                  placeholder="Create a strong password"
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  autoComplete="email"
+                  leftIcon="mail"
+                  error={formErrors.email}
+                />
+
+                <AuthInput
+                  label="Username (Optional)"
+                  value={formData.username}
+                  onChangeText={(text) => setFormData({ ...formData, username: text })}
+                  placeholder="Choose a username"
+                  autoComplete="username"
+                  leftIcon="person"
+                />
+
+                <View>
+                  <AuthInput
+                    label="Password"
+                    value={formData.password}
+                    onChangeText={(text) => {
+                      setFormData({ ...formData, password: text });
+                      if (formErrors.password) {
+                        setFormErrors({ ...formErrors, password: "" });
+                      }
+                    }}
+                    placeholder="Create a strong password"
+                    secureTextEntry
+                    autoComplete="password"
+                    leftIcon="lock-closed"
+                    error={formErrors.password}
+                  />
+
+                  {/* Password Strength Indicator */}
+                  {formData.password.length > 0 && (
+                    <View className="mt-2">
+                      <View className="flex-row items-center justify-between mb-2">
+                        <Text className="text-gray-400 text-13">Password Strength</Text>
+                        <Text className="text-13 font-medium" style={{ color: passwordStrength.color }}>
+                          {passwordStrength.label}
+                        </Text>
+                      </View>
+                      <View className="flex-row space-x-1">
+                        {[1, 2, 3].map((level) => (
+                          <View
+                            key={level}
+                            className="flex-1 h-2 rounded-full"
+                            style={{
+                              backgroundColor: level <= passwordStrength.strength ? passwordStrength.color : "#374151",
+                            }}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                <AuthInput
+                  label="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChangeText={(text) => {
+                    setFormData({ ...formData, confirmPassword: text });
+                    if (formErrors.confirmPassword) {
+                      setFormErrors({ ...formErrors, confirmPassword: "" });
+                    }
+                  }}
+                  placeholder="Confirm your password"
                   secureTextEntry
                   autoComplete="password"
                   leftIcon="lock-closed"
-                  error={formErrors.password}
+                  error={formErrors.confirmPassword}
                 />
-                
-                {/* Password Strength Indicator */}
-                {formData.password.length > 0 && (
-                  <View className="mt-2">
-                    <View className="flex-row items-center justify-between mb-2">
-                      <Text className="text-gray-400 text-13">Password Strength</Text>
-                      <Text
-                        className="text-13 font-medium"
-                        style={{ color: passwordStrength.color }}
-                      >
-                        {passwordStrength.label}
-                      </Text>
-                    </View>
-                    <View className="flex-row space-x-1">
-                      {[1, 2, 3].map((level) => (
-                        <View
-                          key={level}
-                          className="flex-1 h-2 rounded-full"
-                          style={{
-                            backgroundColor:
-                              level <= passwordStrength.strength
-                                ? passwordStrength.color
-                                : "#374151",
-                          }}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                )}
               </View>
 
-              <AuthInput
-                label="Confirm Password"
-                value={formData.confirmPassword}
-                onChangeText={(text) => {
-                  setFormData({ ...formData, confirmPassword: text });
-                  if (formErrors.confirmPassword) {
-                    setFormErrors({ ...formErrors, confirmPassword: "" });
-                  }
-                }}
-                placeholder="Confirm your password"
-                secureTextEntry
-                autoComplete="password"
-                leftIcon="lock-closed"
-                error={formErrors.confirmPassword}
+              {/* Terms Agreement */}
+              <Pressable className="flex-row items-start mb-6" onPress={() => setAgreedToTerms(!agreedToTerms)}>
+                <View
+                  className={`w-5 h-5 rounded border-2 items-center justify-center mr-3 mt-0.5 ${
+                    agreedToTerms ? "bg-blue-500 border-blue-500" : "border-gray-600"
+                  }`}
+                >
+                  {agreedToTerms && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-400 text-14 leading-5">
+                    I agree to the <Text className="text-blue-400 underline">Terms of Service</Text> and{" "}
+                    <Text className="text-blue-400 underline">Privacy Policy</Text>
+                  </Text>
+                </View>
+              </Pressable>
+
+              {/* Sign Up Button */}
+              <AuthButton
+                title="Create Account"
+                onPress={handleSignUp}
+                loading={isLoading}
+                disabled={isLoading}
+                leftIcon="person-add"
               />
-            </View>
 
-            {/* Terms Agreement */}
-            <Pressable
-              className="flex-row items-start mb-6"
-              onPress={() => setAgreedToTerms(!agreedToTerms)}
-            >
-              <View
-                className={`w-5 h-5 rounded border-2 items-center justify-center mr-3 mt-0.5 ${
-                  agreedToTerms ? "bg-blue-500 border-blue-500" : "border-gray-600"
-                }`}
-              >
-                {agreedToTerms && (
-                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                )}
+              {/* Sign In Link */}
+              <View className="flex-row items-center justify-center mt-6">
+                <Text className="text-gray-400 text-15">Already have an account? </Text>
+                <Pressable onPress={handleSignIn}>
+                  <Text className="text-blue-400 text-15 font-semibold">Sign In</Text>
+                </Pressable>
               </View>
-              <View className="flex-1">
-                <Text className="text-gray-400 text-14 leading-5">
-                  I agree to the{" "}
-                  <Text className="text-blue-400 underline">Terms of Service</Text>
-                  {" "}and{" "}
-                  <Text className="text-blue-400 underline">Privacy Policy</Text>
+
+              {/* Privacy Notice */}
+              <View className="mt-8 p-4 bg-gray-900 rounded-2xl">
+                <View className="flex-row items-center mb-2">
+                  <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                  <Text className="text-green-400 text-14 font-medium ml-2">Your Privacy is Protected</Text>
+                </View>
+                <Text className="text-gray-400 text-13 leading-4">
+                  Your account is only used for app access. All confessions remain completely anonymous and are never
+                  linked to your profile.
                 </Text>
               </View>
-            </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
-            {/* Sign Up Button */}
-            <AuthButton
-              title="Create Account"
-              onPress={handleSignUp}
-              loading={isLoading}
-              disabled={isLoading}
-              leftIcon="person-add"
-            />
-
-            {/* Sign In Link */}
-            <View className="flex-row items-center justify-center mt-6">
-              <Text className="text-gray-400 text-15">Already have an account? </Text>
-              <Pressable onPress={handleSignIn}>
-                <Text className="text-blue-400 text-15 font-semibold">Sign In</Text>
+        {/* Custom Modal */}
+        <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
+          <View className="flex-1 bg-black/50 items-center justify-center px-6">
+            <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
+              <View className="items-center mb-4">
+                <Ionicons
+                  name={modalType === "success" ? "checkmark-circle" : "alert-circle"}
+                  size={48}
+                  color={modalType === "success" ? "#10B981" : "#EF4444"}
+                />
+              </View>
+              <Text className="text-white text-16 text-center mb-6 leading-5">{modalMessage}</Text>
+              <Pressable className="bg-blue-500 rounded-full py-3 px-6" onPress={() => setShowModal(false)}>
+                <Text className="text-white font-semibold text-center">OK</Text>
               </Pressable>
             </View>
-
-            {/* Privacy Notice */}
-            <View className="mt-8 p-4 bg-gray-900 rounded-2xl">
-              <View className="flex-row items-center mb-2">
-                <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-                <Text className="text-green-400 text-14 font-medium ml-2">
-                  Your Privacy is Protected
-                </Text>
-              </View>
-              <Text className="text-gray-400 text-13 leading-4">
-                Your account is only used for app access. All confessions remain completely anonymous and are never linked to your profile.
-              </Text>
-            </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Custom Modal */}
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowModal(false)}
-      >
-        <View className="flex-1 bg-black/50 items-center justify-center px-6">
-          <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
-            <View className="items-center mb-4">
-              <Ionicons
-                name={modalType === "success" ? "checkmark-circle" : "alert-circle"}
-                size={48}
-                color={modalType === "success" ? "#10B981" : "#EF4444"}
-              />
-            </View>
-            <Text className="text-white text-16 text-center mb-6 leading-5">
-              {modalMessage}
-            </Text>
-            <Pressable
-              className="bg-blue-500 rounded-full py-3 px-6"
-              onPress={() => setShowModal(false)}
-            >
-              <Text className="text-white font-semibold text-center">OK</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        </Modal>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );

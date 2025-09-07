@@ -4,11 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { generateConfessionLink, generateShareMessage } from "../utils/links";
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from "@gorhom/bottom-sheet";
+import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import { useReportStore } from "../state/reportStore";
 import ReportModal from "./ReportModal";
 import { BlurView } from "expo-blur";
@@ -29,7 +25,7 @@ export default function EnhancedShareBottomSheet({
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "confirm">("success");
-  
+
   // Bottom sheet configuration
   const snapPoints = useMemo(() => ["40%"], []);
 
@@ -41,15 +37,8 @@ export default function EnhancedShareBottomSheet({
 
   // Backdrop component
   const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.5}
-      />
-    ),
-    []
+    (props: any) => <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />,
+    [],
   );
 
   const handleNativeShare = useCallback(async () => {
@@ -101,12 +90,12 @@ export default function EnhancedShareBottomSheet({
     setReportModalVisible(false);
   };
 
-  const ShareOption = ({ 
-    icon, 
-    title, 
-    subtitle, 
-    onPress, 
-    color = "#1D9BF0" 
+  const ShareOption = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    color = "#1D9BF0",
   }: {
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
@@ -114,15 +103,9 @@ export default function EnhancedShareBottomSheet({
     onPress: () => void;
     color?: string;
   }) => (
-    <Pressable
-      className="flex-row items-center py-4 px-4 active:bg-gray-800/50 rounded-xl"
-      onPress={onPress}
-    >
+    <Pressable className="flex-row items-center py-4 px-4 active:bg-gray-800/50 rounded-xl" onPress={onPress}>
       <BlurView intensity={20} tint="dark" className="w-12 h-12 rounded-full items-center justify-center mr-4">
-        <View 
-          className="w-10 h-10 rounded-full items-center justify-center"
-          style={{ backgroundColor: color }}
-        >
+        <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: color }}>
           <Ionicons name={icon} size={20} color="#FFFFFF" />
         </View>
       </BlurView>
@@ -199,44 +182,28 @@ export default function EnhancedShareBottomSheet({
       </BottomSheetView>
 
       {/* Custom Modal */}
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowModal(false)}
-      >
+      <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
         <View className="flex-1 bg-black/50 items-center justify-center px-6">
           <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
             <View className="items-center mb-4">
-              <Ionicons 
-                name={modalType === "success" ? "checkmark-circle" : "alert-circle"} 
-                size={48} 
-                color={modalType === "success" ? "#10B981" : "#EF4444"} 
+              <Ionicons
+                name={modalType === "success" ? "checkmark-circle" : "alert-circle"}
+                size={48}
+                color={modalType === "success" ? "#10B981" : "#EF4444"}
               />
             </View>
-            <Text className="text-white text-16 text-center mb-6 leading-5">
-              {modalMessage}
-            </Text>
+            <Text className="text-white text-16 text-center mb-6 leading-5">{modalMessage}</Text>
             {modalType === "confirm" ? (
               <View className="flex-row space-x-3">
-                <Pressable
-                  className="flex-1 py-3 px-4 rounded-full bg-gray-700"
-                  onPress={() => setShowModal(false)}
-                >
+                <Pressable className="flex-1 py-3 px-4 rounded-full bg-gray-700" onPress={() => setShowModal(false)}>
                   <Text className="text-white font-semibold text-center">Cancel</Text>
                 </Pressable>
-                <Pressable
-                  className="flex-1 py-3 px-4 rounded-full bg-red-600"
-                  onPress={() => setShowModal(false)}
-                >
+                <Pressable className="flex-1 py-3 px-4 rounded-full bg-red-600" onPress={() => setShowModal(false)}>
                   <Text className="text-white font-semibold text-center">Report</Text>
                 </Pressable>
               </View>
             ) : (
-              <Pressable
-                className="bg-blue-500 rounded-full py-3 px-6"
-                onPress={() => setShowModal(false)}
-              >
+              <Pressable className="bg-blue-500 rounded-full py-3 px-6" onPress={() => setShowModal(false)}>
                 <Text className="text-white font-semibold text-center">OK</Text>
               </Pressable>
             )}

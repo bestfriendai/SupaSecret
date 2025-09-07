@@ -13,10 +13,13 @@ export const useReportStore = create<ReportState>()(
 
       createReport: async (reportRequest: CreateReportRequest) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           // Get current user
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser();
           if (userError || !user) {
             throw new Error("User must be authenticated to create a report");
           }
@@ -32,7 +35,7 @@ export const useReportStore = create<ReportState>()(
 
           // Create the report in Supabase
           const { data, error } = await supabase
-            .from('reports')
+            .from("reports")
             .insert({
               confession_id: reportRequest.confessionId || null,
               reply_id: reportRequest.replyId || null,
@@ -45,7 +48,7 @@ export const useReportStore = create<ReportState>()(
 
           if (error) {
             // Handle duplicate report error
-            if (error.code === '23505') {
+            if (error.code === "23505") {
               throw new Error("You have already reported this content");
             }
             throw error;
@@ -70,12 +73,11 @@ export const useReportStore = create<ReportState>()(
             reports: [newReport, ...state.reports],
             isLoading: false,
           }));
-
         } catch (error) {
-          console.error('Error creating report:', error);
-          set({ 
-            error: error instanceof Error ? error.message : 'Failed to create report',
-            isLoading: false 
+          console.error("Error creating report:", error);
+          set({
+            error: error instanceof Error ? error.message : "Failed to create report",
+            isLoading: false,
           });
           throw error;
         }
@@ -83,20 +85,23 @@ export const useReportStore = create<ReportState>()(
 
       getUserReports: async () => {
         set({ isLoading: true, error: null });
-        
+
         try {
           // Get current user
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser();
           if (userError || !user) {
             throw new Error("User must be authenticated to view reports");
           }
 
           // Fetch user's reports
           const { data, error } = await supabase
-            .from('reports')
-            .select('*')
-            .eq('reporter_user_id', user.id)
-            .order('created_at', { ascending: false });
+            .from("reports")
+            .select("*")
+            .eq("reporter_user_id", user.id)
+            .order("created_at", { ascending: false });
 
           if (error) throw error;
 
@@ -115,12 +120,11 @@ export const useReportStore = create<ReportState>()(
           }));
 
           set({ reports, isLoading: false });
-
         } catch (error) {
-          console.error('Error fetching reports:', error);
-          set({ 
-            error: error instanceof Error ? error.message : 'Failed to fetch reports',
-            isLoading: false 
+          console.error("Error fetching reports:", error);
+          set({
+            error: error instanceof Error ? error.message : "Failed to fetch reports",
+            isLoading: false,
           });
         }
       },
@@ -134,6 +138,6 @@ export const useReportStore = create<ReportState>()(
       storage: createJSONStorage(() => AsyncStorage),
       // Only persist reports, not loading/error states
       partialize: (state) => ({ reports: state.reports }),
-    }
-  )
+    },
+  ),
 );

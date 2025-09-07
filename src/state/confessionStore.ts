@@ -4,12 +4,34 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ConfessionState, Confession, UserPreferences, VideoAnalytics } from "../types/confession";
 import { supabase } from "../lib/supabase";
 import { ensureSignedVideoUrl, isLocalUri, uploadVideoToSupabase } from "../utils/storage";
+import { selectWithRetry, insertWithRetry, updateWithRetry, deleteWithRetry, rpcWithRetry } from "../utils/supabaseWithRetry";
+import { invalidateCache, registerInvalidationCallback } from "../utils/cacheInvalidation";
+
+// Debounce utility for preventing race conditions in like toggles
+const pendingOperations = new Map<string, Promise<any>>();
+
+const debouncedOperation = async <T>(key: string, operation: () => Promise<T>): Promise<T> => {
+  // If operation is already pending, return the existing promise
+  if (pendingOperations.has(key)) {
+    return pendingOperations.get(key) as Promise<T>;
+  }
+
+  // Create new operation promise
+  const promise = operation().finally(() => {
+    // Clean up after operation completes
+    pendingOperations.delete(key);
+  });
+
+  pendingOperations.set(key, promise);
+  return promise;
+};
 
 const sampleConfessions: Confession[] = [
   {
     id: "sample-1",
     type: "text",
-    content: "I've been pretending to be happy at work for months, but I'm actually struggling with #anxiety. Every meeting feels like I'm drowning and everyone can see right through me. #mentalhealth #worklife",
+    content:
+      "I've been pretending to be happy at work for months, but I'm actually struggling with #anxiety. Every meeting feels like I'm drowning and everyone can see right through me. #mentalhealth #worklife",
     isAnonymous: true,
     timestamp: Date.now() - 3600000, // 1 hour ago
     likes: 42,
@@ -20,7 +42,8 @@ const sampleConfessions: Confession[] = [
     type: "video",
     content: "Video confession with face blur and voice change applied",
     videoUri: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    transcription: "I judge people on social media way too much. Someone posts vacation pics and I immediately think they're showing off. I hate that I'm like this but I can't stop. #socialmedia #jealousy #mentalhealth",
+    transcription:
+      "I judge people on social media way too much. Someone posts vacation pics and I immediately think they're showing off. I hate that I'm like this but I can't stop. #socialmedia #jealousy #mentalhealth",
     isAnonymous: true,
     timestamp: Date.now() - 7200000, // 2 hours ago
     likes: 128,
@@ -29,7 +52,8 @@ const sampleConfessions: Confession[] = [
   {
     id: "sample-3",
     type: "text",
-    content: "I've been lying to my family about #money. I'm actually in debt but too embarrassed to ask for help. When they ask how I'm doing, I just say everything's fine. #debt #family #shame",
+    content:
+      "I've been lying to my family about #money. I'm actually in debt but too embarrassed to ask for help. When they ask how I'm doing, I just say everything's fine. #debt #family #shame",
     isAnonymous: true,
     timestamp: Date.now() - 10800000, // 3 hours ago
     likes: 67,
@@ -38,7 +62,8 @@ const sampleConfessions: Confession[] = [
   {
     id: "sample-4",
     type: "text",
-    content: "Sometimes I feel like I'm not good enough for my partner. They deserve someone better and I'm just waiting for them to realize it. #relationships #insecurity #selfdoubt",
+    content:
+      "Sometimes I feel like I'm not good enough for my partner. They deserve someone better and I'm just waiting for them to realize it. #relationships #insecurity #selfdoubt",
     isAnonymous: true,
     timestamp: Date.now() - 14400000, // 4 hours ago
     likes: 89,
@@ -49,7 +74,8 @@ const sampleConfessions: Confession[] = [
     type: "video",
     content: "Video confession with face blur and voice change applied",
     videoUri: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    transcription: "I've been avoiding my best friend because I'm jealous of their success. They got promoted and I can barely handle my current job. I feel terrible about it. #friendship #jealousy #career #worklife",
+    transcription:
+      "I've been avoiding my best friend because I'm jealous of their success. They got promoted and I can barely handle my current job. I feel terrible about it. #friendship #jealousy #career #worklife",
     isAnonymous: true,
     timestamp: Date.now() - 18000000, // 5 hours ago
     likes: 156,
@@ -60,7 +86,8 @@ const sampleConfessions: Confession[] = [
     type: "video",
     content: "Video confession with face blur and voice change applied",
     videoUri: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    transcription: "I still sleep with a stuffed animal and I'm 28 years old. I'm too embarrassed to tell anyone, even my partner doesn't know. #adulting #shame #relationships #comfort",
+    transcription:
+      "I still sleep with a stuffed animal and I'm 28 years old. I'm too embarrassed to tell anyone, even my partner doesn't know. #adulting #shame #relationships #comfort",
     isAnonymous: true,
     timestamp: Date.now() - 21600000, // 6 hours ago
     likes: 203,
@@ -71,7 +98,8 @@ const sampleConfessions: Confession[] = [
     type: "video",
     content: "Video confession with face blur and voice change applied",
     videoUri: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    transcription: "I pretend to be busy at work but I actually finish my tasks in 2 hours and spend the rest of the day browsing the internet. I feel guilty but also trapped. #worklife #productivity #guilt #procrastination",
+    transcription:
+      "I pretend to be busy at work but I actually finish my tasks in 2 hours and spend the rest of the day browsing the internet. I feel guilty but also trapped. #worklife #productivity #guilt #procrastination",
     isAnonymous: true,
     timestamp: Date.now() - 25200000, // 7 hours ago
     likes: 94,
@@ -82,7 +110,8 @@ const sampleConfessions: Confession[] = [
     type: "video",
     content: "Video confession with face blur and voice change applied",
     videoUri: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-    transcription: "I've been eating my roommate's food and replacing it before they notice. I know it's wrong but I'm too broke to buy groceries and too proud to ask for help. #money #roommates #shame #pride",
+    transcription:
+      "I've been eating my roommate's food and replacing it before they notice. I know it's wrong but I'm too broke to buy groceries and too proud to ask for help. #money #roommates #shame #pride",
     isAnonymous: true,
     timestamp: Date.now() - 28800000, // 8 hours ago
     likes: 76,
@@ -94,6 +123,7 @@ export const useConfessionStore = create<ConfessionState>()(
   persist(
     (set, get) => ({
       confessions: [],
+      userConfessions: [],
       videoAnalytics: {},
       userPreferences: {
         autoplay: true,
@@ -103,6 +133,7 @@ export const useConfessionStore = create<ConfessionState>()(
         captionsDefault: true,
         hapticsEnabled: true,
         reducedMotion: false,
+        playbackSpeed: 1.0,
       },
       isLoading: false,
       isLoadingMore: false,
@@ -113,19 +144,35 @@ export const useConfessionStore = create<ConfessionState>()(
         set({ isLoading: true, error: null, hasMore: true });
         try {
           const INITIAL_LIMIT = 20;
-          const { data, error } = await supabase
-            .from('confessions')
-            .select('*')
-            .order('created_at', { ascending: false })
+          const data = await selectWithRetry<any>(
+            "confessions",
+            "*",
+            {
+              maxAttempts: 3,
+              initialDelay: 1000,
+              onRetry: (error, attempt) => {
+                if (__DEV__) {
+                  console.warn(`[ConfessionStore] Load confessions retry attempt ${attempt}:`, error);
+                }
+              }
+            }
+          );
+
+          // Apply ordering and limit (since selectWithRetry doesn't support these yet)
+          const { data: orderedData, error } = await supabase
+            .from("confessions")
+            .select("*")
+            .order("created_at", { ascending: false })
             .limit(INITIAL_LIMIT);
 
           if (error) throw error;
+          const finalData = orderedData;
 
           const confessions: Confession[] = await Promise.all(
-            (data || []).map(async (item) => {
+            (finalData || []).map(async (item) => {
               const base: Confession = {
                 id: item.id,
-                type: item.type as 'text' | 'video',
+                type: item.type as "text" | "video",
                 content: item.content,
                 videoUri: undefined,
                 transcription: item.transcription || undefined,
@@ -135,23 +182,23 @@ export const useConfessionStore = create<ConfessionState>()(
                 isLiked: false,
               };
 
-              if (base.type === 'video' && item.video_uri) {
+              if (base.type === "video" && item.video_uri) {
                 base.videoUri = await ensureSignedVideoUrl(item.video_uri);
               }
 
               return base;
-            })
+            }),
           );
 
           set({
             confessions,
             isLoading: false,
-            hasMore: (data?.length || 0) >= INITIAL_LIMIT
+            hasMore: (data?.length || 0) >= INITIAL_LIMIT,
           });
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to load confessions',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to load confessions",
+            isLoading: false,
           });
         }
       },
@@ -166,10 +213,10 @@ export const useConfessionStore = create<ConfessionState>()(
           const lastConfession = confessions[confessions.length - 1];
 
           const { data, error } = await supabase
-            .from('confessions')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .lt('created_at', new Date(lastConfession.timestamp).toISOString())
+            .from("confessions")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .lt("created_at", new Date(lastConfession.timestamp).toISOString())
             .limit(LOAD_MORE_LIMIT);
 
           if (error) throw error;
@@ -178,7 +225,7 @@ export const useConfessionStore = create<ConfessionState>()(
             (data || []).map(async (item) => {
               const base: Confession = {
                 id: item.id,
-                type: item.type as 'text' | 'video',
+                type: item.type as "text" | "video",
                 content: item.content,
                 videoUri: undefined,
                 transcription: item.transcription || undefined,
@@ -188,23 +235,73 @@ export const useConfessionStore = create<ConfessionState>()(
                 isLiked: false,
               };
 
-              if (base.type === 'video' && item.video_uri) {
+              if (base.type === "video" && item.video_uri) {
                 base.videoUri = await ensureSignedVideoUrl(item.video_uri);
               }
 
               return base;
-            })
+            }),
           );
 
           set({
             confessions: [...confessions, ...newConfessions],
             isLoadingMore: false,
-            hasMore: (data?.length || 0) >= LOAD_MORE_LIMIT
+            hasMore: (data?.length || 0) >= LOAD_MORE_LIMIT,
           });
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to load more confessions',
-            isLoadingMore: false
+            error: error instanceof Error ? error.message : "Failed to load more confessions",
+            isLoadingMore: false,
+          });
+        }
+      },
+
+      loadUserConfessions: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("User not authenticated");
+
+          const { data, error } = await supabase
+            .from("confessions")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false });
+
+          if (error) throw error;
+
+          const userConfessions: Confession[] = await Promise.all(
+            (data || []).map(async (item) => {
+              const base: Confession = {
+                id: item.id,
+                type: item.type as "text" | "video",
+                content: item.content,
+                videoUri: undefined,
+                transcription: item.transcription || undefined,
+                timestamp: new Date(item.created_at).getTime(),
+                isAnonymous: item.is_anonymous,
+                likes: item.likes,
+                isLiked: false,
+              };
+
+              if (base.type === "video" && item.video_uri) {
+                base.videoUri = await ensureSignedVideoUrl(item.video_uri);
+              }
+
+              return base;
+            }),
+          );
+
+          set({
+            userConfessions,
+            isLoading: false,
+          });
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : "Failed to load user confessions",
+            isLoading: false,
           });
         }
       },
@@ -212,13 +309,15 @@ export const useConfessionStore = create<ConfessionState>()(
       addConfession: async (confession, opts) => {
         set({ isLoading: true, error: null });
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
 
           let videoStoragePath: string | undefined;
           let signedVideoUrl: string | undefined;
 
-          if (confession.type === 'video' && confession.videoUri) {
-            if (!user?.id) throw new Error('User not authenticated');
+          if (confession.type === "video" && confession.videoUri) {
+            if (!user?.id) throw new Error("User not authenticated");
             if (isLocalUri(confession.videoUri)) {
               const result = await uploadVideoToSupabase(confession.videoUri, user.id, opts?.onUploadProgress);
               videoStoragePath = result.path; // store path in DB
@@ -233,7 +332,7 @@ export const useConfessionStore = create<ConfessionState>()(
           }
 
           const { data, error } = await supabase
-            .from('confessions')
+            .from("confessions")
             .insert({
               user_id: user?.id,
               type: confession.type,
@@ -249,7 +348,7 @@ export const useConfessionStore = create<ConfessionState>()(
 
           const newConfession: Confession = {
             id: data.id,
-            type: data.type as 'text' | 'video',
+            type: data.type as "text" | "video",
             content: data.content,
             videoUri: signedVideoUrl || (await ensureSignedVideoUrl(data.video_uri || undefined)) || undefined,
             transcription: data.transcription || undefined,
@@ -263,10 +362,13 @@ export const useConfessionStore = create<ConfessionState>()(
             confessions: [newConfession, ...state.confessions],
             isLoading: false,
           }));
+
+          // Trigger cache invalidation for new confession
+          invalidateCache('confession_created', { confessionId: newConfession.id });
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to add confession',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to add confession",
+            isLoading: false,
           });
           throw error;
         }
@@ -275,10 +377,18 @@ export const useConfessionStore = create<ConfessionState>()(
       deleteConfession: async (id) => {
         set({ isLoading: true, error: null });
         try {
+          // Get current user to ensure they own the confession
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("User not authenticated");
+
+          // Delete confession with explicit user_id check for security
           const { error } = await supabase
-            .from('confessions')
+            .from("confessions")
             .delete()
-            .eq('id', id);
+            .eq("id", id)
+            .eq("user_id", user.id);
 
           if (error) throw error;
 
@@ -288,8 +398,34 @@ export const useConfessionStore = create<ConfessionState>()(
           }));
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to delete confession',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to delete confession",
+            isLoading: false,
+          });
+          throw error;
+        }
+      },
+
+      deleteUserConfession: async (id) => {
+        set({ isLoading: true, error: null });
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("User not authenticated");
+
+          const { error } = await supabase.from("confessions").delete().eq("id", id).eq("user_id", user.id); // Ensure user can only delete their own confessions
+
+          if (error) throw error;
+
+          set((state) => ({
+            confessions: state.confessions.filter((c) => c.id !== id),
+            userConfessions: state.userConfessions.filter((c) => c.id !== id),
+            isLoading: false,
+          }));
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : "Failed to delete confession",
+            isLoading: false,
           });
           throw error;
         }
@@ -298,89 +434,116 @@ export const useConfessionStore = create<ConfessionState>()(
       clearAllConfessions: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-
-          const { error } = await supabase
-            .from('confessions')
-            .delete()
-            .eq('user_id', user?.id);
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) {
+            set({ isLoading: false });
+            return;
+          }
+          const { error } = await supabase.from("confessions").delete().eq("user_id", user.id);
 
           if (error) throw error;
 
           set({ confessions: [], isLoading: false });
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to clear confessions',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to clear confessions",
+            isLoading: false,
           });
           throw error;
         }
       },
-      toggleLike: async (id) => {
+
+      clearAllUserConfessions: async () => {
+        set({ isLoading: true, error: null });
         try {
-          const state = get();
-          const curr = state.confessions.find(c => c.id === id);
-          if (!curr) throw new Error('Confession not found');
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("User not authenticated");
 
-          // Optimistic update first
-          const newIsLiked = !curr.isLiked;
-          const optimisticLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
-
-          set((state) => ({
-            confessions: state.confessions.map((c) =>
-              c.id === id
-                ? { ...c, isLiked: newIsLiked, likes: optimisticLikes }
-                : c
-            ),
-            videoAnalytics: {
-              ...state.videoAnalytics,
-              [id]: {
-                ...state.videoAnalytics[id],
-                interactions: (state.videoAnalytics[id]?.interactions || 0) + 1,
-              },
-            },
-          }));
-
-          // Try RPC first for server-verified toggle
-          const { data: rpcData, error: rpcError } = await supabase.rpc('toggle_confession_like', { confession_uuid: id });
-
-          if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData[0]?.likes_count !== undefined) {
-            const serverCount = rpcData[0].likes_count as number;
-            set((state) => ({
-              confessions: state.confessions.map((c) =>
-                c.id === id
-                  ? { ...c, likes: serverCount }
-                  : c
-              ),
-            }));
-            return;
-          }
-
-          // Fallback to direct update if RPC fails
-          const { error } = await supabase
-            .from('confessions')
-            .update({ likes: optimisticLikes })
-            .eq('id', id);
+          const { error } = await supabase.from("confessions").delete().eq("user_id", user.id);
 
           if (error) throw error;
 
+          set((state) => {
+            const userIds = new Set(state.userConfessions.map((c) => c.id));
+            return {
+              confessions: state.confessions.filter((c) => !userIds.has(c.id)),
+              userConfessions: [],
+              isLoading: false,
+            };
+          });
         } catch (error) {
-          // Revert optimistic update on error
-          const state = get();
-          const curr = state.confessions.find(c => c.id === id);
-          if (curr) {
-            const revertedLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
-            set((state) => ({
-              confessions: state.confessions.map((c) =>
-                c.id === id
-                  ? { ...c, isLiked: !curr.isLiked, likes: revertedLikes }
-                  : c
-              ),
-              error: error instanceof Error ? error.message : 'Failed to toggle like',
-            }));
-          }
+          set({
+            error: error instanceof Error ? error.message : "Failed to clear user confessions",
+            isLoading: false,
+          });
           throw error;
         }
+      },
+
+      toggleLike: async (id) => {
+        return debouncedOperation(`like-${id}`, async () => {
+          try {
+            const state = get();
+            const curr = state.confessions.find((c) => c.id === id);
+            if (!curr) throw new Error("Confession not found");
+
+            // Optimistic update first
+            const newIsLiked = !curr.isLiked;
+            const optimisticLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
+
+            set((state) => ({
+              confessions: state.confessions.map((c) =>
+                c.id === id ? { ...c, isLiked: newIsLiked, likes: optimisticLikes } : c,
+              ),
+              videoAnalytics: {
+                ...state.videoAnalytics,
+                [id]: {
+                  ...state.videoAnalytics[id],
+                  interactions: (state.videoAnalytics[id]?.interactions || 0) + 1,
+                },
+              },
+            }));
+
+            // Try RPC first for server-verified toggle
+            const { data: rpcData, error: rpcError } = await supabase.rpc("toggle_confession_like", {
+              confession_uuid: id,
+            });
+
+            if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData[0]?.likes_count !== undefined) {
+              const serverCount = rpcData[0].likes_count as number;
+              set((state) => ({
+                confessions: state.confessions.map((c) => (c.id === id ? { ...c, likes: serverCount } : c)),
+              }));
+              return;
+            }
+
+            // Fallback to direct update if RPC fails
+            const { error } = await supabase.from("confessions").update({ likes: optimisticLikes }).eq("id", id);
+
+            if (error) throw error;
+
+            // Trigger cache invalidation for like toggle
+            invalidateCache(newIsLiked ? 'confession_liked' : 'confession_unliked', { confessionId: id });
+          } catch (error) {
+            // Revert optimistic update on error
+            const state = get();
+            const curr = state.confessions.find((c) => c.id === id);
+            if (curr) {
+              const revertedLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
+              set((state) => ({
+                confessions: state.confessions.map((c) =>
+                  c.id === id ? { ...c, isLiked: !curr.isLiked, likes: revertedLikes } : c,
+                ),
+                error: error instanceof Error ? error.message : "Failed to toggle like",
+              }));
+            }
+            throw error;
+          }
+        });
       },
 
       updateLikes: async (id, likes) => {
@@ -388,27 +551,23 @@ export const useConfessionStore = create<ConfessionState>()(
           // Optimistic update first
           set((state) => ({
             confessions: state.confessions.map((confession) =>
-              confession.id === id ? { ...confession, likes } : confession
+              confession.id === id ? { ...confession, likes } : confession,
             ),
           }));
 
-          const { error } = await supabase
-            .from('confessions')
-            .update({ likes })
-            .eq('id', id);
+          const { error } = await supabase.from("confessions").update({ likes }).eq("id", id);
 
           if (error) throw error;
-
         } catch (error) {
           // Revert optimistic update on error
           const state = get();
-          const curr = state.confessions.find(c => c.id === id);
+          const curr = state.confessions.find((c) => c.id === id);
           if (curr) {
             set((state) => ({
               confessions: state.confessions.map((confession) =>
-                confession.id === id ? { ...confession, likes: curr.likes } : confession
+                confession.id === id ? { ...confession, likes: curr.likes } : confession,
               ),
-              error: error instanceof Error ? error.message : 'Failed to update likes',
+              error: error instanceof Error ? error.message : "Failed to update likes",
             }));
           }
           throw error;
@@ -417,15 +576,15 @@ export const useConfessionStore = create<ConfessionState>()(
       updateVideoAnalytics: async (id, analytics) => {
         set({ isLoading: true, error: null });
         try {
-          const { error } = await supabase
-            .from('video_analytics')
-            .upsert({
-              confession_id: id,
-              watch_time: analytics.watchTime,
-              completion_rate: analytics.completionRate,
-              last_watched: analytics.lastWatched ? new Date(analytics.lastWatched).toISOString() : new Date().toISOString(),
-              interactions: analytics.interactions,
-            });
+          const { error } = await supabase.from("video_analytics").upsert({
+            confession_id: id,
+            watch_time: analytics.watchTime,
+            completion_rate: analytics.completionRate,
+            last_watched: analytics.lastWatched
+              ? new Date(analytics.lastWatched).toISOString()
+              : new Date().toISOString(),
+            interactions: analytics.interactions,
+          });
 
           if (error) throw error;
 
@@ -447,8 +606,8 @@ export const useConfessionStore = create<ConfessionState>()(
           }));
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to update video analytics',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to update video analytics",
+            isLoading: false,
           });
           throw error;
         }
@@ -457,16 +616,14 @@ export const useConfessionStore = create<ConfessionState>()(
       loadUserPreferences: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (!user) return;
 
-          const { data, error } = await supabase
-            .from('user_preferences')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
+          const { data, error } = await supabase.from("user_preferences").select("*").eq("user_id", user.id).single();
 
-          if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+          if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows returned
 
           if (data) {
             const preferences: UserPreferences = {
@@ -477,6 +634,7 @@ export const useConfessionStore = create<ConfessionState>()(
               captionsDefault: data.captions_default ?? true,
               hapticsEnabled: data.haptics_enabled ?? true,
               reducedMotion: data.reduced_motion ?? false,
+              playbackSpeed: 1.0,
             };
             set({ userPreferences: preferences, isLoading: false });
           } else {
@@ -484,8 +642,8 @@ export const useConfessionStore = create<ConfessionState>()(
           }
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to load user preferences',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to load user preferences",
+            isLoading: false,
           });
         }
       },
@@ -493,21 +651,21 @@ export const useConfessionStore = create<ConfessionState>()(
       updateUserPreferences: async (preferences) => {
         set({ isLoading: true, error: null });
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error('User not authenticated');
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("User not authenticated");
 
-          const { error } = await supabase
-            .from('user_preferences')
-            .upsert({
-              user_id: user.id,
-              autoplay: preferences.autoplay,
-              sound_enabled: preferences.soundEnabled,
-              quality_preference: preferences.qualityPreference,
-              data_usage_mode: preferences.dataUsageMode,
-              captions_default: preferences.captionsDefault,
-              haptics_enabled: preferences.hapticsEnabled,
-              reduced_motion: preferences.reducedMotion,
-            });
+          const { error } = await supabase.from("user_preferences").upsert({
+            user_id: user.id,
+            autoplay: preferences.autoplay,
+            sound_enabled: preferences.soundEnabled,
+            quality_preference: preferences.qualityPreference,
+            data_usage_mode: preferences.dataUsageMode,
+            captions_default: preferences.captionsDefault,
+            haptics_enabled: preferences.hapticsEnabled,
+            reduced_motion: preferences.reducedMotion,
+          });
 
           if (error) throw error;
 
@@ -520,8 +678,8 @@ export const useConfessionStore = create<ConfessionState>()(
           }));
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to update user preferences',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to update user preferences",
+            isLoading: false,
           });
           throw error;
         }
@@ -534,36 +692,44 @@ export const useConfessionStore = create<ConfessionState>()(
     {
       name: "confession-storage",
       storage: createJSONStorage(() => AsyncStorage),
-    }
-  )
+      partialize: (state) => ({
+        confessions: state.confessions,
+        userConfessions: state.userConfessions,
+        videoAnalytics: state.videoAnalytics,
+        userPreferences: state.userPreferences,
+      }),
+    },
+  ),
 );
 
 // Set up real-time subscriptions for confessions
 supabase
-  .channel('confessions')
-  .on('postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'confessions' },
-    (payload) => {
-      const { loadConfessions } = useConfessionStore.getState();
-      loadConfessions(); // Reload confessions when new ones are added
-    }
-  )
-  .on('postgres_changes',
-    { event: 'UPDATE', schema: 'public', table: 'confessions' },
-    (payload) => {
-      const { confessions } = useConfessionStore.getState();
-      const updatedConfession = payload.new;
+  .channel("confessions")
+  .on("postgres_changes", { event: "INSERT", schema: "public", table: "confessions" }, (payload) => {
+    const { loadConfessions } = useConfessionStore.getState();
+    loadConfessions(); // Reload confessions when new ones are added
+  })
+  .on("postgres_changes", { event: "UPDATE", schema: "public", table: "confessions" }, (payload) => {
+    const { confessions, userConfessions } = useConfessionStore.getState();
+    const updatedConfession = payload.new;
 
-      useConfessionStore.setState({
-        confessions: confessions.map(confession =>
-          confession.id === updatedConfession.id
-            ? {
-                ...confession,
-                likes: updatedConfession.likes,
-              }
-            : confession
-        ),
-      });
-    }
-  )
+    useConfessionStore.setState({
+      confessions: confessions.map((confession) =>
+        confession.id === updatedConfession.id
+          ? {
+              ...confession,
+              likes: updatedConfession.likes,
+            }
+          : confession,
+      ),
+      userConfessions: userConfessions.map((confession) =>
+        confession.id === updatedConfession.id
+          ? {
+              ...confession,
+              likes: updatedConfession.likes,
+            }
+          : confession,
+      ),
+    });
+  })
   .subscribe();

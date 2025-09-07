@@ -10,13 +10,13 @@ export class PreferenceAwareHaptics {
    */
   static async impactAsync(style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) {
     const { userPreferences } = useConfessionStore.getState();
-    
+
     if (userPreferences.hapticsEnabled) {
       try {
         await Haptics.impactAsync(style);
       } catch (error) {
         if (__DEV__) {
-          console.warn('Haptics failed:', error);
+          console.warn("Haptics failed:", error);
         }
       }
     }
@@ -27,13 +27,13 @@ export class PreferenceAwareHaptics {
    */
   static async notificationAsync(type: Haptics.NotificationFeedbackType = Haptics.NotificationFeedbackType.Success) {
     const { userPreferences } = useConfessionStore.getState();
-    
+
     if (userPreferences.hapticsEnabled) {
       try {
         await Haptics.notificationAsync(type);
       } catch (error) {
         if (__DEV__) {
-          console.warn('Haptics failed:', error);
+          console.warn("Haptics failed:", error);
         }
       }
     }
@@ -44,13 +44,13 @@ export class PreferenceAwareHaptics {
    */
   static async selectionAsync() {
     const { userPreferences } = useConfessionStore.getState();
-    
+
     if (userPreferences.hapticsEnabled) {
       try {
         await Haptics.selectionAsync();
       } catch (error) {
         if (__DEV__) {
-          console.warn('Haptics failed:', error);
+          console.warn("Haptics failed:", error);
         }
       }
     }
@@ -69,19 +69,21 @@ export const usePreferenceAwareHaptics = () => {
         await Haptics.impactAsync(style);
       } catch (error) {
         if (__DEV__) {
-          console.warn('Haptics failed:', error);
+          console.warn("Haptics failed:", error);
         }
       }
     }
   };
 
-  const notificationAsync = async (type: Haptics.NotificationFeedbackType = Haptics.NotificationFeedbackType.Success) => {
+  const notificationAsync = async (
+    type: Haptics.NotificationFeedbackType = Haptics.NotificationFeedbackType.Success,
+  ) => {
     if (hapticsEnabled) {
       try {
         await Haptics.notificationAsync(type);
       } catch (error) {
         if (__DEV__) {
-          console.warn('Haptics failed:', error);
+          console.warn("Haptics failed:", error);
         }
       }
     }
@@ -93,7 +95,7 @@ export const usePreferenceAwareHaptics = () => {
         await Haptics.selectionAsync();
       } catch (error) {
         if (__DEV__) {
-          console.warn('Haptics failed:', error);
+          console.warn("Haptics failed:", error);
         }
       }
     }

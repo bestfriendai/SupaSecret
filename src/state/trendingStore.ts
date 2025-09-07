@@ -10,16 +10,16 @@ interface TrendingState {
   trendingHashtags: HashtagData[];
   trendingSecrets: TrendingSecret[];
   searchResults: Confession[];
-  
+
   // UI State
   isLoading: boolean;
   isRefreshing: boolean;
   error: string | null;
   lastUpdated: number | null;
-  
+
   // Cache settings
   cacheExpiry: number; // 5 minutes in milliseconds
-  
+
   // Actions
   loadTrendingHashtags: (hours?: number, limit?: number) => Promise<void>;
   loadTrendingSecrets: (hours?: number, limit?: number) => Promise<void>;
@@ -44,10 +44,10 @@ export const useTrendingStore = create<TrendingState>()(
 
       loadTrendingHashtags: async (hours = 24, limit = 10) => {
         const state = get();
-        
+
         // Check cache validity
         if (
-          state.lastUpdated && 
+          state.lastUpdated &&
           Date.now() - state.lastUpdated < state.cacheExpiry &&
           state.trendingHashtags.length > 0
         ) {
@@ -55,60 +55,57 @@ export const useTrendingStore = create<TrendingState>()(
         }
 
         set({ isLoading: true, error: null });
-        
+
         try {
           // Try to use database function first
-          const { data: functionData, error: functionError } = await supabase
-            .rpc('get_trending_hashtags', { 
-              hours_back: hours, 
-              limit_count: limit 
-            });
+          const { data: functionData, error: functionError } = await supabase.rpc("get_trending_hashtags", {
+            hours_back: hours,
+            limit_count: limit,
+          });
 
           if (!functionError && functionData) {
-            const hashtags: HashtagData[] = functionData.map((item: any) => ({
+            const hashtags: HashtagData[] = (functionData as any[]).map((item: any) => ({
               hashtag: item.hashtag,
               count: parseInt(item.count),
               percentage: parseFloat(item.percentage),
             }));
-            
-            set({ 
+
+            set({
               trendingHashtags: hashtags,
               isLoading: false,
-              lastUpdated: Date.now()
+              lastUpdated: Date.now(),
             });
             return;
           }
 
           // Fallback to client-side calculation
           if (__DEV__) {
-            console.log('Using client-side hashtag calculation');
+            console.log("Using client-side hashtag calculation");
           }
           const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-          
+
           const { data: confessions, error } = await supabase
-            .from('confessions')
-            .select('content, transcription')
-            .gte('created_at', cutoffTime)
-            .order('created_at', { ascending: false });
+            .from("confessions")
+            .select("content, transcription")
+            .gte("created_at", cutoffTime)
+            .order("created_at", { ascending: false });
 
           if (error) throw error;
 
           // Client-side hashtag extraction and counting
           const hashtagCounts: Record<string, number> = {};
-          
-          confessions?.forEach(confession => {
+
+          confessions?.forEach((confession) => {
             const extractHashtags = (text: string): string[] => {
               const hashtagRegex = /#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi;
               const matches = text.match(hashtagRegex);
-              return matches ? matches.map(tag => tag.toLowerCase()) : [];
+              return matches ? matches.map((tag) => tag.toLowerCase()) : [];
             };
 
-            const contentHashtags = extractHashtags(confession.content || '');
-            const transcriptionHashtags = confession.transcription 
-              ? extractHashtags(confession.transcription) 
-              : [];
-            
-            [...contentHashtags, ...transcriptionHashtags].forEach(hashtag => {
+            const contentHashtags = extractHashtags(confession.content || "");
+            const transcriptionHashtags = confession.transcription ? extractHashtags(confession.transcription) : [];
+
+            [...contentHashtags, ...transcriptionHashtags].forEach((hashtag) => {
               hashtagCounts[hashtag] = (hashtagCounts[hashtag] || 0) + 1;
             });
           });
@@ -123,26 +120,25 @@ export const useTrendingStore = create<TrendingState>()(
             .sort((a, b) => b.count - a.count)
             .slice(0, limit);
 
-          set({ 
+          set({
             trendingHashtags: hashtags,
             isLoading: false,
-            lastUpdated: Date.now()
+            lastUpdated: Date.now(),
           });
-
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to load trending hashtags',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to load trending hashtags",
+            isLoading: false,
           });
         }
       },
 
       loadTrendingSecrets: async (hours = 24, limit = 10) => {
         const state = get();
-        
+
         // Check cache validity
         if (
-          state.lastUpdated && 
+          state.lastUpdated &&
           Date.now() - state.lastUpdated < state.cacheExpiry &&
           state.trendingSecrets.length > 0
         ) {
@@ -150,22 +146,21 @@ export const useTrendingStore = create<TrendingState>()(
         }
 
         set({ isLoading: true, error: null });
-        
+
         try {
           // Try to use database function first
-          const { data: functionData, error: functionError } = await supabase
-            .rpc('get_trending_secrets', { 
-              hours_back: hours, 
-              limit_count: limit 
-            });
+          const { data: functionData, error: functionError } = await supabase.rpc("get_trending_secrets", {
+            hours_back: hours,
+            limit_count: limit,
+          });
 
           if (!functionError && functionData) {
-            const secrets: TrendingSecret[] = functionData.map((item: any) => ({
+            const secrets: TrendingSecret[] = (functionData as any[]).map((item: any) => ({
               confession: {
                 id: item.id,
-                type: item.type as 'text' | 'video',
+                type: item.type as "text" | "video",
                 content: item.content,
-                videoUri: item.video_uri,
+                videoUri: item.video_uri || undefined,
                 transcription: item.transcription,
                 timestamp: new Date(item.created_at).getTime(),
                 isAnonymous: item.is_anonymous,
@@ -174,26 +169,26 @@ export const useTrendingStore = create<TrendingState>()(
               },
               engagementScore: parseFloat(item.engagement_score),
             }));
-            
-            set({ 
+
+            set({
               trendingSecrets: secrets,
               isLoading: false,
-              lastUpdated: Date.now()
+              lastUpdated: Date.now(),
             });
             return;
           }
 
           // Fallback to client-side calculation
           if (__DEV__) {
-            console.log('Using client-side trending calculation');
+            console.log("Using client-side trending calculation");
           }
           const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-          
+
           const { data: confessions, error } = await supabase
-            .from('confessions')
-            .select('*')
-            .gte('created_at', cutoffTime)
-            .order('likes', { ascending: false })
+            .from("confessions")
+            .select("*")
+            .gte("created_at", cutoffTime)
+            .order("likes", { ascending: false })
             .limit(limit * 2); // Get more to account for engagement scoring
 
           if (error) throw error;
@@ -206,13 +201,13 @@ export const useTrendingStore = create<TrendingState>()(
           };
 
           const secrets: TrendingSecret[] = (confessions || [])
-            .map(confession => ({
+            .map((confession) => ({
               confession: {
                 id: confession.id,
-                type: confession.type as 'text' | 'video',
+                type: confession.type as "text" | "video",
                 content: confession.content,
-                videoUri: confession.video_uri,
-                transcription: confession.transcription,
+                videoUri: confession.video_uri || undefined,
+                transcription: confession.transcription || undefined,
                 timestamp: new Date(confession.created_at).getTime(),
                 isAnonymous: confession.is_anonymous,
                 likes: confession.likes,
@@ -223,102 +218,97 @@ export const useTrendingStore = create<TrendingState>()(
             .sort((a, b) => b.engagementScore - a.engagementScore)
             .slice(0, limit);
 
-          set({ 
+          set({
             trendingSecrets: secrets,
             isLoading: false,
-            lastUpdated: Date.now()
+            lastUpdated: Date.now(),
           });
-
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to load trending secrets',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to load trending secrets",
+            isLoading: false,
           });
         }
       },
 
       searchByHashtag: async (hashtag: string) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           // Try to use database function first
-          const { data: functionData, error: functionError } = await supabase
-            .rpc('search_confessions_by_hashtag', { 
-              search_hashtag: hashtag 
-            });
+          const { data: functionData, error: functionError } = await supabase.rpc("search_confessions_by_hashtag", {
+            search_hashtag: hashtag,
+          });
 
           if (!functionError && functionData) {
-            const results: Confession[] = functionData.map((item: any) => ({
+            const results: Confession[] = (functionData as any[]).map((item: any) => ({
               id: item.id,
-              type: item.type as 'text' | 'video',
+              type: item.type as "text" | "video",
               content: item.content,
-              videoUri: item.video_uri,
+              videoUri: item.video_uri || undefined,
               transcription: item.transcription,
               timestamp: new Date(item.created_at).getTime(),
               isAnonymous: item.is_anonymous,
               likes: item.likes,
               isLiked: false,
             }));
-            
-            set({ 
+
+            set({
               searchResults: results,
-              isLoading: false
+              isLoading: false,
             });
             return;
           }
 
           // Fallback to client-side search
           if (__DEV__) {
-            console.log('Using client-side hashtag search');
+            console.log("Using client-side hashtag search");
           }
-          const normalizedHashtag = hashtag.toLowerCase().startsWith('#') 
-            ? hashtag.toLowerCase() 
+          const normalizedHashtag = hashtag.toLowerCase().startsWith("#")
+            ? hashtag.toLowerCase()
             : `#${hashtag.toLowerCase()}`;
 
           const { data: confessions, error } = await supabase
-            .from('confessions')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .from("confessions")
+            .select("*")
+            .order("created_at", { ascending: false });
 
           if (error) throw error;
 
           const extractHashtags = (text: string): string[] => {
             const hashtagRegex = /#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi;
             const matches = text.match(hashtagRegex);
-            return matches ? matches.map(tag => tag.toLowerCase()) : [];
+            return matches ? matches.map((tag) => tag.toLowerCase()) : [];
           };
 
           const results: Confession[] = (confessions || [])
-            .filter(confession => {
-              const contentHashtags = extractHashtags(confession.content || '');
-              const transcriptionHashtags = confession.transcription 
-                ? extractHashtags(confession.transcription) 
-                : [];
+            .filter((confession) => {
+              const contentHashtags = extractHashtags(confession.content || "");
+              const transcriptionHashtags = confession.transcription ? extractHashtags(confession.transcription) : [];
               const allHashtags = [...contentHashtags, ...transcriptionHashtags];
-              
+
               return allHashtags.includes(normalizedHashtag);
             })
-            .map(confession => ({
+            .map((confession) => ({
               id: confession.id,
-              type: confession.type as 'text' | 'video',
+              type: confession.type as "text" | "video",
               content: confession.content,
-              videoUri: confession.video_uri,
-              transcription: confession.transcription,
+              videoUri: confession.video_uri || undefined,
+              transcription: confession.transcription || undefined,
               timestamp: new Date(confession.created_at).getTime(),
               isAnonymous: confession.is_anonymous,
               likes: confession.likes,
               isLiked: false,
             }));
 
-          set({ 
+          set({
             searchResults: results,
-            isLoading: false
+            isLoading: false,
           });
-
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Failed to search hashtag',
-            isLoading: false
+            error: error instanceof Error ? error.message : "Failed to search hashtag",
+            isLoading: false,
           });
         }
       },
@@ -326,10 +316,7 @@ export const useTrendingStore = create<TrendingState>()(
       refreshAll: async (hours = 24) => {
         set({ isRefreshing: true });
         try {
-          await Promise.all([
-            get().loadTrendingHashtags(hours),
-            get().loadTrendingSecrets(hours)
-          ]);
+          await Promise.all([get().loadTrendingHashtags(hours), get().loadTrendingSecrets(hours)]);
         } finally {
           set({ isRefreshing: false });
         }
@@ -352,6 +339,6 @@ export const useTrendingStore = create<TrendingState>()(
         trendingSecrets: state.trendingSecrets,
         lastUpdated: state.lastUpdated,
       }),
-    }
-  )
+    },
+  ),
 );

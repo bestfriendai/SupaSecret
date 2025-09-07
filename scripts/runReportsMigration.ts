@@ -1,4 +1,4 @@
-import { supabase } from '../src/lib/supabase';
+import { supabase } from "../src/lib/supabase";
 
 /**
  * Script to run the reports table migration
@@ -108,36 +108,35 @@ GRANT ALL ON public.reports TO service_role;
 `;
 
 async function runMigration() {
-  console.log('🚀 Starting reports table migration...');
-  
+  console.log("🚀 Starting reports table migration...");
+
   try {
     // Split the SQL into individual statements and execute them
     const statements = migrationSQL
-      .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
-    
+      .split(";")
+      .map((stmt) => stmt.trim())
+      .filter((stmt) => stmt.length > 0 && !stmt.startsWith("--"));
+
     for (let i = 0; i < statements.length; i++) {
       const statement = statements[i];
       console.log(`📝 Executing statement ${i + 1}/${statements.length}...`);
-      
-      const { error } = await supabase.rpc('exec_sql', { sql: statement });
-      
+
+      const { error } = await supabase.rpc("exec_sql", { sql: statement });
+
       if (error) {
         console.error(`❌ Error executing statement ${i + 1}:`, error);
-        console.log('Statement:', statement);
+        console.log("Statement:", statement);
         return false;
       }
     }
-    
-    console.log('✅ Migration completed successfully!');
-    console.log('🎉 Reports table and all related objects have been created.');
-    console.log('📱 You can now test the report functionality in your app.');
-    
+
+    console.log("✅ Migration completed successfully!");
+    console.log("🎉 Reports table and all related objects have been created.");
+    console.log("📱 You can now test the report functionality in your app.");
+
     return true;
-    
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    console.error("❌ Migration failed:", error);
     return false;
   }
 }
@@ -149,7 +148,7 @@ if (require.main === module) {
       process.exit(success ? 0 : 1);
     })
     .catch((error) => {
-      console.error('❌ Unexpected error:', error);
+      console.error("❌ Unexpected error:", error);
       process.exit(1);
     });
 }

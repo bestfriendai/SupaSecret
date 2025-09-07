@@ -37,11 +37,7 @@ export default function TrendingBarChart({
   }, [percentage, animated]);
 
   const barStyle = useAnimatedStyle(() => {
-    const height = interpolate(
-      progress.value,
-      [0, 1],
-      [2, maxHeight]
-    );
+    const height = interpolate(progress.value, [0, 1], [2, maxHeight]);
 
     return {
       height,
@@ -49,13 +45,16 @@ export default function TrendingBarChart({
     };
   }, [maxHeight]);
 
-  const containerStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        scaleY: withTiming(progress.value > 0 ? 1 : 0.8, { duration: 300 }),
-      },
-    ],
-  }), []);
+  const containerStyle = useAnimatedStyle(
+    () => ({
+      transform: [
+        {
+          scaleY: withTiming(progress.value > 0 ? 1 : 0.8, { duration: 300 }),
+        },
+      ],
+    }),
+    [],
+  );
 
   return (
     <Animated.View

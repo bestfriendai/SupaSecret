@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { getTextInputA11yProps, getButtonA11yProps } from "../utils/accessibility";
 
 interface AuthInputProps {
   label: string;
@@ -42,23 +43,15 @@ export default function AuthInput({
 
   const isPasswordField = secureTextEntry;
   const actualSecureTextEntry = isPasswordField && !showPassword;
-  const actualRightIcon = isPasswordField 
-    ? (showPassword ? "eye-off" : "eye")
-    : rightIcon;
-  const actualOnRightIconPress = isPasswordField 
-    ? handleTogglePassword 
-    : onRightIconPress;
+  const actualRightIcon = isPasswordField ? (showPassword ? "eye-off" : "eye") : rightIcon;
+  const actualOnRightIconPress = isPasswordField ? handleTogglePassword : onRightIconPress;
 
   return (
     <View className="mb-4">
       <Text className="text-white text-15 font-medium mb-2">{label}</Text>
       <View
         className={`flex-row items-center bg-gray-900 border rounded-2xl px-4 py-3 ${
-          error
-            ? "border-red-500"
-            : isFocused
-            ? "border-blue-500"
-            : "border-gray-700"
+          error ? "border-red-500" : isFocused ? "border-blue-500" : "border-gray-700"
         } ${disabled ? "opacity-50" : ""}`}
       >
         {leftIcon && (
@@ -86,18 +79,29 @@ export default function AuthInput({
             color: "#FFFFFF",
             fontSize: 16,
           }}
+          {...getTextInputA11yProps(
+            label,
+            error || placeholder,
+            false, // required - could be made configurable
+            false  // multiline
+          )}
         />
         {actualRightIcon && (
           <Pressable
             onPress={actualOnRightIconPress}
             className="ml-3 p-1"
             disabled={disabled}
+            {...getButtonA11yProps(
+              secureTextEntry
+                ? (actualSecureTextEntry ? 'Show password' : 'Hide password')
+                : 'Action button',
+              secureTextEntry
+                ? 'Double tap to toggle password visibility'
+                : undefined,
+              disabled
+            )}
           >
-            <Ionicons
-              name={actualRightIcon}
-              size={20}
-              color={error ? "#EF4444" : isFocused ? "#1D9BF0" : "#8B98A5"}
-            />
+            <Ionicons name={actualRightIcon} size={20} color={error ? "#EF4444" : isFocused ? "#1D9BF0" : "#8B98A5"} />
           </Pressable>
         )}
       </View>

@@ -1,12 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -14,11 +8,7 @@ interface LoadingSpinnerProps {
   color?: string;
 }
 
-export default function LoadingSpinner({ 
-  message, 
-  size = 40, 
-  color = "#1D9BF0" 
-}: LoadingSpinnerProps) {
+export default function LoadingSpinner({ message, size = 40, color = "#1D9BF0" }: LoadingSpinnerProps) {
   const rotation = useSharedValue(0);
   const scale = useSharedValue(1);
 
@@ -28,7 +18,7 @@ export default function LoadingSpinner({
         duration: 1000,
         easing: Easing.linear,
       }),
-      -1
+      -1,
     );
 
     scale.value = withRepeat(
@@ -37,15 +27,12 @@ export default function LoadingSpinner({
         easing: Easing.inOut(Easing.ease),
       }),
       -1,
-      true
+      true,
     );
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { rotate: `${rotation.value}deg` },
-      { scale: scale.value },
-    ],
+    transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
   }));
 
   return (
@@ -63,11 +50,7 @@ export default function LoadingSpinner({
           animatedStyle,
         ]}
       />
-      {message && (
-        <Text className="text-gray-500 text-15 mt-3 text-center">
-          {message}
-        </Text>
-      )}
+      {message && <Text className="text-gray-500 text-15 mt-3 text-center">{message}</Text>}
     </View>
   );
 }

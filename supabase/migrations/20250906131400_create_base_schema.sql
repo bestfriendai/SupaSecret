@@ -1,6 +1,9 @@
 -- Migration: Create base database schema for SupaSecret
 -- This migration creates all the core tables needed for the application
 
+-- Ensure required extensions
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Create user_profiles table
 CREATE TABLE IF NOT EXISTS public.user_profiles (
   id uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,

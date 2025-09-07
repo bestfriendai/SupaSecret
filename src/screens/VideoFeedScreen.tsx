@@ -13,10 +13,8 @@ export default function VideoFeedScreen() {
         // Screen is blurred - mute all videos
         // This will be handled in the EnhancedVideoFeed component
       };
-    }, [])
+    }, []),
   );
 
-  return (
-    <EnhancedVideoFeed onClose={() => navigation.goBack()} />
-  );
+  return <EnhancedVideoFeed onClose={() => navigation.goBack()} />;
 }

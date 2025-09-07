@@ -2,11 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { View, Text, Pressable, Share, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from "@gorhom/bottom-sheet";
+import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import { useSavedStore } from "../state/savedStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import ReportModal from "./ReportModal";
@@ -18,19 +14,15 @@ interface FeedActionSheetProps {
   bottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
 }
 
-export default function FeedActionSheet({
-  confessionId,
-  confessionText,
-  bottomSheetModalRef,
-}: FeedActionSheetProps) {
+export default function FeedActionSheet({ confessionId, confessionText, bottomSheetModalRef }: FeedActionSheetProps) {
   const [showModal, setShowModal] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "confirm">("success");
-  
+
   const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
   const { impactAsync } = usePreferenceAwareHaptics();
-  
+
   // Bottom sheet configuration
   const snapPoints = useMemo(() => ["45%"], []);
 
@@ -42,15 +34,8 @@ export default function FeedActionSheet({
 
   // Backdrop component
   const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.5}
-      />
-    ),
-    []
+    (props: any) => <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />,
+    [],
   );
 
   const handleNativeShare = useCallback(async () => {
@@ -98,7 +83,7 @@ export default function FeedActionSheet({
 
   const handleSave = useCallback(() => {
     const isCurrentlySaved = isSaved(confessionId);
-    
+
     if (isCurrentlySaved) {
       unsaveConfession(confessionId);
       showMessage("Removed from saved secrets", "success");
@@ -106,7 +91,7 @@ export default function FeedActionSheet({
       saveConfession(confessionId);
       showMessage("Saved to your collection!", "success");
     }
-    
+
     impactAsync();
     bottomSheetModalRef.current?.dismiss();
   }, [confessionId, isSaved, saveConfession, unsaveConfession, bottomSheetModalRef, impactAsync]);
@@ -119,18 +104,24 @@ export default function FeedActionSheet({
     }, 300);
   }, [bottomSheetModalRef, impactAsync]);
 
-  const ActionOption = ({ icon, title, subtitle, onPress, color = "#8B98A5" }: {
+  const ActionOption = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    color = "#8B98A5",
+  }: {
     icon: string;
     title: string;
     subtitle: string;
     onPress: () => void;
     color?: string;
   }) => (
-    <Pressable
-      className="flex-row items-center py-4 px-4 active:bg-gray-800 rounded-xl"
-      onPress={onPress}
-    >
-      <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${color}20` }}>
+    <Pressable className="flex-row items-center py-4 px-4 active:bg-gray-800 rounded-xl" onPress={onPress}>
+      <View
+        className="w-10 h-10 rounded-full items-center justify-center mr-3"
+        style={{ backgroundColor: `${color}20` }}
+      >
         <Ionicons name={icon as any} size={20} color={color} />
       </View>
       <View className="flex-1">
@@ -203,12 +194,7 @@ export default function FeedActionSheet({
       </BottomSheetModal>
 
       {/* Success/Confirm Modal */}
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowModal(false)}
-      >
+      <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
         <BlurView intensity={20} tint="dark" style={{ flex: 1 }}>
           <View className="flex-1 items-center justify-center px-8">
             <View className="bg-gray-800 rounded-2xl p-6 w-full max-w-sm">
@@ -216,13 +202,8 @@ export default function FeedActionSheet({
                 <View className="w-12 h-12 bg-green-600 rounded-full items-center justify-center mb-4">
                   <Ionicons name="checkmark" size={24} color="white" />
                 </View>
-                <Text className="text-white text-16 font-medium text-center mb-6">
-                  {modalMessage}
-                </Text>
-                <Pressable
-                  className="bg-blue-600 rounded-xl py-3 px-6 w-full"
-                  onPress={() => setShowModal(false)}
-                >
+                <Text className="text-white text-16 font-medium text-center mb-6">{modalMessage}</Text>
+                <Pressable className="bg-blue-600 rounded-xl py-3 px-6 w-full" onPress={() => setShowModal(false)}>
                   <Text className="text-white text-16 font-medium text-center">OK</Text>
                 </Pressable>
               </View>
@@ -233,9 +214,10 @@ export default function FeedActionSheet({
 
       {/* Report Modal */}
       <ReportModal
-        visible={reportModalVisible}
+        isVisible={reportModalVisible}
         onClose={() => setReportModalVisible(false)}
         confessionId={confessionId}
+        contentType="confession"
       />
     </>
   );

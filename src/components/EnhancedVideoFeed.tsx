@@ -19,17 +19,16 @@ import Animated, {
   withSequence,
   withDelay,
 } from "react-native-reanimated";
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import AnimatedActionButton from "./AnimatedActionButton";
 import PullToRefresh from "./PullToRefresh";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
 import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
 import VideoProgressIndicator from "./VideoProgressIndicator";
 import TikTokCaptionsOverlay from "./TikTokCaptionsOverlay";
+import VideoSkeleton from "./VideoSkeleton";
+import VideoGuidanceOverlay from "./VideoGuidanceOverlay";
+import VideoControls from "./VideoControls";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useVideoPlayers } from "../hooks/useVideoPlayers";
 
@@ -61,17 +60,21 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const confessions = useConfessionStore((state) => state.confessions);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const userPreferences = useConfessionStore((state) => state.userPreferences);
+  const updateVideoAnalytics = useConfessionStore((state) => state.updateVideoAnalytics);
   const videoConfessions = confessions.filter((c) => c.type === "video") as VideoItem[];
   const { impactAsync } = usePreferenceAwareHaptics();
   const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
-  
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [captionsEnabled, setCaptionsEnabled] = useState(userPreferences.captionsDefault);
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
+  const [showGuidance, setShowGuidance] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const commentSheetRef = useRef<BottomSheetModal | null>(null);
   const shareSheetRef = useRef<BottomSheetModal | null>(null);
-  
+
   // Animated values
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -79,7 +82,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const heartOpacity = useSharedValue(0);
   const overlayOpacity = useSharedValue(1);
   const actionButtonsTranslateX = useSharedValue(0);
-  
+
   // Video players management
   const videoPlayers = useVideoPlayers(videoConfessions);
 
@@ -94,8 +97,19 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
       return () => {
         videoPlayers.muteAll();
       };
-    }, [videoPlayers, videoConfessions.length])
+    }, [videoPlayers, videoConfessions.length]),
   );
+
+  // Reference current video and player for use across effects/render
+  const currentVideo = videoConfessions[currentIndex];
+  const currentPlayer = videoPlayers.getPlayer(currentIndex);
+
+  // Ensure autoplay when player becomes available
+  useEffect(() => {
+    if (currentPlayer && !currentPlayer.playing) {
+      videoPlayers.playVideo(currentIndex);
+    }
+  }, [currentPlayer, currentIndex, videoPlayers]);
 
   // Handle video changes
   useEffect(() => {
@@ -104,26 +118,92 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     }
   }, [currentIndex, videoPlayers, videoConfessions.length]);
 
-  const changeVideo = useCallback((newIndex: number) => {
-    if (newIndex < 0 || newIndex >= videoConfessions.length) return;
-    
-    // Pause current and play new
-    videoPlayers.pauseVideo(currentIndex);
-    videoPlayers.playVideo(newIndex);
-    
-    setCurrentIndex(newIndex);
-    
-    // Haptic feedback
-    impactAsync();
-  }, [currentIndex, videoConfessions.length, videoPlayers]);
+  const changeVideo = useCallback(
+    (newIndex: number) => {
+      if (newIndex < 0 || newIndex >= videoConfessions.length) return;
+
+      // Show loading state for new video
+      setIsVideoLoading(true);
+
+      // Pause current and play new
+      videoPlayers.pauseVideo(currentIndex);
+      videoPlayers.playVideo(newIndex);
+
+      setCurrentIndex(newIndex);
+
+      // Hide loading state after a short delay (video should be preloaded)
+      setTimeout(() => setIsVideoLoading(false), 300);
+
+      // Haptic feedback
+      impactAsync();
+    },
+    [currentIndex, videoConfessions.length, videoPlayers],
+  );
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     // Simulate refresh delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsRefreshing(false);
     impactAsync();
   }, []);
+
+  const handleSpeedChange = useCallback(
+    (speed: number) => {
+      // Apply speed to current video player
+      const player = videoPlayers.getPlayer(currentIndex);
+      if (player && player.setPlaybackRate) {
+        player.setPlaybackRate(speed);
+      }
+    },
+    [currentIndex, videoPlayers],
+  );
+
+  const handleCaptionsToggle = useCallback((enabled: boolean) => {
+    setCaptionsEnabled(enabled);
+  }, []);
+
+  // Track video progress
+  const trackVideoProgress = useCallback(
+    (videoId: string, currentTime: number, duration: number) => {
+      if (duration > 0) {
+        const progress = Math.min(currentTime / duration, 1);
+        const analytics = {
+          watchTime: currentTime,
+          completionRate: progress,
+          watchProgress: progress,
+          totalDuration: duration,
+          lastWatched: Date.now(),
+          interactions: 1,
+          watchSessions: 1,
+        };
+
+        updateVideoAnalytics(videoId, analytics);
+      }
+    },
+    [updateVideoAnalytics],
+  );
+
+  // Set up progress tracking for current video
+  useEffect(() => {
+    const player = videoPlayers.getPlayer(currentIndex);
+    if (player && currentVideo) {
+      const interval = setInterval(() => {
+        try {
+          if (player.currentTime !== undefined && player.duration !== undefined) {
+            trackVideoProgress(currentVideo.id, player.currentTime, player.duration);
+          }
+        } catch (_error) {
+          // Ignore errors when accessing player properties
+        }
+      }, 1000);
+
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }
+    return undefined;
+  }, [currentIndex, currentVideo, videoPlayers, trackVideoProgress]);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
@@ -131,33 +211,23 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     })
     .onUpdate((event) => {
       translateY.value = event.translationY;
-      
+
       // Update pull distance for refresh indicator
       if (event.translationY > 0 && currentIndex === 0) {
         runOnJS(setPullDistance)(event.translationY);
       }
-      
+
       // Scale effect based on swipe distance
-      const scaleValue = interpolate(
-        Math.abs(event.translationY),
-        [0, screenHeight / 2],
-        [1, 0.9],
-        "clamp"
-      );
+      const scaleValue = interpolate(Math.abs(event.translationY), [0, screenHeight / 2], [1, 0.9], "clamp");
       scale.value = scaleValue;
-      
+
       // Action buttons slide effect
-      actionButtonsTranslateX.value = interpolate(
-        event.translationX,
-        [-100, 0, 100],
-        [20, 0, -20],
-        "clamp"
-      );
+      actionButtonsTranslateX.value = interpolate(event.translationX, [-100, 0, 100], [20, 0, -20], "clamp");
     })
     .onEnd((event) => {
       const shouldSwipe = Math.abs(event.translationY) > SWIPE_THRESHOLD;
       const shouldRefresh = event.translationY > 80 && currentIndex === 0;
-      
+
       if (shouldRefresh) {
         runOnJS(handleRefresh)();
       } else if (shouldSwipe) {
@@ -173,7 +243,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
           }
         }
       }
-      
+
       // Reset animations
       translateY.value = withSpring(0, SPRING_CONFIG);
       scale.value = withSpring(1, SPRING_CONFIG);
@@ -186,28 +256,33 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     .numberOfTaps(2)
     .onEnd(() => {
       // Heart animation
-      heartScale.value = withSequence(
-        withTiming(1.2, { duration: 200 }),
-        withTiming(0, { duration: 300 })
-      );
+      heartScale.value = withSequence(withTiming(1.2, { duration: 200 }), withTiming(0, { duration: 300 }));
       heartOpacity.value = withSequence(
         withTiming(1, { duration: 200 }),
-        withDelay(100, withTiming(0, { duration: 300 }))
+        withDelay(100, withTiming(0, { duration: 300 })),
       );
-      
+
       runOnJS(() => {
         toggleLike(videoConfessions[currentIndex]?.id);
         impactAsync();
       })();
     });
 
-  const composedGestures = Gesture.Simultaneous(panGesture, doubleTapGesture);
+  const singleTapGesture = Gesture.Tap()
+    .numberOfTaps(1)
+    .onEnd(() => {
+      runOnJS(setShowControls)(!showControls);
+
+      // Auto-hide controls after 3 seconds
+      if (!showControls) {
+        setTimeout(() => runOnJS(setShowControls)(false), 3000);
+      }
+    });
+
+  const composedGestures = Gesture.Simultaneous(panGesture, Gesture.Exclusive(doubleTapGesture, singleTapGesture));
 
   const containerStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
   const heartAnimationStyle = useAnimatedStyle(() => ({
@@ -227,15 +302,15 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     return (
       <SafeAreaView className="flex-1 bg-black items-center justify-center">
         <Ionicons name="videocam-outline" size={64} color="#8B98A5" />
-        <Text className="text-white text-20 font-bold mt-4 text-center">
-          No Video Secrets Yet
-        </Text>
+        <Text className="text-white text-20 font-bold mt-4 text-center">No Video Secrets Yet</Text>
         <Text className="text-gray-500 text-15 mt-2 text-center px-6">
           Video confessions will appear here when they are shared
         </Text>
         <Pressable
-          className="bg-blue-500 rounded-full px-6 py-3 mt-6"
+          className="bg-blue-500 rounded-full px-6 py-3 mt-6 touch-target"
           onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Go back to previous screen"
         >
           <Text className="text-white font-semibold">Go Back</Text>
         </Pressable>
@@ -243,15 +318,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     );
   }
 
-  const currentVideo = videoConfessions[currentIndex];
-  const currentPlayer = videoPlayers.getPlayer(currentIndex);
-
-  // Ensure autoplay when player becomes available
-  useEffect(() => {
-    if (currentPlayer && !currentPlayer.playing) {
-      videoPlayers.playVideo(currentIndex);
-    }
-  }, [currentPlayer, currentIndex, videoPlayers]);
+  // currentVideo/currentPlayer are defined above
 
   return (
     <GestureHandlerRootView className="flex-1">
@@ -262,26 +329,29 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
             {/* Video Player */}
             {currentPlayer && (
               <>
-                <VideoView
-                  player={currentPlayer}
-                  style={{ flex: 1 }}
-                  contentFit="cover"
-                  nativeControls={false}
-                />
+                <VideoView player={currentPlayer} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
                 {/* Visual privacy overlay in Expo Go */}
-                <BlurView intensity={20} tint="dark" style={{ position: 'absolute', inset: 0 }} pointerEvents="none" />
+                <BlurView intensity={20} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
               </>
             )}
 
-            {/* Pull to Refresh Indicator */}
-            <PullToRefresh
-              pullDistance={pullDistance}
-              isRefreshing={isRefreshing}
-              threshold={80}
+            {/* Video Loading Skeleton */}
+            <VideoSkeleton isVisible={isVideoLoading} />
+
+            {/* Video Controls */}
+            <VideoControls
+              isVisible={showControls}
+              onSpeedChange={handleSpeedChange}
+              onCaptionsToggle={handleCaptionsToggle}
+              captionsEnabled={captionsEnabled}
+              hasTranscription={!!currentVideo.transcription}
             />
 
+            {/* Pull to Refresh Indicator */}
+            <PullToRefresh pullDistance={pullDistance} isRefreshing={isRefreshing} threshold={80} />
+
             {/* Heart Animation Overlay */}
-            <Animated.View 
+            <Animated.View
               style={[
                 {
                   position: "absolute",
@@ -291,28 +361,25 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   marginLeft: -40,
                   zIndex: 100,
                 },
-                heartAnimationStyle
+                heartAnimationStyle,
               ]}
             >
               <Ionicons name="heart" size={80} color="#FF3040" />
             </Animated.View>
 
             {/* Top Overlay */}
-            <Animated.View 
-              style={[
-                { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 },
-                overlayStyle
-              ]}
-            >
+            <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }, overlayStyle]}>
               <SafeAreaView>
                 <View className="flex-row items-center justify-between px-4 py-2">
                   <Pressable
-                    className="bg-black/50 rounded-full p-2"
+                    className="bg-black/50 rounded-full p-2 touch-target"
                     onPress={onClose}
+                    accessibilityRole="button"
+                    accessibilityLabel="Go back"
                   >
                     <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                   </Pressable>
-                  
+
                   <View className="flex-row items-center space-x-2">
                     <View className="bg-black/50 rounded-full px-3 py-1">
                       <Text className="text-white text-13 font-medium">
@@ -323,20 +390,24 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                     {/* CC Toggle */}
                     {currentVideo.transcription && (
                       <Pressable
-                        className={`rounded-full px-2 py-1 ${captionsEnabled ? 'bg-blue-500' : 'bg-black/50'}`}
+                        className={`rounded-full px-2 py-1 ${captionsEnabled ? "bg-blue-500" : "bg-black/50"}`}
                         onPress={() => {
                           setCaptionsEnabled(!captionsEnabled);
                           impactAsync();
                         }}
                       >
-                        <Text className={`text-11 font-medium ${captionsEnabled ? 'text-white' : 'text-gray-300'}`}>
+                        <Text className={`text-11 font-medium ${captionsEnabled ? "text-white" : "text-gray-300"}`}>
                           CC
                         </Text>
                       </Pressable>
                     )}
                   </View>
 
-                  <Pressable className="bg-black/50 rounded-full p-2">
+                  <Pressable
+                    className="bg-black/50 rounded-full p-2 touch-target"
+                    accessibilityRole="button"
+                    accessibilityLabel="More options"
+                  >
                     <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
                   </Pressable>
                 </View>
@@ -344,12 +415,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
             </Animated.View>
 
             {/* Right Side Actions */}
-            <Animated.View 
-              style={[
-                { position: "absolute", right: 16, bottom: 120, zIndex: 10 },
-                actionButtonsStyle
-              ]}
-            >
+            <Animated.View style={[{ position: "absolute", right: 16, bottom: 120, zIndex: 10 }, actionButtonsStyle]}>
               <View className="items-center space-y-6">
                 <AnimatedActionButton
                   icon={currentVideo.isLiked ? "heart" : "heart-outline"}
@@ -361,25 +427,27 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                     impactAsync();
                   }}
                 />
-                
+
                 <AnimatedActionButton
                   icon="chatbubble-outline"
                   label="Reply"
                   onPress={() => {
-                    commentSheetRef.current?.present();
+                    const ref = commentSheetRef.current;
+                    if (ref && typeof ref.present === "function") ref.present();
                     impactAsync();
                   }}
                 />
-                
+
                 <AnimatedActionButton
                   icon="share-outline"
                   label="Share"
                   onPress={() => {
-                    shareSheetRef.current?.present();
+                    const ref = shareSheetRef.current;
+                    if (ref && typeof ref.present === "function") ref.present();
                     impactAsync();
                   }}
                 />
-                
+
                 <AnimatedActionButton
                   icon={isSaved(currentVideo.id) ? "bookmark" : "bookmark-outline"}
                   label="Save"
@@ -397,12 +465,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
             </Animated.View>
 
             {/* Bottom Overlay */}
-            <Animated.View 
-              style={[
-                { position: "absolute", bottom: 0, left: 0, right: 60, zIndex: 10 },
-                overlayStyle
-              ]}
-            >
+            <Animated.View style={[{ position: "absolute", bottom: 0, left: 0, right: 60, zIndex: 10 }, overlayStyle]}>
               <SafeAreaView>
                 <View className="px-4 pb-4">
                   {/* User Info */}
@@ -438,7 +501,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                       />
                     </View>
                   )}
-                  
+
                   {/* Video Info */}
                   <View className="flex-row items-center">
                     <Ionicons name="videocam" size={14} color="#1D9BF0" />
@@ -471,9 +534,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
         </GestureDetector>
 
         {/* Comment Bottom Sheet */}
-        <EnhancedCommentBottomSheet
-          bottomSheetModalRef={commentSheetRef}
-        />
+        <EnhancedCommentBottomSheet bottomSheetModalRef={commentSheetRef} />
 
         {/* Share Bottom Sheet */}
         <EnhancedShareBottomSheet
@@ -481,6 +542,9 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
           confessionId={currentVideo.id}
           confessionText={currentVideo.transcription || currentVideo.content}
         />
+
+        {/* First-time User Guidance */}
+        <VideoGuidanceOverlay isVisible={showGuidance} onDismiss={() => setShowGuidance(false)} />
       </View>
     </GestureHandlerRootView>
   );

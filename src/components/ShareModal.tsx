@@ -4,13 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { generateConfessionLink, generateShareMessage } from "../utils/links";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useReportStore } from "../state/reportStore";
 import ReportModal from "./ReportModal";
@@ -24,12 +18,7 @@ interface ShareModalProps {
 
 const MODAL_HEIGHT = 300;
 
-export default function ShareModal({
-  isVisible,
-  onClose,
-  confessionId,
-  confessionText,
-}: ShareModalProps) {
+export default function ShareModal({ isVisible, onClose, confessionId, confessionText }: ShareModalProps) {
   const { impactAsync } = usePreferenceAwareHaptics();
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const translateY = useSharedValue(MODAL_HEIGHT);
@@ -163,10 +152,7 @@ export default function ShareModal({
 
           {/* Share Options */}
           <View className="space-y-4">
-            <Pressable
-              className="flex-row items-center py-4 px-2"
-              onPress={handleNativeShare}
-            >
+            <Pressable className="flex-row items-center py-4 px-2" onPress={handleNativeShare}>
               <View className="w-10 h-10 bg-blue-500 rounded-full items-center justify-center mr-4">
                 <Ionicons name="share-outline" size={20} color="#FFFFFF" />
               </View>
@@ -176,10 +162,7 @@ export default function ShareModal({
               </View>
             </Pressable>
 
-            <Pressable
-              className="flex-row items-center py-4 px-2"
-              onPress={handleCopyLink}
-            >
+            <Pressable className="flex-row items-center py-4 px-2" onPress={handleCopyLink}>
               <View className="w-10 h-10 bg-green-500 rounded-full items-center justify-center mr-4">
                 <Ionicons name="link-outline" size={20} color="#FFFFFF" />
               </View>
@@ -189,10 +172,7 @@ export default function ShareModal({
               </View>
             </Pressable>
 
-            <Pressable
-              className="flex-row items-center py-4 px-2"
-              onPress={handleCopyText}
-            >
+            <Pressable className="flex-row items-center py-4 px-2" onPress={handleCopyText}>
               <View className="w-10 h-10 bg-purple-500 rounded-full items-center justify-center mr-4">
                 <Ionicons name="copy-outline" size={20} color="#FFFFFF" />
               </View>
@@ -202,10 +182,7 @@ export default function ShareModal({
               </View>
             </Pressable>
 
-            <Pressable
-              className="flex-row items-center py-4 px-2"
-              onPress={handleReport}
-            >
+            <Pressable className="flex-row items-center py-4 px-2" onPress={handleReport}>
               <View className="w-10 h-10 bg-red-500 rounded-full items-center justify-center mr-4">
                 <Ionicons name="flag-outline" size={20} color="#FFFFFF" />
               </View>

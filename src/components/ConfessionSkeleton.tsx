@@ -1,11 +1,12 @@
 import React from "react";
-import { View } from "react-native";
+import { View, type DimensionValue, type ViewStyle } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withTiming,
   interpolate,
+  cancelAnimation,
 } from "react-native-reanimated";
 
 interface ConfessionSkeletonProps {
@@ -16,11 +17,13 @@ export default function ConfessionSkeleton({ showVideo = false }: ConfessionSkel
   const shimmer = useSharedValue(0);
 
   React.useEffect(() => {
-    shimmer.value = withRepeat(
-      withTiming(1, { duration: 1500 }),
-      -1,
-      true
-    );
+    shimmer.value = withRepeat(withTiming(1, { duration: 1500 }), -1, true);
+
+    // Cleanup function to cancel animation on unmount
+    return () => {
+      cancelAnimation(shimmer);
+      shimmer.value = 0; // Reset to safe default
+    };
   }, []);
 
   const shimmerStyle = useAnimatedStyle(() => {
@@ -28,9 +31,17 @@ export default function ConfessionSkeleton({ showVideo = false }: ConfessionSkel
     return { opacity };
   }, []);
 
-  const SkeletonBox = ({ width, height, className = "" }: { width: number | string; height: number; className?: string }) => (
+  const SkeletonBox = ({
+    width,
+    height,
+    className = "",
+  }: {
+    width: DimensionValue;
+    height: number;
+    className?: string;
+  }) => (
     <Animated.View
-      style={[shimmerStyle, { width, height }]}
+      style={[shimmerStyle, { width, height } as ViewStyle]}
       className={`bg-gray-700 rounded ${className}`}
     />
   );

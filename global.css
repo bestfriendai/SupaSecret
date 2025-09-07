@@ -1,3 +1,113 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Global component classes for consistent spacing and accessibility */
+@layer components {
+  /* Touch target classes - ensures minimum 44px touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .touch-target-large {
+    @apply min-h-[56px] min-w-[56px];
+  }
+
+  /* Button classes with proper spacing and accessibility */
+  .btn-primary {
+    @apply bg-blue-500 text-white px-4 py-3 rounded-lg touch-target;
+    @apply active:bg-blue-600 transition-colors duration-150;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-800 text-white px-4 py-3 rounded-lg touch-target;
+    @apply active:bg-gray-700 transition-colors duration-150;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-white px-4 py-3 rounded-lg touch-target;
+    @apply active:bg-gray-800 transition-colors duration-150;
+  }
+
+  /* Section spacing classes */
+  .section-gap {
+    @apply mb-4; /* 16px gap between sections */
+  }
+
+  .section-padding {
+    @apply p-4; /* 16px padding for sections */
+  }
+
+  .screen-padding {
+    @apply px-4; /* 16px horizontal padding for screens */
+  }
+
+  /* Card classes with consistent styling */
+  .card {
+    @apply bg-gray-900 rounded-lg p-4 section-gap;
+  }
+
+  .card-compact {
+    @apply bg-gray-900 rounded-lg p-3;
+  }
+
+  /* Modal classes */
+  .modal-container {
+    @apply flex-1 justify-center items-center bg-black/50 p-5;
+  }
+
+  .modal-content {
+    @apply bg-gray-900 rounded-xl p-5 w-full max-w-sm;
+  }
+
+  /* Loading state classes */
+  .loading-overlay {
+    @apply absolute inset-0 bg-black/30 flex items-center justify-center;
+  }
+
+  .loading-spinner {
+    @apply w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin;
+  }
+
+  /* Text classes with proper contrast */
+  .text-primary {
+    @apply text-white;
+  }
+
+  .text-secondary {
+    @apply text-gray-400;
+  }
+
+  .text-muted {
+    @apply text-gray-500;
+  }
+
+  /* Input classes */
+  .input-field {
+    @apply bg-gray-800 text-white px-4 py-3 rounded-lg border border-gray-700;
+    @apply focus:border-blue-500 focus:outline-none transition-colors duration-150;
+  }
+
+  /* Animation classes */
+  .fade-in {
+    @apply animate-in fade-in duration-300;
+  }
+
+  .slide-up {
+    @apply animate-in slide-in-from-bottom duration-300;
+  }
+
+  .scale-in {
+    @apply animate-in zoom-in duration-200;
+  }
+
+  /* Accessibility classes */
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+  }
+
+  /* Focus visible for keyboard navigation */
+  .focus-visible {
+    @apply focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2;
+  }
+}

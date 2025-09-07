@@ -11,11 +11,7 @@ interface TrendingBarItemProps {
   index: number;
 }
 
-export default function TrendingBarItem({
-  item,
-  onPress,
-  index,
-}: TrendingBarItemProps) {
+export default function TrendingBarItem({ item, onPress, index }: TrendingBarItemProps) {
   const { impactAsync } = usePreferenceAwareHaptics();
 
   const handlePress = () => {
@@ -47,30 +43,18 @@ export default function TrendingBarItem({
       }}
     >
       {/* Ranking Badge */}
-      <View
-        className="w-5 h-5 rounded-full items-center justify-center mr-2"
-        style={{ backgroundColor: itemColor }}
-      >
-        <Text className="text-white text-10 font-bold">
-          {index + 1}
-        </Text>
+      <View className="w-5 h-5 rounded-full items-center justify-center mr-2" style={{ backgroundColor: itemColor }}>
+        <Text className="text-white text-10 font-bold">{index + 1}</Text>
       </View>
 
       {/* Content */}
       <View className="flex-1">
-        <Text
-          className="text-white text-12 font-semibold"
-          numberOfLines={1}
-        >
+        <Text className="text-white text-xs font-semibold" numberOfLines={1}>
           {item.hashtag}
         </Text>
         <View className="flex-row items-center mt-1">
-          <Text className="text-gray-400 text-10">
-            {item.count}
-          </Text>
-          <Text className="text-gray-500 text-10 ml-1">
-            ({item.percentage.toFixed(1)}%)
-          </Text>
+          <Text className="text-gray-400 text-10">{item.count}</Text>
+          <Text className="text-gray-500 text-10 ml-1">({item.percentage.toFixed(1)}%)</Text>
         </View>
       </View>
 
@@ -86,11 +70,7 @@ export default function TrendingBarItem({
 
       {/* Trending Icon */}
       <View className="ml-2">
-        <Ionicons
-          name="trending-up"
-          size={12}
-          color={itemColor}
-        />
+        <Ionicons name="trending-up" size={12} color={itemColor} />
       </View>
     </Pressable>
   );
