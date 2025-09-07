@@ -24,43 +24,47 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   const currentPlayingRef = useRef<number>(-1);
   const userPreferences = useConfessionStore((state) => state.userPreferences);
 
+  // Fallback sample video to avoid blank players when a videoUri is missing
+  const FALLBACK_VIDEO =
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
   // Create video players using individual hooks (following Rules of Hooks)
-  const player0 = useVideoPlayer(videos.length > 0 ? videos[0]?.videoUri || null : null, (player) => {
+  const player0 = useVideoPlayer(videos.length > 0 ? videos[0]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
     player.muted = !userPreferences.soundEnabled;
   });
 
-  const player1 = useVideoPlayer(videos.length > 1 ? videos[1]?.videoUri || null : null, (player) => {
+  const player1 = useVideoPlayer(videos.length > 1 ? videos[1]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
     player.muted = !userPreferences.soundEnabled;
   });
 
-  const player2 = useVideoPlayer(videos.length > 2 ? videos[2]?.videoUri || null : null, (player) => {
+  const player2 = useVideoPlayer(videos.length > 2 ? videos[2]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
     player.muted = !userPreferences.soundEnabled;
   });
 
-  const player3 = useVideoPlayer(videos.length > 3 ? videos[3]?.videoUri || null : null, (player) => {
+  const player3 = useVideoPlayer(videos.length > 3 ? videos[3]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
     player.muted = !userPreferences.soundEnabled;
   });
 
-  const player4 = useVideoPlayer(videos.length > 4 ? videos[4]?.videoUri || null : null, (player) => {
+  const player4 = useVideoPlayer(videos.length > 4 ? videos[4]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
     player.muted = !userPreferences.soundEnabled;
   });
 
-  const player5 = useVideoPlayer(videos.length > 5 ? videos[5]?.videoUri || null : null, (player) => {
+  const player5 = useVideoPlayer(videos.length > 5 ? videos[5]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
     player.muted = !userPreferences.soundEnabled;
   });
 
-  const player6 = useVideoPlayer(videos.length > 6 ? videos[6]?.videoUri || null : null, (player) => {
+  const player6 = useVideoPlayer(videos.length > 6 ? videos[6]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
     player.muted = !userPreferences.soundEnabled;
   });
 
-  const player7 = useVideoPlayer(videos.length > 7 ? videos[7]?.videoUri || null : null, (player) => {
+  const player7 = useVideoPlayer(videos.length > 7 ? videos[7]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
     player.muted = !userPreferences.soundEnabled;
   });

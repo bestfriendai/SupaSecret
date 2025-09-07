@@ -21,7 +21,7 @@ export interface ValidationRule<T = any> {
  */
 export const VALIDATION_PATTERNS = {
   email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*(),.?":{}|<>]{8,}$/,
+  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)\S{8,}$/,
   username: /^[a-zA-Z0-9_]{3,20}$/,
   hashtag: /^#[a-zA-Z0-9_]+$/,
   url: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/,
@@ -79,7 +79,12 @@ export const validators = {
       if (value.length < 8) {
         return { isValid: false, error: 'Password must be at least 8 characters long' };
       }
-      
+
+      // Check for unsupported characters (whitespace)
+      if (/\s/.test(value)) {
+        return { isValid: false, error: 'Password contains unsupported characters' };
+      }
+
       if (!/[a-z]/.test(value)) {
         return { isValid: false, error: 'Password must contain at least one lowercase letter' };
       }

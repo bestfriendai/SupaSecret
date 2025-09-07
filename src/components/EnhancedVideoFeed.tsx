@@ -327,12 +327,17 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
         <GestureDetector gesture={composedGestures}>
           <Animated.View style={[{ flex: 1 }, containerStyle]}>
             {/* Video Player */}
-            {currentPlayer && (
+            {currentPlayer ? (
               <>
                 <VideoView player={currentPlayer} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
                 {/* Visual privacy overlay in Expo Go */}
-                <BlurView intensity={20} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
+                <BlurView intensity={16} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
               </>
+            ) : (
+              <View className="flex-1 items-center justify-center bg-black">
+                <Ionicons name="videocam-outline" size={48} color="#8B98A5" />
+                <Text className="text-gray-400 mt-2">Preparing video…</Text>
+              </View>
             )}
 
             {/* Video Loading Skeleton */}

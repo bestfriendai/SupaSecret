@@ -148,7 +148,20 @@ export default function MySecretsScreen() {
 
       return (
         <Pressable
-          className={`bg-gray-900 rounded-lg p-4 mb-3 mx-4 ${isSelected ? "border border-blue-500" : ""}`}
+          style={{
+            backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(17, 24, 39, 0.8)',
+            borderRadius: 16,
+            padding: 16,
+            marginHorizontal: 16,
+            marginBottom: 12,
+            borderWidth: isSelected ? 1 : 0,
+            borderColor: isSelected ? '#3B82F6' : 'transparent',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 3,
+          }}
           onPress={() => {
             if (isSelectionMode) {
               toggleSelection(item.id);
@@ -162,33 +175,78 @@ export default function MySecretsScreen() {
             impactAsync();
           }}
         >
-          <View className="flex-row justify-between items-start mb-2">
+          {/* Header with type indicator and timestamp */}
+          <View className="flex-row justify-between items-start mb-3">
             <View className="flex-row items-center">
-              <Ionicons name={item.type === "video" ? "videocam" : "document-text"} size={16} color="#8B98A5" />
-              <Text className="text-gray-500 text-12 ml-2">
-                {format(new Date(item.timestamp), "MMM d, yyyy 'at' h:mm a")}
+              <View
+                style={{
+                  backgroundColor: item.type === "video" ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                  borderRadius: 8,
+                  padding: 6,
+                  marginRight: 8,
+                }}
+              >
+                <Ionicons
+                  name={item.type === "video" ? "videocam" : "document-text"}
+                  size={14}
+                  color={item.type === "video" ? "#EF4444" : "#3B82F6"}
+                />
+              </View>
+              <Text className="text-gray-400 text-12">
+                {format(new Date(item.timestamp), "MMM d, h:mm a")}
               </Text>
             </View>
 
             {isSelectionMode && (
-              <Ionicons
-                name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                size={20}
-                color={isSelected ? "#3B82F6" : "#8B98A5"}
-              />
+              <View
+                style={{
+                  backgroundColor: isSelected ? '#3B82F6' : 'rgba(139, 152, 165, 0.2)',
+                  borderRadius: 12,
+                  width: 24,
+                  height: 24,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons
+                  name={isSelected ? "checkmark" : "ellipse-outline"}
+                  size={16}
+                  color={isSelected ? "#FFFFFF" : "#8B98A5"}
+                />
+              </View>
             )}
           </View>
 
-          <HashtagText text={item.content} className="text-white text-15 leading-5 mb-3" />
+          {/* Content */}
+          <HashtagText text={item.content} className="text-white text-15 leading-6 mb-4" />
 
+          {/* Footer with stats and actions */}
           <View className="flex-row justify-between items-center">
-            <View className="flex-row items-center">
-              <Ionicons name="heart" size={14} color="#EF4444" />
-              <Text className="text-gray-500 text-12 ml-1">{item.likes || 0} likes</Text>
+            <View className="flex-row items-center space-x-4">
+              <View className="flex-row items-center">
+                <View
+                  style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    borderRadius: 6,
+                    padding: 4,
+                    marginRight: 6,
+                  }}
+                >
+                  <Ionicons name="heart" size={12} color="#EF4444" />
+                </View>
+                <Text className="text-gray-400 text-12">{item.likes || 0}</Text>
+              </View>
             </View>
 
             {!isSelectionMode && (
-              <Pressable onPress={() => handleDeleteSingle(item.id)} className="p-2">
+              <Pressable
+                onPress={() => handleDeleteSingle(item.id)}
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: 8,
+                  padding: 8,
+                }}
+              >
                 <Ionicons name="trash-outline" size={16} color="#EF4444" />
               </Pressable>
             )}
@@ -236,22 +294,26 @@ export default function MySecretsScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 20,
-          paddingHorizontal: 20,
-          paddingBottom: 16,
-          borderBottomWidth: 1,
-          borderBottomColor: "rgba(255, 255, 255, 0.1)",
-        }}
-      >
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-white text-20 font-bold">My Secrets</Text>
+      {/* Compact Header */}
+      <View className="px-4 pt-4 pb-3">
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className="text-gray-400 text-14 font-medium">
+            {filteredConfessions.length} {filteredConfessions.length === 1 ? 'secret' : 'secrets'}
+          </Text>
 
           {userConfessions.length > 0 && (
-            <Pressable onPress={handleDeleteAll} className="bg-red-600 px-3 py-2 rounded-lg">
-              <Text className="text-white text-12 font-medium">Delete All</Text>
+            <Pressable
+              onPress={handleDeleteAll}
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderWidth: 1,
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+              }}
+            >
+              <Text className="text-red-400 text-12 font-medium">Delete All</Text>
             </Pressable>
           )}
         </View>

@@ -24,9 +24,19 @@ export default function EnhancedVideoItem({ confession, isActive, onClose }: Enh
   const sourceUri =
     confession.videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
+  const soundEnabled = useConfessionStore((state) => state.userPreferences.soundEnabled);
+
   const player = useVideoPlayer(sourceUri, (p) => {
     p.loop = true;
+    p.muted = !soundEnabled; // default behavior: respect user preference
   });
+
+  // React to sound preference changes
+  useEffect(() => {
+    try {
+      if (player) player.muted = !soundEnabled;
+    } catch {}
+  }, [soundEnabled, player]);
 
   // Control playback based on visibility
   useEffect(() => {
@@ -46,9 +56,28 @@ export default function EnhancedVideoItem({ confession, isActive, onClose }: Enh
   }, [isActive, player]);
 
   return (
-    <View style={{ height: screenHeight }} className="bg-black">
+    <View style={{
+      height: screenHeight,
+      width: '100%',
+      backgroundColor: 'black',
+      position: 'relative'
+    }}>
       {/* Video Player */}
-      <VideoView player={player} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
+      <VideoView
+        player={player}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: screenHeight,
+          backgroundColor: 'black'
+        }}
+        contentFit="cover"
+        nativeControls={false}
+      />
 
       {/* Top Overlay */}
       <View className="absolute top-0 left-0 right-0 z-10">

@@ -79,51 +79,104 @@ export default function SavedScreen() {
     const replyCount = replies.length;
 
     return (
-      <Pressable className="bg-gray-900 mx-4 mb-4 rounded-2xl p-4" onPress={() => handleSecretPress(confession.id)}>
-        <View className="space-y-3">
-          {/* Header */}
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
-                <Ionicons name="person" size={16} color="white" />
-              </View>
-              <Text className="text-gray-400 text-13 ml-2">Anonymous</Text>
-              <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-              <Text className="text-gray-400 text-13">{format(new Date(confession.timestamp), "MMM d")}</Text>
+      <Pressable
+        style={{
+          backgroundColor: 'rgba(17, 24, 39, 0.8)',
+          marginHorizontal: 16,
+          marginBottom: 12,
+          borderRadius: 16,
+          padding: 16,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 3,
+        }}
+        onPress={() => handleSecretPress(confession.id)}
+      >
+        {/* Header */}
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center">
+            <View
+              style={{
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                borderRadius: 8,
+                padding: 6,
+                marginRight: 8,
+              }}
+            >
+              <Ionicons name="person" size={14} color="#3B82F6" />
             </View>
-            <Pressable onPress={() => handleUnsave(confession.id)}>
-              <Ionicons name="bookmark" size={18} color="#1D9BF0" />
-            </Pressable>
+            <Text className="text-gray-400 text-12">Anonymous</Text>
+            <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
+            <Text className="text-gray-400 text-12">{format(new Date(confession.timestamp), "MMM d")}</Text>
           </View>
+          <Pressable
+            onPress={() => handleUnsave(confession.id)}
+            style={{
+              backgroundColor: 'rgba(29, 155, 240, 0.2)',
+              borderRadius: 8,
+              padding: 6,
+            }}
+          >
+            <Ionicons name="bookmark" size={16} color="#1D9BF0" />
+          </Pressable>
+        </View>
 
-          {/* Content */}
-          <HashtagText text={confession.content} className="text-white text-15 leading-5" numberOfLines={6} />
+        {/* Content */}
+        <HashtagText text={confession.content} className="text-white text-15 leading-6 mb-3" numberOfLines={6} />
 
-          {/* Video indicator */}
-          {confession.type === "video" && (
-            <View className="flex-row items-center">
-              <Ionicons name="videocam" size={14} color="#1D9BF0" />
-              <Text className="text-blue-400 text-13 ml-1">Video confession</Text>
+        {/* Video indicator */}
+        {confession.type === "video" && (
+          <View className="flex-row items-center mb-3">
+            <View
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                borderRadius: 6,
+                padding: 4,
+                marginRight: 6,
+              }}
+            >
+              <Ionicons name="videocam" size={12} color="#EF4444" />
             </View>
-          )}
+            <Text className="text-red-400 text-12">Video confession</Text>
+          </View>
+        )}
 
-          {/* Actions */}
-          <View className="flex-row items-center justify-between pt-2">
-            <View className="flex-row items-center space-x-6">
-              <Pressable className="flex-row items-center" onPress={() => handleToggleLike(confession.id)}>
+        {/* Actions */}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center space-x-4">
+            <Pressable className="flex-row items-center" onPress={() => handleToggleLike(confession.id)}>
+              <View
+                style={{
+                  backgroundColor: confession.isLiked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(139, 152, 165, 0.2)',
+                  borderRadius: 6,
+                  padding: 4,
+                  marginRight: 6,
+                }}
+              >
                 <Ionicons
                   name={confession.isLiked ? "heart" : "heart-outline"}
-                  size={18}
+                  size={12}
                   color={confession.isLiked ? "#EF4444" : "#8B98A5"}
                 />
-                <Text className="text-gray-400 text-13 ml-1">{confession.likes || 0}</Text>
-              </Pressable>
+              </View>
+              <Text className="text-gray-400 text-12">{confession.likes || 0}</Text>
+            </Pressable>
 
-              <Pressable className="flex-row items-center">
-                <Ionicons name="chatbubble-outline" size={16} color="#8B98A5" />
-                <Text className="text-gray-400 text-13 ml-1">{replyCount}</Text>
-              </Pressable>
-            </View>
+            <Pressable className="flex-row items-center">
+              <View
+                style={{
+                  backgroundColor: 'rgba(139, 152, 165, 0.2)',
+                  borderRadius: 6,
+                  padding: 4,
+                  marginRight: 6,
+                }}
+              >
+                <Ionicons name="chatbubble-outline" size={12} color="#8B98A5" />
+              </View>
+              <Text className="text-gray-400 text-12">{replyCount}</Text>
+            </Pressable>
           </View>
         </View>
       </Pressable>

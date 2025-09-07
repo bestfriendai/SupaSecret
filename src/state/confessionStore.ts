@@ -153,6 +153,9 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
+          const FALLBACK_VIDEO =
+            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
           const confessions: Confession[] = await Promise.all(
             (finalData || []).map(async (item) => {
               const base: Confession = {
@@ -167,23 +170,33 @@ export const useConfessionStore = create<ConfessionState>()(
                 isLiked: false,
               };
 
-              if (base.type === "video" && item.video_uri) {
-                base.videoUri = await ensureSignedVideoUrl(item.video_uri);
+              if (base.type === "video" && (item.video_uri || item.video_url)) {
+                // Handle both video_uri and video_url fields for compatibility
+                const videoPath = item.video_uri || item.video_url;
+                base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
+              } else if (base.type === "video" && !item.video_uri && !item.video_url) {
+                // Ensure we never render a blank player in dev/demo data
+                base.videoUri = FALLBACK_VIDEO;
               }
 
               return base;
             }),
           );
 
+          // Always include sample data for development/demo purposes
+          const finalConfessions = [...sampleConfessions, ...confessions];
+
           set({
-            confessions,
+            confessions: finalConfessions,
             isLoading: false,
             hasMore: (finalData?.length || 0) >= INITIAL_LIMIT,
           });
         } catch (error) {
+          // On error, fall back to sample data
           set({
-            error: error instanceof Error ? error.message : "Failed to load confessions",
+            confessions: sampleConfessions,
             isLoading: false,
+            error: error instanceof Error ? error.message : "Failed to load confessions",
           });
         }
       },
@@ -206,6 +219,9 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
+          const FALLBACK_VIDEO =
+            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
           const newConfessions: Confession[] = await Promise.all(
             (data || []).map(async (item) => {
               const base: Confession = {
@@ -220,8 +236,12 @@ export const useConfessionStore = create<ConfessionState>()(
                 isLiked: false,
               };
 
-              if (base.type === "video" && item.video_uri) {
-                base.videoUri = await ensureSignedVideoUrl(item.video_uri);
+              if (base.type === "video" && (item.video_uri || item.video_url)) {
+                // Handle both video_uri and video_url fields for compatibility
+                const videoPath = item.video_uri || item.video_url;
+                base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
+              } else if (base.type === "video" && !item.video_uri && !item.video_url) {
+                base.videoUri = FALLBACK_VIDEO;
               }
 
               return base;
@@ -257,6 +277,9 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
+          const FALLBACK_VIDEO =
+            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
           const userConfessions: Confession[] = await Promise.all(
             (data || []).map(async (item) => {
               const base: Confession = {
@@ -271,8 +294,12 @@ export const useConfessionStore = create<ConfessionState>()(
                 isLiked: false,
               };
 
-              if (base.type === "video" && item.video_uri) {
-                base.videoUri = await ensureSignedVideoUrl(item.video_uri);
+              if (base.type === "video" && (item.video_uri || item.video_url)) {
+                // Handle both video_uri and video_url fields for compatibility
+                const videoPath = item.video_uri || item.video_url;
+                base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
+              } else if (base.type === "video" && !item.video_uri && !item.video_url) {
+                base.videoUri = FALLBACK_VIDEO;
               }
 
               return base;
@@ -335,7 +362,9 @@ export const useConfessionStore = create<ConfessionState>()(
             id: data.id,
             type: data.type as "text" | "video",
             content: data.content,
-            videoUri: signedVideoUrl || (await ensureSignedVideoUrl(data.video_uri || undefined)) || undefined,
+            videoUri:
+              signedVideoUrl || (await ensureSignedVideoUrl(data.video_uri || undefined)) ||
+              (data.type === "video" ? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" : undefined),
             transcription: data.transcription || undefined,
             timestamp: new Date(data.created_at).getTime(),
             isAnonymous: data.is_anonymous,

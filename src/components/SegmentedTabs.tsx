@@ -47,9 +47,9 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
     <View
       style={[
         {
-          backgroundColor: "rgba(255, 255, 255, 0.1)",
-          borderRadius: 12,
-          padding: 4,
+          backgroundColor: "transparent",
+          borderRadius: 16,
+          padding: 2,
           flexDirection: "row",
           position: "relative",
         },
@@ -57,16 +57,21 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
       ]}
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
-      {/* Active indicator */}
+      {/* Active indicator with enhanced styling */}
       <Animated.View
         style={[
           {
             position: "absolute",
-            top: 4,
-            bottom: 4,
-            backgroundColor: "#FFFFFF",
-            borderRadius: 8,
+            top: 2,
+            bottom: 2,
+            backgroundColor: "#3B82F6",
+            borderRadius: 14,
             zIndex: 1,
+            shadowColor: '#3B82F6',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 5,
           },
           indicatorStyle,
         ]}
@@ -82,13 +87,13 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
             onPress={() => handleTabPress(tab.id)}
             style={{
               flex: 1,
-              paddingVertical: 12,
-              paddingHorizontal: 16,
+              paddingVertical: 14,
+              paddingHorizontal: 12,
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
               zIndex: 2,
-              borderRadius: 8,
+              borderRadius: 14,
             }}
           >
             {/* Icon */}
@@ -96,7 +101,7 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
               <Ionicons
                 name={tab.icon}
                 size={16}
-                color={isActive ? "#000000" : "#FFFFFF"}
+                color={isActive ? "#FFFFFF" : "#9CA3AF"}
                 style={{ marginRight: tab.label ? 6 : 0 }}
               />
             )}
@@ -105,9 +110,9 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
             {Boolean(tab.label) && (
               <Text
                 style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: "600",
-                  color: isActive ? "#000000" : "#FFFFFF",
+                  color: isActive ? "#FFFFFF" : "#9CA3AF",
                 }}
               >
                 {tab.label}
@@ -118,23 +123,25 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
             {(tab.badge ?? 0) > 0 && (
               <View
                 style={{
-                  position: "absolute",
-                  top: 6,
-                  right: 8,
                   backgroundColor: "#EF4444",
                   borderRadius: 10,
-                  minWidth: 20,
-                  height: 20,
+                  minWidth: 18,
+                  height: 18,
                   alignItems: "center",
                   justifyContent: "center",
-                  paddingHorizontal: 6,
+                  marginLeft: 4,
+                  shadowColor: '#EF4444',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 3,
+                  elevation: 3,
                 }}
               >
                 <Text
                   style={{
                     color: "#FFFFFF",
-                    fontSize: 11,
-                    fontWeight: "600",
+                    fontSize: 10,
+                    fontWeight: "700",
                   }}
                 >
                   {(tab.badge ?? 0) > 99 ? "99+" : String(tab.badge ?? 0)}

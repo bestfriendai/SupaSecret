@@ -142,9 +142,15 @@ export default function HomeScreen() {
     impactAsync();
   };
 
-  const handleSecretPress = (confessionId: string) => {
+  const handleSecretPress = (confession: any) => {
     impactAsync();
-    navigation.navigate("SecretDetail", { confessionId });
+    if (confession.type === "video") {
+      // Navigate to full-screen video player
+      navigation.navigate("VideoPlayer", { confessionId: confession.id });
+    } else {
+      // Navigate to text confession detail
+      navigation.navigate("SecretDetail", { confessionId: confession.id });
+    }
   };
 
   const handleReportPress = (confessionId: string, event: any) => {
@@ -178,7 +184,7 @@ export default function HomeScreen() {
           <AdBanner placement="home-feed" index={index} />
 
           {/* Confession Item */}
-          <Pressable className="border-b border-gray-800 px-4 py-3" onPress={() => handleSecretPress(confession.id)}>
+          <Pressable className="border-b border-gray-800 px-4 py-3" onPress={() => handleSecretPress(confession)}>
             {/* Header with avatar and info */}
             <View className="flex-row items-start mb-3">
               <View className="w-12 h-12 bg-gray-700 rounded-full items-center justify-center mr-3">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuthStore } from "../state/authStore";
 import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
@@ -73,49 +74,82 @@ export default function ProfileScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      {/* Header */}
-      <View
+      {/* Header with Gradient Background */}
+      <LinearGradient
+        colors={['#1a1a1a', '#000000']}
         style={{
-          paddingTop: insets.top + 20,
+          paddingTop: insets.top + 8,
           paddingHorizontal: 20,
           paddingBottom: 20,
-          borderBottomWidth: 1,
-          borderBottomColor: "rgba(255, 255, 255, 0.1)",
         }}
       >
-        {/* Avatar and basic info */}
-        <View className="flex-row items-center mb-6">
-          <View className="w-16 h-16 rounded-full bg-gray-800 items-center justify-center mr-4">
-            <Ionicons name="person" size={28} color="#8B98A5" />
+        {/* Profile Header */}
+        <View className="items-center mb-6">
+          {/* Avatar with Glow Effect */}
+          <View className="relative mb-4">
+            <LinearGradient
+              colors={['#3B82F6', '#1D4ED8']}
+              className="w-20 h-20 rounded-full items-center justify-center"
+              style={{
+                shadowColor: '#3B82F6',
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.3,
+                shadowRadius: 10,
+                elevation: 10,
+              }}
+            >
+              <Ionicons name="person" size={32} color="#FFFFFF" />
+            </LinearGradient>
+
+            {/* Online Status Indicator */}
+            <View className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-black items-center justify-center">
+              <View className="w-2 h-2 bg-white rounded-full" />
+            </View>
           </View>
 
-          <View className="flex-1">
-            <Text className="text-white text-20 font-bold">Anonymous User</Text>
-            <Text className="text-gray-500 text-14 mt-1">Member since {format(memberSince, "MMM yyyy")}</Text>
-          </View>
+          {/* User Info */}
+          <Text className="text-white text-20 font-bold mb-1">Anonymous User</Text>
+          <Text className="text-gray-400 text-14">Member since {format(memberSince, "MMM yyyy")}</Text>
         </View>
 
-        {/* Stats */}
-        <View className="flex-row justify-around mb-6">
-          <View className="items-center">
-            <Text className="text-white text-18 font-bold">{userConfessionsCount}</Text>
-            <Text className="text-gray-500 text-12">Secrets</Text>
-          </View>
+        {/* Enhanced Stats Cards */}
+        <View className="flex-row justify-between mb-6">
+          <Pressable className="flex-1 bg-gray-900/50 backdrop-blur-sm rounded-2xl p-4 mr-2 border border-gray-800/50">
+            <View className="items-center">
+              <View className="w-10 h-10 bg-blue-500/20 rounded-full items-center justify-center mb-2">
+                <Ionicons name="document-text" size={18} color="#3B82F6" />
+              </View>
+              <Text className="text-white text-18 font-bold">{userConfessionsCount}</Text>
+              <Text className="text-gray-400 text-12">Secrets</Text>
+            </View>
+          </Pressable>
 
-          <View className="items-center">
-            <Text className="text-white text-18 font-bold">{savedConfessionIds.length}</Text>
-            <Text className="text-gray-500 text-12">Saved</Text>
-          </View>
+          <Pressable className="flex-1 bg-gray-900/50 backdrop-blur-sm rounded-2xl p-4 mx-1 border border-gray-800/50">
+            <View className="items-center">
+              <View className="w-10 h-10 bg-purple-500/20 rounded-full items-center justify-center mb-2">
+                <Ionicons name="bookmark" size={18} color="#8B5CF6" />
+              </View>
+              <Text className="text-white text-18 font-bold">{savedConfessionIds.length}</Text>
+              <Text className="text-gray-400 text-12">Saved</Text>
+            </View>
+          </Pressable>
 
-          <View className="items-center">
-            <Text className="text-white text-18 font-bold">{totalLikes}</Text>
-            <Text className="text-gray-500 text-12">Total Likes</Text>
-          </View>
+          <Pressable className="flex-1 bg-gray-900/50 backdrop-blur-sm rounded-2xl p-4 ml-2 border border-gray-800/50">
+            <View className="items-center">
+              <View className="w-10 h-10 bg-red-500/20 rounded-full items-center justify-center mb-2">
+                <Ionicons name="heart" size={18} color="#EF4444" />
+              </View>
+              <Text className="text-white text-18 font-bold">{totalLikes}</Text>
+              <Text className="text-gray-400 text-12">Total Likes</Text>
+            </View>
+          </Pressable>
         </View>
 
-        {/* Segmented Tabs */}
-        <SegmentedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-      </View>
+        {/* Enhanced Segmented Tabs */}
+        <View className="bg-gray-900/30 backdrop-blur-sm rounded-2xl p-1 border border-gray-800/30">
+          <SegmentedTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+        </View>
+      </LinearGradient>
 
       {/* Tab Content */}
       <View className="flex-1">{renderTabContent()}</View>

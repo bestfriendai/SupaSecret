@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, EmitterSubscription } from 'react-native';
 import * as Device from 'expo-device';
 import * as Application from 'expo-application';
 import NetInfo from '@react-native-community/netinfo';
@@ -39,15 +39,16 @@ export interface HealthMetrics {
 
 class HealthMonitor {
   private metrics: HealthMetrics;
-  private sessionStartTime: number;
+  private sessionStartedAt: number;
+  private lastScreenChangeAt: number | null = null;
   private currentScreen: string = 'Unknown';
   private isMonitoring: boolean = false;
   private reportingInterval: NodeJS.Timeout | null = null;
-  private appStateListener: any = null;
+  private appStateListener: EmitterSubscription | null = null;
   private netInfoUnsubscribe: (() => void) | null = null;
 
   constructor() {
-    this.sessionStartTime = Date.now();
+    this.sessionStartedAt = Date.now();
     this.metrics = this.initializeMetrics();
   }
 
@@ -112,9 +113,7 @@ class HealthMonitor {
     }
     
     if (this.appStateListener) {
-      // Note: React Native AppState.removeEventListener is deprecated
-      // In newer versions, the subscription returned by addEventListener should be used
-      // For compatibility, we'll just set to null
+      this.appStateListener.remove();
       this.appStateListener = null;
     }
     
@@ -133,22 +132,22 @@ class HealthMonitor {
    */
   trackScreenView(screenName: string) {
     const now = Date.now();
-    
-    // Record screen load time if we have a previous screen
-    if (this.currentScreen !== 'Unknown') {
-      const loadTime = now - this.sessionStartTime;
+
+    // Record screen load time if we have a previous screen change
+    if (this.lastScreenChangeAt !== null) {
+      const loadTime = now - this.lastScreenChangeAt;
       this.metrics.performance.screenLoadTimes[screenName] = loadTime;
     }
-    
-    // Update session start time for next screen
-    this.sessionStartTime = now;
-    
+
+    // Update last screen change time for next screen
+    this.lastScreenChangeAt = now;
+
     // Update screen view count
-    this.metrics.user.screenViews[screenName] = 
+    this.metrics.user.screenViews[screenName] =
       (this.metrics.user.screenViews[screenName] || 0) + 1;
-    
+
     this.currentScreen = screenName;
-    
+
     if (__DEV__) {
       console.log(`📱 Screen view: ${screenName}`);
     }
@@ -223,8 +222,8 @@ class HealthMonitor {
    */
   getMetrics(): HealthMetrics {
     // Update session duration
-    this.metrics.user.sessionDuration = Date.now() - this.sessionStartTime;
-    
+    this.metrics.user.sessionDuration = Date.now() - this.sessionStartedAt;
+
     return { ...this.metrics };
   }
 
@@ -304,16 +303,17 @@ class HealthMonitor {
     }, 30000); // Every 30 seconds
   }
 
+  private onAppStateChange = (nextAppState: AppStateStatus) => {
+    this.trackInteraction('app_state_change', { state: nextAppState });
+
+    if (nextAppState === 'background') {
+      // App went to background - good time to report metrics
+      void this.reportMetrics();
+    }
+  };
+
   private setupAppStateMonitoring() {
-    this.appStateListener = (nextAppState: AppStateStatus) => {
-      this.trackInteraction('app_state_change', { state: nextAppState });
-      
-      if (nextAppState === 'background') {
-        // App went to background - good time to report metrics
-        this.reportMetrics();
-      }
-    };
-    AppState.addEventListener('change', this.appStateListener);
+    this.appStateListener = AppState.addEventListener('change', this.onAppStateChange);
   }
 
   private setupNetworkMonitoring() {

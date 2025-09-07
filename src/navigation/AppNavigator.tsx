@@ -13,6 +13,7 @@ import VideoRecordScreen from "../screens/VideoRecordScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import VideoFeedScreen from "../screens/VideoFeedScreen";
+import VideoPlayerScreen from "../screens/VideoPlayerScreen";
 import TrendingScreen from "../screens/TrendingScreen";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import SignUpScreen from "../screens/SignUpScreen";
@@ -28,6 +29,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   VideoRecord: undefined;
   SecretDetail: { confessionId: string };
+  VideoPlayer: { confessionId: string };
   Saved: undefined;
   Paywall: { feature?: string; source?: string };
   AuthStack: undefined;
@@ -138,7 +140,7 @@ function MainTabs() {
         component={VideoFeedScreen}
         options={{
           title: "Videos",
-          header: () => <AppHeader title="Videos" showTrendingBar={true} />,
+          headerShown: false,
         }}
       />
       <Tab.Screen
@@ -268,6 +270,15 @@ export default function AppNavigator() {
               options={{
                 title: "Secret",
                 headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="VideoPlayer"
+              component={VideoPlayerScreen}
+              options={{
+                title: "Video",
+                headerShown: false,
+                presentation: "fullScreenModal",
               }}
             />
             <Stack.Screen
