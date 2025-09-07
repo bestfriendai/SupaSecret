@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { Audio } from "expo-av";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { useAuthStore } from "./src/state/authStore";
 import { useConfessionStore } from "./src/state/confessionStore";
@@ -36,6 +37,15 @@ export default function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Configure audio session for video playback
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
         // Initialize auth state first
         await checkAuthState();
 
@@ -44,7 +54,7 @@ export default function App() {
         await loadUserPreferences();
 
         if (__DEV__) {
-          console.log("🚀 App initialization complete");
+          console.log("🚀 App initialization complete with audio session configured");
         }
       } catch (error) {
         console.error("❌ App initialization failed:", error);

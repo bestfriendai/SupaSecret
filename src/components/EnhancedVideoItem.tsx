@@ -1,11 +1,13 @@
-import React, { useEffect } from "react";
-import { View, Text, Pressable, Dimensions } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Text, Pressable, Dimensions, AppState } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
+import { Audio } from "expo-av";
 import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { useConfessionStore } from "../state/confessionStore";
+import { useSavedStore } from "../state/savedStore";
 import AnimatedActionButton from "./AnimatedActionButton";
 import { useVideoPlayer } from "expo-video";
 
@@ -15,45 +17,145 @@ interface EnhancedVideoItemProps {
   confession: any;
   isActive: boolean;
   onClose: () => void;
+  onCommentPress?: (confessionId: string) => void;
+  onSharePress?: (confessionId: string, confessionText: string) => void;
+  onSavePress?: (confessionId: string) => void;
+  onReportPress?: (confessionId: string, confessionText: string) => void;
+  forceUnmuted?: boolean; // Override user sound preference for video tab
+  screenFocused?: boolean; // New: explicitly pause/mute on tab blur
 }
 
-export default function EnhancedVideoItem({ confession, isActive, onClose }: EnhancedVideoItemProps) {
+export default function EnhancedVideoItem({
+  confession,
+  isActive,
+  onClose,
+  onCommentPress,
+  onSharePress,
+  onSavePress,
+  onReportPress,
+  forceUnmuted = false,
+  screenFocused = true,
+}: EnhancedVideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
+  const { isSaved, toggleSave } = useSavedStore();
   const { impactAsync } = usePreferenceAwareHaptics();
+  const wasPlayingRef = useRef(false);
 
   const sourceUri =
     confession.videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
   const soundEnabled = useConfessionStore((state) => state.userPreferences.soundEnabled);
 
+  // Debug log for sound preferences
+  if (__DEV__) {
+    console.log(`EnhancedVideoItem: soundEnabled=${soundEnabled}, isActive=${isActive}`);
+  }
+
   const player = useVideoPlayer(sourceUri, (p) => {
     p.loop = true;
-    p.muted = !soundEnabled; // default behavior: respect user preference
+    // Use forceUnmuted for video tab, otherwise respect user preference
+    p.muted = forceUnmuted ? false : !soundEnabled;
+    if (__DEV__) {
+      console.log(`Video player created for ${confession.id}: soundEnabled=${soundEnabled}, forceUnmuted=${forceUnmuted}, muted=${p.muted}`);
+    }
   });
 
   // React to sound preference changes
   useEffect(() => {
     try {
-      if (player) player.muted = !soundEnabled;
-    } catch {}
-  }, [soundEnabled, player]);
-
-  // Control playback based on visibility
-  useEffect(() => {
-    try {
-      if (isActive) {
-        if (player && typeof player.play === "function") {
-          player.play();
-        }
-      } else {
-        if (player && typeof player.pause === "function") {
-          player.pause();
+      if (player) {
+        // Use forceUnmuted for video tab, otherwise respect user preference
+        const shouldBeMuted = forceUnmuted ? false : !soundEnabled;
+        player.muted = shouldBeMuted;
+        if (__DEV__) {
+          console.log(`Video ${confession.id}: soundEnabled=${soundEnabled}, forceUnmuted=${forceUnmuted}, muted=${player.muted}, shouldBeMuted=${shouldBeMuted}`);
         }
       }
     } catch (e) {
-      if (__DEV__) console.warn("VideoItem play/pause failed:", e);
+      if (__DEV__) console.warn("Failed to update mute state:", e);
     }
-  }, [isActive, player]);
+  }, [soundEnabled, player, confession.id, forceUnmuted]);
+
+  // Control playback based on visibility and ensure audio is properly set
+  useEffect(() => {
+    const handleVideoActivation = async () => {
+      try {
+        if (isActive && screenFocused) {
+          // Ensure audio session is active when video becomes active
+          try {
+            await Audio.setAudioModeAsync({
+              allowsRecordingIOS: false,
+              staysActiveInBackground: false,
+              playsInSilentModeIOS: true,
+              shouldDuckAndroid: true,
+              playThroughEarpieceAndroid: false,
+            });
+          } catch (audioError) {
+            if (__DEV__) console.warn("Failed to set audio mode:", audioError);
+          }
+
+          // Ensure audio is enabled when video becomes active
+          if (player) {
+            // Use forceUnmuted for video tab, otherwise respect user preference
+            player.muted = forceUnmuted ? false : !soundEnabled;
+
+            if (typeof player.play === "function") {
+              player.play();
+              wasPlayingRef.current = true;
+            }
+
+            // Additional check after a short delay to ensure audio is working
+            setTimeout(() => {
+              if (player && (forceUnmuted || soundEnabled)) {
+                player.muted = false;
+                if (__DEV__) {
+                  console.log(`Force unmuted video ${confession.id}: muted=${player.muted}, forceUnmuted=${forceUnmuted}`);
+                }
+              }
+            }, 100);
+          }
+        } else {
+          if (player) {
+            try {
+              // Hard stop: pause and mute when screen loses focus or item not active
+              if (typeof player.pause === "function") player.pause();
+              player.muted = true;
+            } catch {}
+            wasPlayingRef.current = false;
+          }
+        }
+      } catch (e) {
+        if (__DEV__) console.warn("VideoItem play/pause failed:", e);
+      }
+    };
+
+    handleVideoActivation();
+  }, [isActive, player, soundEnabled, confession.id]);
+
+  // Handle app state changes to pause videos when app goes to background
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (player) {
+        try {
+          if (nextAppState === 'background' || nextAppState === 'inactive') {
+            // App is going to background, pause video
+            if (player.playing) {
+              wasPlayingRef.current = true;
+              player.pause();
+            }
+          } else if (nextAppState === 'active' && wasPlayingRef.current && isActive) {
+            // App is coming back to foreground, resume if it was playing and is active
+            player.play();
+          }
+        } catch (e) {
+          if (__DEV__) console.warn("VideoItem app state change failed:", e);
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [player, isActive]);
 
   return (
     <View style={{
@@ -79,6 +181,36 @@ export default function EnhancedVideoItem({ confession, isActive, onClose }: Enh
         nativeControls={false}
       />
 
+      {/* Tap to toggle play/pause and unmute */}
+      <Pressable
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1,
+        }}
+        onPress={() => {
+          try {
+            if (player) {
+              if (player.playing) {
+                player.pause();
+              } else {
+                // When resuming, ensure audio is enabled based on forceUnmuted or user preference
+                if (forceUnmuted || soundEnabled) {
+                  player.muted = false;
+                }
+                player.play();
+              }
+              impactAsync();
+            }
+          } catch (e) {
+            if (__DEV__) console.warn("Video tap handler failed:", e);
+          }
+        }}
+      />
+
       {/* Top Overlay */}
       <View className="absolute top-0 left-0 right-0 z-10">
         <SafeAreaView>
@@ -91,9 +223,36 @@ export default function EnhancedVideoItem({ confession, isActive, onClose }: Enh
               <Text className="text-white text-13 font-medium">Video Secret</Text>
             </View>
 
-            <Pressable className="bg-black/50 rounded-full p-2">
-              <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
-            </Pressable>
+            <View className="flex-row items-center space-x-2">
+              {/* Audio Toggle Button */}
+              <Pressable
+                className="bg-black/50 rounded-full p-2"
+                onPress={() => {
+                  try {
+                    if (player) {
+                      const newMutedState = !player.muted;
+                      player.muted = newMutedState;
+                      impactAsync();
+                      if (__DEV__) {
+                        console.log(`Manual audio toggle for ${confession.id}: muted=${newMutedState}`);
+                      }
+                    }
+                  } catch (e) {
+                    if (__DEV__) console.warn("Failed to toggle audio:", e);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={player?.muted ? "volume-mute" : "volume-high"}
+                  size={20}
+                  color={player?.muted ? "#EF4444" : "#10B981"}
+                />
+              </Pressable>
+
+              <Pressable className="bg-black/50 rounded-full p-2">
+                <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+              </Pressable>
+            </View>
           </View>
         </SafeAreaView>
       </View>
@@ -116,7 +275,7 @@ export default function EnhancedVideoItem({ confession, isActive, onClose }: Enh
             icon="chatbubble-outline"
             label="Reply"
             onPress={() => {
-              // Present comment sheet from parent feed; placeholder for item usage
+              onCommentPress?.(confession.id);
               impactAsync();
             }}
           />
@@ -125,14 +284,30 @@ export default function EnhancedVideoItem({ confession, isActive, onClose }: Enh
             icon="share-outline"
             label="Share"
             onPress={() => {
+              onSharePress?.(confession.id, confession.transcription || confession.content || "");
               impactAsync();
             }}
           />
 
           <AnimatedActionButton
-            icon="bookmark-outline"
+            icon={isSaved(confession.id) ? "bookmark" : "bookmark-outline"}
             label="Save"
+            isActive={isSaved(confession.id)}
             onPress={() => {
+              if (onSavePress) {
+                onSavePress(confession.id);
+              } else {
+                toggleSave(confession.id);
+              }
+              impactAsync();
+            }}
+          />
+
+          <AnimatedActionButton
+            icon="flag-outline"
+            label="Report"
+            onPress={() => {
+              onReportPress?.(confession.id, confession.transcription || confession.content || "");
               impactAsync();
             }}
           />

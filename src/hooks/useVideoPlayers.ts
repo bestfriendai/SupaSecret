@@ -1,4 +1,5 @@
 import { useRef, useEffect, useMemo } from "react";
+import { AppState } from "react-native";
 import { useVideoPlayer } from "expo-video";
 import { useConfessionStore } from "../state/confessionStore";
 
@@ -15,8 +16,9 @@ interface VideoPlayerManager {
   pauseAll: () => void;
   muteAll: () => void;
   unmuteAll: () => void;
-  updateMuteState: () => void;
+  updateMuteState: (forceUnmuted?: boolean) => void;
   cleanup: () => void;
+  stopAll: () => void; // New method to completely stop all videos
 }
 
 export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
@@ -210,18 +212,41 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     });
   };
 
-  const updateMuteState = () => {
+  const updateMuteState = (forceUnmuted?: boolean) => {
     playersRef.current.forEach((player) => {
       if (player) {
-        player.muted = !userPreferences.soundEnabled;
+        if (forceUnmuted) {
+          player.muted = false;
+        } else {
+          player.muted = !userPreferences.soundEnabled;
+        }
       }
     });
   };
 
-  const cleanup = () => {
+  const stopAll = () => {
+    // More aggressive stop - pause and reset current playing
     pauseAll();
+    currentPlayingRef.current = -1;
+  };
+
+  const cleanup = () => {
+    stopAll();
     playersRef.current.clear();
   };
+
+  // Handle app state changes to pause all videos when app goes to background
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // App is going to background, pause all videos
+        pauseAll();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -239,5 +264,6 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     unmuteAll,
     updateMuteState,
     cleanup,
+    stopAll,
   };
 };

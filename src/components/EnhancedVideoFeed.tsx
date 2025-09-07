@@ -8,7 +8,7 @@ import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
 import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -24,6 +24,7 @@ import AnimatedActionButton from "./AnimatedActionButton";
 import PullToRefresh from "./PullToRefresh";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
 import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
+import ReportModal from "./ReportModal";
 import VideoProgressIndicator from "./VideoProgressIndicator";
 import TikTokCaptionsOverlay from "./TikTokCaptionsOverlay";
 import VideoSkeleton from "./VideoSkeleton";
@@ -74,6 +75,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const [showControls, setShowControls] = useState(false);
   const commentSheetRef = useRef<BottomSheetModal | null>(null);
   const shareSheetRef = useRef<BottomSheetModal | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   // Animated values
   const translateY = useSharedValue(0);
@@ -86,16 +88,33 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   // Video players management
   const videoPlayers = useVideoPlayers(videoConfessions);
 
-  // Handle screen focus for audio management and autoplay
+  // Track if this tab is currently focused
+  const isFocused = useIsFocused();
+
+  // Handle tab focus changes for video playback control
+  useEffect(() => {
+    if (isFocused) {
+      // Tab is focused - force unmute videos for video tab auto-play behavior
+      videoPlayers.updateMuteState(true);
+      if (videoConfessions.length > 0) {
+        videoPlayers.playVideo(currentIndex);
+      }
+    } else {
+      // Tab is not focused - mute all videos but keep them playing
+      videoPlayers.muteAll();
+    }
+  }, [isFocused, videoPlayers, videoConfessions.length, currentIndex]);
+
+  // Handle screen focus for initial setup (when navigating to this screen)
   useFocusEffect(
     useCallback(() => {
-      videoPlayers.unmuteAll();
-      if (videoConfessions.length > 0) {
-        videoPlayers.playVideo(0);
+      // Initial setup when screen gains focus
+      if (videoConfessions.length > 0 && currentIndex === 0) {
         setCurrentIndex(0);
       }
       return () => {
-        videoPlayers.muteAll();
+        // Cleanup when screen loses focus (navigating away from screen entirely)
+        videoPlayers.pauseAll();
       };
     }, [videoPlayers, videoConfessions.length]),
   );
@@ -466,6 +485,15 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                     impactAsync();
                   }}
                 />
+
+                <AnimatedActionButton
+                  icon="flag-outline"
+                  label="Report"
+                  onPress={() => {
+                    setReportModalVisible(true);
+                    impactAsync();
+                  }}
+                />
               </View>
             </Animated.View>
 
@@ -546,6 +574,14 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
           bottomSheetModalRef={shareSheetRef}
           confessionId={currentVideo.id}
           confessionText={currentVideo.transcription || currentVideo.content}
+        />
+
+        {/* Report Modal */}
+        <ReportModal
+          isVisible={reportModalVisible}
+          onClose={() => setReportModalVisible(false)}
+          confessionId={currentVideo.id}
+          contentType="confession"
         />
 
         {/* First-time User Guidance */}

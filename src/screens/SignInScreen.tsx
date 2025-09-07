@@ -200,7 +200,8 @@ export default function SignInScreen() {
                 <View className="flex-1 h-px bg-gray-700" />
               </View>
 
-              {/* Social Sign In Placeholder */}
+              {/* Social Sign In Placeholder - Hidden for now */}
+              {/*
               <View className="space-y-3 mb-6">
                 <AuthButton
                   title="Continue with Apple"
@@ -217,6 +218,7 @@ export default function SignInScreen() {
                   disabled
                 />
               </View>
+              */}
 
               {/* Sign Up Link */}
               <View className="flex-row items-center justify-center">

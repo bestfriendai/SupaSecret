@@ -188,42 +188,58 @@ export default function EnhancedCommentBottomSheet({ bottomSheetModalRef }: Enha
           contentContainerStyle={{ paddingBottom: 100 }}
         />
 
-        {/* Comment Input */}
+        {/* Enhanced Comment Input */}
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
-          <BlurView intensity={80} tint="dark" className="border-t border-gray-800">
-            <View className="flex-row items-center px-4 py-3">
-              <AnonymousAvatar anonymousId={generateAnonymousId()} />
-              <View className="flex-1 mr-3">
-                <BottomSheetTextInput
-                  className="bg-gray-800 rounded-full px-4 py-2 text-white text-15"
-                  placeholder="Add an anonymous comment..."
-                  placeholderTextColor="#8B98A5"
-                  value={newComment}
-                  onChangeText={setNewComment}
-                  multiline
-                  maxLength={500}
-                  style={{
-                    color: "#FFFFFF",
-                    fontSize: 15,
-                  }}
-                />
-                {newComment.length > 400 && (
-                  <InlineCharacterCounter
-                    currentLength={newComment.length}
-                    maxLength={500}
-                    className="absolute -bottom-5 right-2 text-xs"
-                  />
-                )}
+          <BlurView intensity={80} tint="dark" className="border-t border-gray-700">
+            <View className="px-4 py-4 bg-gray-900/50">
+              {/* Input Header */}
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="chatbubble" size={16} color="#3B82F6" />
+                <Text className="text-blue-400 text-14 font-medium ml-2">Write a comment</Text>
               </View>
-              <Pressable
-                className={`w-8 h-8 rounded-full items-center justify-center ${
-                  newComment.trim() ? "bg-blue-500" : "bg-gray-700"
-                }`}
-                onPress={handleAddComment}
-                disabled={!newComment.trim()}
-              >
-                <Ionicons name="send" size={16} color={newComment.trim() ? "#FFFFFF" : "#8B98A5"} />
-              </Pressable>
+
+              <View className="flex-row items-start">
+                <AnonymousAvatar anonymousId={generateAnonymousId()} />
+                <View className="flex-1 mr-3">
+                  <BottomSheetTextInput
+                    className="bg-gray-800 rounded-2xl px-4 py-3 text-white text-15 min-h-[44px] border border-gray-700"
+                    placeholder="Share your thoughts anonymously..."
+                    placeholderTextColor="#9CA3AF"
+                    value={newComment}
+                    onChangeText={setNewComment}
+                    multiline
+                    maxLength={500}
+                    style={{
+                      color: "#FFFFFF",
+                      fontSize: 15,
+                      textAlignVertical: 'top',
+                    }}
+                  />
+                  {newComment.length > 400 && (
+                    <InlineCharacterCounter
+                      currentLength={newComment.length}
+                      maxLength={500}
+                      className="absolute -bottom-5 right-2 text-xs"
+                    />
+                  )}
+                </View>
+                <Pressable
+                  className={`w-10 h-10 rounded-full items-center justify-center ${
+                    newComment.trim() ? "bg-blue-500 shadow-lg" : "bg-gray-700"
+                  }`}
+                  onPress={handleAddComment}
+                  disabled={!newComment.trim()}
+                  style={{
+                    shadowColor: newComment.trim() ? '#3B82F6' : 'transparent',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: newComment.trim() ? 3 : 0,
+                  }}
+                >
+                  <Ionicons name="send" size={18} color={newComment.trim() ? "#FFFFFF" : "#8B98A5"} />
+                </Pressable>
+              </View>
             </View>
           </BlurView>
         </KeyboardAvoidingView>

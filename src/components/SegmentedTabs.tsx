@@ -39,7 +39,10 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
   }));
 
   const handleTabPress = (tabId: string) => {
-    impactAsync();
+    // Only trigger haptic if it's a different tab to avoid excessive feedback
+    if (tabId !== activeTab) {
+      impactAsync();
+    }
     onTabChange(tabId);
   };
 
@@ -87,22 +90,22 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
             onPress={() => handleTabPress(tab.id)}
             style={{
               flex: 1,
-              paddingVertical: 14,
-              paddingHorizontal: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 10,
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
               zIndex: 2,
-              borderRadius: 14,
+              borderRadius: 12,
             }}
           >
             {/* Icon */}
             {Boolean(tab.icon) && (
               <Ionicons
                 name={tab.icon}
-                size={16}
+                size={14}
                 color={isActive ? "#FFFFFF" : "#9CA3AF"}
-                style={{ marginRight: tab.label ? 6 : 0 }}
+                style={{ marginRight: tab.label ? 5 : 0 }}
               />
             )}
 
@@ -110,7 +113,7 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
             {Boolean(tab.label) && (
               <Text
                 style={{
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: "600",
                   color: isActive ? "#FFFFFF" : "#9CA3AF",
                 }}
