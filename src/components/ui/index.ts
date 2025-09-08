@@ -60,7 +60,7 @@ export interface ComponentTheme {
 
 // Design system utilities
 export const DesignSystemUtils = {
-  // Get component size styles
+  // Get component size styles with validation
   getComponentSize: (size: 'sm' | 'md' | 'lg', type: 'button' | 'input' | 'card') => {
     const sizeMap = {
       button: {
@@ -78,9 +78,24 @@ export const DesignSystemUtils = {
         md: { padding: 16 },
         lg: { padding: 24 },
       },
-    };
-    
-    return sizeMap[type][size];
+    } as const;
+
+    // Validate that the type exists
+    if (!sizeMap.hasOwnProperty(type)) {
+      throw new Error(`Invalid component type: ${type}. Valid types are: ${Object.keys(sizeMap).join(', ')}`);
+    }
+
+    const typeMap = sizeMap[type];
+
+    // Validate that the size exists for this type
+    if (!typeMap.hasOwnProperty(size)) {
+      // Return the smallest size as default
+      const defaultSize = 'sm';
+      console.warn(`Invalid size '${size}' for type '${type}'. Using default size '${defaultSize}'.`);
+      return typeMap[defaultSize];
+    }
+
+    return typeMap[size];
   },
 
   // Get semantic color

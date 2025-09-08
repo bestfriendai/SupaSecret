@@ -2,6 +2,7 @@
  * UUID validation and utility functions
  * Helps handle the mix of sample data (string IDs) and real database data (UUIDs)
  */
+import { v4 as uuidv4 } from 'uuid';
 
 // UUID v4 regex pattern
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -29,15 +30,10 @@ export const isValidForDatabase = (id: string): boolean => {
 };
 
 /**
- * Generate a new UUID v4
- * Note: This is a simple implementation. In production, consider using a proper UUID library
+ * Generate a new UUID v4 using cryptographically secure random values
  */
 export const generateUUID = (): string => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return uuidv4();
 };
 
 /**

@@ -56,10 +56,13 @@ export const useDynamicType = () => {
           isReduceMotionEnabled,
           isScreenReaderEnabled,
         ] = await Promise.all([
-          // Note: These APIs might not be available on all platforms
-          // You may need to use platform-specific implementations
-          Promise.resolve(false), // AccessibilityInfo.isLargeTextEnabled?.() || false,
-          Promise.resolve(false), // AccessibilityInfo.isBoldTextEnabled?.() || false,
+          // Feature-detect accessibility APIs before calling
+          AccessibilityInfo.isLargeTextEnabled ?
+            AccessibilityInfo.isLargeTextEnabled() :
+            Promise.resolve(false),
+          AccessibilityInfo.isBoldTextEnabled ?
+            AccessibilityInfo.isBoldTextEnabled() :
+            Promise.resolve(false),
           AccessibilityInfo.isReduceMotionEnabled?.() || Promise.resolve(false),
           AccessibilityInfo.isScreenReaderEnabled(),
         ]);
@@ -198,18 +201,63 @@ export const DynamicTypeUtils = {
     return Math.round(fontSize * baseRatio);
   },
 
-  // Get accessible color contrast
+  // Get accessible color contrast with WCAG compliance
   getAccessibleColor: (
     baseColor: string,
     backgroundColor: string,
     isHighContrast: boolean = false
   ): string => {
-    // This is a simplified implementation
-    // In a real app, you'd use a proper color contrast calculation library
-    if (isHighContrast) {
-      // Return high contrast version of the color
-      return baseColor === '#FFFFFF' ? '#FFFFFF' : '#000000';
+    // Helper function to convert hex to RGB
+    const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    };
+
+    // Calculate relative luminance
+    const getLuminance = (r: number, g: number, b: number): number => {
+      const [rs, gs, bs] = [r, g, b].map(c => {
+        c = c / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+    };
+
+    // Calculate contrast ratio
+    const getContrastRatio = (lum1: number, lum2: number): number => {
+      const brightest = Math.max(lum1, lum2);
+      const darkest = Math.min(lum1, lum2);
+      return (brightest + 0.05) / (darkest + 0.05);
+    };
+
+    try {
+      const baseRgb = hexToRgb(baseColor);
+      const bgRgb = hexToRgb(backgroundColor);
+
+      if (!baseRgb || !bgRgb) {
+        // Fallback for invalid colors
+        return isHighContrast ? '#000000' : baseColor;
+      }
+
+      const baseLum = getLuminance(baseRgb.r, baseRgb.g, baseRgb.b);
+      const bgLum = getLuminance(bgRgb.r, bgRgb.g, bgRgb.b);
+      const contrast = getContrastRatio(baseLum, bgLum);
+
+      // WCAG AA requires 4.5:1 for normal text, 7:1 for AAA
+      const requiredContrast = isHighContrast ? 7 : 4.5;
+
+      if (contrast >= requiredContrast) {
+        return baseColor;
+      }
+
+      // If contrast is insufficient, return black or white based on background
+      return bgLum > 0.5 ? '#000000' : '#FFFFFF';
+    } catch (error) {
+      // Fallback on error
+      return isHighContrast ? '#000000' : baseColor;
     }
-    return baseColor;
   },
 };

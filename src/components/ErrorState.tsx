@@ -2,13 +2,22 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+type IoniconsName = keyof typeof Ionicons.glyphMap;
+
+interface ErrorConfig {
+  icon: IoniconsName;
+  title: string;
+  message: string;
+  actionLabel: string;
+}
+
 interface ErrorStateProps {
   type: 'network' | 'generic' | 'empty';
   title?: string;
   message?: string;
   actionLabel?: string;
   onAction?: () => void;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IoniconsName;
 }
 
 export const ErrorState: React.FC<ErrorStateProps> = ({
@@ -19,7 +28,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   onAction,
   icon,
 }) => {
-  const getErrorConfig = () => {
+  const getErrorConfig = (): ErrorConfig => {
     switch (type) {
       case 'network':
         return {
@@ -46,7 +55,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
     }
   };
 
-  const config = getErrorConfig();
+  const config: ErrorConfig = getErrorConfig();
 
   return (
     <View className="flex-1 items-center justify-center px-6 py-20">

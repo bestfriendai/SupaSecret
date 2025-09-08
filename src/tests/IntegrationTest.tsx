@@ -73,7 +73,7 @@ export default function IntegrationTest() {
       addLog(`✅ Banner ad unit ID: ${bannerAdId.includes('test') ? 'Test ID' : 'Production ID'}`);
 
       // Test should show ad logic
-      const shouldShow = AdMobService.shouldShowAd();
+      const shouldShow = AdMobService.shouldShowAd(false);
       addLog(`✅ Should show ads: ${shouldShow ? 'Yes (Free user)' : 'No (Premium user)'}`);
 
       updateTestResult('admob', 'success');

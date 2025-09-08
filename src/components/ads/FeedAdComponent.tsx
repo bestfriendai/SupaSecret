@@ -6,19 +6,24 @@ import { useSubscriptionStore } from '../../state/subscriptionStore';
 interface FeedAdComponentProps {
   index: number;
   interval?: number;
+  placement?: 'home-feed' | 'video-feed' | 'profile';
 }
 
-export const FeedAdComponent: React.FC<FeedAdComponentProps> = ({ 
-  index, 
-  interval = 5 
+export const FeedAdComponent: React.FC<FeedAdComponentProps> = ({
+  index,
+  interval = 5,
+  placement = 'home-feed'
 }) => {
   const { isPremium } = useSubscriptionStore();
 
   if (isPremium) return null;
-  
-  // Show ad every 'interval' posts, with some randomization
-  const adInterval = Math.floor(Math.random() * 2) + interval;
-  if (index % adInterval !== 0 || index === 0) return null;
+
+  // Ensure interval is at least 1 to prevent division by zero
+  const safeInterval = Math.max(1, interval);
+
+  // Use deterministic offset based on index for stable ad placement
+  const offset = index % safeInterval;
+  if ((index - offset) % safeInterval !== 0 || index === 0) return null;
 
   return (
     <View style={{ 
@@ -30,6 +35,7 @@ export const FeedAdComponent: React.FC<FeedAdComponentProps> = ({
       <BannerAdComponent
         size="medium"
         style={{ marginVertical: 0 }}
+        placement={placement}
       />
     </View>
   );

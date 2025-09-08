@@ -1,8 +1,9 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { useSubscriptionStore } from '../state/subscriptionStore';
 
 // Note: AdMob requires development build - this is demo mode for Expo Go
-const IS_EXPO_GO = true; // Always demo mode for Expo Go
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
 
 export class AdMobService {
   private static lastInterstitialTime = 0;
@@ -32,13 +33,12 @@ export class AdMobService {
 
   // Demo mode methods for Expo Go
 
-  static shouldShowAd(): boolean {
-    const { isPremium } = useSubscriptionStore.getState();
+  static shouldShowAd(isPremium: boolean): boolean {
     return !isPremium;
   }
 
-  static async showInterstitialAd(): Promise<boolean> {
-    if (!this.shouldShowAd()) {
+  static async showInterstitialAd(isPremium: boolean = false): Promise<boolean> {
+    if (!this.shouldShowAd(isPremium)) {
       console.log('🎯 User is premium, skipping ad');
       return false;
     }

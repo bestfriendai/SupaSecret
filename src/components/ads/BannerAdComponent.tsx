@@ -1,16 +1,18 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleProp, ViewStyle } from 'react-native';
 import { useSubscriptionStore } from '../../state/subscriptionStore';
 import { AdMobService } from '../../services/AdMobService';
 
 interface BannerAdComponentProps {
   size?: 'banner' | 'large' | 'medium';
-  style?: any;
+  style?: StyleProp<ViewStyle>;
+  placement?: 'home-feed' | 'video-feed' | 'profile';
 }
 
 export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
   size = 'banner',
-  style
+  style,
+  placement = 'home-feed'
 }) => {
   const { isPremium } = useSubscriptionStore();
 

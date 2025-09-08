@@ -36,9 +36,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
     if (!isFocused) {
       // When tab loses focus, force all video items to pause
       console.log(`🎥 Tab lost focus - forcing all videos to pause`);
-
-      // Force re-render of all video items with screenFocused=false
-      setCurrentIndex(prev => prev); // Trigger re-render
+      // Note: FlashList will re-render items based on extraData including isFocused
     }
   }, [isFocused]);
 
@@ -156,7 +154,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
           snapToInterval={screenHeight}
           snapToAlignment="start"
           decelerationRate="fast"
-          extraData={currentIndex}
+          extraData={{ currentIndex, isFocused }}
           showsVerticalScrollIndicator={false}
           removeClippedSubviews={false}
           estimatedItemSize={screenHeight}

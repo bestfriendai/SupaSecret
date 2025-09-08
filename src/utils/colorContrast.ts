@@ -48,6 +48,17 @@ export const hexToRgb = (hex: string): ColorRGB | null => {
  * Convert RGB to hex
  */
 export const rgbToHex = (r: number, g: number, b: number): string => {
+  // Validate inputs
+  const validateChannel = (value: number, channel: string) => {
+    if (!Number.isInteger(value) || value < 0 || value > 255) {
+      throw new Error(`Invalid ${channel} channel value: ${value}. Must be an integer between 0 and 255.`);
+    }
+  };
+
+  validateChannel(r, 'red');
+  validateChannel(g, 'green');
+  validateChannel(b, 'blue');
+
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 };
 

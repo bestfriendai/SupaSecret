@@ -81,7 +81,7 @@ export default function ApiKeyValidationTest() {
       await AdMobService.initialize();
       
       const bannerAdId = AdMobService.getBannerAdUnitId();
-      const shouldShowAds = AdMobService.shouldShowAd();
+      const shouldShowAds = AdMobService.shouldShowAd(false);
 
       setTestResults(prev => ({
         ...prev,
