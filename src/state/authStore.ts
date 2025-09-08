@@ -186,40 +186,48 @@ const cleanupAuthListener = () => {
   }
 };
 
-// Listen to auth state changes
-authListener = supabase.auth.onAuthStateChange(async (event, session) => {
-  if (__DEV__) {
-    console.log("🔍 Supabase auth event:", event, session ? "with session" : "no session");
-  }
+// Function to set up auth state listener
+const setupAuthListener = () => {
+  if (authListener) return; // Already set up
 
-  const { checkAuthState } = useAuthStore.getState();
+  // Listen to auth state changes
+  authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+    if (__DEV__) {
+      console.log("🔍 Supabase auth event:", event, session ? "with session" : "no session");
+    }
 
-  if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-    // User signed in or token refreshed - update our auth state
-    await checkAuthState();
-  } else if (event === "SIGNED_OUT") {
-    // User signed out - clear our auth state
-    useAuthStore.setState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
-    });
-  } else if (event === "INITIAL_SESSION") {
-    // Initial session check - this happens on app startup
-    if (session) {
+    const { checkAuthState } = useAuthStore.getState();
+
+    if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      // User signed in or token refreshed - update our auth state
       await checkAuthState();
-    } else {
-      // No session found, user is not authenticated
+    } else if (event === "SIGNED_OUT") {
+      // User signed out - clear our auth state
       useAuthStore.setState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
         error: null,
       });
+    } else if (event === "INITIAL_SESSION") {
+      // Initial session check - this happens on app startup
+      if (session) {
+        await checkAuthState();
+      } else {
+        // No session found, user is not authenticated
+        useAuthStore.setState({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: null,
+        });
+      }
     }
-  }
-});
+  });
+};
+
+// Export functions for app-level management
+export { cleanupAuthListener, setupAuthListener };
 
 // Export cleanup function for app-level cleanup
 export { cleanupAuthListener };
