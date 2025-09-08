@@ -100,8 +100,8 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
         videoPlayers.playVideo(currentIndex);
       }
     } else {
-      // Tab is not focused - mute all videos but keep them playing
-      videoPlayers.muteAll();
+      // Tab is not focused - pause all videos to save resources and improve UX
+      videoPlayers.pauseAll();
     }
   }, [isFocused, videoPlayers, videoConfessions.length, currentIndex]);
 

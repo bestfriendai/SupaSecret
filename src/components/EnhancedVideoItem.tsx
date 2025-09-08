@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
+import { useGlobalVideoStore } from "../state/globalVideoStore";
 import AnimatedActionButton from "./AnimatedActionButton";
 import { useVideoPlayer } from "expo-video";
 
@@ -38,6 +39,7 @@ export default function EnhancedVideoItem({
 }: EnhancedVideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const { isSaved, toggleSave } = useSavedStore();
+  const { registerVideoPlayer, unregisterVideoPlayer, updatePlayerState } = useGlobalVideoStore();
   const { impactAsync } = usePreferenceAwareHaptics();
   const wasPlayingRef = useRef(false);
 
@@ -60,6 +62,16 @@ export default function EnhancedVideoItem({
     }
   });
 
+  // Register video player with global store
+  useEffect(() => {
+    if (player) {
+      registerVideoPlayer(confession.id, player);
+      return () => {
+        unregisterVideoPlayer(confession.id);
+      };
+    }
+  }, [player, confession.id, registerVideoPlayer, unregisterVideoPlayer]);
+
   // React to sound preference changes
   useEffect(() => {
     try {
@@ -81,6 +93,9 @@ export default function EnhancedVideoItem({
     const handleVideoActivation = async () => {
       try {
         if (isActive && screenFocused) {
+          if (__DEV__) {
+            console.log(`Video ${confession.id}: Playing - isActive=${isActive}, screenFocused=${screenFocused}`);
+          }
           // Ensure audio session is active when video becomes active
           try {
             await Audio.setAudioModeAsync({
@@ -102,6 +117,7 @@ export default function EnhancedVideoItem({
             if (typeof player.play === "function") {
               player.play();
               wasPlayingRef.current = true;
+              updatePlayerState(confession.id, true);
             }
 
             // Additional check after a short delay to ensure audio is working
@@ -115,11 +131,15 @@ export default function EnhancedVideoItem({
             }, 100);
           }
         } else {
+          if (__DEV__) {
+            console.log(`Video ${confession.id}: Pausing - isActive=${isActive}, screenFocused=${screenFocused}`);
+          }
           if (player) {
             try {
               // Hard stop: pause and mute when screen loses focus or item not active
               if (typeof player.pause === "function") player.pause();
               player.muted = true;
+              updatePlayerState(confession.id, false);
             } catch {}
             wasPlayingRef.current = false;
           }
@@ -130,7 +150,7 @@ export default function EnhancedVideoItem({
     };
 
     handleVideoActivation();
-  }, [isActive, player, soundEnabled, confession.id]);
+  }, [isActive, screenFocused, player, soundEnabled, confession.id, forceUnmuted, updatePlayerState]);
 
   // Handle app state changes to pause videos when app goes to background
   useEffect(() => {

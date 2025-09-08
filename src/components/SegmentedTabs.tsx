@@ -65,16 +65,16 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
         style={[
           {
             position: "absolute",
-            top: 2,
-            bottom: 2,
+            top: 1,
+            bottom: 1,
             backgroundColor: "#3B82F6",
-            borderRadius: 14,
+            borderRadius: 10,
             zIndex: 1,
             shadowColor: '#3B82F6',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 5,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.25,
+            shadowRadius: 6,
+            elevation: 4,
           },
           indicatorStyle,
         ]}
@@ -90,22 +90,22 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
             onPress={() => handleTabPress(tab.id)}
             style={{
               flex: 1,
-              paddingVertical: 12,
-              paddingHorizontal: 10,
+              paddingVertical: 10,
+              paddingHorizontal: 8,
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
               zIndex: 2,
-              borderRadius: 12,
+              borderRadius: 10,
             }}
           >
             {/* Icon */}
             {Boolean(tab.icon) && (
               <Ionicons
                 name={tab.icon}
-                size={14}
+                size={12}
                 color={isActive ? "#FFFFFF" : "#9CA3AF"}
-                style={{ marginRight: tab.label ? 5 : 0 }}
+                style={{ marginRight: tab.label ? 4 : 0 }}
               />
             )}
 
@@ -113,7 +113,7 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
             {Boolean(tab.label) && (
               <Text
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: "600",
                   color: isActive ? "#FFFFFF" : "#9CA3AF",
                 }}

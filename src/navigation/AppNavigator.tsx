@@ -22,6 +22,7 @@ import SecretDetailScreen from "../screens/SecretDetailScreen";
 import SavedScreen from "../screens/SavedScreen";
 import PaywallScreen from "../screens/PaywallScreen";
 import { useAuthStore } from "../state/authStore";
+import { useGlobalVideoStore } from "../state/globalVideoStore";
 import TrendingBar from "../components/TrendingBar";
 import AppHeader from "../components/AppHeader";
 
@@ -86,8 +87,22 @@ function AuthStackNavigator() {
 }
 
 function MainTabs() {
+  const { setCurrentTab } = useGlobalVideoStore();
+
+  // Global video pause handler
+  const handleTabChange = (state: any) => {
+    const currentRoute = state.routes[state.index];
+    console.log(`🎥 Tab changed to: ${currentRoute.name}`);
+    setCurrentTab(currentRoute.name);
+  };
+
   return (
     <Tab.Navigator
+      screenListeners={{
+        state: (e) => {
+          handleTabChange(e.data.state);
+        },
+      }}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap;

@@ -29,6 +29,19 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   // Track if this tab is currently focused
   const isFocused = useIsFocused();
 
+  // Debug focus changes and handle global video pause
+  useEffect(() => {
+    console.log(`🎥 OptimizedVideoList: isFocused changed to ${isFocused}`);
+
+    if (!isFocused) {
+      // When tab loses focus, force all video items to pause
+      console.log(`🎥 Tab lost focus - forcing all videos to pause`);
+
+      // Force re-render of all video items with screenFocused=false
+      setCurrentIndex(prev => prev); // Trigger re-render
+    }
+  }, [isFocused]);
+
   // Bottom sheet refs
   const commentSheetRef = useRef<BottomSheetModal>(null);
   const shareSheetRef = useRef<BottomSheetModal>(null);
