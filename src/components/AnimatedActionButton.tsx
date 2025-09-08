@@ -63,8 +63,38 @@ export default function AnimatedActionButton({
 
   const iconColor = isActive ? (icon === "heart" ? "#FF3040" : activeColor) : inactiveColor;
 
+  const getAccessibilityLabel = () => {
+    if (count !== undefined) {
+      return `${label} ${count} ${count === 1 ? 'time' : 'times'}`;
+    }
+    return isActive ? `${label} (active)` : label;
+  };
+
+  const getAccessibilityHint = () => {
+    switch (label) {
+      case 'Like':
+        return isActive ? 'Double tap to unlike this video' : 'Double tap to like this video';
+      case 'Reply':
+        return 'Double tap to open comments';
+      case 'Share':
+        return 'Double tap to share this video';
+      case 'Save':
+        return isActive ? 'Double tap to unsave this video' : 'Double tap to save this video';
+      default:
+        return `Double tap to ${label.toLowerCase()}`;
+    }
+  };
+
   return (
-    <AnimatedPressable className="items-center" onPress={handlePress} style={buttonStyle}>
+    <AnimatedPressable
+      className="items-center"
+      onPress={handlePress}
+      style={buttonStyle}
+      accessibilityRole="button"
+      accessibilityLabel={getAccessibilityLabel()}
+      accessibilityHint={getAccessibilityHint()}
+      accessibilityState={{ selected: isActive }}
+    >
       <Animated.View
         className="w-12 h-12 bg-black/50 rounded-full items-center justify-center mb-1"
         style={icon === "heart" ? heartStyle : undefined}

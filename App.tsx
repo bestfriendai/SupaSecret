@@ -7,6 +7,7 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import { useAuthStore } from "./src/state/authStore";
 import { useConfessionStore } from "./src/state/confessionStore";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { ToastProvider } from "./src/contexts/ToastContext";
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
@@ -74,9 +75,11 @@ export default function App() {
     >
       <GestureHandlerRootView className="flex-1">
         <SafeAreaProvider>
-          <BottomSheetModalProvider>
-            <AppNavigator />
-          </BottomSheetModalProvider>
+          <ToastProvider>
+            <BottomSheetModalProvider>
+              <AppNavigator />
+            </BottomSheetModalProvider>
+          </ToastProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>

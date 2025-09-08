@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, Modal, Alert, Linking } from "react-native";
+import { View, Text, Pressable, Modal, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import { CameraView, CameraType } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
 import { processVideoConfession } from "../utils/videoProcessing";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { useUnifiedPermissions } from "../hooks/useUnifiedPermissions";
 import { BlurView } from "expo-blur";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as Speech from "expo-speech";
@@ -15,6 +16,7 @@ import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
 export default function VideoRecordScreen() {
   // All hooks must be called at the top level, before any conditional logic
   const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
+  const { permissionState, requestAllPermissions, hasAllPermissions } = useUnifiedPermissions();
   const [facing, setFacing] = useState<CameraType>("front");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,9 +27,6 @@ export default function VideoRecordScreen() {
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "error">("success");
   const [modalButtons, setModalButtons] = useState<{ text: string; onPress?: () => void }[]>([]);
-  const [audioPermission, setAudioPermission] = useState<boolean | null>(null);
-  const [permission, requestPermission] = useCameraPermissions();
-  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<Promise<any> | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -100,64 +99,23 @@ export default function VideoRecordScreen() {
 
   // Cleanup effect - must be called after all other hooks
   useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
+    return cleanup;
   }, []);
 
-  const requestAllPermissions = async () => {
-    try {
-      console.log("🔍 Requesting permissions...");
-
-      // Request camera permission
-      const cameraResult = await requestPermission();
-      console.log("🔍 Camera permission result:", cameraResult);
-
-      // Request microphone permission via expo-camera hook
-      const micResult = await requestMicPermission();
-      console.log("🔍 Microphone permission result:", micResult);
-
-      // Update state immediately after getting results
-      setAudioPermission(micResult.granted);
-
-      // If both permissions are granted, we're done
-      if (cameraResult.granted && micResult.granted) {
-        console.log("✅ All permissions granted");
-        return;
-      }
-
-      // Show appropriate alerts for denied permissions
-      if (!cameraResult.granted) {
-        Alert.alert(
-          "Camera Permission Required",
-          "Please enable camera access in your device settings to record video confessions.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Try Again", onPress: requestAllPermissions },
-            { text: "Open Settings", onPress: () => Linking.openSettings() },
-          ],
-        );
-        return;
-      }
-
-      if (!micResult.granted) {
-        Alert.alert(
-          "Microphone Permission Required",
-          "Please enable microphone access in your device settings to record audio for your video confessions.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Try Again", onPress: requestAllPermissions },
-            { text: "Open Settings", onPress: () => Linking.openSettings() },
-          ],
-        );
-        return;
-      }
-    } catch (error) {
-      console.error("Error requesting permissions:", error);
-      showMessage("Failed to request permissions. Please try again.", "error");
+  // Cleanup function to prevent memory leaks
+  const cleanup = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+    if (recordingPromiseRef.current) {
+      recordingPromiseRef.current = null;
+    }
+    setIsRecording(false);
+    setRecordingTime(0);
+    setIsProcessing(false);
+    setProcessingProgress(0);
+    setProcessingStatus("");
   };
 
   const toggleCameraFacing = () => {
@@ -169,9 +127,9 @@ export default function VideoRecordScreen() {
     if (!cameraRef.current || isRecording) return;
 
     // Double-check permissions before recording
-    if (!permission?.granted || audioPermission !== true) {
-      showMessage("Camera and microphone permissions are required to record video.", "error");
-      return;
+    if (!hasAllPermissions) {
+      const granted = await requestAllPermissions();
+      if (!granted) return;
     }
 
     setIsRecording(true);
@@ -523,9 +481,15 @@ export default function VideoRecordScreen() {
               )}
 
               <View className="flex-row items-center justify-center space-x-8">
-                {/* Quality Selector */}
-                <Pressable className="bg-black/70 rounded-full p-3">
-                  <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+                {/* Camera Flip Button */}
+                <Pressable
+                  className="bg-black/70 rounded-full p-3"
+                  onPress={toggleCameraFacing}
+                  disabled={isRecording || isProcessing}
+                  accessibilityRole="button"
+                  accessibilityLabel="Switch camera"
+                >
+                  <Ionicons name="camera-reverse-outline" size={24} color="#FFFFFF" />
                 </Pressable>
 
                 {/* Record Button */}
@@ -535,13 +499,21 @@ export default function VideoRecordScreen() {
                   }`}
                   onPress={isRecording ? stopRecording : startRecording}
                   disabled={isProcessing}
+                  accessibilityRole="button"
+                  accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
                 >
                   <View className={`rounded-full ${isRecording ? "w-6 h-6 bg-white" : "w-8 h-8 bg-red-500"}`} />
                 </Pressable>
 
-                {/* Gallery/Preview */}
-                <Pressable className="bg-black/70 rounded-full p-3">
-                  <Ionicons name="images-outline" size={24} color="#FFFFFF" />
+                {/* Close Button */}
+                <Pressable
+                  className="bg-black/70 rounded-full p-3"
+                  onPress={() => navigation.goBack()}
+                  disabled={isRecording || isProcessing}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close camera"
+                >
+                  <Ionicons name="close" size={24} color="#FFFFFF" />
                 </Pressable>
               </View>
 

@@ -21,7 +21,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   const confessions = useConfessionStore((state) => state.confessions);
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
   const videoConfessions = useMemo(() => confessions.filter((c) => c.type === "video"), [confessions]);
-  const { toggleSave } = useSavedStore();
+  const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const currentIndexRef = useRef(initialIndex);
@@ -104,9 +104,17 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   }, []);
 
   // Handle save press
-  const handleSavePress = useCallback((confessionId: string) => {
-    toggleSave(confessionId);
-  }, [toggleSave]);
+  const handleSavePress = useCallback(async (confessionId: string) => {
+    try {
+      if (isSaved(confessionId)) {
+        await unsaveConfession(confessionId);
+      } else {
+        await saveConfession(confessionId);
+      }
+    } catch (error) {
+      console.error('Failed to toggle save:', error);
+    }
+  }, [saveConfession, unsaveConfession, isSaved]);
 
   // Handle report press
   const handleReportPress = useCallback((confessionId: string, confessionText: string) => {

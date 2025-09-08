@@ -38,7 +38,7 @@ export default function EnhancedVideoItem({
   screenFocused = true,
 }: EnhancedVideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
-  const { isSaved, toggleSave } = useSavedStore();
+  const { isSaved, saveConfession, unsaveConfession } = useSavedStore();
   const { registerVideoPlayer, unregisterVideoPlayer, updatePlayerState } = useGlobalVideoStore();
   const { impactAsync } = usePreferenceAwareHaptics();
   const wasPlayingRef = useRef(false);
@@ -313,11 +313,19 @@ export default function EnhancedVideoItem({
             icon={isSaved(confession.id) ? "bookmark" : "bookmark-outline"}
             label="Save"
             isActive={isSaved(confession.id)}
-            onPress={() => {
+            onPress={async () => {
               if (onSavePress) {
                 onSavePress(confession.id);
               } else {
-                toggleSave(confession.id);
+                try {
+                  if (isSaved(confession.id)) {
+                    await unsaveConfession(confession.id);
+                  } else {
+                    await saveConfession(confession.id);
+                  }
+                } catch (error) {
+                  console.error('Failed to toggle save:', error);
+                }
               }
               impactAsync();
             }}

@@ -131,7 +131,7 @@ export const signUpUser = async (data: SignUpData): Promise<User> => {
 };
 
 // Sign in existing user
-export const signInUser = async (credentials: AuthCredentials): Promise<User> => {
+export const signInUser = async (credentials: AuthCredentials, persistSession: boolean = true): Promise<User> => {
   const { email, password } = credentials;
 
   if (!validateEmail(email)) {
@@ -313,6 +313,30 @@ export const updateUserData = async (userId: string, updates: Partial<User>): Pr
   };
 
   return updatedUser;
+};
+
+// Send password reset email
+export const sendPasswordReset = async (email: string): Promise<void> => {
+  if (!validateEmail(email)) {
+    throw new AuthError("INVALID_EMAIL", "Please enter a valid email address");
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'supasecret://'}reset-password`,
+  });
+
+  if (error) {
+    if (error.message.includes("Email not found")) {
+      throw new AuthError("EMAIL_NOT_FOUND", "No account found with this email address");
+    }
+    if (error.message.includes("Email rate limit exceeded")) {
+      throw new AuthError("RATE_LIMIT_EXCEEDED", "Too many emails sent. Please wait before requesting another");
+    }
+    if (error.message.includes("Network")) {
+      throw new AuthError("NETWORK_ERROR", "Network error. Please check your connection and try again");
+    }
+    throw new AuthError("PASSWORD_RESET_ERROR", "Unable to send password reset email. Please try again");
+  }
 };
 
 // Sign out user

@@ -34,11 +34,11 @@ export const useAuthStore = create<AuthState>()(
         );
       },
 
-      signIn: async (credentials: AuthCredentials) => {
+      signIn: async (credentials: AuthCredentials, persistSession: boolean = true) => {
         await withErrorHandling(
           set,
           async () => {
-            const user = await signInUser(credentials);
+            const user = await signInUser(credentials, persistSession);
             set({
               user,
               isAuthenticated: true,

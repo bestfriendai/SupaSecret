@@ -3,7 +3,7 @@
  * Provides standardized accessibility props and helpers
  */
 
-import { AccessibilityRole, AccessibilityState, AccessibilityProps } from 'react-native';
+import { AccessibilityRole, AccessibilityState, AccessibilityProps, AccessibilityInfo } from 'react-native';
 
 export interface A11yProps extends AccessibilityProps {
   accessibilityRole?: AccessibilityRole;
@@ -293,4 +293,62 @@ export const combineA11yProps = (...props: (A11yProps | undefined)[]): A11yProps
       },
     };
   }, {} as A11yProps);
+};
+
+// Enhanced accessibility functions for screen reader support
+export const isScreenReaderEnabled = async (): Promise<boolean> => {
+  try {
+    return await AccessibilityInfo.isScreenReaderEnabled();
+  } catch {
+    return false;
+  }
+};
+
+export const isReduceMotionEnabled = async (): Promise<boolean> => {
+  try {
+    return await AccessibilityInfo.isReduceMotionEnabled();
+  } catch {
+    return false;
+  }
+};
+
+export const announceForAccessibility = (message: string) => {
+  AccessibilityInfo.announceForAccessibility(message);
+};
+
+export const setAccessibilityFocus = (reactTag: number) => {
+  AccessibilityInfo.setAccessibilityFocus(reactTag);
+};
+
+// Accessibility helpers for common patterns
+export const AccessibilityHelpers = {
+  formatCount: (count: number, singular: string, plural?: string): string => {
+    const pluralForm = plural || `${singular}s`;
+    return `${count} ${count === 1 ? singular : pluralForm}`;
+  },
+
+  formatTime: (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    if (hours > 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    if (minutes > 0) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+    return 'Just now';
+  },
+
+  getLoadingMessage: (context: string): string => {
+    return `Loading ${context}, please wait`;
+  },
+
+  getErrorMessage: (error: string, context?: string): string => {
+    return context ? `Error in ${context}: ${error}` : `Error: ${error}`;
+  },
+
+  getSuccessMessage: (action: string): string => {
+    return `${action} completed successfully`;
+  },
 };

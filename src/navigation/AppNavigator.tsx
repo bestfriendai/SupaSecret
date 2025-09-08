@@ -25,6 +25,7 @@ import { useAuthStore } from "../state/authStore";
 import { useGlobalVideoStore } from "../state/globalVideoStore";
 import TrendingBar from "../components/TrendingBar";
 import AppHeader from "../components/AppHeader";
+import { linking } from "./linking";
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -222,6 +223,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer
+      linking={linking}
       theme={{
         dark: true,
         colors: {

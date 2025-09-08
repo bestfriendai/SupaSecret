@@ -3,20 +3,24 @@ import {
   View,
   Text,
   Pressable,
-  Modal,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
+import NetInfo from '@react-native-community/netinfo';
 
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
 import { useAuthStore } from "../state/authStore";
 import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
 import { getButtonA11yProps } from "../utils/accessibility";
-import { validateEmail } from "../utils/auth";
+import { validateEmail, sendPasswordReset } from "../utils/auth";
+import { useToastHelpers } from "../contexts/ToastContext";
+import { getUserFriendlyMessage } from "../utils/errorHandling";
+import { safeGoBackFromAuth } from "../utils/navigation";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -24,6 +28,7 @@ export default function SignInScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { signIn, isLoading, clearError } = useAuthStore();
   const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
+  const { showSuccess, showError } = useToastHelpers();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -35,16 +40,8 @@ export default function SignInScreen() {
     password: "",
   });
 
-  const [showModal, setShowModal] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState<"success" | "error">("success");
   const [rememberMe, setRememberMe] = useState(false);
-
-  const showMessage = (message: string, type: "success" | "error") => {
-    setModalMessage(message);
-    setModalType(type);
-    setShowModal(true);
-  };
+  const [isPasswordResetLoading, setIsPasswordResetLoading] = useState(false);
 
   const validateForm = () => {
     const errors = {
@@ -76,12 +73,20 @@ export default function SignInScreen() {
       return;
     }
 
+    // Check network connectivity
+    const netInfo = await NetInfo.fetch();
+    if (!netInfo.isConnected) {
+      showError('No internet connection. Please check your network and try again.');
+      return;
+    }
+
     try {
       if (__DEV__) {
         console.log("🔍 Attempting sign in with:", formData.email);
       }
-      await signIn(formData);
-      notificationAsync();
+      await signIn(formData, rememberMe); // Pass remember me flag
+      impactAsync();
+      showSuccess('Welcome back! You have successfully signed in.');
       // Navigation will be handled by the auth state change
     } catch (error) {
       if (__DEV__) {
@@ -90,9 +95,9 @@ export default function SignInScreen() {
       notificationAsync();
       if (error instanceof Error) {
         if (__DEV__) {
-          console.log("🔍 Showing error modal:", error.message);
+          console.log("🔍 Showing error toast:", error.message);
         }
-        showMessage(error.message, "error");
+        showError(error.message);
       }
     }
   };
@@ -102,8 +107,27 @@ export default function SignInScreen() {
     impactAsync();
   };
 
-  const handleForgotPassword = () => {
-    showMessage("Password reset functionality will be available soon.", "error");
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      showError('Please enter your email address first');
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      showError('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setIsPasswordResetLoading(true);
+      await sendPasswordReset(formData.email);
+      showSuccess('Password reset link sent! Check your inbox.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to send reset email';
+      showError(message);
+    } finally {
+      setIsPasswordResetLoading(false);
+    }
   };
 
   return (
@@ -112,7 +136,7 @@ export default function SignInScreen() {
             {/* Header */}
             <View className="flex-row items-center justify-between px-6 py-4">
               <Pressable
-                onPress={() => navigation.goBack()}
+                onPress={() => safeGoBackFromAuth(navigation)}
                 className="w-10 h-10 items-center justify-center rounded-full bg-gray-900"
               >
                 <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
@@ -168,19 +192,27 @@ export default function SignInScreen() {
 
               {/* Remember Me & Forgot Password */}
               <View className="flex-row items-center justify-between mb-6">
-                <Pressable className="flex-row items-center" onPress={() => setRememberMe(!rememberMe)}>
-                  <View
-                    className={`w-5 h-5 rounded border-2 items-center justify-center mr-3 ${
-                      rememberMe ? "bg-blue-500 border-blue-500" : "border-gray-600"
-                    }`}
-                  >
-                    {rememberMe && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
-                  </View>
-                  <Text className="text-gray-400 text-14">Remember me</Text>
-                </Pressable>
+                <View className="flex-row items-center">
+                  <Switch
+                    value={rememberMe}
+                    onValueChange={setRememberMe}
+                    trackColor={{ false: '#374151', true: '#3B82F6' }}
+                    thumbColor={rememberMe ? '#FFFFFF' : '#9CA3AF'}
+                    accessibilityLabel="Remember me for future sign-ins"
+                    accessibilityRole="switch"
+                  />
+                  <Text className="text-gray-400 text-14 ml-3">Remember me</Text>
+                </View>
 
-                <Pressable onPress={handleForgotPassword}>
-                  <Text className="text-blue-400 text-14 font-medium">Forgot Password?</Text>
+                <Pressable
+                  onPress={handleForgotPassword}
+                  disabled={isPasswordResetLoading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Reset password"
+                >
+                  <Text className={`text-14 font-medium ${isPasswordResetLoading ? 'text-gray-500' : 'text-blue-400'}`}>
+                    {isPasswordResetLoading ? 'Sending...' : 'Forgot Password?'}
+                  </Text>
                 </Pressable>
               </View>
 
@@ -247,24 +279,7 @@ export default function SignInScreen() {
             </View>
           </ScreenKeyboardWrapper>
 
-        {/* Custom Modal */}
-        <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
-          <View className="flex-1 bg-black/50 items-center justify-center px-6">
-            <View className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
-              <View className="items-center mb-4">
-                <Ionicons
-                  name={modalType === "success" ? "checkmark-circle" : "alert-circle"}
-                  size={48}
-                  color={modalType === "success" ? "#10B981" : "#EF4444"}
-                />
-              </View>
-              <Text className="text-white text-16 text-center mb-6 leading-5">{modalMessage}</Text>
-              <Pressable className="bg-blue-500 rounded-full py-3 px-6" onPress={() => setShowModal(false)}>
-                <Text className="text-white font-semibold text-center">OK</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
+
       </SafeAreaView>
   );
 }

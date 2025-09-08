@@ -20,6 +20,8 @@ import { useReplyStore } from "../state/replyStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import ReportModal from "../components/ReportModal";
 import HashtagText from "../components/HashtagText";
+import { isValidForDatabase } from "../utils/uuid";
+import { safeGoBackFromDetail } from "../utils/navigation";
 
 type SecretDetailRouteProp = RouteProp<
   {
@@ -57,19 +59,38 @@ export default function SecretDetailScreen() {
 
   useEffect(() => {
     if (confessionId) {
-      loadReplies(confessionId);
+      loadReplies(confessionId).catch(error => {
+        console.error('Failed to load replies in SecretDetailScreen:', error);
+        // Don't show alert immediately, let the store handle the error state
+      });
     }
   }, [confessionId, loadReplies]);
 
   useEffect(() => {
     if (repliesError) {
-      Alert.alert("Error", repliesError);
-      clearError();
+      console.error('Replies error:', repliesError);
+      Alert.alert("Error Loading Replies", repliesError, [
+        { text: "Retry", onPress: () => {
+          clearError();
+          loadReplies(confessionId);
+        }},
+        { text: "OK", onPress: () => clearError() }
+      ]);
     }
-  }, [repliesError, clearError]);
+  }, [repliesError, clearError, confessionId, loadReplies]);
 
   const handleAddReply = async () => {
     if (!newReply.trim() || isSubmitting) return;
+
+    // Check if this is a sample confession
+    if (!isValidForDatabase(confessionId)) {
+      Alert.alert(
+        "Sample Content",
+        "This is sample content for demonstration. Replies can only be added to real confessions.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -120,7 +141,7 @@ export default function SecretDetailScreen() {
         <Text className="text-gray-400 text-base mt-2 text-center">
           This secret may have been deleted or doesn't exist.
         </Text>
-        <Pressable className="bg-blue-500 rounded-full px-6 py-3 mt-6" onPress={() => navigation.goBack()}>
+        <Pressable className="bg-blue-500 rounded-full px-6 py-3 mt-6" onPress={() => safeGoBackFromDetail(navigation)}>
           <Text className="text-white font-semibold">Go Back</Text>
         </Pressable>
       </SafeAreaView>
@@ -132,7 +153,7 @@ export default function SecretDetailScreen() {
       <SafeAreaView className="flex-1 bg-black">
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-800">
-          <Pressable className="flex-row items-center" onPress={() => navigation.goBack()}>
+          <Pressable className="flex-row items-center" onPress={() => safeGoBackFromDetail(navigation)}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             <Text className="text-white text-lg font-semibold ml-2">Secret</Text>
           </Pressable>
@@ -276,19 +297,36 @@ export default function SecretDetailScreen() {
               </View>
               <TextInput
                 className="flex-1 bg-gray-800 rounded-full px-4 py-2 text-white text-15 mr-3"
-                placeholder="Add an anonymous reply..."
+                placeholder={
+                  isValidForDatabase(confessionId)
+                    ? "Add an anonymous reply..."
+                    : "Sample content - replies disabled"
+                }
                 placeholderTextColor="#8B98A5"
                 value={newReply}
                 onChangeText={setNewReply}
                 multiline
                 maxLength={500}
+                editable={isValidForDatabase(confessionId)}
               />
               <Pressable
-                className={`rounded-full p-2 ${newReply.trim() && !isSubmitting ? "bg-blue-500" : "bg-gray-700"}`}
+                className={`rounded-full p-2 ${
+                  newReply.trim() && !isSubmitting && isValidForDatabase(confessionId)
+                    ? "bg-blue-500"
+                    : "bg-gray-700"
+                }`}
                 onPress={handleAddReply}
-                disabled={!newReply.trim() || isSubmitting}
+                disabled={!newReply.trim() || isSubmitting || !isValidForDatabase(confessionId)}
               >
-                <Ionicons name="send" size={18} color={newReply.trim() && !isSubmitting ? "#FFFFFF" : "#8B98A5"} />
+                <Ionicons
+                  name="send"
+                  size={18}
+                  color={
+                    newReply.trim() && !isSubmitting && isValidForDatabase(confessionId)
+                      ? "#FFFFFF"
+                      : "#8B98A5"
+                  }
+                />
               </Pressable>
             </View>
           </View>

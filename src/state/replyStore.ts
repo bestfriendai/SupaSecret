@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import { invalidateCache } from "../utils/cacheInvalidation";
+import { isValidForDatabase } from "../utils/uuid";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();
@@ -58,6 +59,26 @@ export const useReplyStore = create<ReplyState>()(
       loadReplies: async (confessionId: string) => {
         set({ isLoading: true, error: null });
         try {
+          if (__DEV__) {
+            console.log('Loading replies for confession:', confessionId);
+          }
+
+          // Check if confessionId is valid for database operations
+          if (!isValidForDatabase(confessionId)) {
+            if (__DEV__) {
+              console.log(`Skipping replies for sample confession: ${confessionId}`);
+            }
+            // For sample data, just return empty replies
+            set((state) => ({
+              replies: {
+                ...state.replies,
+                [confessionId]: [],
+              },
+              isLoading: false,
+            }));
+            return;
+          }
+
           // Get current user
           const {
             data: { user },
@@ -70,31 +91,47 @@ export const useReplyStore = create<ReplyState>()(
             .eq("confession_id", confessionId)
             .order("created_at", { ascending: false });
 
-          if (error) throw error;
+          if (error) {
+            console.error('Supabase error loading replies:', error);
+            throw error;
+          }
 
           // Get user likes for these replies if user is authenticated
           let userLikes: string[] = [];
-          if (user && data.length > 0) {
-            const replyIds = data.map((reply) => reply.id);
-            const { data: likesData } = await supabase
-              .from("user_likes")
-              .select("reply_id")
-              .eq("user_id", user.id)
-              .in("reply_id", replyIds);
+          if (user && data && data.length > 0) {
+            try {
+              const replyIds = data.map((reply) => reply.id);
+              const { data: likesData, error: likesError } = await supabase
+                .from("user_likes")
+                .select("reply_id")
+                .eq("user_id", user.id)
+                .in("reply_id", replyIds);
 
-            userLikes = likesData?.map((like) => like.reply_id) || [];
+              if (likesError) {
+                console.warn('Failed to load user likes for replies:', likesError);
+              }
+
+              userLikes = likesData?.map((like) => like.reply_id) || [];
+            } catch (likesError) {
+              console.warn('Error loading user likes:', likesError);
+              // Continue without user likes
+            }
           }
 
-          const replies: Reply[] = data.map((item) => ({
+          const replies: Reply[] = (data || []).map((item) => ({
             id: item.id,
             confessionId: item.confession_id,
             userId: item.user_id || undefined,
             content: item.content,
             isAnonymous: item.is_anonymous,
-            likes: item.likes,
+            likes: item.likes || 0,
             isLiked: userLikes.includes(item.id),
             timestamp: new Date(item.created_at).getTime(),
           }));
+
+          if (__DEV__) {
+            console.log(`Loaded ${replies.length} replies for confession ${confessionId}`);
+          }
 
           set((state) => ({
             replies: {
@@ -104,8 +141,22 @@ export const useReplyStore = create<ReplyState>()(
             isLoading: false,
           }));
         } catch (error) {
+          console.error('Error in loadReplies:', error);
+
+          let errorMessage = "Failed to load replies";
+          if (error instanceof Error) {
+            errorMessage = error.message;
+
+            // Handle specific Supabase errors
+            if (error.message.includes('relation "replies" does not exist')) {
+              errorMessage = "Replies feature is not yet available";
+            } else if (error.message.includes('permission denied')) {
+              errorMessage = "Unable to access replies at this time";
+            }
+          }
+
           set({
-            error: error instanceof Error ? error.message : "Failed to load replies",
+            error: errorMessage,
             isLoading: false,
           });
         }
@@ -114,6 +165,14 @@ export const useReplyStore = create<ReplyState>()(
       addReply: async (confessionId: string, content: string, isAnonymous = true) => {
         set({ isLoading: true, error: null });
         try {
+          // Check if confessionId is valid for database operations
+          if (!isValidForDatabase(confessionId)) {
+            if (__DEV__) {
+              console.log(`Cannot add reply to sample confession: ${confessionId}`);
+            }
+            throw new Error("Cannot add replies to sample confessions");
+          }
+
           const {
             data: { user },
           } = await supabase.auth.getUser();

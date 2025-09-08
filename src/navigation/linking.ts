@@ -1,0 +1,252 @@
+import { LinkingOptions } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
+import { RootStackParamList } from './AppNavigator';
+
+const prefix = Linking.createURL('/');
+
+export const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [prefix, 'supasecret://', 'https://supasecret.app', 'https://www.supasecret.app'],
+  config: {
+    screens: {
+      MainTabs: {
+        screens: {
+          Home: {
+            path: '/',
+            screens: {
+              HomeScreen: '',
+            },
+          },
+          Videos: {
+            path: '/videos',
+            screens: {
+              VideoFeedScreen: '',
+            },
+          },
+          Create: {
+            path: '/create',
+            screens: {
+              CreateConfessionScreen: '',
+            },
+          },
+          Trending: {
+            path: '/trending',
+            screens: {
+              TrendingScreen: '',
+            },
+          },
+          Profile: {
+            path: '/profile',
+            screens: {
+              ProfileScreen: '',
+            },
+          },
+        },
+      },
+      SecretDetail: {
+        path: '/secret/:confessionId',
+        parse: {
+          confessionId: (confessionId: string) => confessionId,
+        },
+      },
+      VideoPlayer: {
+        path: '/video/:confessionId',
+        parse: {
+          confessionId: (confessionId: string) => confessionId,
+        },
+      },
+      VideoRecord: '/record',
+      Saved: '/saved',
+      Paywall: {
+        path: '/paywall',
+        parse: {
+          feature: (feature: string) => feature,
+          source: (source: string) => source,
+        },
+      },
+      AuthStack: {
+        screens: {
+          Onboarding: '/onboarding',
+          SignUp: '/signup',
+          SignIn: '/signin',
+        },
+      },
+    },
+  },
+  async getInitialURL() {
+    // Check if app was opened from a deep link
+    const url = await Linking.getInitialURL();
+    if (url != null) {
+      return url;
+    }
+
+    // Check if there's a pending notification
+    // This would integrate with your notification system
+    return null;
+  },
+  subscribe(listener) {
+    const onReceiveURL = ({ url }: { url: string }) => listener(url);
+
+    // Listen to incoming links from deep linking
+    const subscription = Linking.addEventListener('url', onReceiveURL);
+
+    return () => {
+      subscription?.remove();
+    };
+  },
+};
+
+// Deep link handlers for specific actions
+export const DeepLinkHandlers = {
+  // Handle secret sharing links
+  handleSecretLink: (confessionId: string) => {
+    return `supasecret://secret/${confessionId}`;
+  },
+
+  // Handle video sharing links
+  handleVideoLink: (confessionId: string) => {
+    return `supasecret://video/${confessionId}`;
+  },
+
+  // Handle profile sharing links
+  handleProfileLink: (userId?: string) => {
+    return userId ? `supasecret://profile/${userId}` : 'supasecret://profile';
+  },
+
+  // Handle trending hashtag links
+  handleTrendingLink: (hashtag?: string) => {
+    return hashtag ? `supasecret://trending?hashtag=${hashtag}` : 'supasecret://trending';
+  },
+
+  // Handle password reset links
+  handlePasswordResetLink: (token: string) => {
+    return `supasecret://reset-password?token=${token}`;
+  },
+
+  // Handle email verification links
+  handleEmailVerificationLink: (token: string) => {
+    return `supasecret://verify-email?token=${token}`;
+  },
+
+  // Handle paywall links
+  handlePaywallLink: (feature?: string, source?: string) => {
+    const params = new URLSearchParams();
+    if (feature) params.append('feature', feature);
+    if (source) params.append('source', source);
+    
+    const queryString = params.toString();
+    return `supasecret://paywall${queryString ? `?${queryString}` : ''}`;
+  },
+};
+
+// URL parsing utilities
+export const URLUtils = {
+  // Parse confession ID from URL
+  parseConfessionId: (url: string): string | null => {
+    const match = url.match(/\/(?:secret|video)\/([a-zA-Z0-9-]+)/);
+    return match ? match[1] : null;
+  },
+
+  // Parse hashtag from URL
+  parseHashtag: (url: string): string | null => {
+    const urlObj = new URL(url);
+    return urlObj.searchParams.get('hashtag');
+  },
+
+  // Parse query parameters
+  parseQueryParams: (url: string): Record<string, string> => {
+    try {
+      const urlObj = new URL(url);
+      const params: Record<string, string> = {};
+      
+      urlObj.searchParams.forEach((value, key) => {
+        params[key] = value;
+      });
+      
+      return params;
+    } catch {
+      return {};
+    }
+  },
+
+  // Validate deep link format
+  isValidDeepLink: (url: string): boolean => {
+    try {
+      const urlObj = new URL(url);
+      const validSchemes = ['supasecret', 'https'];
+      const validHosts = ['supasecret.app', 'www.supasecret.app'];
+      
+      if (urlObj.protocol === 'supasecret:') {
+        return true;
+      }
+      
+      if (urlObj.protocol === 'https:' && validHosts.includes(urlObj.hostname)) {
+        return true;
+      }
+      
+      return false;
+    } catch {
+      return false;
+    }
+  },
+
+  // Generate shareable URL for web
+  generateWebURL: (path: string): string => {
+    return `https://supasecret.app${path}`;
+  },
+
+  // Generate app deep link
+  generateAppURL: (path: string): string => {
+    return `supasecret://${path}`;
+  },
+};
+
+// Analytics tracking for deep links
+export const DeepLinkAnalytics = {
+  trackDeepLinkOpen: (url: string, source: 'app_open' | 'notification' | 'share') => {
+    // Integrate with your analytics service
+    if (__DEV__) {
+      console.log('Deep link opened:', { url, source });
+    }
+    
+    // Example: Analytics.track('deep_link_opened', { url, source });
+  },
+
+  trackDeepLinkShare: (type: 'secret' | 'video' | 'profile' | 'trending', id?: string) => {
+    // Integrate with your analytics service
+    if (__DEV__) {
+      console.log('Deep link shared:', { type, id });
+    }
+    
+    // Example: Analytics.track('deep_link_shared', { type, id });
+  },
+};
+
+// Error handling for deep links
+export const DeepLinkErrorHandler = {
+  handleInvalidLink: (url: string) => {
+    if (__DEV__) {
+      console.warn('Invalid deep link:', url);
+    }
+    
+    // Could show a toast or redirect to home
+    // Example: showToast('Invalid link', 'error');
+  },
+
+  handleMissingContent: (type: 'secret' | 'video' | 'profile', id: string) => {
+    if (__DEV__) {
+      console.warn('Content not found for deep link:', { type, id });
+    }
+    
+    // Could show an error screen or redirect
+    // Example: showToast('Content not found', 'error');
+  },
+
+  handleAuthRequired: (targetUrl: string) => {
+    if (__DEV__) {
+      console.log('Authentication required for deep link:', targetUrl);
+    }
+    
+    // Store the target URL and redirect to auth
+    // Example: AuthStore.setPendingDeepLink(targetUrl);
+  },
+};

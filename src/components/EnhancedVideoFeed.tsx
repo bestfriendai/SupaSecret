@@ -130,12 +130,19 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     }
   }, [currentPlayer, currentIndex, videoPlayers]);
 
-  // Handle video changes
+  // Handle video changes with cleanup
   useEffect(() => {
-    if (videoConfessions.length > 0) {
+    if (videoConfessions.length > 0 && isFocused) {
       videoPlayers.playVideo(currentIndex);
     }
-  }, [currentIndex, videoPlayers, videoConfessions.length]);
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (!isFocused) {
+        videoPlayers.pauseAll();
+      }
+    };
+  }, [currentIndex, videoPlayers, videoConfessions.length, isFocused]);
 
   const changeVideo = useCallback(
     (newIndex: number) => {
@@ -203,10 +210,10 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     [updateVideoAnalytics],
   );
 
-  // Set up progress tracking for current video
+  // Set up progress tracking for current video with proper cleanup
   useEffect(() => {
     const player = videoPlayers.getPlayer(currentIndex);
-    if (player && currentVideo) {
+    if (player && currentVideo && isFocused) {
       const interval = setInterval(() => {
         try {
           if (player.currentTime !== undefined && player.duration !== undefined) {
@@ -215,32 +222,36 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
         } catch (_error) {
           // Ignore errors when accessing player properties
         }
-      }, 1000);
+      }, 2000); // Reduced frequency to improve performance
 
       return () => {
-        if (interval) clearInterval(interval);
+        clearInterval(interval);
       };
     }
     return undefined;
-  }, [currentIndex, currentVideo, videoPlayers, trackVideoProgress]);
+  }, [currentIndex, currentVideo, videoPlayers, trackVideoProgress, isFocused]);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
       overlayOpacity.value = withTiming(0.7, { duration: 200 });
     })
     .onUpdate((event) => {
+      'worklet';
       translateY.value = event.translationY;
 
-      // Update pull distance for refresh indicator
+      // Update pull distance for refresh indicator - throttled to reduce JS bridge calls
       if (event.translationY > 0 && currentIndex === 0) {
-        runOnJS(setPullDistance)(event.translationY);
+        const pullValue = Math.min(event.translationY, 120);
+        if (pullValue % 5 === 0) { // Throttle updates to every 5 pixels
+          runOnJS(setPullDistance)(pullValue);
+        }
       }
 
-      // Scale effect based on swipe distance
+      // Scale effect based on swipe distance - optimized with worklet
       const scaleValue = interpolate(Math.abs(event.translationY), [0, screenHeight / 2], [1, 0.9], "clamp");
       scale.value = scaleValue;
 
-      // Action buttons slide effect
+      // Action buttons slide effect - optimized with worklet
       actionButtonsTranslateX.value = interpolate(event.translationX, [-100, 0, 100], [20, 0, -20], "clamp");
     })
     .onEnd((event) => {
@@ -562,6 +573,9 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                 }
                 impactAsync();
               }}
+              accessibilityRole="button"
+              accessibilityLabel={currentPlayer?.playing ? "Pause video" : "Play video"}
+              accessibilityHint="Double tap to play or pause the video"
             />
           </Animated.View>
         </GestureDetector>

@@ -11,12 +11,17 @@ import { useReplyStore } from "../state/replyStore";
 import { useSavedStore } from "../state/savedStore";
 import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { useOptimizedReplies } from "../hooks/useOptimizedReplies";
+import { NetworkErrorState } from "../components/ErrorState";
+import OptimizedAdBanner from "../components/OptimizedAdBanner";
+import { useScrollRestoration } from "../hooks/useScrollRestoration";
+import NetInfo from "@react-native-community/netinfo";
 import ReportModal from "../components/ReportModal";
 import FeedActionSheet from "../components/FeedActionSheet";
 import ConfessionSkeleton from "../components/ConfessionSkeleton";
 import HashtagText from "../components/HashtagText";
 import PullToRefresh from "../components/PullToRefresh";
-import AdBanner from "../components/AdBanner";
+
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11yProps } from "../utils/accessibility";
 import { useDebouncedRefresh, useDebouncedLikeToggle } from "../utils/debounce";
@@ -38,14 +43,17 @@ export default function HomeScreen() {
   const { refresh } = useDebouncedRefresh(loadConfessions, 1000);
   const debouncedToggleLike = useDebouncedLikeToggle(toggleLike, 500);
   const hasMore = useConfessionStore((state) => state.hasMore);
-  const { getRepliesForConfession, loadReplies } = useReplyStore();
+  const { getRepliesForConfession } = useReplyStore();
   const { isSaved } = useSavedStore();
+  const { loadRepliesForVisibleItems, clearLoadedReplies } = useOptimizedReplies();
+  const { scrollViewRef, handleScroll } = useScrollRestoration({ key: 'home-feed' });
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
   const [refreshing, setRefreshing] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportingConfessionId, setReportingConfessionId] = useState<string | null>(null);
   const [selectedConfessionText, setSelectedConfessionText] = useState<string>("");
+  const [networkError, setNetworkError] = useState(false);
   const actionSheetRef = useRef<BottomSheetModal | null>(null);
 
   // Enhanced pull-to-refresh state
@@ -54,43 +62,55 @@ export default function HomeScreen() {
   const scrollY = useSharedValue(0);
   const flashListRef = useRef<FlashList<any>>(null);
 
-  // Load replies for all confessions when component mounts
+  // Check network connectivity and handle errors
   useEffect(() => {
-    confessions.forEach(async (confession) => {
+    const checkNetworkAndLoadData = async () => {
       try {
-        await loadReplies(confession.id);
+        const netInfo = await NetInfo.fetch();
+        if (!netInfo.isConnected) {
+          setNetworkError(true);
+          return;
+        }
+        setNetworkError(false);
       } catch (error) {
         if (__DEV__) {
-          console.error("Error loading replies for confession:", confession.id, error);
+          console.error("Network check failed:", error);
         }
+        setNetworkError(true);
       }
-    });
-  }, [confessions, loadReplies]);
+    };
+
+    checkNetworkAndLoadData();
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setIsEnhancedRefreshing(true);
+
     try {
+      // Check network connectivity first
+      const netInfo = await NetInfo.fetch();
+      if (!netInfo.isConnected) {
+        setNetworkError(true);
+        return;
+      }
+
+      setNetworkError(false);
       await refresh(); // Use debounced refresh
-      // Reload replies for all confessions
-      confessions.forEach(async (confession) => {
-        try {
-          await loadReplies(confession.id);
-        } catch (error) {
-          if (__DEV__) {
-            console.error("Error loading replies for confession during refresh:", confession.id, error);
-          }
-        }
-      });
+
+      // Clear loaded replies cache to force reload
+      clearLoadedReplies();
+
     } catch (error) {
       if (__DEV__) {
         console.error("Error refreshing:", error);
       }
+      setNetworkError(true);
     } finally {
       setRefreshing(false);
       setIsEnhancedRefreshing(false);
     }
-  }, [refresh, confessions, loadReplies]);
+  }, [refresh, clearLoadedReplies]);
 
   const handleEnhancedRefresh = useCallback(async () => {
     setIsEnhancedRefreshing(true);
@@ -114,6 +134,9 @@ export default function HomeScreen() {
       } else {
         runOnJS(setPullDistance)(0);
       }
+
+      // Handle scroll restoration - pass contentOffset directly since it's a worklet event
+      runOnJS(handleScroll)(event.contentOffset);
     },
   });
 
@@ -180,8 +203,8 @@ export default function HomeScreen() {
 
       return (
         <>
-          {/* Ad Banner */}
-          <AdBanner placement="home-feed" index={index} />
+          {/* Optimized Ad Banner */}
+          <OptimizedAdBanner placement="home-feed" index={index} />
 
           {/* Confession Item */}
           <Pressable className="border-b border-gray-800 px-4 py-3" onPress={() => handleSecretPress(confession)}>
@@ -317,7 +340,10 @@ export default function HomeScreen() {
         <View className="flex-1">
           <Animated.View className="flex-1">
             <AnimatedFlashList
-              ref={flashListRef as any}
+              ref={(ref) => {
+                flashListRef.current = ref;
+                scrollViewRef.current = ref;
+              }}
               data={confessions}
               renderItem={renderItem}
               estimatedItemSize={200}
@@ -327,10 +353,18 @@ export default function HomeScreen() {
               onEndReached={onEndReached}
               onEndReachedThreshold={0.5}
               ListFooterComponent={renderFooter}
-              ListEmptyComponent={renderEmpty}
-              refreshing={false}
-              onRefresh={undefined}
-              extraData={{ refreshing, isLoadingMore }}
+              ListEmptyComponent={networkError ?
+                () => <NetworkErrorState onRetry={onRefresh} /> :
+                renderEmpty
+              }
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              onViewableItemsChanged={({ viewableItems }) => {
+                const visibleIds = viewableItems.map(item => item.item.id);
+                loadRepliesForVisibleItems(visibleIds);
+              }}
+              viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+              extraData={{ refreshing, isLoadingMore, networkError }}
               onScroll={scrollHandler}
               onScrollEndDrag={onScrollEndDrag}
               scrollEventThrottle={16}

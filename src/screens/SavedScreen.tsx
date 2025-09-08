@@ -14,6 +14,7 @@ import { usePreferenceAwareHaptics } from "../utils/haptics";
 import HashtagText from "../components/HashtagText";
 import ConfessionSkeleton from "../components/ConfessionSkeleton";
 import { useDebouncedRefresh } from "../utils/debounce";
+import { safeGoBackFromModal } from "../utils/navigation";
 
 export default function SavedScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -199,7 +200,7 @@ export default function SavedScreen() {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-4 border-b border-gray-800">
-        <Pressable onPress={() => navigation.goBack()}>
+        <Pressable onPress={() => safeGoBackFromModal(navigation)}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </Pressable>
         <Text className="text-white text-18 font-semibold">Saved Secrets</Text>

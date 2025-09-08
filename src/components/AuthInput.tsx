@@ -7,12 +7,18 @@ interface AuthInputProps {
   label: string;
   value: string;
   onChangeText: (text: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   secureTextEntry?: boolean;
   keyboardType?: "default" | "email-address" | "numeric" | "phone-pad";
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   autoComplete?: "email" | "password" | "username" | "off";
   error?: string;
+  isValid?: boolean;
+  touched?: boolean;
+  required?: boolean;
+  maxLength?: number;
+  showCharacterCount?: boolean;
   disabled?: boolean;
   leftIcon?: keyof typeof Ionicons.glyphMap;
   rightIcon?: keyof typeof Ionicons.glyphMap;
@@ -23,12 +29,18 @@ export default function AuthInput({
   label,
   value,
   onChangeText,
+  onBlur,
   placeholder,
   secureTextEntry = false,
   keyboardType = "default",
   autoCapitalize = "none",
   autoComplete = "off",
   error,
+  isValid = true,
+  touched = false,
+  required = false,
+  maxLength,
+  showCharacterCount = false,
   disabled = false,
   leftIcon,
   rightIcon,
@@ -65,16 +77,25 @@ export default function AuthInput({
         <TextInput
           className="flex-1 text-white text-16"
           value={value}
-          onChangeText={onChangeText}
+          onChangeText={(text) => {
+            if (maxLength && text.length > maxLength) {
+              return; // Prevent input beyond max length
+            }
+            onChangeText(text);
+          }}
           placeholder={placeholder}
           placeholderTextColor="#8B98A5"
           secureTextEntry={actualSecureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
+          maxLength={maxLength}
           editable={!disabled}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onBlur={() => {
+            setIsFocused(false);
+            onBlur?.();
+          }}
           style={{
             color: "#FFFFFF",
             fontSize: 16,
@@ -82,7 +103,7 @@ export default function AuthInput({
           {...getTextInputA11yProps(
             label,
             error || placeholder,
-            false, // required - could be made configurable
+            required,
             false  // multiline
           )}
         />
@@ -105,12 +126,41 @@ export default function AuthInput({
           </Pressable>
         )}
       </View>
-      {error && (
-        <View className="flex-row items-center mt-2">
-          <Ionicons name="alert-circle" size={16} color="#EF4444" />
-          <Text className="text-red-500 text-13 ml-2">{error}</Text>
+      {/* Bottom Row: Error/Success and Character Count */}
+      <View className="flex-row justify-between items-center mt-2">
+        <View className="flex-1">
+          {/* Error Message */}
+          {error && touched && (
+            <View className="flex-row items-center">
+              <Ionicons name="alert-circle" size={14} color="#EF4444" />
+              <Text className="text-red-500 text-12 ml-1 flex-1">{error}</Text>
+            </View>
+          )}
+
+          {/* Success Indicator */}
+          {!error && touched && isValid && value.length > 0 && (
+            <View className="flex-row items-center">
+              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+              <Text className="text-green-400 text-12 ml-1">Looks good!</Text>
+            </View>
+          )}
         </View>
-      )}
+
+        {/* Character Count */}
+        {showCharacterCount && maxLength && (
+          <Text
+            className={`text-12 ml-2 ${
+              value.length >= maxLength
+                ? 'text-red-400'
+                : value.length > maxLength * 0.8
+                  ? 'text-yellow-400'
+                  : 'text-gray-500'
+            }`}
+          >
+            {value.length}/{maxLength}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }

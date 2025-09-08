@@ -2,6 +2,7 @@ export interface User {
   id: string;
   email: string;
   username?: string;
+  avatar_url?: string;
   createdAt: number;
   isOnboarded: boolean;
   lastLoginAt: number;
@@ -30,7 +31,7 @@ export interface AuthState {
 
   // Actions
   signUp: (data: SignUpData) => Promise<void>;
-  signIn: (credentials: AuthCredentials) => Promise<void>;
+  signIn: (credentials: AuthCredentials, persistSession?: boolean) => Promise<void>;
   signOut: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   setOnboarded: () => Promise<void>;
