@@ -7,7 +7,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
 import { processVideoConfession } from "../utils/videoProcessing";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { useUnifiedPermissions } from "../hooks/useUnifiedPermissions";
+import { useMediaPermissions } from "../hooks/useMediaPermissions";
 import { BlurView } from "expo-blur";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as Speech from "expo-speech";
@@ -16,7 +16,7 @@ import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
 export default function VideoRecordScreen() {
   // All hooks must be called at the top level, before any conditional logic
   const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
-  const { permissionState, requestAllPermissions, hasAllPermissions, checkPermissions } = useUnifiedPermissions();
+  const { permissionState, requestVideoPermissions, hasVideoPermissions } = useMediaPermissions();
   const [facing, setFacing] = useState<CameraType>("front");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -80,14 +80,14 @@ export default function VideoRecordScreen() {
     const initPermissions = () => {
       try {
         console.log("🔍 Checking initial permissions...");
-        checkPermissions();
+        // Permissions are automatically checked by the hook
       } catch (error) {
         console.error("❌ Error checking permissions:", error);
       }
     };
 
     initPermissions();
-  }, [checkPermissions]);
+  }, []);
 
   // Cleanup effect - must be called after all other hooks
   useEffect(() => {
@@ -119,8 +119,8 @@ export default function VideoRecordScreen() {
     if (!cameraRef.current || isRecording) return;
 
     // Double-check permissions before recording
-    if (!hasAllPermissions) {
-      const granted = await requestAllPermissions();
+    if (!hasVideoPermissions) {
+      const granted = await requestVideoPermissions();
       if (!granted) return;
     }
 
@@ -260,7 +260,7 @@ export default function VideoRecordScreen() {
   }
 
   // Render permission request screen
-  if (!hasAllPermissions) {
+  if (!hasVideoPermissions) {
     const needsCamera = !permissionState.camera;
     const needsAudio = !permissionState.microphone;
 
@@ -280,15 +280,14 @@ export default function VideoRecordScreen() {
           We need {needsCamera && needsAudio ? "camera and microphone" : needsCamera ? "camera" : "microphone"} access
           to record your anonymous video confession with privacy protection.
         </Text>
-        <Pressable className="bg-blue-500 rounded-full px-8 py-4 mb-4" onPress={requestAllPermissions}>
+        <Pressable className="bg-blue-500 rounded-full px-8 py-4 mb-4" onPress={requestVideoPermissions}>
           <Text className="text-white font-semibold text-lg">Grant Permissions</Text>
         </Pressable>
         <Pressable
           className="bg-gray-700 rounded-full px-6 py-3 mb-2"
           onPress={() => {
-            // Force re-check permissions
-            checkPermissions();
-            requestAllPermissions();
+            // Retry permissions request
+            requestVideoPermissions();
           }}
         >
           <Text className="text-gray-300 font-medium">Refresh Permissions</Text>

@@ -53,21 +53,26 @@ export default function CreateConfessionScreen() {
 
     setIsSubmitting(true);
     try {
+      console.log("📝 CreateConfessionScreen: Submitting confession:", trimmedContent);
+
       await addConfession({
         type: "text",
         content: trimmedContent,
         isAnonymous: true,
       });
 
+      console.log("✅ CreateConfessionScreen: Confession submitted successfully");
+
       setTextContent("");
       showMessage("Your secret has been shared anonymously! 🎉", "success");
 
       // Navigate back after a short delay
       setTimeout(() => {
+        console.log("📱 CreateConfessionScreen: Navigating back to home");
         navigation.goBack();
       }, 1500);
     } catch (error) {
-      console.error("Failed to create confession:", error);
+      console.error("❌ CreateConfessionScreen: Failed to create confession:", error);
       showMessage("Failed to share your secret. Please check your connection and try again.", "error");
     } finally {
       setIsSubmitting(false);

@@ -21,6 +21,7 @@ import SignInScreen from "../screens/SignInScreen";
 import SecretDetailScreen from "../screens/SecretDetailScreen";
 import SavedScreen from "../screens/SavedScreen";
 import PaywallScreen from "../screens/PaywallScreen";
+import WebViewScreen from "../screens/WebViewScreen";
 import { useAuthStore } from "../state/authStore";
 import { useGlobalVideoStore } from "../state/globalVideoStore";
 import TrendingBar from "../components/TrendingBar";
@@ -34,6 +35,7 @@ export type RootStackParamList = {
   VideoPlayer: { confessionId: string };
   Saved: undefined;
   Paywall: { feature?: string; source?: string };
+  WebView: { url: string; title: string };
   AuthStack: undefined;
 };
 
@@ -312,6 +314,14 @@ export default function AppNavigator() {
               options={{
                 title: "SupaSecret Plus",
                 headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="WebView"
+              component={WebViewScreen}
+              options={{
+                headerShown: false,
+                presentation: "modal",
               }}
             />
           </>

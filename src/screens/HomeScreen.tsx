@@ -11,6 +11,7 @@ import { useReplyStore } from "../state/replyStore";
 import { useSavedStore } from "../state/savedStore";
 import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { debugConfessionPosting, checkConfessionStoreState } from "../utils/debugConfessions";
 import { useOptimizedReplies } from "../hooks/useOptimizedReplies";
 import { NetworkErrorState } from "../components/ErrorState";
 import OptimizedAdBanner from "../components/OptimizedAdBanner";
@@ -38,6 +39,11 @@ export default function HomeScreen() {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const isLoading = useConfessionStore((state) => state.isLoading);
   const isLoadingMore = useConfessionStore((state) => state.isLoadingMore);
+
+  // Debug: Log confessions count when it changes
+  useEffect(() => {
+    console.log("🏠 HomeScreen: Confessions count changed:", confessions.length);
+  }, [confessions.length]);
 
   // Debounced refresh and like toggle
   const { refresh } = useDebouncedRefresh(loadConfessions, 1000);
@@ -84,33 +90,50 @@ export default function HomeScreen() {
   }, []);
 
   const onRefresh = useCallback(async () => {
+    console.log("🔄 HomeScreen: Pull to refresh started");
     setRefreshing(true);
     setIsEnhancedRefreshing(true);
 
     try {
+      // Debug: Check store state before refresh
+      if (__DEV__) {
+        console.log("🔄 HomeScreen: Store state before refresh:");
+        checkConfessionStoreState();
+      }
+
       // Check network connectivity first
       const netInfo = await NetInfo.fetch();
       if (!netInfo.isConnected) {
+        console.log("❌ HomeScreen: No network connection");
         setNetworkError(true);
         return;
       }
 
+      console.log("✅ HomeScreen: Network connected, proceeding with refresh");
       setNetworkError(false);
-      await refresh(); // Use debounced refresh
+
+      // Call loadConfessions directly instead of debounced version for pull-to-refresh
+      console.log("🔄 HomeScreen: Calling loadConfessions directly");
+      await loadConfessions();
 
       // Clear loaded replies cache to force reload
       clearLoadedReplies();
 
-    } catch (error) {
+      // Debug: Check store state after refresh
       if (__DEV__) {
-        console.error("Error refreshing:", error);
+        console.log("🔄 HomeScreen: Store state after refresh:");
+        setTimeout(() => checkConfessionStoreState(), 1000);
       }
+
+    } catch (error) {
+      console.error("❌ HomeScreen: Refresh failed:", error);
       setNetworkError(true);
     } finally {
+      console.log("🔄 HomeScreen: Pull to refresh completed");
       setRefreshing(false);
       setIsEnhancedRefreshing(false);
     }
-  }, [refresh, clearLoadedReplies]);
+  }, [loadConfessions, clearLoadedReplies]);
 
   const handleEnhancedRefresh = useCallback(async () => {
     setIsEnhancedRefreshing(true);

@@ -18,10 +18,12 @@ import { usePreferenceAwareHaptics } from "../utils/haptics";
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
 import { AlertModal } from "../components/AnimatedModal";
+import { getPrivacyPolicyUrl, getTermsOfServiceUrl } from "../constants/urls";
+import { RootStackParamList } from "../navigation/AppNavigator";
 import { useAuthStore } from "../state/authStore";
 import { validateEmail, validatePassword, getPasswordStrength } from "../utils/auth";
 
-type NavigationProp = NativeStackNavigationProp<any>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SignUpScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -248,21 +250,25 @@ export default function SignUpScreen() {
                 <View className="flex-1">
                   <Text className="text-gray-400 text-14 leading-5">
                     I agree to the{" "}
-                    <Text 
+                    <Text
                       className="text-blue-400 underline"
                       onPress={() => {
-                        // TODO: Navigate to Terms of Service screen
-                        console.log("Navigate to Terms of Service");
+                        navigation.navigate("WebView", {
+                          url: getTermsOfServiceUrl(),
+                          title: "Terms of Service"
+                        });
                       }}
                     >
                       Terms of Service
                     </Text>{" "}
                     and{" "}
-                    <Text 
+                    <Text
                       className="text-blue-400 underline"
                       onPress={() => {
-                        // TODO: Navigate to Privacy Policy screen
-                        console.log("Navigate to Privacy Policy");
+                        navigation.navigate("WebView", {
+                          url: getPrivacyPolicyUrl(),
+                          title: "Privacy Policy"
+                        });
                       }}
                     >
                       Privacy Policy

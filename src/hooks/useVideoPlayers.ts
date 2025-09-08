@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useCallback } from "react";
 import { AppState } from "react-native";
 import { useVideoPlayer } from "expo-video";
 import { useConfessionStore } from "../state/confessionStore";
@@ -27,8 +27,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   const userPreferences = useConfessionStore((state) => state.userPreferences);
 
   // Fallback sample video to avoid blank players when a videoUri is missing
-  const FALLBACK_VIDEO =
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+  const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
   // Create video players using individual hooks (following Rules of Hooks)
   const player0 = useVideoPlayer(videos.length > 0 ? videos[0]?.videoUri || FALLBACK_VIDEO : null, (player) => {
@@ -87,10 +86,23 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     });
   }, [players, videos.length]);
 
+  // Define updateMuteState before using it in useEffect
+  const updateMuteState = useCallback((forceUnmuted?: boolean) => {
+    playersRef.current.forEach((player) => {
+      if (player) {
+        if (forceUnmuted) {
+          player.muted = false;
+        } else {
+          player.muted = !userPreferences.soundEnabled;
+        }
+      }
+    });
+  }, [userPreferences.soundEnabled]);
+
   // Update mute state when sound preference changes
   useEffect(() => {
     updateMuteState();
-  }, [userPreferences.soundEnabled]);
+  }, [userPreferences.soundEnabled, updateMuteState]);
 
   const getPlayer = (index: number) => {
     return playersRef.current.get(index) || null;
@@ -175,7 +187,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     }
   };
 
-  const pauseAll = () => {
+  const pauseAll = useCallback(() => {
     playersRef.current.forEach((player) => {
       try {
         if (player && typeof player.pause === "function") {
@@ -188,7 +200,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
       }
     });
     currentPlayingRef.current = -1;
-  };
+  }, []);
 
   const muteAll = () => {
     playersRef.current.forEach((player) => {
@@ -212,48 +224,36 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     });
   };
 
-  const updateMuteState = (forceUnmuted?: boolean) => {
-    playersRef.current.forEach((player) => {
-      if (player) {
-        if (forceUnmuted) {
-          player.muted = false;
-        } else {
-          player.muted = !userPreferences.soundEnabled;
-        }
-      }
-    });
-  };
-
-  const stopAll = () => {
+  const stopAll = useCallback(() => {
     // More aggressive stop - pause and reset current playing
     pauseAll();
     currentPlayingRef.current = -1;
-  };
+  }, [pauseAll]);
 
-  const cleanup = () => {
+  const cleanup = useCallback(() => {
     stopAll();
     playersRef.current.clear();
-  };
+  }, [stopAll]);
 
   // Handle app state changes to pause all videos when app goes to background
   useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
+      if (nextAppState === "background" || nextAppState === "inactive") {
         // App is going to background, pause all videos
         pauseAll();
       }
     };
 
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
     return () => subscription?.remove();
-  }, []);
+  }, [pauseAll]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       cleanup();
     };
-  }, []);
+  }, [cleanup]);
 
   return {
     getPlayer,

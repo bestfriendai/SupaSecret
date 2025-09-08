@@ -10,6 +10,8 @@ import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
 import { useNotificationStore } from "../state/notificationStore";
 import SegmentedTabs, { TabItem } from "../components/SegmentedTabs";
+import { AvatarService, validateImage } from "../services/AvatarService";
+import { useMediaPermissions } from "../hooks/useMediaPermissions";
 import SettingsScreen from "./SettingsScreen";
 import SavedScreen from "./SavedScreen";
 import MySecretsScreen from "./MySecretsScreen";
@@ -24,8 +26,11 @@ export default function ProfileScreen() {
   const { savedConfessionIds } = useSavedStore();
   const { unreadCount, getUnreadCount } = useNotificationStore();
   const { showSuccess, showError } = useToastHelpers();
+  const { requestMediaLibraryPermission, permissionState } = useMediaPermissions();
+
   const [activeTab, setActiveTab] = useState("posts");
   const [isAvatarLoading, setIsAvatarLoading] = useState(false);
+  const [avatarUploadProgress, setAvatarUploadProgress] = useState(0);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -37,37 +42,75 @@ export default function ProfileScreen() {
 
   // Avatar upload functionality
   const handleAvatarPress = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant photo library access to change your avatar');
-      return;
-    }
+    try {
+      // Request media library permission
+      const hasPermission = await requestMediaLibraryPermission();
+      if (!hasPermission) {
+        return; // Permission alert is handled by the hook
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+        exif: false, // Don't include EXIF data for privacy
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      await updateAvatar(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        await updateAvatarImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Avatar selection error:', error);
+      showError('Failed to select image. Please try again.');
     }
   };
 
-  const updateAvatar = async (uri: string) => {
+  const updateAvatarImage = async (imageUri: string) => {
+    if (!user?.id) {
+      showError('User not found. Please sign in again.');
+      return;
+    }
+
     try {
       setIsAvatarLoading(true);
-      // In a real implementation, you would upload to Supabase Storage
-      // For now, we'll just update the user metadata
+      setAvatarUploadProgress(0);
+
+      // Validate image first
+      const validation = await validateImage(imageUri);
+      if (!validation.valid) {
+        showError(validation.error || 'Invalid image selected');
+        return;
+      }
+
+      // Upload avatar with progress tracking
+      const newAvatarUrl = await AvatarService.updateAvatar(
+        imageUri,
+        user.id,
+        user.avatar_url || undefined,
+        {
+          onProgress: (progress) => {
+            setAvatarUploadProgress(progress);
+          },
+        }
+      );
+
+      // Update user profile in auth store
       await updateUser({
-        // avatar_url: uploadedUrl
+        avatar_url: newAvatarUrl,
       });
+
       showSuccess('Avatar updated successfully!');
     } catch (error) {
-      showError('Failed to update avatar. Please try again.');
+      console.error('Avatar update error:', error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'Failed to update avatar. Please try again.';
+      showError(errorMessage);
     } finally {
       setIsAvatarLoading(false);
+      setAvatarUploadProgress(0);
     }
   };
 
@@ -179,17 +222,28 @@ export default function ProfileScreen() {
                 </LinearGradient>
               )}
 
-              {/* Loading overlay */}
+              {/* Loading overlay with progress */}
               {isAvatarLoading && (
-                <View className="absolute inset-0 bg-black/50 items-center justify-center">
-                  <ActivityIndicator color="#3B82F6" size="small" />
+                <View className="absolute inset-0 bg-black/70 items-center justify-center">
+                  <View className="items-center">
+                    <ActivityIndicator color="#3B82F6" size="small" />
+                    {avatarUploadProgress > 0 && (
+                      <Text className="text-white text-xs mt-1">
+                        {Math.round(avatarUploadProgress)}%
+                      </Text>
+                    )}
+                  </View>
                 </View>
               )}
             </View>
 
             {/* Edit Icon */}
             <View className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1.5 border-2 border-black">
-              <Ionicons name="camera" size={12} color="#FFFFFF" />
+              <Ionicons
+                name={isAvatarLoading ? "hourglass" : "camera"}
+                size={12}
+                color="#FFFFFF"
+              />
             </View>
           </Pressable>
 

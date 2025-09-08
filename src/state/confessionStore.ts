@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { ensureSignedVideoUrl, isLocalUri, uploadVideoToSupabase } from "../utils/storage";
 import { selectWithRetry, insertWithRetry, updateWithRetry, deleteWithRetry, rpcWithRetry } from "../utils/supabaseWithRetry";
 import { invalidateCache, registerInvalidationCallback } from "../utils/cacheInvalidation";
+import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();
@@ -141,6 +142,7 @@ export const useConfessionStore = create<ConfessionState>()(
       error: null,
 
       loadConfessions: async () => {
+        console.log("📥 Loading confessions...");
         set({ isLoading: true, error: null, hasMore: true });
         try {
           const INITIAL_LIMIT = 20;
@@ -152,6 +154,15 @@ export const useConfessionStore = create<ConfessionState>()(
             .limit(INITIAL_LIMIT);
 
           if (error) throw error;
+
+          console.log("📥 Loaded", finalData?.length || 0, "confessions from database");
+          if (finalData && finalData.length > 0) {
+            console.log("📥 Latest confession from DB:", {
+              id: finalData[0].id,
+              content: finalData[0].content.substring(0, 50) + "...",
+              created_at: finalData[0].created_at,
+            });
+          }
 
           const FALLBACK_VIDEO =
             "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
@@ -183,8 +194,13 @@ export const useConfessionStore = create<ConfessionState>()(
             }),
           );
 
-          // Always include sample data for development/demo purposes
-          const finalConfessions = [...sampleConfessions, ...confessions];
+          console.log("📥 Processed", confessions.length, "real confessions");
+
+          // Combine real and sample confessions, then sort by timestamp (newest first)
+          const combinedConfessions = [...confessions, ...sampleConfessions];
+          const finalConfessions = combinedConfessions.sort((a, b) => b.timestamp - a.timestamp);
+
+          console.log("📥 Final confessions count:", finalConfessions.length, "(", confessions.length, "real +", sampleConfessions.length, "sample) - sorted chronologically");
 
           set({
             confessions: finalConfessions,
@@ -192,6 +208,7 @@ export const useConfessionStore = create<ConfessionState>()(
             hasMore: (finalData?.length || 0) >= INITIAL_LIMIT,
           });
         } catch (error) {
+          console.error("❌ Failed to load confessions:", error);
           // On error, fall back to sample data
           set({
             confessions: sampleConfessions,
@@ -319,11 +336,18 @@ export const useConfessionStore = create<ConfessionState>()(
       },
 
       addConfession: async (confession, opts) => {
+        console.log("📝 Adding new confession:", confession);
         set({ isLoading: true, error: null });
         try {
           const {
             data: { user },
           } = await supabase.auth.getUser();
+
+          if (!user) {
+            throw new Error("User not authenticated");
+          }
+
+          console.log("👤 User authenticated:", user.id);
 
           let videoStoragePath: string | undefined;
           let signedVideoUrl: string | undefined;
@@ -356,7 +380,17 @@ export const useConfessionStore = create<ConfessionState>()(
             .select()
             .single();
 
-          if (error) throw error;
+          if (error) {
+            console.error("❌ Database insert error:", error);
+            throw error;
+          }
+
+          if (!data) {
+            console.error("❌ No data returned from insert");
+            throw new Error("No data returned from confession insert");
+          }
+
+          console.log("✅ Confession inserted successfully:", data);
 
           const newConfession: Confession = {
             id: data.id,
@@ -372,13 +406,21 @@ export const useConfessionStore = create<ConfessionState>()(
             isLiked: false,
           };
 
-          set((state) => ({
-            confessions: [newConfession, ...state.confessions],
-            isLoading: false,
-          }));
+          console.log("📝 Adding confession to local state:", newConfession);
+
+          set((state) => {
+            const updatedState = {
+              confessions: [newConfession, ...state.confessions],
+              isLoading: false,
+            };
+            console.log("📝 Updated confessions count:", updatedState.confessions.length);
+            return updatedState;
+          });
 
           // Trigger cache invalidation for new confession
-          invalidateCache('confession_created', { confessionId: newConfession.id });
+          invalidateCache("confession_created", { confessionId: newConfession.id });
+
+          console.log("✅ Confession added successfully to timeline");
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Failed to add confession",
@@ -522,6 +564,15 @@ export const useConfessionStore = create<ConfessionState>()(
               },
             }));
 
+            // Check if online, if not queue the action
+            if (!offlineQueue.getNetworkStatus()) {
+              await offlineQueue.enqueue(
+                newIsLiked ? OFFLINE_ACTIONS.LIKE_CONFESSION : OFFLINE_ACTIONS.UNLIKE_CONFESSION,
+                { confessionId: id, isLiked: newIsLiked, likes: optimisticLikes }
+              );
+              return;
+            }
+
             // Try RPC first for server-verified toggle
             const { data: rpcData, error: rpcError } = await supabase.rpc("toggle_confession_like", {
               confession_uuid: id,
@@ -538,22 +589,31 @@ export const useConfessionStore = create<ConfessionState>()(
             // Fallback to direct update if RPC fails
             const { error } = await supabase.from("confessions").update({ likes: optimisticLikes }).eq("id", id);
 
-            if (error) throw error;
+            if (error) {
+              // If online operation fails, queue it for retry
+              await offlineQueue.enqueue(
+                newIsLiked ? OFFLINE_ACTIONS.LIKE_CONFESSION : OFFLINE_ACTIONS.UNLIKE_CONFESSION,
+                { confessionId: id, isLiked: newIsLiked, likes: optimisticLikes }
+              );
+              throw error;
+            }
 
             // Trigger cache invalidation for like toggle
             invalidateCache(newIsLiked ? 'confession_liked' : 'confession_unliked', { confessionId: id });
           } catch (error) {
-            // Revert optimistic update on error
-            const state = get();
-            const curr = state.confessions.find((c) => c.id === id);
-            if (curr) {
-              const revertedLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
-              set((state) => ({
-                confessions: state.confessions.map((c) =>
-                  c.id === id ? { ...c, isLiked: !curr.isLiked, likes: revertedLikes } : c,
-                ),
-                error: error instanceof Error ? error.message : "Failed to toggle like",
-              }));
+            // Revert optimistic update on error only if not queued
+            if (offlineQueue.getNetworkStatus()) {
+              const state = get();
+              const curr = state.confessions.find((c) => c.id === id);
+              if (curr) {
+                const revertedLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
+                set((state) => ({
+                  confessions: state.confessions.map((c) =>
+                    c.id === id ? { ...c, isLiked: !curr.isLiked, likes: revertedLikes } : c,
+                  ),
+                  error: error instanceof Error ? error.message : "Failed to toggle like",
+                }));
+              }
             }
             throw error;
           }
@@ -716,34 +776,86 @@ export const useConfessionStore = create<ConfessionState>()(
   ),
 );
 
-// Set up real-time subscriptions for confessions
-supabase
-  .channel("confessions")
-  .on("postgres_changes", { event: "INSERT", schema: "public", table: "confessions" }, (payload) => {
-    const { loadConfessions } = useConfessionStore.getState();
-    loadConfessions(); // Reload confessions when new ones are added
-  })
-  .on("postgres_changes", { event: "UPDATE", schema: "public", table: "confessions" }, (payload) => {
-    const { confessions, userConfessions } = useConfessionStore.getState();
-    const updatedConfession = payload.new;
+// Confession subscription management
+let confessionChannel: any = null;
 
-    useConfessionStore.setState({
-      confessions: confessions.map((confession) =>
-        confession.id === updatedConfession.id
-          ? {
-              ...confession,
-              likes: updatedConfession.likes,
-            }
-          : confession,
-      ),
-      userConfessions: userConfessions.map((confession) =>
-        confession.id === updatedConfession.id
-          ? {
-              ...confession,
-              likes: updatedConfession.likes,
-            }
-          : confession,
-      ),
+// Cleanup function for confession subscriptions
+const cleanupConfessionSubscriptions = () => {
+  if (confessionChannel) {
+    confessionChannel.unsubscribe();
+    confessionChannel = null;
+  }
+};
+
+// Function to set up real-time subscriptions for confessions
+const setupConfessionSubscriptions = () => {
+  if (confessionChannel) {
+    console.log("🔄 Real-time: Subscription already exists, skipping setup");
+    return; // Already set up
+  }
+
+  console.log("🔄 Real-time: Setting up confession subscriptions...");
+
+  confessionChannel = supabase
+    .channel("confessions")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "confessions" }, async (payload) => {
+      console.log("🔄 Real-time: New confession inserted", payload.new);
+
+      // Don't reload all confessions, just add the new one if it's not already in the list
+      const { confessions } = useConfessionStore.getState();
+      const newConfessionId = payload.new.id;
+
+      // Check if this confession is already in our local state (from optimistic update)
+      const existingConfession = confessions.find((c) => c.id === newConfessionId);
+      if (existingConfession) {
+        console.log("🔄 Real-time: Confession already exists in local state, skipping");
+        return;
+      }
+
+      // Only reload if this is a confession from another user
+      const { loadConfessions } = useConfessionStore.getState();
+      console.log("🔄 Real-time: Loading confessions to include new confession from another user");
+      await loadConfessions();
+    })
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "confessions" }, (payload) => {
+      console.log("🔄 Real-time: Confession updated", payload.new);
+      const { confessions, userConfessions } = useConfessionStore.getState();
+      const updatedConfession = payload.new;
+
+      useConfessionStore.setState({
+        confessions: confessions.map((confession) =>
+          confession.id === updatedConfession.id
+            ? {
+                ...confession,
+                likes: updatedConfession.likes,
+              }
+            : confession,
+        ),
+        userConfessions: userConfessions.map((confession) =>
+          confession.id === updatedConfession.id
+            ? {
+                ...confession,
+                likes: updatedConfession.likes,
+              }
+            : confession,
+        ),
+      });
+    })
+    .subscribe((status) => {
+      console.log("🔄 Real-time: Subscription status:", status);
+      if (status === "SUBSCRIBED") {
+        console.log("✅ Real-time: Successfully subscribed to confession changes");
+      } else if (status === "CHANNEL_ERROR") {
+        console.error("❌ Real-time: Subscription error");
+      } else if (status === "TIMED_OUT") {
+        console.error("❌ Real-time: Subscription timed out");
+      } else if (status === "CLOSED") {
+        console.log("🔄 Real-time: Subscription closed");
+      }
     });
-  })
-  .subscribe();
+
+  console.log("🔄 Real-time: Confession subscription setup complete");
+};
+
+// Export functions for app-level management
+export { cleanupConfessionSubscriptions, setupConfessionSubscriptions };

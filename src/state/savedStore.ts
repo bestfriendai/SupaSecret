@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import type { Confession } from "../types/confession";
+import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 
 interface SavedState {
   savedConfessionIds: string[];
@@ -47,14 +48,33 @@ export const useSavedStore = create<SavedState>()(
             error: null,
           });
 
-          // TODO: Save to backend when user accounts are implemented
-          // For now, we just store locally
+          // Check if online, if not queue the action
+          if (!offlineQueue.getNetworkStatus()) {
+            await offlineQueue.enqueue(OFFLINE_ACTIONS.SAVE_CONFESSION, { confessionId });
+            return;
+          }
+
+          // Try to save to backend
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { error } = await supabase
+              .from("user_saved_confessions")
+              .insert({ user_id: user.id, confession_id: confessionId });
+
+            if (error) {
+              // If online operation fails, queue it for retry
+              await offlineQueue.enqueue(OFFLINE_ACTIONS.SAVE_CONFESSION, { confessionId });
+              throw error;
+            }
+          }
         } catch (error) {
-          // Revert optimistic update on error
-          set((state) => ({
-            savedConfessionIds: state.savedConfessionIds.filter(id => id !== confessionId),
-            error: error instanceof Error ? error.message : "Failed to save confession",
-          }));
+          // Revert optimistic update on error only if not queued
+          if (offlineQueue.getNetworkStatus()) {
+            set((state) => ({
+              savedConfessionIds: state.savedConfessionIds.filter(id => id !== confessionId),
+              error: error instanceof Error ? error.message : "Failed to save confession",
+            }));
+          }
         }
       },
 
@@ -69,13 +89,35 @@ export const useSavedStore = create<SavedState>()(
             error: null,
           });
 
-          // TODO: Remove from backend when user accounts are implemented
+          // Check if online, if not queue the action
+          if (!offlineQueue.getNetworkStatus()) {
+            await offlineQueue.enqueue(OFFLINE_ACTIONS.UNSAVE_CONFESSION, { confessionId });
+            return;
+          }
+
+          // Try to remove from backend
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { error } = await supabase
+              .from("user_saved_confessions")
+              .delete()
+              .eq("user_id", user.id)
+              .eq("confession_id", confessionId);
+
+            if (error) {
+              // If online operation fails, queue it for retry
+              await offlineQueue.enqueue(OFFLINE_ACTIONS.UNSAVE_CONFESSION, { confessionId });
+              throw error;
+            }
+          }
         } catch (error) {
-          // Revert optimistic update on error
-          set((state) => ({
-            savedConfessionIds: [...state.savedConfessionIds, confessionId],
-            error: error instanceof Error ? error.message : "Failed to unsave confession",
-          }));
+          // Revert optimistic update on error only if not queued
+          if (offlineQueue.getNetworkStatus()) {
+            set((state) => ({
+              savedConfessionIds: [...state.savedConfessionIds, confessionId],
+              error: error instanceof Error ? error.message : "Failed to unsave confession",
+            }));
+          }
         }
       },
 

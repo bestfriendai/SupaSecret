@@ -101,6 +101,73 @@ export const testStores = async (): Promise<boolean> => {
 };
 
 /**
+ * Test confession creation and real-time functionality
+ */
+export const testConfessionCreation = async (): Promise<boolean> => {
+  try {
+    console.log("🧪 Testing confession creation...");
+
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("❌ User not authenticated:", userError);
+      return false;
+    }
+    console.log("✅ User authenticated:", user.email);
+
+    // Test creating a confession
+    const testContent = `Test confession created at ${new Date().toISOString()}`;
+    const { data: confession, error: insertError } = await supabase
+      .from("confessions")
+      .insert({
+        user_id: user.id,
+        type: "text",
+        content: testContent,
+        is_anonymous: true,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("❌ Confession creation failed:", insertError);
+      return false;
+    }
+    console.log("✅ Confession created successfully:", confession.id);
+
+    // Test reading the confession back
+    const { data: readConfession, error: readError } = await supabase
+      .from("confessions")
+      .select("*")
+      .eq("id", confession.id)
+      .single();
+
+    if (readError) {
+      console.error("❌ Confession read failed:", readError);
+      return false;
+    }
+    console.log("✅ Confession read successfully:", readConfession.content);
+
+    // Clean up - delete the test confession
+    const { error: deleteError } = await supabase
+      .from("confessions")
+      .delete()
+      .eq("id", confession.id);
+
+    if (deleteError) {
+      console.warn("⚠️  Failed to clean up test confession:", deleteError);
+    } else {
+      console.log("✅ Test confession cleaned up");
+    }
+
+    console.log("🎉 Confession creation test passed!");
+    return true;
+  } catch (error) {
+    console.error("❌ Confession creation test failed:", error);
+    return false;
+  }
+};
+
+/**
  * Run all tests
  */
 export const runAllTests = async (): Promise<void> => {
@@ -108,12 +175,14 @@ export const runAllTests = async (): Promise<void> => {
 
   const dbTest = await testDatabaseConnection();
   const storeTest = await testStores();
+  const confessionTest = await testConfessionCreation();
 
   console.log("\n📋 Test Results:");
   console.log(`Database Connection: ${dbTest ? "✅ PASS" : "❌ FAIL"}`);
   console.log(`Store Functionality: ${storeTest ? "✅ PASS" : "❌ FAIL"}`);
+  console.log(`Confession Creation: ${confessionTest ? "✅ PASS" : "❌ FAIL"}`);
 
-  if (dbTest && storeTest) {
+  if (dbTest && storeTest && confessionTest) {
     console.log("\n🎉 All tests passed! SupaSecret app is ready to use.");
   } else {
     console.log("\n⚠️  Some tests failed. Please check the errors above.");

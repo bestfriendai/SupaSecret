@@ -13,6 +13,8 @@ import SettingsPicker from "../components/SettingsPicker";
 import { pushNotificationManager } from "../utils/pushNotifications";
 import { AlertModal, ConfirmModal } from "../components/AnimatedModal";
 import { useDebounce } from "../utils/debounce";
+import { getPrivacyPolicyUrl, getTermsOfServiceUrl, getHelpSupportUrl } from "../constants/urls";
+import { runAllTests } from "../utils/testDatabase";
 
 export default function SettingsScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -62,6 +64,16 @@ export default function SettingsScreen() {
       if (__DEV__) {
         console.error("Sign out error:", error);
       }
+    }
+  };
+
+  const handleTestDatabase = async () => {
+    console.log("🧪 Starting database tests...");
+    showMessage("Running database tests... Check console for results.", "success");
+    try {
+      await runAllTests();
+    } catch (error) {
+      console.error("❌ Database test failed:", error);
     }
   };
 
@@ -336,6 +348,10 @@ export default function SettingsScreen() {
                 className="flex-row items-center justify-between py-2 touch-target px-2 -mx-2 rounded-lg"
                 accessibilityRole="button"
                 accessibilityLabel="View privacy policy"
+                onPress={() => navigation.navigate("WebView", {
+                  url: getPrivacyPolicyUrl(),
+                  title: "Privacy Policy"
+                })}
               >
                 <Text className="text-white text-15">Privacy Policy</Text>
                 <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
@@ -344,6 +360,10 @@ export default function SettingsScreen() {
                 className="flex-row items-center justify-between py-2 touch-target px-2 -mx-2 rounded-lg"
                 accessibilityRole="button"
                 accessibilityLabel="View terms of service"
+                onPress={() => navigation.navigate("WebView", {
+                  url: getTermsOfServiceUrl(),
+                  title: "Terms of Service"
+                })}
               >
                 <Text className="text-white text-15">Terms of Service</Text>
                 <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
@@ -352,6 +372,10 @@ export default function SettingsScreen() {
                 className="flex-row items-center justify-between py-2 touch-target px-2 -mx-2 rounded-lg"
                 accessibilityRole="button"
                 accessibilityLabel="Get help and support"
+                onPress={() => navigation.navigate("WebView", {
+                  url: getHelpSupportUrl(),
+                  title: "Help & Support"
+                })}
               >
                 <Text className="text-white text-15">Help & Support</Text>
                 <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
@@ -377,6 +401,23 @@ export default function SettingsScreen() {
               <Text className="text-white font-bold text-15 ml-2">Clear All Confessions</Text>
             </Pressable>
           </View>
+
+          {/* Test Database Button (Development Only) */}
+          {__DEV__ && (
+            <View className="bg-gray-900 border border-blue-900 rounded-2xl p-4 mt-4">
+              <Text className="text-white text-15 font-medium mb-2">Test Database Connection</Text>
+              <Text className="text-gray-500 text-13 mb-4 leading-4">
+                Run comprehensive tests to verify Supabase backend connectivity and functionality.
+              </Text>
+              <Pressable
+                className="bg-blue-600 rounded-full py-3 px-4 flex-row items-center justify-center"
+                onPress={handleTestDatabase}
+              >
+                <Ionicons name="flask" size={16} color="#FFFFFF" />
+                <Text className="text-white font-bold text-15 ml-2">Run Database Tests</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </ScrollView>
 

@@ -4,10 +4,14 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Audio } from "expo-av";
 import AppNavigator from "./src/navigation/AppNavigator";
-import { useAuthStore } from "./src/state/authStore";
-import { useConfessionStore } from "./src/state/confessionStore";
+import { useAuthStore, cleanupAuthListener, setupAuthListener } from "./src/state/authStore";
+import { useConfessionStore, cleanupConfessionSubscriptions, setupConfessionSubscriptions } from "./src/state/confessionStore";
+import { cleanupNotificationSubscriptions, setupNotificationSubscriptions } from "./src/state/notificationStore";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ToastProvider } from "./src/contexts/ToastContext";
+import { offlineQueue } from "./src/utils/offlineQueue";
+import { initializeServices } from "./src/services/ServiceInitializer";
+import { checkEnvironment } from "./src/utils/environmentCheck";
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
@@ -38,6 +42,9 @@ export default function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Check environment and log dependency availability
+        checkEnvironment();
+
         // Configure audio session for video playback
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
@@ -47,6 +54,20 @@ export default function App() {
           playThroughEarpieceAndroid: false,
         });
 
+        // Set up Supabase subscriptions
+        setupAuthListener();
+        setupConfessionSubscriptions();
+        setupNotificationSubscriptions();
+
+        // Initialize all production services
+        const serviceResult = await initializeServices();
+        if (!serviceResult.success) {
+          console.error('Some services failed to initialize:', serviceResult.errors);
+        }
+        if (serviceResult.warnings.length > 0) {
+          console.warn('Service initialization warnings:', serviceResult.warnings);
+        }
+
         // Initialize auth state first
         await checkAuthState();
 
@@ -55,7 +76,7 @@ export default function App() {
         await loadUserPreferences();
 
         if (__DEV__) {
-          console.log("🚀 App initialization complete with audio session configured");
+          console.log("🚀 App initialization complete with audio session configured and subscriptions set up");
         }
       } catch (error) {
         console.error("❌ App initialization failed:", error);
@@ -63,6 +84,18 @@ export default function App() {
     };
 
     initializeApp();
+
+    // Cleanup function to unsubscribe from all Supabase listeners and offline queue
+    return () => {
+      cleanupAuthListener();
+      cleanupConfessionSubscriptions();
+      cleanupNotificationSubscriptions();
+      offlineQueue.cleanup();
+
+      if (__DEV__) {
+        console.log("🧹 App cleanup: All Supabase subscriptions and offline queue cleaned up");
+      }
+    };
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
 
   return (

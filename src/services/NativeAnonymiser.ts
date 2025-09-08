@@ -28,9 +28,16 @@ const loadNativeModules = async () => {
         FaceDetection = faceModule.default || faceModule.FaceDetection || faceModule;
       } catch (error) {
         console.warn('Face detection module not available:', error);
-        // Provide fallback that will blur entire frame
+        // Provide fallback that will apply general blur
         FaceDetection = {
-          detectFaces: async () => []
+          detectFaces: async (imagePath: string) => {
+            console.warn('Using fallback face detection - applying general blur');
+            return [{
+              bounds: { x: 0, y: 0, width: 1920, height: 1080 }, // Full frame blur as fallback
+              landmarks: [],
+              angles: { x: 0, y: 0, z: 0 }
+            }];
+          }
         };
       }
     }
@@ -281,11 +288,11 @@ class NativeAnonymiserImpl implements IAnonymiser {
 
   private getVoiceChangeFilter(effect: 'deep' | 'light'): string {
     if (effect === 'deep') {
-      // Lower pitch by ~2 semitones
-      return 'asetrate=44100*0.89,aresample=44100,atempo=1.12';
+      // Deep voice: Lower pitch, add slight reverb, and formant shifting
+      return 'asetrate=44100*0.85,aresample=44100,atempo=1.18,aecho=0.8:0.88:60:0.4,equalizer=f=100:width_type=h:width=50:g=3';
     } else {
-      // Higher pitch by ~2 semitones  
-      return 'asetrate=44100*1.12,aresample=44100,atempo=0.89';
+      // Light voice: Slightly higher pitch with subtle formant adjustment
+      return 'asetrate=44100*1.08,aresample=44100,atempo=0.93,equalizer=f=200:width_type=h:width=100:g=2';
     }
   }
 
