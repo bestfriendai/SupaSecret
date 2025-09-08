@@ -66,22 +66,22 @@ export default function App() {
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
 
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        // Log to crash analytics in production
-        console.error('App-level error:', error, errorInfo);
-      }}
-      resetOnPropsChange={true}
-    >
-      <GestureHandlerRootView className="flex-1">
-        <SafeAreaProvider>
+    <SafeAreaProvider>
+      <ErrorBoundary
+        onError={(error, errorInfo) => {
+          // Log to crash analytics in production
+          console.error('App-level error:', error, errorInfo);
+        }}
+        resetOnPropsChange={true}
+      >
+        <GestureHandlerRootView className="flex-1">
           <ToastProvider>
             <BottomSheetModalProvider>
               <AppNavigator />
             </BottomSheetModalProvider>
           </ToastProvider>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </ErrorBoundary>
+        </GestureHandlerRootView>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }

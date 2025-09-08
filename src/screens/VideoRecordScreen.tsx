@@ -16,7 +16,7 @@ import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
 export default function VideoRecordScreen() {
   // All hooks must be called at the top level, before any conditional logic
   const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
-  const { permissionState, requestAllPermissions, hasAllPermissions } = useUnifiedPermissions();
+  const { permissionState, requestAllPermissions, hasAllPermissions, checkPermissions } = useUnifiedPermissions();
   const [facing, setFacing] = useState<CameraType>("front");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -75,27 +75,19 @@ export default function VideoRecordScreen() {
     setShowModal(true);
   };
 
-  // Check audio permissions on mount
+  // Check permissions on mount
   useEffect(() => {
-    const checkAudioPermission = async () => {
+    const initPermissions = () => {
       try {
-        console.log("🔍 Checking initial microphone permissions...");
-        // micPermission may be undefined initially; request a check if present
-        if (micPermission?.granted !== undefined) {
-          setAudioPermission(micPermission.granted);
-        } else {
-          // Try requesting silently to prompt user only when needed later
-          const res = await requestMicPermission();
-          setAudioPermission(res.granted);
-        }
+        console.log("🔍 Checking initial permissions...");
+        checkPermissions();
       } catch (error) {
-        console.error("❌ Error checking audio permission:", error);
-        setAudioPermission(false);
+        console.error("❌ Error checking permissions:", error);
       }
     };
 
-    checkAudioPermission();
-  }, [micPermission?.granted]);
+    initPermissions();
+  }, [checkPermissions]);
 
   // Cleanup effect - must be called after all other hooks
   useEffect(() => {
@@ -259,7 +251,7 @@ export default function VideoRecordScreen() {
   };
 
   // Render permission loading state
-  if (!permission || audioPermission === null || micPermission === null) {
+  if (permissionState.loading) {
     return (
       <View className="flex-1 bg-black justify-center items-center">
         <Text className="text-white text-lg">Checking permissions...</Text>
@@ -268,9 +260,9 @@ export default function VideoRecordScreen() {
   }
 
   // Render permission request screen
-  if (!permission?.granted || micPermission?.granted !== true) {
-    const needsCamera = !permission?.granted;
-    const needsAudio = micPermission?.granted !== true;
+  if (!hasAllPermissions) {
+    const needsCamera = !permissionState.camera;
+    const needsAudio = !permissionState.microphone;
 
     return (
       <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
@@ -295,7 +287,7 @@ export default function VideoRecordScreen() {
           className="bg-gray-700 rounded-full px-6 py-3 mb-2"
           onPress={() => {
             // Force re-check permissions
-            setAudioPermission(null);
+            checkPermissions();
             requestAllPermissions();
           }}
         >

@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Services
 import { RevenueCatService } from '../services/RevenueCatService';
 import { AdMobService } from '../services/AdMobService';
-import { VideoProcessingService } from '../services/VideoProcessingService';
+import { Anonymiser } from '../services/Anonymiser';
 
 // Stores
 import { useSubscriptionStore } from '../state/subscriptionStore';
@@ -90,14 +90,14 @@ export default function IntegrationTest() {
     
     try {
       // Test initialization
-      await VideoProcessingService.initialize();
+      await Anonymiser.initialize();
       addLog('✅ Video Processing Service initialized');
 
       // Test real-time transcription methods
-      await VideoProcessingService.startRealTimeTranscription();
+      await Anonymiser.startRealTimeTranscription();
       addLog('✅ Real-time transcription started');
 
-      await VideoProcessingService.stopRealTimeTranscription();
+      await Anonymiser.stopRealTimeTranscription();
       addLog('✅ Real-time transcription stopped');
 
       updateTestResult('video', 'success');

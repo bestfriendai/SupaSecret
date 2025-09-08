@@ -1,5 +1,7 @@
 import * as FileSystem from "expo-file-system";
 import { transcribeAudio } from "../api/transcribe-audio";
+import { Anonymiser } from '../services/Anonymiser';
+import type { ProcessedVideo, VideoProcessingOptions } from '../services/IAnonymiser';
 
 // Global FFmpeg availability check
 let ffmpegAvailable: boolean | null = null;
@@ -24,21 +26,7 @@ const checkFFmpegAvailability = async (): Promise<boolean> => {
   return ffmpegAvailable;
 };
 
-export interface ProcessedVideo {
-  uri: string;
-  transcription: string;
-  duration?: number;
-  thumbnailUri?: string;
-  audioUri?: string;
-}
-
-export interface VideoProcessingOptions {
-  enableFaceBlur?: boolean;
-  enableVoiceChange?: boolean;
-  enableTranscription?: boolean;
-  quality?: "high" | "medium" | "low";
-  onProgress?: (progress: number, status: string) => void;
-}
+// Types are now imported from IAnonymiser
 
 /**
  * Process video with face blur and voice change simulation
@@ -50,6 +38,20 @@ export interface VideoProcessingOptions {
  * 5. Combine processed audio and video
  */
 export const processVideoConfession = async (
+  videoUri: string,
+  options: VideoProcessingOptions = {},
+): Promise<ProcessedVideo> => {
+  try {
+    // Use the new Anonymiser service which handles environment detection
+    return await Anonymiser.processVideo(videoUri, options);
+  } catch (error) {
+    console.error("Video confession processing error:", error);
+    throw new Error(`Video processing failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+};
+
+// Legacy function for backward compatibility
+export const processVideoConfessionLegacy = async (
   videoUri: string,
   options: VideoProcessingOptions = {},
 ): Promise<ProcessedVideo> => {

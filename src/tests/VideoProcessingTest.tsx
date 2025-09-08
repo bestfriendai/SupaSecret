@@ -3,7 +3,7 @@ import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { VideoProcessingService } from '../services/VideoProcessingService';
+import { Anonymiser } from '../services/Anonymiser';
 
 export default function VideoProcessingTest() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -28,7 +28,7 @@ export default function VideoProcessingTest() {
       
       addLog('Testing video processing service...');
       
-      const processedVideo = await VideoProcessingService.processVideo(mockVideoUri, {
+      const processedVideo = await Anonymiser.processVideo(mockVideoUri, {
         enableFaceBlur: true,
         enableVoiceChange: true,
         enableTranscription: true,
@@ -80,7 +80,7 @@ export default function VideoProcessingTest() {
         setProgress(0);
         setResults(null);
 
-        const processedVideo = await VideoProcessingService.processVideo(
+        const processedVideo = await Anonymiser.processVideo(
           result.assets[0].uri,
           {
             enableFaceBlur: true,
