@@ -3,33 +3,15 @@ import { Audio } from 'expo-av';
 // Demo mode - no native voice imports for Expo Go
 // import Voice from '@react-native-voice/voice';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import { IAnonymiser, ProcessedVideo, VideoProcessingOptions } from './IAnonymiser';
 
-export interface ProcessedVideo {
-  uri: string;
-  transcription: string;
-  duration: number;
-  thumbnailUri: string;
-  audioUri?: string;
-  faceBlurApplied: boolean;
-  voiceChangeApplied: boolean;
-}
-
-export interface VideoProcessingOptions {
-  enableFaceBlur?: boolean;
-  enableVoiceChange?: boolean;
-  enableTranscription?: boolean;
-  quality?: 'high' | 'medium' | 'low';
-  voiceEffect?: 'deep' | 'light';
-  onProgress?: (progress: number, status: string) => void;
-}
-
-export class VideoProcessingService {
+export class DemoAnonymiser implements IAnonymiser {
   private static isInitialized = false;
 
   static async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log('🎯 VideoProcessingService Demo Mode - Development build required for real processing');
+    console.log('🎯 DemoAnonymiser Mode - Expo Go compatible demo processing');
     this.isInitialized = true;
   }
 
@@ -212,3 +194,11 @@ export class VideoProcessingService {
     console.log('🎯 Demo: Stopping real-time transcription simulation');
   }
 }
+
+// Export singleton instance that implements IAnonymiser interface
+export const demoAnonymiser: IAnonymiser = {
+  initialize: DemoAnonymiser.initialize.bind(DemoAnonymiser),
+  processVideo: DemoAnonymiser.processVideo.bind(DemoAnonymiser),
+  startRealTimeTranscription: DemoAnonymiser.startRealTimeTranscription.bind(DemoAnonymiser),
+  stopRealTimeTranscription: DemoAnonymiser.stopRealTimeTranscription.bind(DemoAnonymiser),
+};
