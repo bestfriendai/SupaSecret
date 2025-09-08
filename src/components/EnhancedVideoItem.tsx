@@ -324,8 +324,17 @@ export default function EnhancedVideoItem({
                     await saveConfession(confession.id);
                   }
                 } catch (error) {
-                  console.error('Failed to toggle save:', error);
+                  // Show user-facing error feedback instead of console.error
+                  Alert.alert(
+                    'Save Failed',
+                    'Unable to save this confession. Please try again.',
+                    [{ text: 'OK' }]
+                  );
+                } finally {
+                  // Always run haptic feedback regardless of success or failure
+                  impactAsync();
                 }
+                return; // Skip the duplicate impactAsync call below
               }
               impactAsync();
             }}

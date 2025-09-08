@@ -25,8 +25,10 @@ export interface LoadingOptions {
  */
 export const useLoadingStates = () => {
   const [states, setStates] = useState<LoadingStates>({});
-  const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const retriesRef = useRef<Map<string, number>>(new Map());
+  const callTokensRef = useRef<Map<string, number>>(new Map());
+  const isMountedRef = useRef(true);
 
   // Initialize a loading state
   const initializeState = useCallback((key: string, initialData?: any) => {
@@ -43,41 +45,56 @@ export const useLoadingStates = () => {
 
   // Set loading state
   const setLoading = useCallback((key: string, isLoading: boolean) => {
-    setStates(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        isLoading,
-        error: isLoading ? null : prev[key]?.error || null, // Clear error when starting to load
-      },
-    }));
+    if (!isMountedRef.current) return;
+
+    setStates(prev => {
+      const existing = prev[key] ?? { isLoading: false, error: null, data: null, lastUpdated: null };
+      return {
+        ...prev,
+        [key]: {
+          ...existing,
+          isLoading,
+          error: isLoading ? null : existing.error,
+        },
+      };
+    });
   }, []);
 
   // Set error state
   const setError = useCallback((key: string, error: string | null) => {
-    setStates(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        isLoading: false,
-        error,
-      },
-    }));
+    if (!isMountedRef.current) return;
+
+    setStates(prev => {
+      const existing = prev[key] ?? { isLoading: false, error: null, data: null, lastUpdated: null };
+      return {
+        ...prev,
+        [key]: {
+          ...existing,
+          isLoading: false,
+          error,
+        },
+      };
+    });
   }, []);
 
   // Set success state with data
   const setSuccess = useCallback((key: string, data: any) => {
-    setStates(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        isLoading: false,
-        error: null,
-        data,
-        lastUpdated: Date.now(),
-      },
-    }));
-    
+    if (!isMountedRef.current) return;
+
+    setStates(prev => {
+      const existing = prev[key] ?? { isLoading: false, error: null, data: null, lastUpdated: null };
+      return {
+        ...prev,
+        [key]: {
+          ...existing,
+          isLoading: false,
+          error: null,
+          data,
+          lastUpdated: Date.now(),
+        },
+      };
+    });
+
     // Clear retry count on success
     retriesRef.current.delete(key);
   }, []);
@@ -88,11 +105,10 @@ export const useLoadingStates = () => {
     operation: () => Promise<T>
   ): Promise<T | null> => {
     const { key, minLoadingTime = 300, timeout = 30000, retryCount = 0, retryDelay = 1000 } = options;
-    
-    // Initialize state if it doesn't exist
-    if (!states[key]) {
-      initializeState(key);
-    }
+
+    // Generate call token to prevent race conditions
+    const currentToken = (callTokensRef.current.get(key) || 0) + 1;
+    callTokensRef.current.set(key, currentToken);
 
     const startTime = Date.now();
     setLoading(key, true);
@@ -128,7 +144,10 @@ export const useLoadingStates = () => {
         await new Promise(resolve => setTimeout(resolve, minLoadingTime - elapsedTime));
       }
 
-      setSuccess(key, result);
+      // Only update state if this is still the latest call and component is mounted
+      if (callTokensRef.current.get(key) === currentToken && isMountedRef.current) {
+        setSuccess(key, result);
+      }
       return result;
     } catch (error) {
       // Clear timeout
@@ -158,7 +177,10 @@ export const useLoadingStates = () => {
         await new Promise(resolve => setTimeout(resolve, minLoadingTime - elapsedTime));
       }
 
-      setError(key, errorMessage);
+      // Only update state if this is still the latest call and component is mounted
+      if (callTokensRef.current.get(key) === currentToken && isMountedRef.current) {
+        setError(key, errorMessage);
+      }
       return null;
     }
   }, [states, initializeState, setLoading, setSuccess, setError]);
@@ -230,8 +252,10 @@ export const useLoadingStates = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
       timeoutsRef.current.clear();
+      callTokensRef.current.clear();
     };
   }, []);
 

@@ -99,32 +99,32 @@ export const linking: LinkingOptions<RootStackParamList> = {
 export const DeepLinkHandlers = {
   // Handle secret sharing links
   handleSecretLink: (confessionId: string) => {
-    return `supasecret://secret/${confessionId}`;
+    return `supasecret://secret/${encodeURIComponent(confessionId)}`;
   },
 
   // Handle video sharing links
   handleVideoLink: (confessionId: string) => {
-    return `supasecret://video/${confessionId}`;
+    return `supasecret://video/${encodeURIComponent(confessionId)}`;
   },
 
   // Handle profile sharing links
   handleProfileLink: (userId?: string) => {
-    return userId ? `supasecret://profile/${userId}` : 'supasecret://profile';
+    return userId ? `supasecret://profile/${encodeURIComponent(userId)}` : 'supasecret://profile';
   },
 
   // Handle trending hashtag links
   handleTrendingLink: (hashtag?: string) => {
-    return hashtag ? `supasecret://trending?hashtag=${hashtag}` : 'supasecret://trending';
+    return hashtag ? `supasecret://trending?hashtag=${encodeURIComponent(hashtag)}` : 'supasecret://trending';
   },
 
   // Handle password reset links
   handlePasswordResetLink: (token: string) => {
-    return `supasecret://reset-password?token=${token}`;
+    return `supasecret://reset-password?token=${encodeURIComponent(token)}`;
   },
 
   // Handle email verification links
   handleEmailVerificationLink: (token: string) => {
-    return `supasecret://verify-email?token=${token}`;
+    return `supasecret://verify-email?token=${encodeURIComponent(token)}`;
   },
 
   // Handle paywall links
@@ -148,8 +148,19 @@ export const URLUtils = {
 
   // Parse hashtag from URL
   parseHashtag: (url: string): string | null => {
-    const urlObj = new URL(url);
-    return urlObj.searchParams.get('hashtag');
+    if (!url || typeof url !== 'string') {
+      return null;
+    }
+
+    try {
+      const urlObj = new URL(url);
+      return urlObj.searchParams.get('hashtag');
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('Failed to parse URL for hashtag:', url, error);
+      }
+      return null;
+    }
   },
 
   // Parse query parameters
@@ -196,7 +207,24 @@ export const URLUtils = {
 
   // Generate app deep link
   generateAppURL: (path: string): string => {
-    return `supasecret://${path}`;
+    // Normalize the path by trimming extra slashes and ensuring it starts with a single '/'
+    let normalizedPath = path.trim();
+
+    // Remove leading slashes and add a single one
+    normalizedPath = normalizedPath.replace(/^\/+/, '');
+    if (normalizedPath && !normalizedPath.startsWith('/')) {
+      normalizedPath = '/' + normalizedPath;
+    }
+
+    // Remove trailing slashes except for root
+    if (normalizedPath.length > 1) {
+      normalizedPath = normalizedPath.replace(/\/+$/, '');
+    }
+
+    // Encode the path while preserving slashes
+    const encodedPath = encodeURI(normalizedPath);
+
+    return `supasecret://${encodedPath}`;
   },
 };
 

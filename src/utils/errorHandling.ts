@@ -197,8 +197,6 @@ export function translateSupabaseError(code?: string): string | undefined {
       return 'Security verification failed. Please try again.';
     case 'over_email_send_rate_limit':
       return 'Too many emails sent. Please wait before requesting another.';
-    case 'email_not_confirmed':
-      return 'Please check your email and verify your account first.';
     case 'invalid_request':
       return 'Invalid request. Please check your information and try again.';
     case 'session_not_found':

@@ -4,6 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSubscriptionStore } from '../state/subscriptionStore';
 import { RevenueCatService } from '../services/RevenueCatService';
 
+type IoniconsName = keyof typeof Ionicons.glyphMap;
+
+interface Benefit {
+  icon: IoniconsName;
+  text: string;
+}
+
 interface PaywallModalProps {
   visible: boolean;
   onClose: () => void;
@@ -92,12 +99,12 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
                 Premium Features
               </Text>
               
-              {[
-                { icon: 'ban-outline', text: 'No ads' },
-                { icon: 'videocam-outline', text: 'Unlimited video recordings' },
-                { icon: 'musical-notes-outline', text: 'Advanced voice effects' },
-                { icon: 'headset-outline', text: 'Priority support' }
-              ].map((benefit, index) => (
+              {([
+                { icon: 'ban-outline' as IoniconsName, text: 'No ads' },
+                { icon: 'videocam-outline' as IoniconsName, text: 'Unlimited video recordings' },
+                { icon: 'musical-notes-outline' as IoniconsName, text: 'Advanced voice effects' },
+                { icon: 'headset-outline' as IoniconsName, text: 'Priority support' }
+              ] as Benefit[]).map((benefit, index) => (
                 <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                   <View style={{ 
                     backgroundColor: '#10B981', 
@@ -105,7 +112,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
                     padding: 8, 
                     marginRight: 12 
                   }}>
-                    <Ionicons name={benefit.icon as any} size={16} color="#FFFFFF" />
+                    <Ionicons name={benefit.icon || 'checkmark-outline'} size={16} color="#FFFFFF" />
                   </View>
                   <Text style={{ color: '#F3F4F6', fontSize: 16 }}>
                     {benefit.text}

@@ -131,7 +131,7 @@ export const signUpUser = async (data: SignUpData): Promise<User> => {
 };
 
 // Sign in existing user
-export const signInUser = async (credentials: AuthCredentials, persistSession: boolean = true): Promise<User> => {
+export const signInUser = async (credentials: AuthCredentials): Promise<User> => {
   const { email, password } = credentials;
 
   if (!validateEmail(email)) {
@@ -321,8 +321,12 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
     throw new AuthError("INVALID_EMAIL", "Please enter a valid email address");
   }
 
+  // Properly construct redirect URL
+  const baseUrl = (process.env.EXPO_PUBLIC_APP_URL || 'supasecret://').replace(/\/+$/, '');
+  const redirectTo = `${baseUrl}/reset-password`;
+
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'supasecret://'}reset-password`,
+    redirectTo,
   });
 
   if (error) {

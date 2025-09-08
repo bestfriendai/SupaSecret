@@ -1,6 +1,7 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ScrollView, FlatList, SectionList } from 'react-native';
 
 interface ScrollPosition {
   x: number;
@@ -22,10 +23,11 @@ interface ScrollRestorationOptions {
 export const useScrollRestoration = (options: ScrollRestorationOptions) => {
   const { key, enabled = true, debounceMs = 500, maxAge = 5 * 60 * 1000 } = options; // 5 minutes default
   
-  const scrollViewRef = useRef<any>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollViewRef = useRef<ScrollView | FlatList<any> | SectionList<any, any> | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedPosition = useRef<ScrollPosition | null>(null);
   const isRestoringRef = useRef(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const storageKey = `scroll_position_${key}`;
 
@@ -75,26 +77,32 @@ export const useScrollRestoration = (options: ScrollRestorationOptions) => {
       }
 
       isRestoringRef.current = true;
+      setIsRestoring(true);
 
       // Restore scroll position with a small delay to ensure content is loaded
       setTimeout(() => {
-        if (scrollViewRef.current && scrollViewRef.current.scrollTo) {
-          scrollViewRef.current.scrollTo({
-            x: position.x,
-            y: position.y,
-            animated: false,
-          });
-        } else if (scrollViewRef.current && scrollViewRef.current.scrollToOffset) {
-          // For FlashList/FlatList
-          scrollViewRef.current.scrollToOffset({
-            offset: position.y,
-            animated: false,
-          });
+        if (scrollViewRef.current) {
+          // Type-safe scroll handling
+          const scrollComponent = scrollViewRef.current as any;
+          if (scrollComponent.scrollTo) {
+            scrollComponent.scrollTo({
+              x: position.x,
+              y: position.y,
+              animated: false,
+            });
+          } else if (scrollComponent.scrollToOffset) {
+            // For FlashList/FlatList
+            scrollComponent.scrollToOffset({
+              offset: position.y,
+              animated: false,
+            });
+          }
         }
         
         // Reset restoration flag after a short delay
         setTimeout(() => {
           isRestoringRef.current = false;
+          setIsRestoring(false);
         }, 100);
       }, 100);
     } catch (error) {
@@ -159,7 +167,7 @@ export const useScrollRestoration = (options: ScrollRestorationOptions) => {
     handleScroll,
     restoreScrollPosition,
     clearScrollPosition,
-    isRestoring: isRestoringRef.current,
+    isRestoring,
   };
 };
 

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import DOMPurify from 'isomorphic-dompurify';
 
 export interface ValidationRule {
   required?: boolean;
@@ -52,12 +53,15 @@ export const useFormValidation = (config: FormConfig, initialValues: Record<stri
     if (fieldConfig?.sanitize) {
       return fieldConfig.sanitize(value);
     }
-    
-    // Default sanitization: trim whitespace and remove dangerous characters
-    return value
-      .replace(/[<>]/g, '') // Remove potential HTML tags
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-      .trim();
+
+    // Proper XSS sanitization using DOMPurify with no allowed tags
+    const sanitized = DOMPurify.sanitize(value, {
+      ALLOWED_TAGS: [],
+      ALLOWED_ATTR: [],
+      KEEP_CONTENT: true
+    });
+
+    return sanitized.trim();
   }, [config]);
 
   // Validation function
@@ -118,15 +122,18 @@ export const useFormValidation = (config: FormConfig, initialValues: Record<stri
 
   // Touch field (mark as touched without changing value)
   const touchField = useCallback((fieldName: string) => {
-    setFormState(prev => ({
-      ...prev,
-      [fieldName]: {
-        ...prev[fieldName],
-        touched: true,
-        error: validateField(fieldName, prev[fieldName].value),
-        isValid: validateField(fieldName, prev[fieldName].value) === null,
-      },
-    }));
+    setFormState(prev => {
+      const error = validateField(fieldName, prev[fieldName].value);
+      return {
+        ...prev,
+        [fieldName]: {
+          ...prev[fieldName],
+          touched: true,
+          error,
+          isValid: error === null,
+        },
+      };
+    });
   }, [validateField]);
 
   // Validate all fields
@@ -226,7 +233,7 @@ export const ValidationRules = {
   },
   password: {
     required: true,
-    minLength: 6,
+    minLength: 8,
     maxLength: 128,
   },
   username: {

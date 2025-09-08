@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable, ViewStyle, TextStyle } from 'react-native';
-import { colors, spacing, borderRadius, typography, shadows, currentTheme } from '../../design/tokens';
+import { View, Text, Pressable, ViewStyle, TextStyle, StyleProp, AccessibilityRole } from 'react-native';
+import { spacing, borderRadius, typography, shadows, currentTheme } from '../../design/tokens';
 
 export interface CardProps {
   children: React.ReactNode;
@@ -8,32 +8,39 @@ export interface CardProps {
   padding?: keyof typeof spacing;
   onPress?: () => void;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   accessibilityHint?: string;
-  accessibilityRole?: 'none' | 'button' | 'link';
+  accessibilityRole?: AccessibilityRole;
 }
 
 export interface CardHeaderProps {
   title?: string;
   subtitle?: string;
   action?: React.ReactNode;
-  style?: ViewStyle;
-  titleStyle?: TextStyle;
-  subtitleStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  titleStyle?: StyleProp<TextStyle>;
+  subtitleStyle?: StyleProp<TextStyle>;
 }
 
 export interface CardContentProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export interface CardFooterProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
-export const Card: React.FC<CardProps> = ({
+// Define compound component type
+interface CardComponent extends React.FC<CardProps> {
+  Header: React.FC<CardHeaderProps>;
+  Content: React.FC<CardContentProps>;
+  Footer: React.FC<CardFooterProps>;
+}
+
+const CardBase: React.FC<CardProps> = ({
   children,
   variant = 'default',
   padding = 4,
@@ -75,13 +82,13 @@ export const Card: React.FC<CardProps> = ({
     }
   };
 
-  const containerStyle: ViewStyle = {
+  const baseStyle: ViewStyle = {
     borderRadius: borderRadius.xl,
     padding: spacing[padding],
     opacity: disabled ? 0.6 : 1,
-    ...getVariantStyles(),
-    ...style,
   };
+
+  const containerStyle = [baseStyle, getVariantStyles(), style];
 
   if (isInteractive) {
     return (
@@ -107,11 +114,15 @@ export const Card: React.FC<CardProps> = ({
       style={containerStyle}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint || 'Card content'}
     >
       {children}
     </View>
   );
 };
+
+// Create the compound component
+export const Card = CardBase as CardComponent;
 
 export const CardHeader: React.FC<CardHeaderProps> = ({
   title,

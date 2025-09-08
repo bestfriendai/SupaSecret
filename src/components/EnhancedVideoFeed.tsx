@@ -137,10 +137,9 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     }
 
     // Cleanup function to prevent memory leaks
+    // Always pause previous videos instead of conditionalizing on isFocused
     return () => {
-      if (!isFocused) {
-        videoPlayers.pauseAll();
-      }
+      videoPlayers.pauseAll();
     };
   }, [currentIndex, videoPlayers, videoConfessions.length, isFocused]);
 

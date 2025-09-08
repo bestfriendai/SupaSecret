@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 // Demo mode - no native voice imports for Expo Go
 // import Voice from '@react-native-voice/voice';
@@ -14,7 +14,8 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
 }) => {
   const [transcription, setTranscription] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const fadeAnim = new Animated.Value(0);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const transcriptionIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Demo mode - simulate speech recognition
@@ -26,21 +27,42 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
   }, [onTranscriptionUpdate]);
 
   useEffect(() => {
+    let fadeAnimation: Animated.CompositeAnimation | null = null;
+
     if (isRecording) {
       startListening();
-      Animated.timing(fadeAnim, {
+      fadeAnimation = Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 300,
         useNativeDriver: true,
-      }).start();
+      });
+      fadeAnimation.start();
     } else {
       stopListening();
-      Animated.timing(fadeAnim, {
+      fadeAnimation = Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 300,
         useNativeDriver: true,
-      }).start();
+      });
+      fadeAnimation.start();
     }
+
+    // Cleanup function for component unmount
+    return () => {
+      // Stop listening
+      stopListening();
+
+      // Stop any running animations
+      if (fadeAnimation) {
+        fadeAnimation.stop();
+      }
+
+      // Clear any intervals
+      if (transcriptionIntervalRef.current) {
+        clearInterval(transcriptionIntervalRef.current);
+        transcriptionIntervalRef.current = null;
+      }
+    };
   }, [isRecording]);
 
   const startListening = async () => {
@@ -66,7 +88,7 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
     }, 2000);
 
     // Store interval for cleanup
-    (window as any).transcriptionInterval = interval;
+    transcriptionIntervalRef.current = interval;
   };
 
   const stopListening = async () => {
@@ -74,9 +96,9 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
     setIsListening(false);
 
     // Clear simulation interval
-    if ((window as any).transcriptionInterval) {
-      clearInterval((window as any).transcriptionInterval);
-      (window as any).transcriptionInterval = null;
+    if (transcriptionIntervalRef.current) {
+      clearInterval(transcriptionIntervalRef.current);
+      transcriptionIntervalRef.current = null;
     }
   };
 
