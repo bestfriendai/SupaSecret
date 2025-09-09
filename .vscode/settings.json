@@ -21,5 +21,8 @@
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno"
   },
-  "coderabbit.autoReviewMode": "auto"
+  "coderabbit.autoReviewMode": "auto",
+  "diffEditor.renderSideBySide": false,
+  "diffEditor.experimental.showMoves": true,
+  "scm.diffDecorationsGutterAction": "diff"
 }

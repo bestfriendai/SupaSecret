@@ -114,7 +114,9 @@ export const DeepLinkHandlers = {
 
   // Handle trending hashtag links
   handleTrendingLink: (hashtag?: string) => {
-    return hashtag ? `toxicconfessions://trending?hashtag=${encodeURIComponent(hashtag)}` : "toxicconfessions://trending";
+    return hashtag
+      ? `toxicconfessions://trending?hashtag=${encodeURIComponent(hashtag)}`
+      : "toxicconfessions://trending";
   },
 
   // Handle password reset links

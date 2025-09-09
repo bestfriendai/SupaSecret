@@ -11,6 +11,7 @@ import HomeScreen from "../screens/HomeScreen";
 import CreateConfessionScreen from "../screens/CreateConfessionScreen";
 import VideoRecordScreen from "../screens/VideoRecordScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import MySecretsScreen from "../screens/MySecretsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import VideoFeedScreen from "../screens/VideoFeedScreen";
 import VideoPlayerScreen from "../screens/VideoPlayerScreen";
@@ -34,6 +35,8 @@ export type RootStackParamList = {
   SecretDetail: { confessionId: string };
   VideoPlayer: { confessionId: string };
   Saved: undefined;
+  Settings: undefined;
+  MySecrets: undefined;
   Paywall: { feature?: string; source?: string };
   WebView: { url: string; title: string };
   AuthStack: undefined;
@@ -193,11 +196,20 @@ export default function AppNavigator() {
   const { isAuthenticated, isLoading, user, checkAuthState } = useAuthStore();
 
   useEffect(() => {
+    console.log("[AppNavigator] Mount useEffect - calling checkAuthState");
     checkAuthState();
   }, [checkAuthState]);
 
+  console.log("[AppNavigator] Rendering - current state:", {
+    isAuthenticated,
+    isLoading,
+    hasUser: !!user,
+    userId: user?.id,
+  });
+
   // Show loading screen while checking auth state
   if (isLoading) {
+    console.log("[AppNavigator] SHOWING LOADING SCREEN - isLoading is true");
     return (
       <View className="flex-1 bg-black items-center justify-center">
         <ActivityIndicator size="large" color="#1D9BF0" />
@@ -209,18 +221,21 @@ export default function AppNavigator() {
   // Show auth stack if: not authenticated OR authenticated but not onboarded
   const shouldShowAuth = !isAuthenticated || (isAuthenticated && user && !user.isOnboarded);
 
-  // Debug logging (remove in production)
-  if (__DEV__) {
-    console.log("🔍 Navigation state:", {
-      isAuthenticated,
-      user: user ? `${user.email} (onboarded: ${user.isOnboarded})` : null,
-      shouldShowAuth,
-      reason: !isAuthenticated
-        ? "not authenticated"
-        : isAuthenticated && user && !user.isOnboarded
-          ? "not onboarded"
-          : "fully authenticated",
-    });
+  console.log("[AppNavigator] Navigation decision:", {
+    isAuthenticated,
+    user: user ? `${user.email} (onboarded: ${user.isOnboarded})` : null,
+    shouldShowAuth,
+    reason: !isAuthenticated
+      ? "not authenticated"
+      : isAuthenticated && user && !user.isOnboarded
+        ? "not onboarded"
+        : "fully authenticated",
+  });
+
+  if (shouldShowAuth) {
+    console.log("[AppNavigator] RENDERING AUTH STACK - user needs authentication/onboarding");
+  } else {
+    console.log("[AppNavigator] RENDERING MAIN TABS - user is fully authenticated");
   }
 
   return (
@@ -305,6 +320,21 @@ export default function AppNavigator() {
               component={SavedScreen}
               options={{
                 title: "Saved Secrets",
+                presentation: "modal",
+              }}
+            />
+            <Stack.Screen
+              name="MySecrets"
+              component={MySecretsScreen}
+              options={{
+                title: "My Secrets",
+              }}
+            />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{
+                title: "Settings",
                 presentation: "modal",
               }}
             />
