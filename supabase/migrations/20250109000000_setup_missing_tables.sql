@@ -142,18 +142,8 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON public.replies TO anon, authenticated;
 GRANT ALL ON public.user_likes TO anon, authenticated;
 
--- Insert some test data to verify everything works
--- (This will be ignored if data already exists due to unique constraints)
-INSERT INTO public.replies (confession_id, user_id, content, is_anonymous, likes)
-SELECT 
-    c.id,
-    NULL, -- Anonymous reply
-    'This is a test reply to verify the replies system is working.',
-    true,
-    0
-FROM public.confessions c
-LIMIT 1
-ON CONFLICT DO NOTHING;
+-- Test data insertion removed to avoid notification trigger conflicts
+-- You can manually insert test data after the migration completes
 
 -- Add a comment to track this migration
 COMMENT ON TABLE public.replies IS 'Stores user replies to confessions - created by migration 20250109000000';

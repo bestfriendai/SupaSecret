@@ -35,25 +35,67 @@ ALTER TABLE user_likes ALTER COLUMN user_id SET NOT NULL;
 ALTER TABLE user_profiles ALTER COLUMN created_at SET NOT NULL;
 ALTER TABLE user_profiles ALTER COLUMN is_onboarded SET NOT NULL;
 
--- Add unique constraints to prevent duplicates
-ALTER TABLE user_likes ADD CONSTRAINT unique_user_confession_like
-  UNIQUE (user_id, confession_id) DEFERRABLE INITIALLY DEFERRED;
+-- Add unique constraints to prevent duplicates (only if they don't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'unique_user_confession_like'
+        AND table_name = 'user_likes'
+    ) THEN
+        ALTER TABLE user_likes ADD CONSTRAINT unique_user_confession_like
+        UNIQUE (user_id, confession_id) DEFERRABLE INITIALLY DEFERRED;
+    END IF;
 
-ALTER TABLE user_likes ADD CONSTRAINT unique_user_reply_like
-  UNIQUE (user_id, reply_id) DEFERRABLE INITIALLY DEFERRED;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'unique_user_reply_like'
+        AND table_name = 'user_likes'
+    ) THEN
+        ALTER TABLE user_likes ADD CONSTRAINT unique_user_reply_like
+        UNIQUE (user_id, reply_id) DEFERRABLE INITIALLY DEFERRED;
+    END IF;
+END $$;
 
--- Add check constraints for data validation
-ALTER TABLE confessions ADD CONSTRAINT check_content_length 
-  CHECK (LENGTH(content) > 0 AND LENGTH(content) <= 280);
+-- Add check constraints for data validation (only if they don't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'check_content_length'
+        AND table_name = 'confessions'
+    ) THEN
+        ALTER TABLE confessions ADD CONSTRAINT check_content_length
+        CHECK (LENGTH(content) > 0 AND LENGTH(content) <= 280);
+    END IF;
 
-ALTER TABLE replies ADD CONSTRAINT check_reply_content_length 
-  CHECK (LENGTH(content) > 0 AND LENGTH(content) <= 280);
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'check_reply_content_length'
+        AND table_name = 'replies'
+    ) THEN
+        ALTER TABLE replies ADD CONSTRAINT check_reply_content_length
+        CHECK (LENGTH(content) > 0 AND LENGTH(content) <= 280);
+    END IF;
 
-ALTER TABLE confessions ADD CONSTRAINT check_likes_non_negative 
-  CHECK (likes >= 0);
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'check_likes_non_negative'
+        AND table_name = 'confessions'
+    ) THEN
+        ALTER TABLE confessions ADD CONSTRAINT check_likes_non_negative
+        CHECK (likes >= 0);
+    END IF;
 
-ALTER TABLE replies ADD CONSTRAINT check_reply_likes_non_negative 
-  CHECK (likes >= 0);
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'check_reply_likes_non_negative'
+        AND table_name = 'replies'
+    ) THEN
+        ALTER TABLE replies ADD CONSTRAINT check_reply_likes_non_negative
+        CHECK (likes >= 0);
+    END IF;
+END $$;
 
 -- Add proper foreign key constraints with cascading (most already exist, adding missing ones)
 -- Note: Most foreign keys already exist in the base schema, only adding missing ones

@@ -35,24 +35,24 @@ export default function ProfileScreen() {
       id: "posts",
       label: "Secrets",
       icon: "document-text" as const,
-      count: userConfessions.length
+      count: userConfessions.length,
     },
     {
       id: "saved",
       label: "Saved",
       icon: "bookmark" as const,
-      count: savedConfessionIds.length
+      count: savedConfessionIds.length,
     },
     {
       id: "notifications",
       label: "Alerts",
       icon: "notifications" as const,
-      badge: unreadCount
+      badge: unreadCount,
     },
     {
       id: "settings",
       label: "Settings",
-      icon: "settings" as const
+      icon: "settings" as const,
     },
   ];
 
@@ -74,50 +74,37 @@ export default function ProfileScreen() {
   return (
     <View className="flex-1 bg-black">
       {/* Tab Bar - starts right at top */}
-      <View
-        className="bg-black px-3 pb-1"
-        style={{ paddingTop: insets.top + 4 }}
-      >
+      <View className="bg-black px-3 pb-1" style={{ paddingTop: insets.top + 4 }}>
         <View className="flex-row bg-gray-900 rounded-2xl p-1">
           {managementTabs.map((tab, index) => (
             <Pressable
               key={tab.id}
               onPress={() => setActiveTab(tab.id)}
-              className={`flex-1 ${index > 0 ? 'ml-1' : ''}`}
+              className={`flex-1 ${index > 0 ? "ml-1" : ""}`}
               accessibilityRole="button"
               accessibilityLabel={tab.label}
             >
-              <View className={`px-3 py-3 rounded-xl items-center ${
-                activeTab === tab.id
-                  ? "bg-blue-500 shadow-lg"
-                  : "bg-transparent"
-              }`}>
+              <View
+                className={`px-3 py-3 rounded-xl items-center ${
+                  activeTab === tab.id ? "bg-blue-500 shadow-lg" : "bg-transparent"
+                }`}
+              >
                 <View className="relative flex-row items-center justify-center mb-1">
-                  <Ionicons
-                    name={tab.icon}
-                    size={18}
-                    color={activeTab === tab.id ? "#FFFFFF" : "#9CA3AF"}
-                  />
+                  <Ionicons name={tab.icon} size={18} color={activeTab === tab.id ? "#FFFFFF" : "#9CA3AF"} />
                   {/* Count Badge */}
                   {tab.count !== undefined && tab.count > 0 && (
                     <View className="absolute -top-2 -right-2 bg-red-500 rounded-full px-1.5 py-0.5 min-w-[18px] items-center">
-                      <Text className="text-white text-9 font-bold">
-                        {tab.count > 99 ? "99+" : String(tab.count)}
-                      </Text>
+                      <Text className="text-white text-9 font-bold">{tab.count > 99 ? "99+" : String(tab.count)}</Text>
                     </View>
                   )}
                   {/* Notification Badge */}
                   {tab.badge !== undefined && tab.badge > 0 && (
                     <View className="absolute -top-2 -right-2 bg-red-500 rounded-full px-1.5 py-0.5 min-w-[18px] items-center">
-                      <Text className="text-white text-9 font-bold">
-                        {tab.badge > 99 ? "99+" : String(tab.badge)}
-                      </Text>
+                      <Text className="text-white text-9 font-bold">{tab.badge > 99 ? "99+" : String(tab.badge)}</Text>
                     </View>
                   )}
                 </View>
-                <Text className={`text-11 font-semibold ${
-                  activeTab === tab.id ? "text-white" : "text-gray-400"
-                }`}>
+                <Text className={`text-11 font-semibold ${activeTab === tab.id ? "text-white" : "text-gray-400"}`}>
                   {tab.label}
                 </Text>
               </View>
@@ -127,9 +114,7 @@ export default function ProfileScreen() {
       </View>
 
       {/* Content Area - no gap */}
-      <View className="flex-1 bg-black">
-        {renderTabContent()}
-      </View>
+      <View className="flex-1 bg-black">{renderTabContent()}</View>
     </View>
   );
 }

@@ -11,7 +11,18 @@ import { useMediaPermissions } from "../hooks/useMediaPermissions";
 import { BlurView } from "expo-blur";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as Speech from "expo-speech";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  withSequence,
+  runOnJS,
+  interpolate,
+  Extrapolate,
+} from "react-native-reanimated";
 import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
+import Constants from "expo-constants";
 
 export default function VideoRecordScreen() {
   // All hooks must be called at the top level, before any conditional logic
@@ -32,6 +43,32 @@ export default function VideoRecordScreen() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const navigation = useNavigation();
   const addConfession = useConfessionStore((state) => state.addConfession);
+
+  // Animation values for TikTok-like UI
+  const recordButtonScale = useSharedValue(1);
+  const recordButtonOpacity = useSharedValue(1);
+  const controlsOpacity = useSharedValue(1);
+  const blurIntensity = useSharedValue(25);
+  const captionsScale = useSharedValue(1);
+  const isExpoGo = Constants.appOwnership === "expo";
+
+  // Animated styles
+  const recordButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: recordButtonScale.value }],
+    opacity: recordButtonOpacity.value,
+  }));
+
+  const controlsAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: controlsOpacity.value,
+  }));
+
+  const blurAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(blurIntensity.value, [0, 50], [0, 1]),
+  }));
+
+  const captionsAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: captionsScale.value }],
+  }));
 
   // Preview state after processing (before upload)
   const [showPreview, setShowPreview] = useState(false);
@@ -130,6 +167,11 @@ export default function VideoRecordScreen() {
     // Add haptic feedback
     notificationAsync();
 
+    // TikTok-like animation: scale down record button and fade controls
+    recordButtonScale.value = withSpring(0.9);
+    controlsOpacity.value = withTiming(0.3, { duration: 300 });
+    blurIntensity.value = withTiming(35, { duration: 300 });
+
     // Start timer
     timerRef.current = setInterval(() => {
       setRecordingTime((prev) => prev + 1);
@@ -179,6 +221,12 @@ export default function VideoRecordScreen() {
     if (cameraRef.current && isRecording) {
       cameraRef.current.stopRecording();
       impactAsync();
+
+      // TikTok-like animation: restore record button and controls
+      recordButtonScale.value = withSpring(1);
+      controlsOpacity.value = withTiming(1, { duration: 300 });
+      blurIntensity.value = withTiming(25, { duration: 300 });
+
       setIsRecording(false);
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -253,8 +301,8 @@ export default function VideoRecordScreen() {
   // Render permission loading state
   if (permissionState.loading) {
     return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <Text className="text-white text-lg">Checking permissions...</Text>
+      <View style={{ flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "white", fontSize: 18 }}>Checking permissions...</Text>
       </View>
     );
   }
@@ -265,35 +313,80 @@ export default function VideoRecordScreen() {
     const needsAudio = !permissionState.microphone;
 
     return (
-      <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
-        <View className="w-20 h-20 bg-gray-800 rounded-full items-center justify-center mb-6">
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: "black",
+          justifyContent: "center",
+          alignItems: "center",
+          paddingHorizontal: 24,
+        }}
+      >
+        <View
+          style={{
+            width: 80,
+            height: 80,
+            backgroundColor: "#374151",
+            borderRadius: 40,
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 24,
+          }}
+        >
           <Ionicons name={needsCamera ? "camera-outline" : "mic-outline"} size={40} color="#8B98A5" />
         </View>
-        <Text className="text-white text-xl font-semibold mt-4 text-center">
+        <Text style={{ color: "white", fontSize: 20, fontWeight: "600", marginTop: 16, textAlign: "center" }}>
           {needsCamera && needsAudio
             ? "Camera & Microphone Access Required"
             : needsCamera
               ? "Camera Permission Required"
               : "Microphone Permission Required"}
         </Text>
-        <Text className="text-gray-400 text-base mt-2 text-center mb-8 leading-6">
+        <Text
+          style={{
+            color: "#9CA3AF",
+            fontSize: 16,
+            marginTop: 8,
+            textAlign: "center",
+            marginBottom: 32,
+            lineHeight: 24,
+          }}
+        >
           We need {needsCamera && needsAudio ? "camera and microphone" : needsCamera ? "camera" : "microphone"} access
           to record your anonymous video confession with privacy protection.
         </Text>
-        <Pressable className="bg-blue-500 rounded-full px-8 py-4 mb-4" onPress={requestVideoPermissions}>
-          <Text className="text-white font-semibold text-lg">Grant Permissions</Text>
+        <Pressable
+          style={{
+            backgroundColor: "#3B82F6",
+            borderRadius: 9999,
+            paddingHorizontal: 32,
+            paddingVertical: 16,
+            marginBottom: 16,
+          }}
+          onPress={requestVideoPermissions}
+        >
+          <Text style={{ color: "white", fontWeight: "600", fontSize: 18 }}>Grant Permissions</Text>
         </Pressable>
         <Pressable
-          className="bg-gray-700 rounded-full px-6 py-3 mb-2"
+          style={{
+            backgroundColor: "#374151",
+            borderRadius: 9999,
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            marginBottom: 8,
+          }}
           onPress={() => {
             // Retry permissions request
             requestVideoPermissions();
           }}
         >
-          <Text className="text-gray-300 font-medium">Refresh Permissions</Text>
+          <Text style={{ color: "#D1D5DB", fontWeight: "500" }}>Refresh Permissions</Text>
         </Pressable>
-        <Pressable className="bg-gray-800 rounded-full px-6 py-3" onPress={() => navigation.goBack()}>
-          <Text className="text-gray-300 font-medium">Go Back</Text>
+        <Pressable
+          style={{ backgroundColor: "#1F2937", borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 12 }}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={{ color: "#D1D5DB", fontWeight: "500" }}>Go Back</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -330,16 +423,23 @@ export default function VideoRecordScreen() {
         {/* Mild blur to maintain privacy even in preview */}
         <BlurView intensity={15} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
 
-        {/* Captions overlay */}
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 140, paddingHorizontal: 16 }}>
-          <View className="bg-black/50 rounded-2xl px-4 py-3">
+        {/* Enhanced captions overlay with TikTok-like styling */}
+        <Animated.View
+          style={[
+            { position: "absolute", left: 0, right: 0, bottom: 140, paddingHorizontal: 16 },
+            captionsAnimatedStyle,
+          ]}
+        >
+          <View className="bg-black/60 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/20 shadow-lg">
             <TikTokCaptionsOverlay
               text={previewTranscription}
               currentTime={previewPlayer.currentTime || 0}
               duration={previewPlayer.duration || 1}
             />
+            {/* Add a subtle glow effect */}
+            <View className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/10 to-purple-500/10 blur-sm -z-10" />
           </View>
-        </View>
+        </Animated.View>
 
         {/* Top + Bottom controls */}
         <SafeAreaView className="absolute top-0 left-0 right-0 flex-row justify-between items-center px-4 py-2">
@@ -463,49 +563,75 @@ export default function VideoRecordScreen() {
               </View>
 
               {isRecording && (
-                <View className="bg-red-600 rounded-full px-6 py-3 mb-4 flex-row items-center">
+                <Animated.View
+                  className="bg-red-600 rounded-full px-6 py-3 mb-4 flex-row items-center shadow-lg shadow-red-500/50"
+                  style={{
+                    transform: [
+                      {
+                        scale: interpolate(recordingTime % 2, [0, 1], [1, 1.05], "clamp"),
+                      },
+                    ],
+                  }}
+                >
                   <View className="w-3 h-3 bg-white rounded-full mr-3 animate-pulse" />
-                  <Text className="text-white text-base font-bold">
+                  <Text className="text-white text-base font-bold tracking-wider">
                     REC {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")}
                   </Text>
-                </View>
+                  {/* Progress indicator */}
+                  <View className="ml-3 w-16 h-1 bg-red-400 rounded-full overflow-hidden">
+                    <View
+                      className="h-full bg-white rounded-full transition-all duration-1000"
+                      style={{ width: `${(recordingTime / 60) * 100}%` }}
+                    />
+                  </View>
+                </Animated.View>
               )}
 
               <View className="flex-row items-center justify-center space-x-8">
                 {/* Camera Flip Button */}
-                <Pressable
-                  className="bg-black/70 rounded-full p-3"
-                  onPress={toggleCameraFacing}
-                  disabled={isRecording || isProcessing}
-                  accessibilityRole="button"
-                  accessibilityLabel="Switch camera"
-                >
-                  <Ionicons name="camera-reverse-outline" size={24} color="#FFFFFF" />
-                </Pressable>
+                <Animated.View style={controlsAnimatedStyle}>
+                  <Pressable
+                    className="bg-black/70 rounded-full p-3"
+                    onPress={toggleCameraFacing}
+                    disabled={isRecording || isProcessing}
+                    accessibilityRole="button"
+                    accessibilityLabel="Switch camera"
+                  >
+                    <Ionicons name="camera-reverse-outline" size={24} color="#FFFFFF" />
+                  </Pressable>
+                </Animated.View>
 
-                {/* Record Button */}
-                <Pressable
-                  className={`rounded-full p-6 border-4 ${
-                    isRecording ? "bg-red-600 border-red-400" : "bg-transparent border-white"
-                  }`}
-                  onPress={isRecording ? stopRecording : startRecording}
-                  disabled={isProcessing}
-                  accessibilityRole="button"
-                  accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
-                >
-                  <View className={`rounded-full ${isRecording ? "w-6 h-6 bg-white" : "w-8 h-8 bg-red-500"}`} />
-                </Pressable>
+                {/* Record Button with TikTok-like animation */}
+                <Animated.View style={recordButtonAnimatedStyle}>
+                  <Pressable
+                    className={`rounded-full p-6 border-4 transition-all duration-200 ${
+                      isRecording
+                        ? "bg-red-600 border-red-400 shadow-lg shadow-red-500/50"
+                        : "bg-transparent border-white shadow-lg"
+                    }`}
+                    onPress={isRecording ? stopRecording : startRecording}
+                    disabled={isProcessing}
+                    accessibilityRole="button"
+                    accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
+                  >
+                    <View
+                      className={`rounded-full transition-all duration-200 ${isRecording ? "w-6 h-6 bg-white" : "w-8 h-8 bg-red-500"}`}
+                    />
+                  </Pressable>
+                </Animated.View>
 
                 {/* Close Button */}
-                <Pressable
-                  className="bg-black/70 rounded-full p-3"
-                  onPress={() => navigation.goBack()}
-                  disabled={isRecording || isProcessing}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close camera"
-                >
-                  <Ionicons name="close" size={24} color="#FFFFFF" />
-                </Pressable>
+                <Animated.View style={controlsAnimatedStyle}>
+                  <Pressable
+                    className="bg-black/70 rounded-full p-3"
+                    onPress={() => navigation.goBack()}
+                    disabled={isRecording || isProcessing}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close camera"
+                  >
+                    <Ionicons name="close" size={24} color="#FFFFFF" />
+                  </Pressable>
+                </Animated.View>
               </View>
 
               {!isRecording && (
@@ -517,8 +643,24 @@ export default function VideoRecordScreen() {
             </SafeAreaView>
           </View>
         </View>
-        {/* Privacy blur overlay (visual-only) */}
-        <BlurView intensity={25} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
+        {/* Privacy blur overlay with dynamic intensity for TikTok-like effect */}
+        <BlurView
+          intensity={blurIntensity.value}
+          tint="dark"
+          style={{ position: "absolute", inset: 0 }}
+          pointerEvents="none"
+        />
+
+        {/* Live captions overlay for recording preview */}
+        {isRecording && (
+          <View style={{ position: "absolute", left: 0, right: 0, bottom: 140, paddingHorizontal: 16 }}>
+            <View className="bg-black/60 rounded-2xl px-4 py-3 backdrop-blur-sm">
+              <Text className="text-white text-sm font-medium text-center">
+                Recording with live privacy protection...
+              </Text>
+            </View>
+          </View>
+        )}
       </CameraView>
 
       {/* Custom Modal */}

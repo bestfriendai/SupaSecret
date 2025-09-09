@@ -40,23 +40,6 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
     loading: false,
   });
 
-  // Update state when permissions change
-  useEffect(() => {
-    setPermissionState((prev) => ({
-      ...prev,
-      camera: cameraPermission?.granted || false,
-      microphone: micPermission?.granted || false,
-      mediaLibrary: mediaLibraryPermission?.granted || false,
-    }));
-  }, [cameraPermission?.granted, micPermission?.granted, mediaLibraryPermission?.granted]);
-
-  // Auto-request permissions on mount if enabled
-  useEffect(() => {
-    if (autoRequest) {
-      requestAllPermissions();
-    }
-  }, [autoRequest, requestAllPermissions]);
-
   const showPermissionAlert = useCallback(
     (title: string, message: string, onRetry?: () => void) => {
       if (!showAlerts) return;
@@ -73,6 +56,16 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
     },
     [showAlerts],
   );
+
+  // Update state when permissions change
+  useEffect(() => {
+    setPermissionState((prev) => ({
+      ...prev,
+      camera: cameraPermission?.granted || false,
+      microphone: micPermission?.granted || false,
+      mediaLibrary: mediaLibraryPermission?.granted || false,
+    }));
+  }, [cameraPermission?.granted, micPermission?.granted, mediaLibraryPermission?.granted]);
 
   const requestCameraPermission = useCallback(async (): Promise<boolean> => {
     try {
@@ -150,33 +143,40 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
     setPermissionState((prev) => ({ ...prev, loading: true, error: undefined }));
 
     try {
-      const [cameraGranted, micGranted, mediaLibraryGranted] = await Promise.all([
+      const [cameraGranted, micGranted, mediaGranted] = await Promise.all([
         requestCameraPermission(),
         requestMicrophonePermission(),
         requestMediaLibraryPermission(),
       ]);
 
-      const allGranted = cameraGranted && micGranted && mediaLibraryGranted;
+      const allGranted = cameraGranted && micGranted && mediaGranted;
 
       setPermissionState((prev) => ({
         ...prev,
         loading: false,
         camera: cameraGranted,
         microphone: micGranted,
-        mediaLibrary: mediaLibraryGranted,
+        mediaLibrary: mediaGranted,
       }));
 
       return allGranted;
     } catch (error) {
-      console.error("Permission request error:", error);
+      console.error("All permissions request error:", error);
       setPermissionState((prev) => ({
         ...prev,
         loading: false,
-        error: "Failed to request permissions",
+        error: "Failed to request all permissions",
       }));
       return false;
     }
   }, [requestCameraPermission, requestMicrophonePermission, requestMediaLibraryPermission]);
+
+  // Auto-request permissions on mount if enabled
+  useEffect(() => {
+    if (autoRequest) {
+      requestAllPermissions();
+    }
+  }, [autoRequest, requestAllPermissions]);
 
   const requestVideoPermissions = useCallback(async (): Promise<boolean> => {
     setPermissionState((prev) => ({ ...prev, loading: true, error: undefined }));
