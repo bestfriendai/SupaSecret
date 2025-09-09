@@ -112,29 +112,38 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuthState: async () => {
-        if (__DEV__) {
-          console.log("🔍 Starting auth state check...");
-        }
+        console.log("[AuthStore] checkAuthState called - SETTING isLoading: true");
+        console.log("[AuthStore] Current state before check:", {
+          isAuthenticated: get().isAuthenticated,
+          hasUser: !!get().user,
+          isLoading: get().isLoading,
+        });
+
+        // THIS LINE CAUSES AppNavigator TO SHOW LOADING SCREEN
         set({ isLoading: true });
+        console.log("[AuthStore] isLoading set to TRUE - AppNavigator will now show loading screen");
+
         try {
+          console.log("[AuthStore] Calling getCurrentUser()");
           const user = await getCurrentUser();
 
-          if (__DEV__) {
-            console.log("🔍 Auth state check result:", {
-              hasUser: !!user,
-              isOnboarded: user?.isOnboarded || false,
-              isAuthenticated: !!user,
-            });
-          }
+          console.log("[AuthStore] getCurrentUser() completed:", {
+            hasUser: !!user,
+            isOnboarded: user?.isOnboarded || false,
+            isAuthenticated: !!user,
+          });
 
+          console.log("[AuthStore] Setting final auth state with isLoading: false");
           set({
             user,
             isAuthenticated: !!user,
             isLoading: false,
             error: null,
           });
+          console.log("[AuthStore] Auth state set - AppNavigator will re-evaluate navigation");
         } catch (error) {
-          console.error("❌ Auth state check failed:", error);
+          console.error("[AuthStore] Auth state check failed:", error);
+          console.log("[AuthStore] Setting unauthenticated state due to error");
           set({
             user: null,
             isAuthenticated: false,
@@ -142,6 +151,12 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         }
+
+        console.log("[AuthStore] checkAuthState completed, final state:", {
+          isAuthenticated: get().isAuthenticated,
+          hasUser: !!get().user,
+          isLoading: get().isLoading,
+        });
       },
     }),
     {

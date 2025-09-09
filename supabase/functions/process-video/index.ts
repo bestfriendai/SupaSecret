@@ -74,7 +74,7 @@ serve(async (req) => {
 
     if (!finalVideoUrl && uploadId) {
       // For uploadId, assume it's a filename in the videos bucket
-      const fileName = uploadId.includes('.') ? uploadId : `${uploadId}.mp4`;
+      const fileName = uploadId.includes(".") ? uploadId : `${uploadId}.mp4`;
       const { data: urlData } = supabaseClient.storage.from("videos").getPublicUrl(fileName);
       finalVideoUrl = urlData.publicUrl;
       console.log("Converted uploadId to URL:", finalVideoUrl);
