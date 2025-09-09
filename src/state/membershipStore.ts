@@ -84,10 +84,10 @@ export const useMembershipStore = create<MembershipState>()(
           const expiresAt = new Date();
           if (plan.interval === "month") {
             // Add 30 days to avoid month boundary issues
-            expiresAt.setTime(expiresAt.getTime() + (30 * 24 * 60 * 60 * 1000));
+            expiresAt.setTime(expiresAt.getTime() + 30 * 24 * 60 * 60 * 1000);
           } else {
             // Add 365 days for yearly subscription
-            expiresAt.setTime(expiresAt.getTime() + (365 * 24 * 60 * 60 * 1000));
+            expiresAt.setTime(expiresAt.getTime() + 365 * 24 * 60 * 60 * 1000);
           }
 
           const membership: UserMembership = {

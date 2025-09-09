@@ -5,7 +5,11 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Audio } from "expo-av";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { useAuthStore, cleanupAuthListener, setupAuthListener } from "./src/state/authStore";
-import { useConfessionStore, cleanupConfessionSubscriptions, setupConfessionSubscriptions } from "./src/state/confessionStore";
+import {
+  useConfessionStore,
+  cleanupConfessionSubscriptions,
+  setupConfessionSubscriptions,
+} from "./src/state/confessionStore";
 import { cleanupNotificationSubscriptions, setupNotificationSubscriptions } from "./src/state/notificationStore";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ToastProvider } from "./src/contexts/ToastContext";
@@ -43,7 +47,12 @@ export default function App() {
     const initializeApp = async () => {
       try {
         // Check environment and log dependency availability
-        checkEnvironment();
+        try {
+          checkEnvironment();
+        } catch (error) {
+          console.error("❌ Environment check failed:", error);
+          // Continue initialization even if environment check fails
+        }
 
         // Configure audio session for video playback
         await Audio.setAudioModeAsync({
@@ -62,10 +71,10 @@ export default function App() {
         // Initialize all production services
         const serviceResult = await initializeServices();
         if (!serviceResult.success) {
-          console.error('Some services failed to initialize:', serviceResult.errors);
+          console.error("Some services failed to initialize:", serviceResult.errors);
         }
         if (serviceResult.warnings.length > 0) {
-          console.warn('Service initialization warnings:', serviceResult.warnings);
+          console.warn("Service initialization warnings:", serviceResult.warnings);
         }
 
         // Initialize auth state first
@@ -80,17 +89,28 @@ export default function App() {
         }
       } catch (error) {
         console.error("❌ App initialization failed:", error);
+        // Set app-level error state or show user-friendly message
+        // For now, we'll continue with graceful degradation
       }
     };
 
     initializeApp();
 
     // Cleanup function to unsubscribe from all Supabase listeners and offline queue
+    // Wrap each cleanup call in safe try/catch to ensure all cleanups are attempted
     return () => {
-      cleanupAuthListener();
-      cleanupConfessionSubscriptions();
-      cleanupNotificationSubscriptions();
-      offlineQueue.cleanup();
+      const safeCleanup = (cleanupFn: () => void, name: string) => {
+        try {
+          cleanupFn();
+        } catch (error) {
+          console.error(`❌ Cleanup failed for ${name}:`, error);
+        }
+      };
+
+      safeCleanup(cleanupAuthListener, "auth listener");
+      safeCleanup(cleanupConfessionSubscriptions, "confession subscriptions");
+      safeCleanup(cleanupNotificationSubscriptions, "notification subscriptions");
+      safeCleanup(() => offlineQueue.cleanup(), "offline queue");
 
       if (__DEV__) {
         console.log("🧹 App cleanup: All Supabase subscriptions and offline queue cleaned up");
@@ -103,7 +123,7 @@ export default function App() {
       <ErrorBoundary
         onError={(error, errorInfo) => {
           // Log to crash analytics in production
-          console.error('App-level error:', error, errorInfo);
+          console.error("App-level error:", error, errorInfo);
         }}
         resetOnPropsChange={true}
       >

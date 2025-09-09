@@ -63,7 +63,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
       return () => {
         // Screen loses focus - this handles navigation away from this screen
       };
-    }, [])
+    }, []),
   );
 
   // FlashList doesn't need getItemLayout as it handles layout automatically
@@ -87,12 +87,15 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   );
 
   // Handle comment press
-  const handleCommentPress = useCallback((confessionId: string) => {
-    setCurrentVideoId(confessionId);
-    const video = videoConfessions.find(v => v.id === confessionId);
-    setCurrentVideoText(video?.transcription || video?.content || "");
-    commentSheetRef.current?.present();
-  }, [videoConfessions]);
+  const handleCommentPress = useCallback(
+    (confessionId: string) => {
+      setCurrentVideoId(confessionId);
+      const video = videoConfessions.find((v) => v.id === confessionId);
+      setCurrentVideoText(video?.transcription || video?.content || "");
+      commentSheetRef.current?.present();
+    },
+    [videoConfessions],
+  );
 
   // Handle share press
   const handleSharePress = useCallback((confessionId: string, confessionText: string) => {
@@ -102,17 +105,20 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   }, []);
 
   // Handle save press
-  const handleSavePress = useCallback(async (confessionId: string) => {
-    try {
-      if (isSaved(confessionId)) {
-        await unsaveConfession(confessionId);
-      } else {
-        await saveConfession(confessionId);
+  const handleSavePress = useCallback(
+    async (confessionId: string) => {
+      try {
+        if (isSaved(confessionId)) {
+          await unsaveConfession(confessionId);
+        } else {
+          await saveConfession(confessionId);
+        }
+      } catch (error) {
+        console.error("Failed to toggle save:", error);
       }
-    } catch (error) {
-      console.error('Failed to toggle save:', error);
-    }
-  }, [saveConfession, unsaveConfession, isSaved]);
+    },
+    [saveConfession, unsaveConfession, isSaved],
+  );
 
   // Handle report press
   const handleReportPress = useCallback((confessionId: string, confessionText: string) => {
@@ -143,7 +149,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   return (
     <>
       <StatusBar hidden />
-      <View style={{ flex: 1, backgroundColor: 'black' }}>
+      <View style={{ flex: 1, backgroundColor: "black" }}>
         <FlashList
           data={videoConfessions}
           renderItem={renderItem}
@@ -163,7 +169,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
           overrideItemLayout={(layout) => {
             layout.size = screenHeight;
           }}
-          contentContainerStyle={{ backgroundColor: 'black' }}
+          contentContainerStyle={{ backgroundColor: "black" }}
           bounces={false}
           scrollEventThrottle={16}
           disableIntervalMomentum={true}

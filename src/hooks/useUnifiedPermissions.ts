@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { Alert, Linking } from 'react-native';
+import { useState, useCallback } from "react";
+import { useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import { Alert, Linking } from "react-native";
 
 interface PermissionState {
   camera: boolean;
@@ -15,7 +15,7 @@ interface PermissionState {
 export const useUnifiedPermissions = () => {
   const [cameraPermission, requestCamera] = useCameraPermissions();
   const [micPermission, requestMicrophone] = useMicrophonePermissions();
-  
+
   const [permissionState, setPermissionState] = useState<PermissionState>({
     camera: cameraPermission?.granted || false,
     microphone: micPermission?.granted || false,
@@ -23,22 +23,19 @@ export const useUnifiedPermissions = () => {
   });
 
   const requestAllPermissions = useCallback(async (): Promise<boolean> => {
-    setPermissionState(prev => ({ ...prev, loading: true }));
-    
+    setPermissionState((prev) => ({ ...prev, loading: true }));
+
     try {
-      const [cameraResult, micResult] = await Promise.all([
-        requestCamera(),
-        requestMicrophone(),
-      ]);
-      
+      const [cameraResult, micResult] = await Promise.all([requestCamera(), requestMicrophone()]);
+
       const newState = {
         camera: cameraResult.granted,
         microphone: micResult.granted,
         loading: false,
       };
-      
+
       setPermissionState(newState);
-      
+
       // Show specific error messages for denied permissions
       if (!cameraResult.granted) {
         Alert.alert(
@@ -65,12 +62,12 @@ export const useUnifiedPermissions = () => {
         );
         return false;
       }
-      
+
       return cameraResult.granted && micResult.granted;
     } catch (error) {
-      console.error('Permission error:', error);
-      setPermissionState(prev => ({ ...prev, loading: false }));
-      
+      console.error("Permission error:", error);
+      setPermissionState((prev) => ({ ...prev, loading: false }));
+
       Alert.alert(
         "Permission Error",
         "Failed to request permissions. Please try again or check your device settings.",
@@ -80,7 +77,7 @@ export const useUnifiedPermissions = () => {
           { text: "Open Settings", onPress: () => Linking.openSettings() },
         ],
       );
-      
+
       return false;
     }
   }, [requestCamera, requestMicrophone]);
@@ -88,13 +85,13 @@ export const useUnifiedPermissions = () => {
   const checkPermissions = useCallback((): boolean => {
     const hasCamera = cameraPermission?.granted || false;
     const hasMicrophone = micPermission?.granted || false;
-    
-    setPermissionState(prev => ({
+
+    setPermissionState((prev) => ({
       ...prev,
       camera: hasCamera,
       microphone: hasMicrophone,
     }));
-    
+
     return hasCamera && hasMicrophone;
   }, [cameraPermission?.granted, micPermission?.granted]);
 

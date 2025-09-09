@@ -22,19 +22,19 @@ export const useKeyboard = () => {
     isVisible: false,
     height: 0,
     duration: 0,
-    easing: '',
+    easing: "",
   });
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
     const onKeyboardShow = (event: any) => {
       setKeyboardInfo({
         isVisible: true,
         height: event.endCoordinates.height,
         duration: event.duration || 250,
-        easing: event.easing || 'keyboard',
+        easing: event.easing || "keyboard",
       });
     };
 
@@ -43,7 +43,7 @@ export const useKeyboard = () => {
         isVisible: false,
         height: 0,
         duration: event.duration || 250,
-        easing: event.easing || 'keyboard',
+        easing: event.easing || "keyboard",
       });
     };
 
@@ -64,14 +64,16 @@ export const useKeyboard = () => {
  */
 export const dismissKeyboard = (withHaptics = false) => {
   Keyboard.dismiss();
-  
-  if (withHaptics && Platform.OS === 'ios') {
+
+  if (withHaptics && Platform.OS === "ios") {
     // Add subtle haptic feedback on keyboard dismiss
-    import('expo-haptics').then(({ impactAsync, ImpactFeedbackStyle }) => {
-      impactAsync(ImpactFeedbackStyle.Light);
-    }).catch(() => {
-      // Haptics not available - silently fail
-    });
+    import("expo-haptics")
+      .then(({ impactAsync, ImpactFeedbackStyle }) => {
+        impactAsync(ImpactFeedbackStyle.Light);
+      })
+      .catch(() => {
+        // Haptics not available - silently fail
+      });
   }
 };
 
@@ -79,21 +81,21 @@ export const dismissKeyboard = (withHaptics = false) => {
  * Get appropriate KeyboardAvoidingView behavior for platform
  */
 export const getKeyboardBehavior = () => {
-  return Platform.OS === 'ios' ? 'padding' : 'height';
+  return Platform.OS === "ios" ? "padding" : "height";
 };
 
 /**
  * Get keyboard vertical offset for different screen types
  */
-export const getKeyboardVerticalOffset = (screenType: 'modal' | 'screen' | 'bottomSheet' = 'screen') => {
-  if (Platform.OS === 'android') return 0;
-  
+export const getKeyboardVerticalOffset = (screenType: "modal" | "screen" | "bottomSheet" = "screen") => {
+  if (Platform.OS === "android") return 0;
+
   switch (screenType) {
-    case 'modal':
+    case "modal":
       return 0;
-    case 'bottomSheet':
+    case "bottomSheet":
       return 0;
-    case 'screen':
+    case "screen":
     default:
       return 0; // Let SafeAreaView handle the offset
   }
@@ -105,10 +107,8 @@ export const getKeyboardVerticalOffset = (screenType: 'modal' | 'screen' | 'bott
 export const useKeyboardPadding = (additionalPadding = 0) => {
   const keyboard = useKeyboard();
   const insets = useSafeAreaInsets();
-  
-  return keyboard.isVisible 
-    ? keyboard.height + additionalPadding
-    : insets.bottom + additionalPadding;
+
+  return keyboard.isVisible ? keyboard.height + additionalPadding : insets.bottom + additionalPadding;
 };
 
 /**
@@ -117,14 +117,14 @@ export const useKeyboardPadding = (additionalPadding = 0) => {
 export const useSafeKeyboardHeight = () => {
   const keyboard = useKeyboard();
   const insets = useSafeAreaInsets();
-  
+
   if (!keyboard.isVisible) return 0;
-  
+
   // On iOS, keyboard height already accounts for safe area
-  if (Platform.OS === 'ios') {
+  if (Platform.OS === "ios") {
     return keyboard.height;
   }
-  
+
   // On Android, we might need to adjust
   return keyboard.height;
 };
@@ -134,43 +134,43 @@ export const useSafeKeyboardHeight = () => {
  */
 export const KEYBOARD_CONFIGS = {
   text: {
-    keyboardType: 'default' as const,
-    autoCapitalize: 'sentences' as const,
+    keyboardType: "default" as const,
+    autoCapitalize: "sentences" as const,
     autoCorrect: true,
     spellCheck: true,
   },
   email: {
-    keyboardType: 'email-address' as const,
-    autoCapitalize: 'none' as const,
+    keyboardType: "email-address" as const,
+    autoCapitalize: "none" as const,
     autoCorrect: false,
     spellCheck: false,
   },
   password: {
-    keyboardType: 'default' as const,
-    autoCapitalize: 'none' as const,
+    keyboardType: "default" as const,
+    autoCapitalize: "none" as const,
     autoCorrect: false,
     spellCheck: false,
     secureTextEntry: true,
   },
   numeric: {
-    keyboardType: 'numeric' as const,
-    autoCapitalize: 'none' as const,
+    keyboardType: "numeric" as const,
+    autoCapitalize: "none" as const,
     autoCorrect: false,
     spellCheck: false,
   },
   search: {
-    keyboardType: 'default' as const,
-    autoCapitalize: 'none' as const,
+    keyboardType: "default" as const,
+    autoCapitalize: "none" as const,
     autoCorrect: false,
     spellCheck: false,
-    returnKeyType: 'search' as const,
+    returnKeyType: "search" as const,
   },
   comment: {
-    keyboardType: 'default' as const,
-    autoCapitalize: 'sentences' as const,
+    keyboardType: "default" as const,
+    autoCapitalize: "sentences" as const,
     autoCorrect: true,
     spellCheck: true,
-    returnKeyType: 'send' as const,
+    returnKeyType: "send" as const,
   },
 } as const;
 
@@ -179,14 +179,14 @@ export const KEYBOARD_CONFIGS = {
  */
 export const getOptimizedTextInputProps = (type: keyof typeof KEYBOARD_CONFIGS) => {
   const config = KEYBOARD_CONFIGS[type];
-  
+
   return {
     ...config,
-    blurOnSubmit: type === 'search' || type === 'comment',
+    blurOnSubmit: type === "search" || type === "comment",
     enablesReturnKeyAutomatically: true,
-    keyboardAppearance: 'dark' as const,
-    selectionColor: '#1D9BF0',
-    underlineColorAndroid: 'transparent',
+    keyboardAppearance: "dark" as const,
+    selectionColor: "#1D9BF0",
+    underlineColorAndroid: "transparent",
   };
 };
 
@@ -195,10 +195,10 @@ export const getOptimizedTextInputProps = (type: keyof typeof KEYBOARD_CONFIGS) 
  */
 export const getKeyboardAwareScrollProps = () => {
   return {
-    keyboardShouldPersistTaps: 'handled' as const,
-    keyboardDismissMode: Platform.OS === 'ios' ? 'interactive' as const : 'on-drag' as const,
+    keyboardShouldPersistTaps: "handled" as const,
+    keyboardDismissMode: Platform.OS === "ios" ? ("interactive" as const) : ("on-drag" as const),
     showsVerticalScrollIndicator: false,
-    contentInsetAdjustmentBehavior: 'automatic' as const,
+    contentInsetAdjustmentBehavior: "automatic" as const,
   };
 };
 
@@ -207,12 +207,10 @@ export const getKeyboardAwareScrollProps = () => {
  */
 export const useKeyboardAwareModal = () => {
   const keyboard = useKeyboard();
-  const screenHeight = Dimensions.get('window').height;
-  
-  const modalOffset = keyboard.isVisible 
-    ? Math.max(0, (keyboard.height - screenHeight * 0.3) / 2)
-    : 0;
-    
+  const screenHeight = Dimensions.get("window").height;
+
+  const modalOffset = keyboard.isVisible ? Math.max(0, (keyboard.height - screenHeight * 0.3) / 2) : 0;
+
   return {
     isKeyboardVisible: keyboard.isVisible,
     keyboardHeight: keyboard.height,
@@ -224,12 +222,9 @@ export const useKeyboardAwareModal = () => {
 /**
  * Utility to handle keyboard events in components
  */
-export const createKeyboardHandler = (
-  onShow?: (height: number) => void,
-  onHide?: () => void
-) => {
-  const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-  const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+export const createKeyboardHandler = (onShow?: (height: number) => void, onHide?: () => void) => {
+  const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+  const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
   const showSubscription = Keyboard.addListener(showEvent, (event) => {
     onShow?.(event.endCoordinates.height);

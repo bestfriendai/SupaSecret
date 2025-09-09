@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { AccessibilityInfo, PixelRatio } from 'react-native';
+import { useState, useEffect } from "react";
+import { AccessibilityInfo, PixelRatio } from "react-native";
 
 export interface DynamicTypeSettings {
   fontScale: number;
@@ -15,10 +15,10 @@ export interface ScaledFontSizes {
   base: number;
   lg: number;
   xl: number;
-  '2xl': number;
-  '3xl': number;
-  '4xl': number;
-  '5xl': number;
+  "2xl": number;
+  "3xl": number;
+  "4xl": number;
+  "5xl": number;
 }
 
 // Base font sizes (in points)
@@ -28,10 +28,10 @@ const BASE_FONT_SIZES = {
   base: 16,
   lg: 18,
   xl: 20,
-  '2xl': 24,
-  '3xl': 30,
-  '4xl': 36,
-  '5xl': 48,
+  "2xl": 24,
+  "3xl": 30,
+  "4xl": 36,
+  "5xl": 48,
 };
 
 /**
@@ -50,24 +50,17 @@ export const useDynamicType = () => {
   useEffect(() => {
     const loadAccessibilitySettings = async () => {
       try {
-        const [
-          isLargeTextEnabled,
-          isBoldTextEnabled,
-          isReduceMotionEnabled,
-          isScreenReaderEnabled,
-        ] = await Promise.all([
-          // Feature-detect accessibility APIs before calling
-          AccessibilityInfo.isLargeTextEnabled ?
-            AccessibilityInfo.isLargeTextEnabled() :
-            Promise.resolve(false),
-          AccessibilityInfo.isBoldTextEnabled ?
-            AccessibilityInfo.isBoldTextEnabled() :
-            Promise.resolve(false),
-          AccessibilityInfo.isReduceMotionEnabled?.() || Promise.resolve(false),
-          AccessibilityInfo.isScreenReaderEnabled(),
-        ]);
+        const [isLargeTextEnabled, isBoldTextEnabled, isReduceMotionEnabled, isScreenReaderEnabled] = await Promise.all(
+          [
+            // Feature-detect accessibility APIs before calling
+            AccessibilityInfo.isLargeTextEnabled?.() ?? Promise.resolve(false),
+            AccessibilityInfo.isBoldTextEnabled?.() ?? Promise.resolve(false),
+            AccessibilityInfo.isReduceMotionEnabled?.() ?? Promise.resolve(false),
+            AccessibilityInfo.isScreenReaderEnabled?.() ?? Promise.resolve(false),
+          ],
+        );
 
-        setSettings(prev => ({
+        setSettings((prev) => ({
           ...prev,
           isLargeTextEnabled,
           isBoldTextEnabled,
@@ -76,7 +69,7 @@ export const useDynamicType = () => {
         }));
       } catch (error) {
         if (__DEV__) {
-          console.warn('Failed to load accessibility settings:', error);
+          console.warn("Failed to load accessibility settings:", error);
         }
       }
     };
@@ -85,16 +78,36 @@ export const useDynamicType = () => {
 
     // Listen for changes in accessibility settings
     const subscriptions = [
-      AccessibilityInfo.addEventListener('reduceMotionChanged', (isReduceMotionEnabled) => {
-        setSettings(prev => ({ ...prev, isReduceMotionEnabled }));
+      AccessibilityInfo.addEventListener("reduceMotionChanged", (isReduceMotionEnabled) => {
+        setSettings((prev) => ({ ...prev, isReduceMotionEnabled }));
       }),
-      AccessibilityInfo.addEventListener('screenReaderChanged', (isScreenReaderEnabled) => {
-        setSettings(prev => ({ ...prev, isScreenReaderEnabled }));
+      AccessibilityInfo.addEventListener("screenReaderChanged", (isScreenReaderEnabled) => {
+        setSettings((prev) => ({ ...prev, isScreenReaderEnabled }));
       }),
-    ];
+      AccessibilityInfo.addEventListener("largeTextChanged", (isLargeTextEnabled) => {
+        setSettings((prev) => ({ ...prev, isLargeTextEnabled }));
+      }),
+      AccessibilityInfo.addEventListener("boldTextChanged", (isBoldTextEnabled) => {
+        setSettings((prev) => ({ ...prev, isBoldTextEnabled }));
+      }),
+      // Note: fontScaleChanged may not be available on all RN versions
+      // Using a try-catch to handle gracefully
+      (() => {
+        try {
+          return AccessibilityInfo.addEventListener("fontScaleChanged", (fontScale) => {
+            setSettings((prev) => ({ ...prev, fontScale }));
+          });
+        } catch (error) {
+          if (__DEV__) {
+            console.warn("fontScaleChanged event not supported:", error);
+          }
+          return null;
+        }
+      })(),
+    ].filter(Boolean);
 
     return () => {
-      subscriptions.forEach(subscription => subscription?.remove());
+      subscriptions.forEach((subscription) => subscription?.remove());
     };
   }, []);
 
@@ -111,23 +124,23 @@ export const useDynamicType = () => {
   };
 
   // Get font weight based on bold text preference
-  const getFontWeight = (baseWeight: string = 'normal'): string => {
+  const getFontWeight = (baseWeight: string = "normal"): string => {
     if (settings.isBoldTextEnabled) {
       switch (baseWeight) {
-        case 'normal':
-        case '400':
-          return '600';
-        case 'medium':
-        case '500':
-          return '700';
-        case 'semibold':
-        case '600':
-          return '700';
-        case 'bold':
-        case '700':
-          return '800';
+        case "normal":
+        case "400":
+          return "600";
+        case "medium":
+        case "500":
+          return "700";
+        case "semibold":
+        case "600":
+          return "700";
+        case "bold":
+        case "700":
+          return "800";
         default:
-          return 'bold';
+          return "bold";
       }
     }
     return baseWeight;
@@ -197,29 +210,46 @@ export const DynamicTypeUtils = {
 
   // Calculate line height based on font size and accessibility needs
   getLineHeight: (fontSize: number, isLargeText: boolean = false): number => {
-    const baseRatio = isLargeText ? 1.4 : 1.2;
+    const baseRatio = isLargeText ? 1.6 : 1.5;
     return Math.round(fontSize * baseRatio);
   },
 
   // Get accessible color contrast with WCAG compliance
-  getAccessibleColor: (
-    baseColor: string,
-    backgroundColor: string,
-    isHighContrast: boolean = false
-  ): string => {
+  getAccessibleColor: (baseColor: string, backgroundColor: string, isHighContrast: boolean = false): string => {
     // Helper function to convert hex to RGB
     const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-      } : null;
+      // Remove # if present and convert to lowercase
+      const cleanHex = hex.replace(/^#/, "").toLowerCase();
+
+      // Check for 3-digit or 6-digit hex format
+      const shortHexRegex = /^([a-f\d])([a-f\d])([a-f\d])$/;
+      const longHexRegex = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/;
+
+      let result = longHexRegex.exec(cleanHex);
+
+      if (!result) {
+        // Try 3-digit format and expand to 6-digit
+        const shortResult = shortHexRegex.exec(cleanHex);
+        if (shortResult) {
+          // Expand 3-digit to 6-digit (e.g., "abc" -> "aabbcc")
+          const expandedHex =
+            shortResult[1] + shortResult[1] + shortResult[2] + shortResult[2] + shortResult[3] + shortResult[3];
+          result = longHexRegex.exec(expandedHex);
+        }
+      }
+
+      return result
+        ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16),
+          }
+        : null;
     };
 
     // Calculate relative luminance
     const getLuminance = (r: number, g: number, b: number): number => {
-      const [rs, gs, bs] = [r, g, b].map(c => {
+      const [rs, gs, bs] = [r, g, b].map((c) => {
         c = c / 255;
         return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
       });
@@ -239,7 +269,7 @@ export const DynamicTypeUtils = {
 
       if (!baseRgb || !bgRgb) {
         // Fallback for invalid colors
-        return isHighContrast ? '#000000' : baseColor;
+        return isHighContrast ? "#000000" : baseColor;
       }
 
       const baseLum = getLuminance(baseRgb.r, baseRgb.g, baseRgb.b);
@@ -254,10 +284,10 @@ export const DynamicTypeUtils = {
       }
 
       // If contrast is insufficient, return black or white based on background
-      return bgLum > 0.5 ? '#000000' : '#FFFFFF';
+      return bgLum > 0.5 ? "#000000" : "#FFFFFF";
     } catch (error) {
       // Fallback on error
-      return isHighContrast ? '#000000' : baseColor;
+      return isHighContrast ? "#000000" : baseColor;
     }
   },
 };

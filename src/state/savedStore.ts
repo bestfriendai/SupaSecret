@@ -55,15 +55,20 @@ export const useSavedStore = create<SavedState>()(
           }
 
           // Try to save to backend
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (user) {
             const { error } = await supabase
               .from("user_saved_confessions")
               .insert({ user_id: user.id, confession_id: confessionId });
 
             if (error) {
-              // If online operation fails, queue it for retry
-              await offlineQueue.enqueue(OFFLINE_ACTIONS.SAVE_CONFESSION, { confessionId });
+              // Only enqueue for retry if the error is retryable (not unique constraint violations, etc.)
+              const isRetryable = !error.code || !["23505", "23503", "23502"].includes(error.code); // Common non-retryable Postgres error codes
+              if (isRetryable) {
+                await offlineQueue.enqueue(OFFLINE_ACTIONS.SAVE_CONFESSION, { confessionId });
+              }
               throw error;
             }
           }
@@ -71,7 +76,7 @@ export const useSavedStore = create<SavedState>()(
           // Revert optimistic update on error only if not queued
           if (offlineQueue.getNetworkStatus()) {
             set((state) => ({
-              savedConfessionIds: state.savedConfessionIds.filter(id => id !== confessionId),
+              savedConfessionIds: state.savedConfessionIds.filter((id) => id !== confessionId),
               error: error instanceof Error ? error.message : "Failed to save confession",
             }));
           }
@@ -96,7 +101,9 @@ export const useSavedStore = create<SavedState>()(
           }
 
           // Try to remove from backend
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (user) {
             const { error } = await supabase
               .from("user_saved_confessions")
@@ -142,7 +149,7 @@ export const useSavedStore = create<SavedState>()(
               savedConfessions: [],
               isLoading: false,
               hasMore: false,
-              lastFetchTime: Date.now()
+              lastFetchTime: Date.now(),
             });
             return;
           }
@@ -150,10 +157,12 @@ export const useSavedStore = create<SavedState>()(
           // Fetch saved confessions from Supabase
           const { data: confessions, error } = await supabase
             .from("confessions")
-            .select(`
+            .select(
+              `
               *,
               confession_likes!left(user_id)
-            `)
+            `,
+            )
             .in("id", state.savedConfessionIds)
             .order("created_at", { ascending: false })
             .limit(ITEMS_PER_PAGE);
@@ -192,7 +201,7 @@ export const useSavedStore = create<SavedState>()(
 
         try {
           const remainingIds = state.savedConfessionIds.filter(
-            id => !state.savedConfessions.some(confession => confession.id === id)
+            (id) => !state.savedConfessions.some((confession) => confession.id === id),
           );
 
           if (remainingIds.length === 0) {
@@ -202,10 +211,12 @@ export const useSavedStore = create<SavedState>()(
 
           const { data: confessions, error } = await supabase
             .from("confessions")
-            .select(`
+            .select(
+              `
               *,
               confession_likes!left(user_id)
-            `)
+            `,
+            )
             .in("id", remainingIds.slice(0, ITEMS_PER_PAGE))
             .order("created_at", { ascending: false });
 

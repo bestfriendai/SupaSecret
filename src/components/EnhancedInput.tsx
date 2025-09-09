@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, TextInputProps } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming, 
+import React, { useState } from "react";
+import { View, Text, TextInput, Pressable, TextInputProps } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
   interpolateColor,
-  interpolate 
-} from 'react-native-reanimated';
+  interpolate,
+} from "react-native-reanimated";
 
-interface EnhancedInputProps extends Omit<TextInputProps, 'onChangeText' | 'onBlur'> {
+interface EnhancedInputProps extends Omit<TextInputProps, "onChangeText" | "onBlur"> {
   label?: string;
   error?: string | null;
   isValid?: boolean;
@@ -23,8 +23,8 @@ interface EnhancedInputProps extends Omit<TextInputProps, 'onChangeText' | 'onBl
   onChangeText?: (text: string) => void;
   onBlur?: () => void;
   helperText?: string;
-  variant?: 'default' | 'outlined' | 'filled';
-  size?: 'small' | 'medium' | 'large';
+  variant?: "default" | "outlined" | "filled";
+  size?: "small" | "medium" | "large";
 }
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
@@ -43,9 +43,9 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   onChangeText,
   onBlur,
   helperText,
-  variant = 'default',
-  size = 'medium',
-  value = '',
+  variant = "default",
+  size = "medium",
+  value = "",
   ...textInputProps
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -81,10 +81,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
     const borderColor = interpolateColor(
       errorAnimation.value,
       [0, 1],
-      [
-        interpolateColor(focusAnimation.value, [0, 1], ['#374151', '#3B82F6']),
-        '#EF4444'
-      ]
+      [interpolateColor(focusAnimation.value, [0, 1], ["#374151", "#3B82F6"]), "#EF4444"],
     );
 
     return {
@@ -97,10 +94,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
     const color = interpolateColor(
       errorAnimation.value,
       [0, 1],
-      [
-        interpolateColor(focusAnimation.value, [0, 1], ['#9CA3AF', '#3B82F6']),
-        '#EF4444'
-      ]
+      [interpolateColor(focusAnimation.value, [0, 1], ["#9CA3AF", "#3B82F6"]), "#EF4444"],
     );
 
     return { color };
@@ -109,29 +103,30 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   // Get size-specific styles
   const getSizeStyles = () => {
     switch (size) {
-      case 'small':
+      case "small":
         return {
-          container: 'py-2 px-3',
-          text: 'text-14',
+          container: "py-2 px-3",
+          text: "text-14",
           icon: 16,
         };
-      case 'large':
+      case "large":
         return {
-          container: 'py-4 px-4',
-          text: 'text-18',
+          container: "py-4 px-4",
+          text: "text-18",
           icon: 24,
         };
       default:
         return {
-          container: 'py-3 px-4',
-          text: 'text-16',
+          container: "py-3 px-4",
+          text: "text-16",
           icon: 20,
         };
     }
   };
 
   const sizeStyles = getSizeStyles();
-  const characterCount = value.length;
+  const textValue = typeof value === "string" ? value : String(value ?? "");
+  const characterCount = textValue.length;
   const isNearLimit = maxLength && characterCount > maxLength * 0.8;
   const isAtLimit = maxLength && characterCount >= maxLength;
 
@@ -139,10 +134,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
     <View className="mb-4">
       {/* Label */}
       {label && (
-        <Animated.Text 
-          style={labelStyle}
-          className={`font-medium mb-2 ${sizeStyles.text}`}
-        >
+        <Animated.Text style={labelStyle} className={`font-medium mb-2 ${sizeStyles.text}`}>
           {label}
           {required && <Text className="text-red-400 ml-1">*</Text>}
         </Animated.Text>
@@ -154,19 +146,12 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
         className={`
           bg-gray-900 rounded-lg flex-row items-center
           ${sizeStyles.container}
-          ${variant === 'outlined' ? 'bg-transparent border' : ''}
-          ${variant === 'filled' ? 'bg-gray-800' : ''}
+          ${variant === "outlined" ? "bg-transparent border" : ""}
+          ${variant === "filled" ? "bg-gray-800" : ""}
         `}
       >
         {/* Left Icon */}
-        {leftIcon && (
-          <Ionicons 
-            name={leftIcon} 
-            size={sizeStyles.icon} 
-            color="#9CA3AF" 
-            style={{ marginRight: 12 }}
-          />
-        )}
+        {leftIcon && <Ionicons name={leftIcon} size={sizeStyles.icon} color="#9CA3AF" style={{ marginRight: 12 }} />}
 
         {/* Text Input */}
         <AnimatedTextInput
@@ -181,7 +166,6 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
           selectionColor="#3B82F6"
           accessibilityLabel={label}
           accessibilityHint={helperText}
-          accessibilityRequired={required}
           accessibilityInvalid={!!(error && touched)}
         />
 
@@ -193,11 +177,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Input action"
           >
-            <Ionicons 
-              name={rightIcon} 
-              size={sizeStyles.icon} 
-              color="#9CA3AF" 
-            />
+            <Ionicons name={rightIcon} size={sizeStyles.icon} color="#9CA3AF" />
           </Pressable>
         )}
       </Animated.View>
@@ -207,46 +187,28 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
         <View className="flex-1">
           {/* Error Message */}
           {error && touched && (
-            <Animated.View
-              entering={undefined}
-              exiting={undefined}
-              className="flex-row items-center"
-            >
+            <Animated.View entering={undefined} exiting={undefined} className="flex-row items-center">
               <Ionicons name="alert-circle" size={14} color="#EF4444" />
-              <Text className="text-red-400 text-12 ml-1 flex-1">
-                {error}
-              </Text>
+              <Text className="text-red-400 text-12 ml-1 flex-1">{error}</Text>
             </Animated.View>
           )}
 
           {/* Helper Text */}
-          {!error && helperText && (
-            <Text className="text-gray-500 text-12">
-              {helperText}
-            </Text>
-          )}
+          {!error && helperText && <Text className="text-gray-500 text-12">{helperText}</Text>}
 
           {/* Success Indicator */}
-          {!error && touched && isValid && value.length > 0 && (
+          {!error && touched && isValid && textValue.length > 0 && (
             <View className="flex-row items-center">
               <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-              <Text className="text-green-400 text-12 ml-1">
-                Looks good!
-              </Text>
+              <Text className="text-green-400 text-12 ml-1">Looks good!</Text>
             </View>
           )}
         </View>
 
         {/* Character Count */}
         {showCharacterCount && maxLength && (
-          <Text 
-            className={`text-12 ml-2 ${
-              isAtLimit 
-                ? 'text-red-400' 
-                : isNearLimit 
-                  ? 'text-yellow-400' 
-                  : 'text-gray-500'
-            }`}
+          <Text
+            className={`text-12 ml-2 ${isAtLimit ? "text-red-400" : isNearLimit ? "text-yellow-400" : "text-gray-500"}`}
           >
             {characterCount}/{maxLength}
           </Text>
@@ -257,7 +219,9 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
 };
 
 // Preset input components for common use cases
-export const EmailInput: React.FC<Omit<EnhancedInputProps, 'leftIcon' | 'keyboardType' | 'autoCapitalize'>> = (props) => (
+export const EmailInput: React.FC<Omit<EnhancedInputProps, "leftIcon" | "keyboardType" | "autoCapitalize">> = (
+  props,
+) => (
   <EnhancedInput
     {...props}
     leftIcon="mail-outline"
@@ -267,9 +231,11 @@ export const EmailInput: React.FC<Omit<EnhancedInputProps, 'leftIcon' | 'keyboar
   />
 );
 
-export const PasswordInput: React.FC<Omit<EnhancedInputProps, 'leftIcon' | 'rightIcon' | 'secureTextEntry'>> = (props) => {
+export const PasswordInput: React.FC<Omit<EnhancedInputProps, "leftIcon" | "rightIcon" | "secureTextEntry">> = (
+  props,
+) => {
   const [isSecure, setIsSecure] = useState(true);
-  
+
   return (
     <EnhancedInput
       {...props}
@@ -283,11 +249,6 @@ export const PasswordInput: React.FC<Omit<EnhancedInputProps, 'leftIcon' | 'righ
   );
 };
 
-export const SearchInput: React.FC<Omit<EnhancedInputProps, 'leftIcon' | 'variant'>> = (props) => (
-  <EnhancedInput
-    {...props}
-    leftIcon="search-outline"
-    variant="filled"
-    placeholder="Search..."
-  />
+export const SearchInput: React.FC<Omit<EnhancedInputProps, "leftIcon" | "variant">> = (props) => (
+  <EnhancedInput {...props} leftIcon="search-outline" variant="filled" placeholder="Search..." />
 );

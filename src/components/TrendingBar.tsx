@@ -114,11 +114,7 @@ export default function TrendingBar({ visible = true }: TrendingBarProps) {
       </View>
 
       {/* Trending Items */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="px-4 pb-3"
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 pb-3">
         {trendingHashtags.length > 0 ? (
           trendingHashtags.map((hashtag, index) => (
             <TrendingBarItem

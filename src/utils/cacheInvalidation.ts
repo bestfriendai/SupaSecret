@@ -3,32 +3,32 @@
  * Manages cache invalidation when data mutations affect multiple stores
  */
 
-export type CacheKey = 
-  | 'confessions'
-  | 'replies'
-  | 'notifications'
-  | 'saved'
-  | 'trending'
-  | 'user_likes'
-  | 'user_preferences'
-  | 'video_analytics';
+export type CacheKey =
+  | "confessions"
+  | "replies"
+  | "notifications"
+  | "saved"
+  | "trending"
+  | "user_likes"
+  | "user_preferences"
+  | "video_analytics";
 
-export type InvalidationEvent = 
-  | 'confession_created'
-  | 'confession_updated'
-  | 'confession_deleted'
-  | 'confession_liked'
-  | 'confession_unliked'
-  | 'confession_saved'
-  | 'confession_unsaved'
-  | 'reply_created'
-  | 'reply_updated'
-  | 'reply_deleted'
-  | 'reply_liked'
-  | 'reply_unliked'
-  | 'user_preferences_updated'
-  | 'notification_read'
-  | 'notification_created';
+export type InvalidationEvent =
+  | "confession_created"
+  | "confession_updated"
+  | "confession_deleted"
+  | "confession_liked"
+  | "confession_unliked"
+  | "confession_saved"
+  | "confession_unsaved"
+  | "reply_created"
+  | "reply_updated"
+  | "reply_deleted"
+  | "reply_liked"
+  | "reply_unliked"
+  | "user_preferences_updated"
+  | "notification_read"
+  | "notification_created";
 
 export interface InvalidationRule {
   event: InvalidationEvent;
@@ -40,69 +40,69 @@ export interface InvalidationRule {
 const INVALIDATION_RULES: InvalidationRule[] = [
   // Confession events
   {
-    event: 'confession_created',
-    affectedCaches: ['confessions', 'trending']
+    event: "confession_created",
+    affectedCaches: ["confessions", "trending"],
   },
   {
-    event: 'confession_updated',
-    affectedCaches: ['confessions', 'saved', 'trending']
+    event: "confession_updated",
+    affectedCaches: ["confessions", "saved", "trending"],
   },
   {
-    event: 'confession_deleted',
-    affectedCaches: ['confessions', 'saved', 'trending', 'replies', 'user_likes']
+    event: "confession_deleted",
+    affectedCaches: ["confessions", "saved", "trending", "replies", "user_likes"],
   },
   {
-    event: 'confession_liked',
-    affectedCaches: ['confessions', 'user_likes', 'trending']
+    event: "confession_liked",
+    affectedCaches: ["confessions", "user_likes", "trending"],
   },
   {
-    event: 'confession_unliked',
-    affectedCaches: ['confessions', 'user_likes', 'trending']
+    event: "confession_unliked",
+    affectedCaches: ["confessions", "user_likes", "trending"],
   },
   {
-    event: 'confession_saved',
-    affectedCaches: ['saved']
+    event: "confession_saved",
+    affectedCaches: ["saved"],
   },
   {
-    event: 'confession_unsaved',
-    affectedCaches: ['saved']
+    event: "confession_unsaved",
+    affectedCaches: ["saved"],
   },
-  
+
   // Reply events
   {
-    event: 'reply_created',
-    affectedCaches: ['replies', 'confessions', 'notifications']
+    event: "reply_created",
+    affectedCaches: ["replies", "confessions", "notifications"],
   },
   {
-    event: 'reply_updated',
-    affectedCaches: ['replies']
+    event: "reply_updated",
+    affectedCaches: ["replies"],
   },
   {
-    event: 'reply_deleted',
-    affectedCaches: ['replies', 'user_likes', 'confessions']
+    event: "reply_deleted",
+    affectedCaches: ["replies", "user_likes", "confessions"],
   },
   {
-    event: 'reply_liked',
-    affectedCaches: ['replies', 'user_likes']
+    event: "reply_liked",
+    affectedCaches: ["replies", "user_likes"],
   },
   {
-    event: 'reply_unliked',
-    affectedCaches: ['replies', 'user_likes']
+    event: "reply_unliked",
+    affectedCaches: ["replies", "user_likes"],
   },
-  
+
   // Other events
   {
-    event: 'user_preferences_updated',
-    affectedCaches: ['user_preferences']
+    event: "user_preferences_updated",
+    affectedCaches: ["user_preferences"],
   },
   {
-    event: 'notification_read',
-    affectedCaches: ['notifications']
+    event: "notification_read",
+    affectedCaches: ["notifications"],
   },
   {
-    event: 'notification_created',
-    affectedCaches: ['notifications']
-  }
+    event: "notification_created",
+    affectedCaches: ["notifications"],
+  },
 ];
 
 // Store invalidation callbacks
@@ -112,17 +112,14 @@ const invalidationCallbacks = new Map<CacheKey, Set<InvalidationCallback>>();
 /**
  * Register a callback for cache invalidation events
  */
-export const registerInvalidationCallback = (
-  cacheKey: CacheKey,
-  callback: InvalidationCallback
-): (() => void) => {
+export const registerInvalidationCallback = (cacheKey: CacheKey, callback: InvalidationCallback): (() => void) => {
   if (!invalidationCallbacks.has(cacheKey)) {
     invalidationCallbacks.set(cacheKey, new Set());
   }
-  
+
   const callbacks = invalidationCallbacks.get(cacheKey)!;
   callbacks.add(callback);
-  
+
   // Return unregister function
   return () => {
     callbacks.delete(callback);
@@ -141,7 +138,7 @@ export const invalidateCache = (event: InvalidationEvent, data?: any): void => {
   }
 
   // Find all rules that match this event
-  const matchingRules = INVALIDATION_RULES.filter(rule => {
+  const matchingRules = INVALIDATION_RULES.filter((rule) => {
     if (rule.event !== event) return false;
     if (rule.condition && !rule.condition(data)) return false;
     return true;
@@ -149,15 +146,15 @@ export const invalidateCache = (event: InvalidationEvent, data?: any): void => {
 
   // Collect all affected caches
   const affectedCaches = new Set<CacheKey>();
-  matchingRules.forEach(rule => {
-    rule.affectedCaches.forEach(cache => affectedCaches.add(cache));
+  matchingRules.forEach((rule) => {
+    rule.affectedCaches.forEach((cache) => affectedCaches.add(cache));
   });
 
   // Trigger callbacks for affected caches
-  affectedCaches.forEach(cacheKey => {
+  affectedCaches.forEach((cacheKey) => {
     const callbacks = invalidationCallbacks.get(cacheKey);
     if (callbacks) {
-      callbacks.forEach(callback => {
+      callbacks.forEach((callback) => {
         try {
           callback(event, data);
         } catch (error) {
@@ -173,7 +170,7 @@ export const invalidateCache = (event: InvalidationEvent, data?: any): void => {
 /**
  * Batch invalidation for multiple events
  */
-export const batchInvalidateCache = (events: Array<{ event: InvalidationEvent; data?: any }>): void => {
+export const batchInvalidateCache = (events: { event: InvalidationEvent; data?: any }[]): void => {
   const allAffectedCaches = new Set<CacheKey>();
   const eventDataMap = new Map<InvalidationEvent, any[]>();
 
@@ -184,14 +181,14 @@ export const batchInvalidateCache = (events: Array<{ event: InvalidationEvent; d
     }
     eventDataMap.get(event)!.push(data);
 
-    const matchingRules = INVALIDATION_RULES.filter(rule => {
+    const matchingRules = INVALIDATION_RULES.filter((rule) => {
       if (rule.event !== event) return false;
       if (rule.condition && !rule.condition(data)) return false;
       return true;
     });
 
-    matchingRules.forEach(rule => {
-      rule.affectedCaches.forEach(cache => allAffectedCaches.add(cache));
+    matchingRules.forEach((rule) => {
+      rule.affectedCaches.forEach((cache) => allAffectedCaches.add(cache));
     });
   });
 
@@ -200,18 +197,16 @@ export const batchInvalidateCache = (events: Array<{ event: InvalidationEvent; d
   }
 
   // Trigger callbacks for all affected caches
-  allAffectedCaches.forEach(cacheKey => {
+  allAffectedCaches.forEach((cacheKey) => {
     const callbacks = invalidationCallbacks.get(cacheKey);
     if (callbacks) {
-      callbacks.forEach(callback => {
+      callbacks.forEach((callback) => {
         try {
           // Call with all events that affect this cache
-          const relevantEvents = events.filter(({ event }) => 
-            INVALIDATION_RULES.some(rule => 
-              rule.event === event && rule.affectedCaches.includes(cacheKey)
-            )
+          const relevantEvents = events.filter(({ event }) =>
+            INVALIDATION_RULES.some((rule) => rule.event === event && rule.affectedCaches.includes(cacheKey)),
           );
-          relevantEvents.forEach(relevantEvent => {
+          relevantEvents.forEach((relevantEvent) => {
             callback(relevantEvent.event, relevantEvent.data);
           });
         } catch (error) {
@@ -249,12 +244,13 @@ export const addInvalidationRule = (rule: InvalidationRule): void => {
  * Remove invalidation rule
  */
 export const removeInvalidationRule = (event: InvalidationEvent, affectedCaches: CacheKey[]): void => {
-  const index = INVALIDATION_RULES.findIndex(rule => 
-    rule.event === event && 
-    rule.affectedCaches.length === affectedCaches.length &&
-    rule.affectedCaches.every(cache => affectedCaches.includes(cache))
+  const index = INVALIDATION_RULES.findIndex(
+    (rule) =>
+      rule.event === event &&
+      rule.affectedCaches.length === affectedCaches.length &&
+      rule.affectedCaches.every((cache) => affectedCaches.includes(cache)),
   );
-  
+
   if (index !== -1) {
     INVALIDATION_RULES.splice(index, 1);
   }

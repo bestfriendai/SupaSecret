@@ -1,16 +1,11 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  Switch,
-} from "react-native";
+import { View, Text, Pressable, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import NetInfo from '@react-native-community/netinfo';
+import NetInfo from "@react-native-community/netinfo";
 
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
@@ -76,7 +71,7 @@ export default function SignInScreen() {
     // Check network connectivity
     const netInfo = await NetInfo.fetch();
     if (!netInfo.isConnected) {
-      showError('No internet connection. Please check your network and try again.');
+      showError("No internet connection. Please check your network and try again.");
       return;
     }
 
@@ -86,7 +81,7 @@ export default function SignInScreen() {
       }
       await signIn(formData, rememberMe); // Pass remember me flag
       impactAsync();
-      showSuccess('Welcome back! You have successfully signed in.');
+      showSuccess("Welcome back! You have successfully signed in.");
       // Navigation will be handled by the auth state change
     } catch (error) {
       if (__DEV__) {
@@ -109,21 +104,21 @@ export default function SignInScreen() {
 
   const handleForgotPassword = async () => {
     if (!formData.email) {
-      showError('Please enter your email address first');
+      showError("Please enter your email address first");
       return;
     }
 
     if (!validateEmail(formData.email)) {
-      showError('Please enter a valid email address');
+      showError("Please enter a valid email address");
       return;
     }
 
     try {
       setIsPasswordResetLoading(true);
       await sendPasswordReset(formData.email);
-      showSuccess('Password reset link sent! Check your inbox.');
+      showSuccess("Password reset link sent! Check your inbox.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to send reset email';
+      const message = error instanceof Error ? error.message : "Unable to send reset email";
       showError(message);
     } finally {
       setIsPasswordResetLoading(false);
@@ -133,107 +128,107 @@ export default function SignInScreen() {
   return (
     <SafeAreaView className="flex-1 bg-black">
       <ScreenKeyboardWrapper className="flex-1" scrollable={true}>
-            {/* Header */}
-            <View className="flex-row items-center justify-between px-6 py-4">
-              <Pressable
-                onPress={() => safeGoBackFromAuth(navigation)}
-                className="w-10 h-10 items-center justify-center rounded-full bg-gray-900"
-              >
-                <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-              </Pressable>
-              <Text className="text-white text-18 font-semibold">Sign In</Text>
-              <View className="w-10" />
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-6 py-4">
+          <Pressable
+            onPress={() => safeGoBackFromAuth(navigation)}
+            className="w-10 h-10 items-center justify-center rounded-full bg-gray-900"
+          >
+            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          </Pressable>
+          <Text className="text-white text-18 font-semibold">Sign In</Text>
+          <View className="w-10" />
+        </View>
+
+        {/* Content */}
+        <View className="flex-1 px-6 py-8">
+          {/* Welcome Text */}
+          <View className="mb-8">
+            <Text className="text-white text-28 font-bold mb-2">Welcome Back</Text>
+            <Text className="text-gray-400 text-16 leading-6">
+              Sign in to your account to continue sharing and connecting anonymously.
+            </Text>
+          </View>
+
+          {/* Form */}
+          <View className="space-y-4 mb-6">
+            <AuthInput
+              label="Email Address"
+              value={formData.email}
+              onChangeText={(text) => {
+                setFormData({ ...formData, email: text });
+                if (formErrors.email) {
+                  setFormErrors({ ...formErrors, email: "" });
+                }
+              }}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoComplete="email"
+              leftIcon="mail"
+              error={formErrors.email}
+            />
+
+            <AuthInput
+              label="Password"
+              value={formData.password}
+              onChangeText={(text) => {
+                setFormData({ ...formData, password: text });
+                if (formErrors.password) {
+                  setFormErrors({ ...formErrors, password: "" });
+                }
+              }}
+              placeholder="Enter your password"
+              secureTextEntry
+              autoComplete="password"
+              leftIcon="lock-closed"
+              error={formErrors.password}
+            />
+          </View>
+
+          {/* Remember Me & Forgot Password */}
+          <View className="flex-row items-center justify-between mb-6">
+            <View className="flex-row items-center">
+              <Switch
+                value={rememberMe}
+                onValueChange={setRememberMe}
+                trackColor={{ false: "#374151", true: "#3B82F6" }}
+                thumbColor={rememberMe ? "#FFFFFF" : "#9CA3AF"}
+                accessibilityLabel="Remember me for future sign-ins"
+                accessibilityRole="switch"
+              />
+              <Text className="text-gray-400 text-14 ml-3">Remember me</Text>
             </View>
 
-            {/* Content */}
-            <View className="flex-1 px-6 py-8">
-              {/* Welcome Text */}
-              <View className="mb-8">
-                <Text className="text-white text-28 font-bold mb-2">Welcome Back</Text>
-                <Text className="text-gray-400 text-16 leading-6">
-                  Sign in to your account to continue sharing and connecting anonymously.
-                </Text>
-              </View>
+            <Pressable
+              onPress={handleForgotPassword}
+              disabled={isPasswordResetLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Reset password"
+            >
+              <Text className={`text-14 font-medium ${isPasswordResetLoading ? "text-gray-500" : "text-blue-400"}`}>
+                {isPasswordResetLoading ? "Sending..." : "Forgot Password?"}
+              </Text>
+            </Pressable>
+          </View>
 
-              {/* Form */}
-              <View className="space-y-4 mb-6">
-                <AuthInput
-                  label="Email Address"
-                  value={formData.email}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, email: text });
-                    if (formErrors.email) {
-                      setFormErrors({ ...formErrors, email: "" });
-                    }
-                  }}
-                  placeholder="Enter your email"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  leftIcon="mail"
-                  error={formErrors.email}
-                />
+          {/* Sign In Button */}
+          <AuthButton
+            title="Sign In"
+            onPress={handleSignIn}
+            loading={isLoading}
+            disabled={isLoading}
+            leftIcon="log-in"
+          />
 
-                <AuthInput
-                  label="Password"
-                  value={formData.password}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, password: text });
-                    if (formErrors.password) {
-                      setFormErrors({ ...formErrors, password: "" });
-                    }
-                  }}
-                  placeholder="Enter your password"
-                  secureTextEntry
-                  autoComplete="password"
-                  leftIcon="lock-closed"
-                  error={formErrors.password}
-                />
-              </View>
+          {/* Divider */}
+          <View className="flex-row items-center my-8">
+            <View className="flex-1 h-px bg-gray-700" />
+            <Text className="text-gray-500 text-14 mx-4">or</Text>
+            <View className="flex-1 h-px bg-gray-700" />
+          </View>
 
-              {/* Remember Me & Forgot Password */}
-              <View className="flex-row items-center justify-between mb-6">
-                <View className="flex-row items-center">
-                  <Switch
-                    value={rememberMe}
-                    onValueChange={setRememberMe}
-                    trackColor={{ false: '#374151', true: '#3B82F6' }}
-                    thumbColor={rememberMe ? '#FFFFFF' : '#9CA3AF'}
-                    accessibilityLabel="Remember me for future sign-ins"
-                    accessibilityRole="switch"
-                  />
-                  <Text className="text-gray-400 text-14 ml-3">Remember me</Text>
-                </View>
-
-                <Pressable
-                  onPress={handleForgotPassword}
-                  disabled={isPasswordResetLoading}
-                  accessibilityRole="button"
-                  accessibilityLabel="Reset password"
-                >
-                  <Text className={`text-14 font-medium ${isPasswordResetLoading ? 'text-gray-500' : 'text-blue-400'}`}>
-                    {isPasswordResetLoading ? 'Sending...' : 'Forgot Password?'}
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* Sign In Button */}
-              <AuthButton
-                title="Sign In"
-                onPress={handleSignIn}
-                loading={isLoading}
-                disabled={isLoading}
-                leftIcon="log-in"
-              />
-
-              {/* Divider */}
-              <View className="flex-row items-center my-8">
-                <View className="flex-1 h-px bg-gray-700" />
-                <Text className="text-gray-500 text-14 mx-4">or</Text>
-                <View className="flex-1 h-px bg-gray-700" />
-              </View>
-
-              {/* Social Sign In Placeholder - Hidden for now */}
-              {/*
+          {/* Social Sign In Placeholder - Hidden for now */}
+          {/*
               <View className="space-y-3 mb-6">
                 <AuthButton
                   title="Continue with Apple"
@@ -252,34 +247,26 @@ export default function SignInScreen() {
               </View>
               */}
 
-              {/* Sign Up Link */}
-              <View className="flex-row items-center justify-center">
-                <Text className="text-gray-400 text-15">Don't have an account? </Text>
-                <Pressable
-                  onPress={handleSignUp}
-                  {...getButtonA11yProps(
-                    'Sign Up',
-                    'Double tap to go to sign up screen'
-                  )}
-                >
-                  <Text className="text-blue-400 text-15 font-semibold">Sign Up</Text>
-                </Pressable>
-              </View>
+          {/* Sign Up Link */}
+          <View className="flex-row items-center justify-center">
+            <Text className="text-gray-400 text-15">Don't have an account? </Text>
+            <Pressable onPress={handleSignUp} {...getButtonA11yProps("Sign Up", "Double tap to go to sign up screen")}>
+              <Text className="text-blue-400 text-15 font-semibold">Sign Up</Text>
+            </Pressable>
+          </View>
 
-              {/* Privacy Notice */}
-              <View className="mt-8 p-4 bg-gray-900 rounded-2xl">
-                <View className="flex-row items-center mb-2">
-                  <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-                  <Text className="text-green-400 text-14 font-medium ml-2">Secure Sign In</Text>
-                </View>
-                <Text className="text-gray-400 text-13 leading-4">
-                  Your login credentials are encrypted and secure. We never store your password in plain text.
-                </Text>
-              </View>
+          {/* Privacy Notice */}
+          <View className="mt-8 p-4 bg-gray-900 rounded-2xl">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+              <Text className="text-green-400 text-14 font-medium ml-2">Secure Sign In</Text>
             </View>
-          </ScreenKeyboardWrapper>
-
-
-      </SafeAreaView>
+            <Text className="text-gray-400 text-13 leading-4">
+              Your login credentials are encrypted and secure. We never store your password in plain text.
+            </Text>
+          </View>
+        </View>
+      </ScreenKeyboardWrapper>
+    </SafeAreaView>
   );
 }

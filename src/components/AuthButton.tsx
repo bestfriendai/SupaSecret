@@ -90,19 +90,10 @@ export default function AuthButton({
 
   const iconSize = size === "small" ? 16 : size === "large" ? 20 : 18;
 
-  const a11yProps = getButtonA11yProps(
-    title,
-    loading ? 'Loading, please wait' : undefined,
-    disabled || loading
-  );
+  const a11yProps = getButtonA11yProps(title, loading ? "Loading, please wait" : undefined, disabled || loading);
 
   return (
-    <Pressable
-      className={getButtonStyles()}
-      onPress={onPress}
-      disabled={disabled || loading}
-      {...a11yProps}
-    >
+    <Pressable className={getButtonStyles()} onPress={onPress} disabled={disabled || loading} {...a11yProps}>
       {loading ? (
         <ActivityIndicator size="small" color={getIconColor()} />
       ) : (

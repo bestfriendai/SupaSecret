@@ -39,7 +39,7 @@ export default function TrendingScreen() {
         clearSearch();
       }
     },
-    300 // 300ms debounce delay
+    300, // 300ms debounce delay
   );
 
   // Load initial data
@@ -156,10 +156,7 @@ export default function TrendingScreen() {
             onChangeText={handleSearchChange}
           />
           {searchQuery.length > 0 && (
-            <Pressable
-              onPress={handleClearSearch}
-              {...getCloseButtonA11yProps()}
-            >
+            <Pressable onPress={handleClearSearch} {...getCloseButtonA11yProps()}>
               <Ionicons name="close-circle" size={16} color="#8B98A5" />
             </Pressable>
           )}
@@ -193,7 +190,7 @@ export default function TrendingScreen() {
             <Text className="text-red-400 text-14 ml-2 flex-1">{error}</Text>
             <Pressable
               onPress={clearError}
-              {...getButtonA11yProps('Dismiss error', 'Double tap to dismiss error message')}
+              {...getButtonA11yProps("Dismiss error", "Double tap to dismiss error message")}
             >
               <Ionicons name="close" size={16} color="#EF4444" />
             </Pressable>
@@ -206,9 +203,7 @@ export default function TrendingScreen() {
         className="flex-1 px-4"
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#1D9BF0" />}
       >
-        {isLoading && !isRefreshing && (
-          <TrendingSkeleton />
-        )}
+        {isLoading && !isRefreshing && <TrendingSkeleton />}
 
         {!isLoading && isSearching ? (
           /* Search Results */

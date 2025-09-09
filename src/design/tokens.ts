@@ -7,98 +7,98 @@
 export const colors = {
   // Primary Colors
   primary: {
-    50: '#EFF6FF',
-    100: '#DBEAFE',
-    200: '#BFDBFE',
-    300: '#93C5FD',
-    400: '#60A5FA',
-    500: '#3B82F6', // Main primary
-    600: '#2563EB',
-    700: '#1D4ED8',
-    800: '#1E40AF',
-    900: '#1E3A8A',
+    50: "#EFF6FF",
+    100: "#DBEAFE",
+    200: "#BFDBFE",
+    300: "#93C5FD",
+    400: "#60A5FA",
+    500: "#3B82F6", // Main primary
+    600: "#2563EB",
+    700: "#1D4ED8",
+    800: "#1E40AF",
+    900: "#1E3A8A",
   },
 
   // Secondary Colors
   secondary: {
-    50: '#F5F3FF',
-    100: '#EDE9FE',
-    200: '#DDD6FE',
-    300: '#C4B5FD',
-    400: '#A78BFA',
-    500: '#8B5CF6', // Main secondary
-    600: '#7C3AED',
-    700: '#6D28D9',
-    800: '#5B21B6',
-    900: '#4C1D95',
+    50: "#F5F3FF",
+    100: "#EDE9FE",
+    200: "#DDD6FE",
+    300: "#C4B5FD",
+    400: "#A78BFA",
+    500: "#8B5CF6", // Main secondary
+    600: "#7C3AED",
+    700: "#6D28D9",
+    800: "#5B21B6",
+    900: "#4C1D95",
   },
 
   // Semantic Colors
   success: {
-    50: '#ECFDF5',
-    100: '#D1FAE5',
-    200: '#A7F3D0',
-    300: '#6EE7B7',
-    400: '#34D399',
-    500: '#10B981', // Main success
-    600: '#059669',
-    700: '#047857',
-    800: '#065F46',
-    900: '#064E3B',
+    50: "#ECFDF5",
+    100: "#D1FAE5",
+    200: "#A7F3D0",
+    300: "#6EE7B7",
+    400: "#34D399",
+    500: "#10B981", // Main success
+    600: "#059669",
+    700: "#047857",
+    800: "#065F46",
+    900: "#064E3B",
   },
 
   warning: {
-    50: '#FFFBEB',
-    100: '#FEF3C7',
-    200: '#FDE68A',
-    300: '#FCD34D',
-    400: '#FBBF24',
-    500: '#F59E0B', // Main warning
-    600: '#D97706',
-    700: '#B45309',
-    800: '#92400E',
-    900: '#78350F',
+    50: "#FFFBEB",
+    100: "#FEF3C7",
+    200: "#FDE68A",
+    300: "#FCD34D",
+    400: "#FBBF24",
+    500: "#F59E0B", // Main warning
+    600: "#D97706",
+    700: "#B45309",
+    800: "#92400E",
+    900: "#78350F",
   },
 
   error: {
-    50: '#FEF2F2',
-    100: '#FEE2E2',
-    200: '#FECACA',
-    300: '#FCA5A5',
-    400: '#F87171',
-    500: '#EF4444', // Main error
-    600: '#DC2626',
-    700: '#B91C1C',
-    800: '#991B1B',
-    900: '#7F1D1D',
+    50: "#FEF2F2",
+    100: "#FEE2E2",
+    200: "#FECACA",
+    300: "#FCA5A5",
+    400: "#F87171",
+    500: "#EF4444", // Main error
+    600: "#DC2626",
+    700: "#B91C1C",
+    800: "#991B1B",
+    900: "#7F1D1D",
   },
 
   // Neutral Colors
   gray: {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
-    950: '#030712',
+    50: "#F9FAFB",
+    100: "#F3F4F6",
+    200: "#E5E7EB",
+    300: "#D1D5DB",
+    400: "#9CA3AF",
+    500: "#6B7280",
+    600: "#4B5563",
+    700: "#374151",
+    800: "#1F2937",
+    900: "#111827",
+    950: "#030712",
   },
 
   // App-specific colors
-  black: '#000000',
-  white: '#FFFFFF',
-  transparent: 'transparent',
+  black: "#000000",
+  white: "#FFFFFF",
+  transparent: "transparent",
 } as const;
 
 // Typography
 export const typography = {
   fontFamily: {
-    sans: 'System',
-    mono: 'Menlo',
+    sans: "System",
+    mono: "Menlo",
   },
 
   fontSize: {
@@ -107,26 +107,26 @@ export const typography = {
     base: 16,
     lg: 18,
     xl: 20,
-    '2xl': 24,
-    '3xl': 30,
-    '4xl': 36,
-    '5xl': 48,
-    '6xl': 60,
-    '7xl': 72,
-    '8xl': 96,
-    '9xl': 128,
+    "2xl": 24,
+    "3xl": 30,
+    "4xl": 36,
+    "5xl": 48,
+    "6xl": 60,
+    "7xl": 72,
+    "8xl": 96,
+    "9xl": 128,
   },
 
   fontWeight: {
-    thin: '100',
-    extralight: '200',
-    light: '300',
-    normal: '400',
-    medium: '500',
-    semibold: '600',
-    bold: '700',
-    extrabold: '800',
-    black: '900',
+    thin: "100",
+    extralight: "200",
+    light: "300",
+    normal: "400",
+    medium: "500",
+    semibold: "600",
+    bold: "700",
+    extrabold: "800",
+    black: "900",
   },
 
   lineHeight: {
@@ -190,8 +190,8 @@ export const borderRadius = {
   md: 6,
   lg: 8,
   xl: 12,
-  '2xl': 16,
-  '3xl': 24,
+  "2xl": 16,
+  "3xl": 24,
   full: 9999,
 } as const;
 
@@ -242,11 +242,11 @@ export const animation = {
     slow: 500,
   },
   easing: {
-    linear: 'linear',
-    ease: 'ease',
-    easeIn: 'ease-in',
-    easeOut: 'ease-out',
-    easeInOut: 'ease-in-out',
+    linear: "linear",
+    ease: "ease",
+    easeIn: "ease-in",
+    easeOut: "ease-out",
+    easeInOut: "ease-in-out",
   },
 } as const;
 
@@ -256,13 +256,13 @@ export const breakpoints = {
   md: 768,
   lg: 1024,
   xl: 1280,
-  '2xl': 1536,
+  "2xl": 1536,
 } as const;
 
 // Z-Index
 export const zIndex = {
   hide: -1,
-  auto: 'auto',
+  auto: "auto",
   base: 0,
   docked: 10,
   dropdown: 1000,
@@ -295,7 +295,7 @@ export const themes = {
       textMuted: colors.gray[500],
       border: colors.gray[700],
       borderLight: colors.gray[800],
-      overlay: 'rgba(0, 0, 0, 0.5)',
+      overlay: "rgba(0, 0, 0, 0.5)",
     },
   },
   light: {
@@ -315,7 +315,7 @@ export const themes = {
       textMuted: colors.gray[500],
       border: colors.gray[300],
       borderLight: colors.gray[200],
-      overlay: 'rgba(0, 0, 0, 0.3)',
+      overlay: "rgba(0, 0, 0, 0.3)",
     },
   },
 } as const;

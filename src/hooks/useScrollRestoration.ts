@@ -1,7 +1,8 @@
-import { useRef, useCallback, useEffect, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScrollView, FlatList, SectionList } from 'react-native';
+import { useRef, useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ScrollView, FlatList, SectionList } from "react-native";
+import type { FlashList } from "@shopify/flash-list";
 
 interface ScrollPosition {
   x: number;
@@ -22,8 +23,8 @@ interface ScrollRestorationOptions {
  */
 export const useScrollRestoration = (options: ScrollRestorationOptions) => {
   const { key, enabled = true, debounceMs = 500, maxAge = 5 * 60 * 1000 } = options; // 5 minutes default
-  
-  const scrollViewRef = useRef<ScrollView | FlatList<any> | SectionList<any, any> | null>(null);
+
+  const scrollViewRef = useRef<ScrollView | FlatList<any> | SectionList<any, any> | FlashList<any> | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedPosition = useRef<ScrollPosition | null>(null);
   const isRestoringRef = useRef(false);
@@ -32,33 +33,36 @@ export const useScrollRestoration = (options: ScrollRestorationOptions) => {
   const storageKey = `scroll_position_${key}`;
 
   // Save scroll position to storage with debouncing
-  const saveScrollPosition = useCallback(async (x: number, y: number) => {
-    if (!enabled) return;
+  const saveScrollPosition = useCallback(
+    async (x: number, y: number) => {
+      if (!enabled) return;
 
-    const position: ScrollPosition = {
-      x,
-      y,
-      timestamp: Date.now(),
-    };
+      const position: ScrollPosition = {
+        x,
+        y,
+        timestamp: Date.now(),
+      };
 
-    lastSavedPosition.current = position;
+      lastSavedPosition.current = position;
 
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Debounce the save operation
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        await AsyncStorage.setItem(storageKey, JSON.stringify(position));
-      } catch (error) {
-        if (__DEV__) {
-          console.warn('Failed to save scroll position:', error);
-        }
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
-    }, debounceMs);
-  }, [enabled, storageKey, debounceMs]);
+
+      // Debounce the save operation
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          await AsyncStorage.setItem(storageKey, JSON.stringify(position));
+        } catch (error) {
+          if (__DEV__) {
+            console.warn("Failed to save scroll position:", error);
+          }
+        }
+      }, debounceMs);
+    },
+    [enabled, storageKey, debounceMs],
+  );
 
   // Load and restore scroll position
   const restoreScrollPosition = useCallback(async () => {
@@ -69,7 +73,7 @@ export const useScrollRestoration = (options: ScrollRestorationOptions) => {
       if (!savedData) return;
 
       const position: ScrollPosition = JSON.parse(savedData);
-      
+
       // Check if position is not too old
       if (Date.now() - position.timestamp > maxAge) {
         await AsyncStorage.removeItem(storageKey);
@@ -82,23 +86,26 @@ export const useScrollRestoration = (options: ScrollRestorationOptions) => {
       // Restore scroll position with a small delay to ensure content is loaded
       setTimeout(() => {
         if (scrollViewRef.current) {
-          // Type-safe scroll handling
-          const scrollComponent = scrollViewRef.current as any;
-          if (scrollComponent.scrollTo) {
-            scrollComponent.scrollTo({
+          // Type-safe scroll handling with proper type guards
+          const scrollComponent = scrollViewRef.current;
+
+          // Check for ScrollView scrollTo method
+          if (typeof (scrollComponent as any).scrollTo === "function") {
+            (scrollComponent as ScrollView).scrollTo({
               x: position.x,
               y: position.y,
               animated: false,
             });
-          } else if (scrollComponent.scrollToOffset) {
-            // For FlashList/FlatList
-            scrollComponent.scrollToOffset({
+          }
+          // Check for FlatList/FlashList scrollToOffset method
+          else if (typeof (scrollComponent as any).scrollToOffset === "function") {
+            (scrollComponent as FlatList<any> | FlashList<any>).scrollToOffset({
               offset: position.y,
               animated: false,
             });
           }
         }
-        
+
         // Reset restoration flag after a short delay
         setTimeout(() => {
           isRestoringRef.current = false;
@@ -107,7 +114,7 @@ export const useScrollRestoration = (options: ScrollRestorationOptions) => {
       }, 100);
     } catch (error) {
       if (__DEV__) {
-        console.warn('Failed to restore scroll position:', error);
+        console.warn("Failed to restore scroll position:", error);
       }
     }
   }, [enabled, storageKey, maxAge]);
@@ -119,38 +126,41 @@ export const useScrollRestoration = (options: ScrollRestorationOptions) => {
       lastSavedPosition.current = null;
     } catch (error) {
       if (__DEV__) {
-        console.warn('Failed to clear scroll position:', error);
+        console.warn("Failed to clear scroll position:", error);
       }
     }
   }, [storageKey]);
 
   // Handle scroll events
-  const handleScroll = useCallback((event: any) => {
-    if (!enabled || isRestoringRef.current) return;
+  const handleScroll = useCallback(
+    (event: any) => {
+      if (!enabled || isRestoringRef.current) return;
 
-    // Handle both regular React Native events and Reanimated worklet events
-    let contentOffset;
-    if (event.nativeEvent && event.nativeEvent.contentOffset) {
-      // Regular React Native scroll event
-      contentOffset = event.nativeEvent.contentOffset;
-    } else if (event.contentOffset) {
-      // Reanimated worklet event (called via runOnJS)
-      contentOffset = event.contentOffset;
-    } else {
-      // Fallback - treat event as contentOffset directly
-      contentOffset = event;
-    }
+      // Handle both regular React Native events and Reanimated worklet events
+      let contentOffset;
+      if (event.nativeEvent && event.nativeEvent.contentOffset) {
+        // Regular React Native scroll event
+        contentOffset = event.nativeEvent.contentOffset;
+      } else if (event.contentOffset) {
+        // Reanimated worklet event (called via runOnJS)
+        contentOffset = event.contentOffset;
+      } else {
+        // Fallback - treat event as contentOffset directly
+        contentOffset = event;
+      }
 
-    if (contentOffset) {
-      saveScrollPosition(contentOffset.x || 0, contentOffset.y || 0);
-    }
-  }, [enabled, saveScrollPosition]);
+      if (contentOffset) {
+        saveScrollPosition(contentOffset.x || 0, contentOffset.y || 0);
+      }
+    },
+    [enabled, saveScrollPosition],
+  );
 
   // Restore position when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       restoreScrollPosition();
-    }, [restoreScrollPosition])
+    }, [restoreScrollPosition]),
   );
 
   // Cleanup on unmount
@@ -178,11 +188,11 @@ export const useGlobalScrollRestoration = () => {
   const clearAllScrollPositions = useCallback(async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const scrollKeys = keys.filter(key => key.startsWith('scroll_position_'));
+      const scrollKeys = keys.filter((key) => key.startsWith("scroll_position_"));
       await AsyncStorage.multiRemove(scrollKeys);
     } catch (error) {
       if (__DEV__) {
-        console.warn('Failed to clear all scroll positions:', error);
+        console.warn("Failed to clear all scroll positions:", error);
       }
     }
   }, []);
@@ -190,16 +200,16 @@ export const useGlobalScrollRestoration = () => {
   const getScrollPositionInfo = useCallback(async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const scrollKeys = keys.filter(key => key.startsWith('scroll_position_'));
+      const scrollKeys = keys.filter((key) => key.startsWith("scroll_position_"));
       const positions = await AsyncStorage.multiGet(scrollKeys);
-      
+
       return positions.map(([key, value]) => ({
-        key: key.replace('scroll_position_', ''),
+        key: key.replace("scroll_position_", ""),
         position: value ? JSON.parse(value) : null,
       }));
     } catch (error) {
       if (__DEV__) {
-        console.warn('Failed to get scroll position info:', error);
+        console.warn("Failed to get scroll position info:", error);
       }
       return [];
     }

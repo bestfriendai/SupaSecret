@@ -30,11 +30,7 @@ export default function SettingsToggle({
     }
   };
 
-  const a11yProps = getSwitchA11yProps(
-    title,
-    value,
-    disabled
-  );
+  const a11yProps = getSwitchA11yProps(title, value, disabled);
 
   return (
     <Pressable

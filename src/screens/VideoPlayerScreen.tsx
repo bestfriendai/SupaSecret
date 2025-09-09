@@ -11,10 +11,10 @@ export default function VideoPlayerScreen() {
   const navigation = useNavigation();
   const route = useRoute<VideoPlayerScreenRouteProp>();
   const { confessionId } = route.params;
-  
+
   const confessions = useConfessionStore((state) => state.confessions);
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
-  
+
   const [initialIndex, setInitialIndex] = useState(0);
 
   // Load confessions if not already loaded
@@ -41,10 +41,7 @@ export default function VideoPlayerScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <OptimizedVideoList 
-        onClose={() => navigation.goBack()} 
-        initialIndex={initialIndex}
-      />
+      <OptimizedVideoList onClose={() => navigation.goBack()} initialIndex={initialIndex} />
     </View>
   );
 }

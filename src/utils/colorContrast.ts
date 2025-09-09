@@ -19,7 +19,7 @@ export interface ContrastResult {
   ratio: number;
   isAACompliant: boolean;
   isAAACompliant: boolean;
-  level: 'fail' | 'aa' | 'aaa';
+  level: "fail" | "aa" | "aaa";
 }
 
 // WCAG 2.1 contrast ratio requirements
@@ -32,16 +32,41 @@ const CONTRAST_RATIOS = {
 
 /**
  * Convert hex color to RGB
+ * Supports both 3-digit (#abc) and 6-digit (#aabbcc) hex formats
  */
 export const hexToRgb = (hex: string): ColorRGB | null => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : null;
+  // Remove leading # if present
+  const cleanHex = hex.replace(/^#/, "");
+
+  // Handle 3-digit hex (e.g., "abc" -> "aabbcc")
+  if (cleanHex.length === 3) {
+    const expandedHex = cleanHex
+      .split("")
+      .map((char) => char + char)
+      .join("");
+    const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(expandedHex);
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : null;
+  }
+
+  // Handle 6-digit hex
+  if (cleanHex.length === 6) {
+    const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(cleanHex);
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : null;
+  }
+
+  return null; // Invalid format
 };
 
 /**
@@ -55,9 +80,9 @@ export const rgbToHex = (r: number, g: number, b: number): string => {
     }
   };
 
-  validateChannel(r, 'red');
-  validateChannel(g, 'green');
-  validateChannel(b, 'blue');
+  validateChannel(r, "red");
+  validateChannel(g, "green");
+  validateChannel(b, "blue");
 
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 };
@@ -156,7 +181,7 @@ export const getContrastRatio = (color1: string, color2: string): number => {
   const rgb1 = hexToRgb(color1);
   const rgb2 = hexToRgb(color2);
 
-  if (!rgb1 || !rgb2) return 1;
+  if (!rgb1 || !rgb2) return NaN; // Return NaN instead of 1 to indicate parse failure
 
   const lum1 = getRelativeLuminance(rgb1);
   const lum2 = getRelativeLuminance(rgb2);
@@ -170,22 +195,18 @@ export const getContrastRatio = (color1: string, color2: string): number => {
 /**
  * Check if color combination meets WCAG contrast requirements
  */
-export const checkContrast = (
-  foreground: string,
-  background: string,
-  isLargeText: boolean = false
-): ContrastResult => {
+export const checkContrast = (foreground: string, background: string, isLargeText: boolean = false): ContrastResult => {
   const ratio = getContrastRatio(foreground, background);
-  
+
   const aaThreshold = isLargeText ? CONTRAST_RATIOS.AA_LARGE : CONTRAST_RATIOS.AA_NORMAL;
   const aaaThreshold = isLargeText ? CONTRAST_RATIOS.AAA_LARGE : CONTRAST_RATIOS.AAA_NORMAL;
 
   const isAACompliant = ratio >= aaThreshold;
   const isAAACompliant = ratio >= aaaThreshold;
 
-  let level: 'fail' | 'aa' | 'aaa' = 'fail';
-  if (isAAACompliant) level = 'aaa';
-  else if (isAACompliant) level = 'aa';
+  let level: "fail" | "aa" | "aaa" = "fail";
+  if (isAAACompliant) level = "aaa";
+  else if (isAACompliant) level = "aa";
 
   return {
     ratio,
@@ -201,7 +222,7 @@ export const checkContrast = (
 export const generateAccessibleColor = (
   baseColor: string,
   backgroundColor: string,
-  targetRatio: number = CONTRAST_RATIOS.AA_NORMAL
+  targetRatio: number = CONTRAST_RATIOS.AA_NORMAL,
 ): string => {
   const baseRgb = hexToRgb(baseColor);
   const bgRgb = hexToRgb(backgroundColor);
@@ -255,30 +276,30 @@ export const generateAccessibleColor = (
 export const AccessibleColors = {
   // Dark theme colors
   dark: {
-    background: '#000000',
-    surface: '#1A1A1A',
-    primary: '#3B82F6',
-    secondary: '#8B5CF6',
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    text: '#FFFFFF',
-    textSecondary: '#A1A1AA',
-    textMuted: '#71717A',
+    background: "#000000",
+    surface: "#1A1A1A",
+    primary: "#3B82F6",
+    secondary: "#8B5CF6",
+    success: "#10B981",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    text: "#FFFFFF",
+    textSecondary: "#A1A1AA",
+    textMuted: "#71717A",
   },
-  
+
   // Light theme colors
   light: {
-    background: '#FFFFFF',
-    surface: '#F8FAFC',
-    primary: '#1D4ED8',
-    secondary: '#7C3AED',
-    success: '#059669',
-    warning: '#D97706',
-    error: '#DC2626',
-    text: '#000000',
-    textSecondary: '#374151',
-    textMuted: '#6B7280',
+    background: "#FFFFFF",
+    surface: "#F8FAFC",
+    primary: "#1D4ED8",
+    secondary: "#7C3AED",
+    success: "#059669",
+    warning: "#D97706",
+    error: "#DC2626",
+    text: "#000000",
+    textSecondary: "#374151",
+    textMuted: "#6B7280",
   },
 };
 
@@ -287,15 +308,13 @@ export const AccessibleColors = {
  */
 export const validateThemeContrast = (theme: Record<string, string>) => {
   const results: Record<string, ContrastResult> = {};
-  
-  // Check text colors against backgrounds
-  const textColors = Object.keys(theme).filter(key => key.includes('text'));
-  const backgroundColors = Object.keys(theme).filter(key => 
-    key.includes('background') || key.includes('surface')
-  );
 
-  textColors.forEach(textKey => {
-    backgroundColors.forEach(bgKey => {
+  // Check text colors against backgrounds
+  const textColors = Object.keys(theme).filter((key) => key.includes("text"));
+  const backgroundColors = Object.keys(theme).filter((key) => key.includes("background") || key.includes("surface"));
+
+  textColors.forEach((textKey) => {
+    backgroundColors.forEach((bgKey) => {
       const key = `${textKey}-on-${bgKey}`;
       results[key] = checkContrast(theme[textKey], theme[bgKey]);
     });

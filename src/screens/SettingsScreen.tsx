@@ -89,7 +89,7 @@ export default function SettingsScreen() {
       }
     },
     500, // 500ms debounce delay
-    [updateUserPreferences]
+    [updateUserPreferences],
   );
 
   const debouncedNotificationPreferenceUpdate = useDebounce(
@@ -112,7 +112,7 @@ export default function SettingsScreen() {
       }
     },
     500, // 500ms debounce delay
-    [updatePreferences]
+    [updatePreferences],
   );
 
   const handlePreferenceUpdate = (key: keyof typeof userPreferences, value: any) => {
@@ -135,7 +135,7 @@ export default function SettingsScreen() {
         {/* Account Section */}
         {user && (
           <View className="border-b border-gray-800">
-            <View className="px-4 py-4">
+            <View className="px-4 pt-0 pb-4">
               <Text className="text-white text-17 font-bold mb-4">Account</Text>
               <View className="space-y-4">
                 <View className="flex-row items-center py-2">
@@ -170,7 +170,7 @@ export default function SettingsScreen() {
 
         {/* Navigation Section */}
         <View className="border-b border-gray-800">
-          <View className="px-4 py-4">
+          <View className="px-4 pt-0 pb-4">
             <Text className="text-white text-17 font-bold mb-4">Content</Text>
             <Pressable
               className="flex-row items-center justify-between py-3"
@@ -348,10 +348,12 @@ export default function SettingsScreen() {
                 className="flex-row items-center justify-between py-2 touch-target px-2 -mx-2 rounded-lg"
                 accessibilityRole="button"
                 accessibilityLabel="View privacy policy"
-                onPress={() => navigation.navigate("WebView", {
-                  url: getPrivacyPolicyUrl(),
-                  title: "Privacy Policy"
-                })}
+                onPress={() =>
+                  navigation.navigate("WebView", {
+                    url: getPrivacyPolicyUrl(),
+                    title: "Privacy Policy",
+                  })
+                }
               >
                 <Text className="text-white text-15">Privacy Policy</Text>
                 <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
@@ -360,10 +362,12 @@ export default function SettingsScreen() {
                 className="flex-row items-center justify-between py-2 touch-target px-2 -mx-2 rounded-lg"
                 accessibilityRole="button"
                 accessibilityLabel="View terms of service"
-                onPress={() => navigation.navigate("WebView", {
-                  url: getTermsOfServiceUrl(),
-                  title: "Terms of Service"
-                })}
+                onPress={() =>
+                  navigation.navigate("WebView", {
+                    url: getTermsOfServiceUrl(),
+                    title: "Terms of Service",
+                  })
+                }
               >
                 <Text className="text-white text-15">Terms of Service</Text>
                 <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
@@ -372,10 +376,12 @@ export default function SettingsScreen() {
                 className="flex-row items-center justify-between py-2 touch-target px-2 -mx-2 rounded-lg"
                 accessibilityRole="button"
                 accessibilityLabel="Get help and support"
-                onPress={() => navigation.navigate("WebView", {
-                  url: getHelpSupportUrl(),
-                  title: "Help & Support"
-                })}
+                onPress={() =>
+                  navigation.navigate("WebView", {
+                    url: getHelpSupportUrl(),
+                    title: "Help & Support",
+                  })
+                }
               >
                 <Text className="text-white text-15">Help & Support</Text>
                 <Ionicons name="chevron-forward" size={16} color="#8B98A5" />

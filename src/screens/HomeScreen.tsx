@@ -52,7 +52,7 @@ export default function HomeScreen() {
   const { getRepliesForConfession } = useReplyStore();
   const { isSaved } = useSavedStore();
   const { loadRepliesForVisibleItems, clearLoadedReplies } = useOptimizedReplies();
-  const { scrollViewRef, handleScroll } = useScrollRestoration({ key: 'home-feed' });
+  const { scrollViewRef, handleScroll } = useScrollRestoration({ key: "home-feed" });
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
   const [refreshing, setRefreshing] = useState(false);
@@ -124,7 +124,6 @@ export default function HomeScreen() {
         console.log("🔄 HomeScreen: Store state after refresh:");
         setTimeout(() => checkConfessionStoreState(), 1000);
       }
-
     } catch (error) {
       console.error("❌ HomeScreen: Refresh failed:", error);
       setNetworkError(true);
@@ -376,14 +375,11 @@ export default function HomeScreen() {
               onEndReached={onEndReached}
               onEndReachedThreshold={0.5}
               ListFooterComponent={renderFooter}
-              ListEmptyComponent={networkError ?
-                () => <NetworkErrorState onRetry={onRefresh} /> :
-                renderEmpty
-              }
+              ListEmptyComponent={networkError ? () => <NetworkErrorState onRetry={onRefresh} /> : renderEmpty}
               refreshing={refreshing}
               onRefresh={onRefresh}
               onViewableItemsChanged={({ viewableItems }) => {
-                const visibleIds = viewableItems.map(item => item.item.id);
+                const visibleIds = viewableItems.map((item) => item.item.id);
                 loadRepliesForVisibleItems(visibleIds);
               }}
               viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}

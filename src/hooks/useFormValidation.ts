@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import DOMPurify from 'isomorphic-dompurify';
+import { useState, useCallback, useMemo } from "react";
+import DOMPurify from "isomorphic-dompurify";
 
 export interface ValidationRule {
   required?: boolean;
@@ -36,9 +36,9 @@ export interface FormState {
 export const useFormValidation = (config: FormConfig, initialValues: Record<string, string> = {}) => {
   const [formState, setFormState] = useState<FormState>(() => {
     const state: FormState = {};
-    Object.keys(config).forEach(fieldName => {
+    Object.keys(config).forEach((fieldName) => {
       state[fieldName] = {
-        value: initialValues[fieldName] || '',
+        value: initialValues[fieldName] || "",
         error: null,
         touched: false,
         isValid: true,
@@ -48,163 +48,185 @@ export const useFormValidation = (config: FormConfig, initialValues: Record<stri
   });
 
   // Input sanitization functions
-  const sanitizeInput = useCallback((value: string, fieldName: string): string => {
-    const fieldConfig = config[fieldName];
-    if (fieldConfig?.sanitize) {
-      return fieldConfig.sanitize(value);
-    }
+  const sanitizeInput = useCallback(
+    (value: string, fieldName: string): string => {
+      const fieldConfig = config[fieldName];
+      if (fieldConfig?.sanitize) {
+        return fieldConfig.sanitize(value);
+      }
 
-    // Proper XSS sanitization using DOMPurify with no allowed tags
-    const sanitized = DOMPurify.sanitize(value, {
-      ALLOWED_TAGS: [],
-      ALLOWED_ATTR: [],
-      KEEP_CONTENT: true
-    });
+      // Proper XSS sanitization using DOMPurify with no allowed tags
+      const sanitized = DOMPurify.sanitize(value, {
+        ALLOWED_TAGS: [],
+        ALLOWED_ATTR: [],
+        KEEP_CONTENT: true,
+      });
 
-    return sanitized.trim();
-  }, [config]);
+      return sanitized.trim();
+    },
+    [config],
+  );
 
   // Validation function
-  const validateField = useCallback((fieldName: string, value: string): string | null => {
-    const rules = config[fieldName]?.rules;
-    if (!rules) return null;
+  const validateField = useCallback(
+    (fieldName: string, value: string): string | null => {
+      const rules = config[fieldName]?.rules;
+      if (!rules) return null;
 
-    // Required validation
-    if (rules.required && (!value || value.trim().length === 0)) {
-      return 'This field is required';
-    }
+      // Required validation
+      if (rules.required && (!value || value.trim().length === 0)) {
+        return "This field is required";
+      }
 
-    // Skip other validations if field is empty and not required
-    if (!value || value.trim().length === 0) {
+      // Skip other validations if field is empty and not required
+      if (!value || value.trim().length === 0) {
+        return null;
+      }
+
+      // Min length validation
+      if (rules.minLength && value.length < rules.minLength) {
+        return `Must be at least ${rules.minLength} characters`;
+      }
+
+      // Max length validation
+      if (rules.maxLength && value.length > rules.maxLength) {
+        return `Must be no more than ${rules.maxLength} characters`;
+      }
+
+      // Pattern validation
+      if (rules.pattern && !rules.pattern.test(value)) {
+        return "Invalid format";
+      }
+
+      // Custom validation
+      if (rules.custom) {
+        const customError = rules.custom(value);
+        if (customError) return customError;
+      }
+
       return null;
-    }
-
-    // Min length validation
-    if (rules.minLength && value.length < rules.minLength) {
-      return `Must be at least ${rules.minLength} characters`;
-    }
-
-    // Max length validation
-    if (rules.maxLength && value.length > rules.maxLength) {
-      return `Must be no more than ${rules.maxLength} characters`;
-    }
-
-    // Pattern validation
-    if (rules.pattern && !rules.pattern.test(value)) {
-      return 'Invalid format';
-    }
-
-    // Custom validation
-    if (rules.custom) {
-      const customError = rules.custom(value);
-      if (customError) return customError;
-    }
-
-    return null;
-  }, [config]);
+    },
+    [config],
+  );
 
   // Update field value with validation and sanitization
-  const updateField = useCallback((fieldName: string, value: string, shouldValidate: boolean = true) => {
-    const sanitizedValue = sanitizeInput(value, fieldName);
-    const error = shouldValidate ? validateField(fieldName, sanitizedValue) : null;
-    
-    setFormState(prev => ({
-      ...prev,
-      [fieldName]: {
-        ...prev[fieldName],
-        value: sanitizedValue,
-        error,
-        isValid: error === null,
-        touched: true,
-      },
-    }));
-  }, [sanitizeInput, validateField]);
+  const updateField = useCallback(
+    (fieldName: string, value: string, shouldValidate: boolean = true) => {
+      const sanitizedValue = sanitizeInput(value, fieldName);
+      const error = shouldValidate ? validateField(fieldName, sanitizedValue) : null;
 
-  // Touch field (mark as touched without changing value)
-  const touchField = useCallback((fieldName: string) => {
-    setFormState(prev => {
-      const error = validateField(fieldName, prev[fieldName].value);
-      return {
+      setFormState((prev) => ({
         ...prev,
         [fieldName]: {
           ...prev[fieldName],
-          touched: true,
+          value: sanitizedValue,
           error,
           isValid: error === null,
+          touched: true,
         },
-      };
-    });
-  }, [validateField]);
+      }));
+    },
+    [sanitizeInput, validateField],
+  );
+
+  // Touch field (mark as touched without changing value)
+  const touchField = useCallback(
+    (fieldName: string) => {
+      setFormState((prev) => {
+        const error = validateField(fieldName, prev[fieldName].value);
+        return {
+          ...prev,
+          [fieldName]: {
+            ...prev[fieldName],
+            touched: true,
+            error,
+            isValid: error === null,
+          },
+        };
+      });
+    },
+    [validateField],
+  );
 
   // Validate all fields
   const validateAll = useCallback(() => {
-    const newState = { ...formState };
     let hasErrors = false;
 
-    Object.keys(config).forEach(fieldName => {
-      const error = validateField(fieldName, newState[fieldName].value);
-      newState[fieldName] = {
-        ...newState[fieldName],
-        error,
-        isValid: error === null,
-        touched: true,
-      };
-      if (error) hasErrors = true;
+    setFormState((prev) => {
+      const newState = { ...prev };
+
+      Object.keys(config).forEach((fieldName) => {
+        const error = validateField(fieldName, prev[fieldName].value);
+        newState[fieldName] = {
+          ...prev[fieldName],
+          error,
+          isValid: error === null,
+          touched: true,
+        };
+        if (error) hasErrors = true;
+      });
+
+      return newState;
     });
 
-    setFormState(newState);
     return !hasErrors;
-  }, [formState, config, validateField]);
+  }, [config, validateField]);
 
   // Reset form
-  const resetForm = useCallback((newInitialValues?: Record<string, string>) => {
-    const values = newInitialValues || initialValues;
-    const state: FormState = {};
-    Object.keys(config).forEach(fieldName => {
-      state[fieldName] = {
-        value: values[fieldName] || '',
-        error: null,
-        touched: false,
-        isValid: true,
-      };
-    });
-    setFormState(state);
-  }, [config, initialValues]);
+  const resetForm = useCallback(
+    (newInitialValues?: Record<string, string>) => {
+      const values = newInitialValues || initialValues;
+      const state: FormState = {};
+      Object.keys(config).forEach((fieldName) => {
+        state[fieldName] = {
+          value: values[fieldName] || "",
+          error: null,
+          touched: false,
+          isValid: true,
+        };
+      });
+      setFormState(state);
+    },
+    [config, initialValues],
+  );
 
   // Get field props for easy integration with input components
-  const getFieldProps = useCallback((fieldName: string) => {
-    const field = formState[fieldName];
-    const rules = config[fieldName]?.rules;
-    
-    return {
-      value: field?.value || '',
-      error: field?.error,
-      isValid: field?.isValid ?? true,
-      touched: field?.touched ?? false,
-      maxLength: rules?.maxLength,
-      required: rules?.required ?? false,
-      onChangeText: (value: string) => updateField(fieldName, value),
-      onBlur: () => touchField(fieldName),
-    };
-  }, [formState, config, updateField, touchField]);
+  const getFieldProps = useCallback(
+    (fieldName: string) => {
+      const field = formState[fieldName];
+      const rules = config[fieldName]?.rules;
+
+      return {
+        value: field?.value || "",
+        error: field?.error,
+        isValid: field?.isValid ?? true,
+        touched: field?.touched ?? false,
+        maxLength: rules?.maxLength,
+        required: rules?.required ?? false,
+        onChangeText: (value: string) => updateField(fieldName, value),
+        onBlur: () => touchField(fieldName),
+      };
+    },
+    [formState, config, updateField, touchField],
+  );
 
   // Computed values
   const isFormValid = useMemo(() => {
-    return Object.values(formState).every(field => field.isValid);
+    return Object.values(formState).every((field) => field.isValid);
   }, [formState]);
 
   const hasErrors = useMemo(() => {
-    return Object.values(formState).some(field => field.error !== null);
+    return Object.values(formState).some((field) => field.error !== null);
   }, [formState]);
 
   const touchedFields = useMemo(() => {
-    return Object.values(formState).filter(field => field.touched).length;
+    return Object.values(formState).filter((field) => field.touched).length;
   }, [formState]);
 
   // Get form values
   const getValues = useCallback(() => {
     const values: Record<string, string> = {};
-    Object.keys(formState).forEach(fieldName => {
+    Object.keys(formState).forEach((fieldName) => {
       values[fieldName] = formState[fieldName].value;
     });
     return values;
@@ -228,7 +250,9 @@ export const useFormValidation = (config: FormConfig, initialValues: Record<stri
 export const ValidationRules = {
   email: {
     required: true,
-    pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    // Use a more comprehensive RFC-compatible email regex
+    pattern:
+      /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
     maxLength: 254,
   },
   password: {
@@ -256,8 +280,18 @@ export const ValidationRules = {
 
 // Common sanitization functions
 export const SanitizationFunctions = {
-  trimAndClean: (value: string) => value.trim().replace(/\s+/g, ' '),
-  alphanumericOnly: (value: string) => value.replace(/[^a-zA-Z0-9]/g, ''),
+  trimAndClean: (value: string) => value.trim().replace(/\s+/g, " "),
+  alphanumericOnly: (value: string) => value.replace(/[^a-zA-Z0-9]/g, ""),
   emailFormat: (value: string) => value.toLowerCase().trim(),
-  noSpecialChars: (value: string) => value.replace(/[<>'"&]/g, ''),
+  // Whitelist approach for safe characters - only allow alphanumeric, spaces, and common safe punctuation
+  safeTextOnly: (value: string) => value.replace(/[^a-zA-Z0-9\s\-_.@]/g, ""),
+  // HTML escape function for output sanitization
+  escapeHtml: (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;")
+      .replace(/\//g, "&#x2F;"),
 } as const;

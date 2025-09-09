@@ -60,7 +60,7 @@ export const useReplyStore = create<ReplyState>()(
         set({ isLoading: true, error: null });
         try {
           if (__DEV__) {
-            console.log('Loading replies for confession:', confessionId);
+            console.log("Loading replies for confession:", confessionId);
           }
 
           // Check if confessionId is valid for database operations
@@ -92,7 +92,7 @@ export const useReplyStore = create<ReplyState>()(
             .order("created_at", { ascending: false });
 
           if (error) {
-            console.error('Supabase error loading replies:', error);
+            console.error("Supabase error loading replies:", error);
             throw error;
           }
 
@@ -108,12 +108,12 @@ export const useReplyStore = create<ReplyState>()(
                 .in("reply_id", replyIds);
 
               if (likesError) {
-                console.warn('Failed to load user likes for replies:', likesError);
+                console.warn("Failed to load user likes for replies:", likesError);
               }
 
               userLikes = likesData?.map((like) => like.reply_id) || [];
             } catch (likesError) {
-              console.warn('Error loading user likes:', likesError);
+              console.warn("Error loading user likes:", likesError);
               // Continue without user likes
             }
           }
@@ -141,7 +141,7 @@ export const useReplyStore = create<ReplyState>()(
             isLoading: false,
           }));
         } catch (error) {
-          console.error('Error in loadReplies:', error);
+          console.error("Error in loadReplies:", error);
 
           let errorMessage = "Failed to load replies";
           if (error instanceof Error) {
@@ -150,7 +150,7 @@ export const useReplyStore = create<ReplyState>()(
             // Handle specific Supabase errors
             if (error.message.includes('relation "replies" does not exist')) {
               errorMessage = "Replies feature is not yet available";
-            } else if (error.message.includes('permission denied')) {
+            } else if (error.message.includes("permission denied")) {
               errorMessage = "Unable to access replies at this time";
             }
           }
@@ -210,7 +210,7 @@ export const useReplyStore = create<ReplyState>()(
           }));
 
           // Trigger cache invalidation for new reply
-          invalidateCache('reply_created', { replyId: newReply.id, confessionId });
+          invalidateCache("reply_created", { replyId: newReply.id, confessionId });
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Failed to add reply",
@@ -230,11 +230,7 @@ export const useReplyStore = create<ReplyState>()(
           if (!user) throw new Error("User not authenticated");
 
           // Delete reply with explicit user_id check for security
-          const { error } = await supabase
-            .from("replies")
-            .delete()
-            .eq("id", replyId)
-            .eq("user_id", user.id);
+          const { error } = await supabase.from("replies").delete().eq("id", replyId).eq("user_id", user.id);
 
           if (error) throw error;
 

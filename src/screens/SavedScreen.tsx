@@ -29,7 +29,7 @@ export default function SavedScreen() {
     loadSavedConfessions,
     loadMoreSavedConfessions,
     unsaveConfession,
-    clearError
+    clearError,
   } = useSavedStore();
   const { getRepliesForConfession } = useReplyStore();
   const insets = useSafeAreaInsets();
@@ -82,12 +82,12 @@ export default function SavedScreen() {
     return (
       <Pressable
         style={{
-          backgroundColor: 'rgba(17, 24, 39, 0.8)',
+          backgroundColor: "rgba(17, 24, 39, 0.8)",
           marginHorizontal: 16,
           marginBottom: 12,
           borderRadius: 16,
           padding: 16,
-          shadowColor: '#000',
+          shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
@@ -100,7 +100,7 @@ export default function SavedScreen() {
           <View className="flex-row items-center">
             <View
               style={{
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                backgroundColor: "rgba(59, 130, 246, 0.2)",
                 borderRadius: 8,
                 padding: 6,
                 marginRight: 8,
@@ -115,7 +115,7 @@ export default function SavedScreen() {
           <Pressable
             onPress={() => handleUnsave(confession.id)}
             style={{
-              backgroundColor: 'rgba(29, 155, 240, 0.2)',
+              backgroundColor: "rgba(29, 155, 240, 0.2)",
               borderRadius: 8,
               padding: 6,
             }}
@@ -132,7 +132,7 @@ export default function SavedScreen() {
           <View className="flex-row items-center mb-3">
             <View
               style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                backgroundColor: "rgba(239, 68, 68, 0.2)",
                 borderRadius: 6,
                 padding: 4,
                 marginRight: 6,
@@ -150,7 +150,7 @@ export default function SavedScreen() {
             <Pressable className="flex-row items-center" onPress={() => handleToggleLike(confession.id)}>
               <View
                 style={{
-                  backgroundColor: confession.isLiked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(139, 152, 165, 0.2)',
+                  backgroundColor: confession.isLiked ? "rgba(239, 68, 68, 0.2)" : "rgba(139, 152, 165, 0.2)",
                   borderRadius: 6,
                   padding: 4,
                   marginRight: 6,
@@ -162,13 +162,13 @@ export default function SavedScreen() {
                   color={confession.isLiked ? "#EF4444" : "#8B98A5"}
                 />
               </View>
-              <Text className="text-gray-400 text-12">{confession.likes || 0}</Text>
+              <Text className="text-gray-400 text-12">{String(confession.likes || 0)}</Text>
             </Pressable>
 
             <Pressable className="flex-row items-center">
               <View
                 style={{
-                  backgroundColor: 'rgba(139, 152, 165, 0.2)',
+                  backgroundColor: "rgba(139, 152, 165, 0.2)",
                   borderRadius: 6,
                   padding: 4,
                   marginRight: 6,
@@ -197,9 +197,9 @@ export default function SavedScreen() {
   );
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-black">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-4 border-b border-gray-800">
+      <View className="flex-row items-center justify-between px-4 py-0 border-b border-gray-800">
         <Pressable onPress={() => safeGoBackFromModal(navigation)}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </Pressable>
@@ -225,12 +225,7 @@ export default function SavedScreen() {
           contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 16 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#1D9BF0"
-              colors={["#1D9BF0"]}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D9BF0" colors={["#1D9BF0"]} />
           }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.5}

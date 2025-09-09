@@ -3,7 +3,7 @@
  * Provides standardized accessibility props and helpers
  */
 
-import { AccessibilityRole, AccessibilityState, AccessibilityProps, AccessibilityInfo } from 'react-native';
+import { AccessibilityRole, AccessibilityState, AccessibilityProps, AccessibilityInfo } from "react-native";
 
 export interface A11yProps extends AccessibilityProps {
   accessibilityRole?: AccessibilityRole;
@@ -22,37 +22,32 @@ export interface A11yProps extends AccessibilityProps {
  * Common accessibility roles for different UI elements
  */
 export const A11Y_ROLES = {
-  button: 'button' as const,
-  link: 'link' as const,
-  text: 'text' as const,
-  image: 'image' as const,
-  imagebutton: 'imagebutton' as const,
-  header: 'header' as const,
-  search: 'search' as const,
-  tab: 'tab' as const,
-  tablist: 'tablist' as const,
-  menu: 'menu' as const,
-  menuitem: 'menuitem' as const,
-  switch: 'switch' as const,
-  checkbox: 'checkbox' as const,
-  radio: 'radio' as const,
-  slider: 'slider' as const,
-  progressbar: 'progressbar' as const,
-  alert: 'alert' as const,
-  combobox: 'combobox' as const,
-  list: 'list' as const,
-  listitem: 'listitem' as const,
+  button: "button" as const,
+  link: "link" as const,
+  text: "text" as const,
+  image: "image" as const,
+  imagebutton: "imagebutton" as const,
+  header: "header" as const,
+  search: "search" as const,
+  tab: "tab" as const,
+  tablist: "tablist" as const,
+  menu: "menu" as const,
+  menuitem: "menuitem" as const,
+  switch: "switch" as const,
+  checkbox: "checkbox" as const,
+  radio: "radio" as const,
+  slider: "slider" as const,
+  progressbar: "progressbar" as const,
+  alert: "alert" as const,
+  combobox: "combobox" as const,
+  list: "list" as const,
+  listitem: "listitem" as const,
 } as const;
 
 /**
  * Generate accessibility props for buttons
  */
-export const getButtonA11yProps = (
-  label: string,
-  hint?: string,
-  disabled = false,
-  pressed = false
-): A11yProps => ({
+export const getButtonA11yProps = (label: string, hint?: string, disabled = false, pressed = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
   accessibilityLabel: label,
   accessibilityHint: hint,
@@ -65,14 +60,10 @@ export const getButtonA11yProps = (
 /**
  * Generate accessibility props for like/heart buttons
  */
-export const getLikeButtonA11yProps = (
-  isLiked: boolean,
-  likeCount: number,
-  disabled = false
-): A11yProps => ({
+export const getLikeButtonA11yProps = (isLiked: boolean, likeCount: number, disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
   accessibilityLabel: isLiked ? `Unlike. ${likeCount} likes` : `Like. ${likeCount} likes`,
-  accessibilityHint: isLiked ? 'Double tap to unlike this post' : 'Double tap to like this post',
+  accessibilityHint: isLiked ? "Double tap to unlike this post" : "Double tap to like this post",
   accessibilityState: {
     disabled,
     selected: isLiked,
@@ -82,13 +73,10 @@ export const getLikeButtonA11yProps = (
 /**
  * Generate accessibility props for bookmark/save buttons
  */
-export const getBookmarkButtonA11yProps = (
-  isSaved: boolean,
-  disabled = false
-): A11yProps => ({
+export const getBookmarkButtonA11yProps = (isSaved: boolean, disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
-  accessibilityLabel: isSaved ? 'Remove from saved' : 'Save post',
-  accessibilityHint: isSaved ? 'Double tap to remove from saved posts' : 'Double tap to save this post',
+  accessibilityLabel: isSaved ? "Remove from saved" : "Save post",
+  accessibilityHint: isSaved ? "Double tap to remove from saved posts" : "Double tap to save this post",
   accessibilityState: {
     disabled,
     selected: isSaved,
@@ -100,8 +88,8 @@ export const getBookmarkButtonA11yProps = (
  */
 export const getShareButtonA11yProps = (disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
-  accessibilityLabel: 'Share post',
-  accessibilityHint: 'Double tap to share this post',
+  accessibilityLabel: "Share post",
+  accessibilityHint: "Double tap to share this post",
   accessibilityState: { disabled },
 });
 
@@ -110,18 +98,15 @@ export const getShareButtonA11yProps = (disabled = false): A11yProps => ({
  */
 export const getReportButtonA11yProps = (disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
-  accessibilityLabel: 'Report post',
-  accessibilityHint: 'Double tap to report this post',
+  accessibilityLabel: "Report post",
+  accessibilityHint: "Double tap to report this post",
   accessibilityState: { disabled },
 });
 
 /**
  * Generate accessibility props for navigation buttons
  */
-export const getNavButtonA11yProps = (
-  destination: string,
-  disabled = false
-): A11yProps => ({
+export const getNavButtonA11yProps = (destination: string, disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
   accessibilityLabel: `Navigate to ${destination}`,
   accessibilityHint: `Double tap to go to ${destination}`,
@@ -133,8 +118,8 @@ export const getNavButtonA11yProps = (
  */
 export const getBackButtonA11yProps = (disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
-  accessibilityLabel: 'Go back',
-  accessibilityHint: 'Double tap to go back to previous screen',
+  accessibilityLabel: "Go back",
+  accessibilityHint: "Double tap to go back to previous screen",
   accessibilityState: { disabled },
 });
 
@@ -143,8 +128,8 @@ export const getBackButtonA11yProps = (disabled = false): A11yProps => ({
  */
 export const getCloseButtonA11yProps = (disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
-  accessibilityLabel: 'Close',
-  accessibilityHint: 'Double tap to close',
+  accessibilityLabel: "Close",
+  accessibilityHint: "Double tap to close",
   accessibilityState: { disabled },
 });
 
@@ -153,8 +138,8 @@ export const getCloseButtonA11yProps = (disabled = false): A11yProps => ({
  */
 export const getMenuButtonA11yProps = (disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.button,
-  accessibilityLabel: 'More options',
-  accessibilityHint: 'Double tap to open menu with more options',
+  accessibilityLabel: "More options",
+  accessibilityHint: "Double tap to open menu with more options",
   accessibilityState: { disabled },
 });
 
@@ -165,9 +150,9 @@ export const getTextInputA11yProps = (
   label: string,
   hint?: string,
   required = false,
-  multiline = false
+  multiline = false,
 ): A11yProps => ({
-  accessibilityRole: multiline ? 'none' : 'text',
+  accessibilityRole: multiline ? "none" : "text",
   accessibilityLabel: label,
   accessibilityHint: hint,
 });
@@ -175,23 +160,16 @@ export const getTextInputA11yProps = (
 /**
  * Generate accessibility props for search inputs
  */
-export const getSearchInputA11yProps = (
-  placeholder = 'Search',
-  hint?: string
-): A11yProps => ({
+export const getSearchInputA11yProps = (placeholder = "Search", hint?: string): A11yProps => ({
   accessibilityRole: A11Y_ROLES.search,
   accessibilityLabel: placeholder,
-  accessibilityHint: hint || 'Enter text to search',
+  accessibilityHint: hint || "Enter text to search",
 });
 
 /**
  * Generate accessibility props for switches/toggles
  */
-export const getSwitchA11yProps = (
-  label: string,
-  isOn: boolean,
-  disabled = false
-): A11yProps => ({
+export const getSwitchA11yProps = (label: string, isOn: boolean, disabled = false): A11yProps => ({
   accessibilityRole: A11Y_ROLES.switch,
   accessibilityLabel: label,
   accessibilityState: {
@@ -199,7 +177,7 @@ export const getSwitchA11yProps = (
     checked: isOn,
   },
   accessibilityValue: {
-    text: isOn ? 'On' : 'Off',
+    text: isOn ? "On" : "Off",
   },
 });
 
@@ -210,7 +188,7 @@ export const getTabA11yProps = (
   label: string,
   isSelected: boolean,
   tabIndex: number,
-  totalTabs: number
+  totalTabs: number,
 ): A11yProps => ({
   accessibilityRole: A11Y_ROLES.tab,
   accessibilityLabel: label,
@@ -223,18 +201,14 @@ export const getTabA11yProps = (
 /**
  * Generate accessibility props for progress indicators
  */
-export const getProgressA11yProps = (
-  label: string,
-  current: number,
-  max: number
-): A11yProps => ({
+export const getProgressA11yProps = (label: string, current: number, max: number): A11yProps => ({
   accessibilityRole: A11Y_ROLES.progressbar,
   accessibilityLabel: label,
   accessibilityValue: {
     min: 0,
     max,
     now: current,
-    text: max > 0 ? `${Math.round((current / max) * 100)}% complete` : '0% complete',
+    text: max > 0 ? `${Math.round((current / max) * 100)}% complete` : "0% complete",
   },
 });
 
@@ -243,20 +217,17 @@ export const getProgressA11yProps = (
  */
 export const getAlertA11yProps = (
   message: string,
-  type: 'info' | 'warning' | 'error' | 'success' = 'info'
+  type: "info" | "warning" | "error" | "success" = "info",
 ): A11yProps => ({
   accessibilityRole: A11Y_ROLES.alert,
   accessibilityLabel: `${type}: ${message}`,
-  accessibilityLiveRegion: 'polite',
+  accessibilityLiveRegion: "polite",
 });
 
 /**
  * Generate accessibility props for lists
  */
-export const getListA11yProps = (
-  label: string,
-  itemCount: number
-): A11yProps => ({
+export const getListA11yProps = (label: string, itemCount: number): A11yProps => ({
   accessibilityRole: A11Y_ROLES.list,
   accessibilityLabel: `${label}, ${itemCount} items`,
 });
@@ -264,12 +235,8 @@ export const getListA11yProps = (
 /**
  * Generate accessibility props for list items
  */
-export const getListItemA11yProps = (
-  label: string,
-  index: number,
-  total: number
-): A11yProps => ({
-  accessibilityRole: 'none',
+export const getListItemA11yProps = (label: string, index: number, total: number): A11yProps => ({
+  accessibilityRole: "none",
   accessibilityLabel: `${label}, item ${index + 1} of ${total}`,
 });
 
@@ -279,7 +246,7 @@ export const getListItemA11yProps = (
 export const combineA11yProps = (...props: (A11yProps | undefined)[]): A11yProps => {
   return props.reduce((combined, current) => {
     if (!current) return combined;
-    
+
     return {
       ...combined,
       ...current,
@@ -312,12 +279,20 @@ export const isReduceMotionEnabled = async (): Promise<boolean> => {
   }
 };
 
-export const announceForAccessibility = (message: string) => {
-  AccessibilityInfo.announceForAccessibility(message);
+export const announceForAccessibility = async (message: string): Promise<void> => {
+  try {
+    await AccessibilityInfo.announceForAccessibility(message);
+  } catch (error) {
+    console.error("Failed to announce for accessibility:", error);
+  }
 };
 
-export const setAccessibilityFocus = (reactTag: number) => {
-  AccessibilityInfo.setAccessibilityFocus(reactTag);
+export const setAccessibilityFocus = async (reactTag: number): Promise<void> => {
+  try {
+    await AccessibilityInfo.setAccessibilityFocus(reactTag);
+  } catch (error) {
+    console.error("Failed to set accessibility focus:", error);
+  }
 };
 
 // Accessibility helpers for common patterns
@@ -334,10 +309,10 @@ export const AccessibilityHelpers = {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days} ${days === 1 ? 'day' : 'days'} ago`;
-    if (hours > 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
-    if (minutes > 0) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
-    return 'Just now';
+    if (days > 0) return `${days} ${days === 1 ? "day" : "days"} ago`;
+    if (hours > 0) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+    if (minutes > 0) return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+    return "Just now";
   },
 
   getLoadingMessage: (context: string): string => {

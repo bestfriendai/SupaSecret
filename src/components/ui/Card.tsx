@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, Pressable, ViewStyle, TextStyle, StyleProp, AccessibilityRole } from 'react-native';
-import { spacing, borderRadius, typography, shadows, currentTheme } from '../../design/tokens';
+import React from "react";
+import { View, Text, Pressable, ViewStyle, TextStyle, StyleProp, AccessibilityRole } from "react-native";
+import { spacing, borderRadius, typography, shadows, currentTheme } from "../../design/tokens";
 
 export interface CardProps {
   children: React.ReactNode;
-  variant?: 'default' | 'elevated' | 'outlined' | 'filled';
+  variant?: "default" | "elevated" | "outlined" | "filled";
   padding?: keyof typeof spacing;
   onPress?: () => void;
   disabled?: boolean;
@@ -42,33 +42,33 @@ interface CardComponent extends React.FC<CardProps> {
 
 const CardBase: React.FC<CardProps> = ({
   children,
-  variant = 'default',
-  padding = 4,
+  variant = "default",
+  padding = "4",
   onPress,
   disabled = false,
   style,
   accessibilityLabel,
   accessibilityHint,
-  accessibilityRole = 'none',
+  accessibilityRole,
 }) => {
   const isInteractive = !!onPress;
 
   // Get variant styles
   const getVariantStyles = (): ViewStyle => {
     switch (variant) {
-      case 'elevated':
+      case "elevated":
         return {
           backgroundColor: currentTheme.colors.surface,
           borderWidth: 0,
           ...shadows.md,
         };
-      case 'outlined':
+      case "outlined":
         return {
-          backgroundColor: 'transparent',
+          backgroundColor: "transparent",
           borderWidth: 1,
           borderColor: currentTheme.colors.border,
         };
-      case 'filled':
+      case "filled":
         return {
           backgroundColor: currentTheme.colors.surfaceVariant,
           borderWidth: 0,
@@ -84,7 +84,7 @@ const CardBase: React.FC<CardProps> = ({
 
   const baseStyle: ViewStyle = {
     borderRadius: borderRadius.xl,
-    padding: spacing[padding],
+    padding: spacing[padding as keyof typeof spacing],
     opacity: disabled ? 0.6 : 1,
   };
 
@@ -93,13 +93,10 @@ const CardBase: React.FC<CardProps> = ({
   if (isInteractive) {
     return (
       <Pressable
-        style={({ pressed }) => [
-          containerStyle,
-          pressed && !disabled && { opacity: 0.8 },
-        ]}
+        style={({ pressed }) => [containerStyle, pressed && !disabled && { opacity: 0.8 }]}
         onPress={onPress}
         disabled={disabled}
-        accessibilityRole={accessibilityRole === 'none' ? 'button' : accessibilityRole}
+        {...(accessibilityRole && { accessibilityRole })}
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
         accessibilityState={{ disabled }}
@@ -112,9 +109,9 @@ const CardBase: React.FC<CardProps> = ({
   return (
     <View
       style={containerStyle}
-      accessibilityRole={accessibilityRole}
+      {...(accessibilityRole && { accessibilityRole })}
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint || 'Card content'}
+      accessibilityHint={accessibilityHint || "Card content"}
     >
       {children}
     </View>
@@ -136,9 +133,9 @@ export const CardHeader: React.FC<CardHeaderProps> = ({
     <View
       style={[
         {
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
+          flexDirection: "row",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
           marginBottom: spacing[3],
         },
         style,
@@ -201,9 +198,9 @@ export const CardFooter: React.FC<CardFooterProps> = ({ children, style }) => {
     <View
       style={[
         {
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-end",
           paddingTop: spacing[3],
           borderTopWidth: 1,
           borderTopColor: currentTheme.colors.borderLight,
@@ -217,17 +214,11 @@ export const CardFooter: React.FC<CardFooterProps> = ({ children, style }) => {
 };
 
 // Preset card components
-export const ElevatedCard: React.FC<Omit<CardProps, 'variant'>> = (props) => (
-  <Card {...props} variant="elevated" />
-);
+export const ElevatedCard: React.FC<Omit<CardProps, "variant">> = (props) => <Card {...props} variant="elevated" />;
 
-export const OutlinedCard: React.FC<Omit<CardProps, 'variant'>> = (props) => (
-  <Card {...props} variant="outlined" />
-);
+export const OutlinedCard: React.FC<Omit<CardProps, "variant">> = (props) => <Card {...props} variant="outlined" />;
 
-export const FilledCard: React.FC<Omit<CardProps, 'variant'>> = (props) => (
-  <Card {...props} variant="filled" />
-);
+export const FilledCard: React.FC<Omit<CardProps, "variant">> = (props) => <Card {...props} variant="filled" />;
 
 // Compound component pattern
 Card.Header = CardHeader;

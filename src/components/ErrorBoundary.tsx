@@ -1,16 +1,16 @@
-import React, { Component, ReactNode } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Application from 'expo-application';
-import * as Device from 'expo-device';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { Component, ReactNode } from "react";
+import { View, Text, Pressable, ScrollView } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Application from "expo-application";
+import * as Device from "expo-device";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Props {
   children: ReactNode;
   fallback?: (error: Error, errorInfo: React.ErrorInfo) => ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
   resetOnPropsChange?: boolean;
-  resetKeys?: Array<string | number>;
+  resetKeys?: (string | number)[];
 }
 
 interface State {
@@ -33,14 +33,14 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
-      errorId: '',
+      errorId: "",
     };
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     // Generate unique error ID for tracking
     const errorId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     return {
       hasError: true,
       error,
@@ -67,10 +67,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Reset error boundary when resetKeys change
     if (hasError && resetKeys) {
-      const hasResetKeyChanged = resetKeys.some(
-        (key, index) => prevProps.resetKeys?.[index] !== key
-      );
-      
+      const hasResetKeyChanged = resetKeys.some((key, index) => prevProps.resetKeys?.[index] !== key);
+
       if (hasResetKeyChanged) {
         this.resetErrorBoundary();
       }
@@ -90,10 +88,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private logError = (error: Error, errorInfo: React.ErrorInfo) => {
     if (__DEV__) {
-      console.group('🚨 Error Boundary Caught Error');
-      console.error('Error:', error);
-      console.error('Error Info:', errorInfo);
-      console.error('Component Stack:', errorInfo.componentStack);
+      console.group("🚨 Error Boundary Caught Error");
+      console.error("Error:", error);
+      console.error("Error Info:", errorInfo);
+      console.error("Component Stack:", errorInfo.componentStack);
       console.groupEnd();
     }
   };
@@ -124,13 +122,13 @@ export class ErrorBoundary extends Component<Props, State> {
       // In a real app, you would send this to your error reporting service
       // e.g., Sentry, Bugsnag, or custom analytics
       if (__DEV__) {
-        console.log('Error Report:', errorReport);
+        console.log("Error Report:", errorReport);
       }
 
       // TODO: Implement actual error reporting
       // await crashAnalytics.recordError(errorReport);
     } catch (reportingError) {
-      console.error('Failed to report error:', reportingError);
+      console.error("Failed to report error:", reportingError);
     }
   };
 
@@ -139,7 +137,7 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
-      errorId: '',
+      errorId: "",
     });
   };
 
@@ -151,7 +149,7 @@ export class ErrorBoundary extends Component<Props, State> {
     // In React Native, we can't reload the app directly
     // But we can reset the error boundary and hope for the best
     this.resetErrorBoundary();
-    
+
     // Auto-retry after a short delay
     this.resetTimeoutId = setTimeout(() => {
       if (this.state.hasError) {
@@ -171,13 +169,15 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       // Default error UI
-      return <DefaultErrorFallback 
-        error={error} 
-        errorInfo={errorInfo}
-        onRetry={this.handleRetry}
-        onReload={this.handleReload}
-        errorId={this.state.errorId}
-      />;
+      return (
+        <DefaultErrorFallback
+          error={error}
+          errorInfo={errorInfo}
+          onRetry={this.handleRetry}
+          onReload={this.handleReload}
+          errorId={this.state.errorId}
+        />
+      );
     }
 
     return children;
@@ -195,33 +195,19 @@ interface DefaultErrorFallbackProps {
   errorId: string;
 }
 
-function DefaultErrorFallback({ 
-  error, 
-  errorInfo, 
-  onRetry, 
-  onReload, 
-  errorId 
-}: DefaultErrorFallbackProps) {
+function DefaultErrorFallback({ error, errorInfo, onRetry, onReload, errorId }: DefaultErrorFallbackProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View 
-      className="flex-1 bg-black"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
-    >
-      <ScrollView 
-        className="flex-1 px-6"
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-      >
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <ScrollView className="flex-1 px-6" contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
         <View className="items-center mb-8">
           <View className="w-20 h-20 bg-red-500/20 rounded-full items-center justify-center mb-4">
             <Ionicons name="warning" size={40} color="#EF4444" />
           </View>
-          
-          <Text className="text-white text-24 font-bold text-center mb-2">
-            Oops! Something went wrong
-          </Text>
-          
+
+          <Text className="text-white text-24 font-bold text-center mb-2">Oops! Something went wrong</Text>
+
           <Text className="text-gray-400 text-16 text-center mb-6 leading-6">
             We encountered an unexpected error. Don't worry, your data is safe.
           </Text>
@@ -229,42 +215,24 @@ function DefaultErrorFallback({
 
         {/* Action Buttons */}
         <View className="gap-4 mb-8">
-          <Pressable
-            className="bg-blue-600 rounded-full py-4 px-6"
-            onPress={onRetry}
-          >
-            <Text className="text-white text-16 font-semibold text-center">
-              Try Again
-            </Text>
+          <Pressable className="bg-blue-600 rounded-full py-4 px-6" onPress={onRetry}>
+            <Text className="text-white text-16 font-semibold text-center">Try Again</Text>
           </Pressable>
 
-          <Pressable
-            className="bg-gray-700 rounded-full py-4 px-6"
-            onPress={onReload}
-          >
-            <Text className="text-white text-16 font-semibold text-center">
-              Reload App
-            </Text>
+          <Pressable className="bg-gray-700 rounded-full py-4 px-6" onPress={onReload}>
+            <Text className="text-white text-16 font-semibold text-center">Reload App</Text>
           </Pressable>
         </View>
 
         {/* Error Details (Development Only) */}
         {__DEV__ && (
           <View className="bg-gray-900 rounded-lg p-4">
-            <Text className="text-red-400 text-14 font-semibold mb-2">
-              Error Details (Dev Mode)
-            </Text>
-            <Text className="text-gray-300 text-12 mb-2">
-              ID: {errorId}
-            </Text>
-            <Text className="text-gray-300 text-12 mb-2">
-              Message: {error.message}
-            </Text>
+            <Text className="text-red-400 text-14 font-semibold mb-2">Error Details (Dev Mode)</Text>
+            <Text className="text-gray-300 text-12 mb-2">ID: {errorId}</Text>
+            <Text className="text-gray-300 text-12 mb-2">Message: {error.message}</Text>
             {error.stack && (
               <ScrollView className="max-h-32">
-                <Text className="text-gray-400 text-10 font-mono">
-                  {error.stack}
-                </Text>
+                <Text className="text-gray-400 text-10 font-mono">{error.stack}</Text>
               </ScrollView>
             )}
           </View>
@@ -279,7 +247,7 @@ function DefaultErrorFallback({
  */
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<Props, 'children'>
+  errorBoundaryProps?: Omit<Props, "children">,
 ) {
   const WrappedComponent = (props: P) => (
     <ErrorBoundary {...errorBoundaryProps}>
@@ -288,7 +256,7 @@ export function withErrorBoundary<P extends object>(
   );
 
   WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
-  
+
   return WrappedComponent;
 }
 

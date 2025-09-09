@@ -194,15 +194,15 @@ export class PushNotificationManager {
    */
   isWithinQuietHours(quietStart: string, quietEnd: string): boolean {
     // Input validation
-    if (!quietStart || !quietEnd || typeof quietStart !== 'string' || typeof quietEnd !== 'string') {
-      console.warn('Invalid quiet hours parameters:', { quietStart, quietEnd });
+    if (!quietStart || !quietEnd || typeof quietStart !== "string" || typeof quietEnd !== "string") {
+      console.warn("Invalid quiet hours parameters:", { quietStart, quietEnd });
       return false;
     }
 
     // Validate time format (HH:MM)
     const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (!timePattern.test(quietStart) || !timePattern.test(quietEnd)) {
-      console.warn('Invalid time format for quiet hours:', { quietStart, quietEnd });
+      console.warn("Invalid time format for quiet hours:", { quietStart, quietEnd });
       return false;
     }
 
@@ -211,7 +211,7 @@ export class PushNotificationManager {
 
     const startParts = quietStart.split(":");
     const endParts = quietEnd.split(":");
-    
+
     const startHour = parseInt(startParts[0], 10);
     const startMin = parseInt(startParts[1], 10);
     const endHour = parseInt(endParts[0], 10);
@@ -219,7 +219,7 @@ export class PushNotificationManager {
 
     // Additional validation for parsed values
     if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
-      console.warn('Failed to parse time values:', { quietStart, quietEnd });
+      console.warn("Failed to parse time values:", { quietStart, quietEnd });
       return false;
     }
 

@@ -255,7 +255,7 @@ export default function SignUpScreen() {
                       onPress={() => {
                         navigation.navigate("WebView", {
                           url: getTermsOfServiceUrl(),
-                          title: "Terms of Service"
+                          title: "Terms of Service",
                         });
                       }}
                     >
@@ -267,7 +267,7 @@ export default function SignUpScreen() {
                       onPress={() => {
                         navigation.navigate("WebView", {
                           url: getPrivacyPolicyUrl(),
-                          title: "Privacy Policy"
+                          title: "Privacy Policy",
                         });
                       }}
                     >

@@ -1,18 +1,12 @@
 import React from "react";
-import {
-  KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  Platform,
-  ScrollView,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, TouchableWithoutFeedback, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { 
-  dismissKeyboard, 
-  getKeyboardBehavior, 
+import {
+  dismissKeyboard,
+  getKeyboardBehavior,
   getKeyboardVerticalOffset,
   getKeyboardAwareScrollProps,
-  useKeyboard 
+  useKeyboard,
 } from "../utils/keyboardUtils";
 
 interface KeyboardAvoidingWrapperProps {
@@ -40,23 +34,23 @@ export default function KeyboardAvoidingWrapper({
 }: KeyboardAvoidingWrapperProps) {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboard();
-  
+
   const actualBehavior = behavior || getKeyboardBehavior();
   const actualOffset = keyboardVerticalOffset ?? getKeyboardVerticalOffset(screenType);
-  
+
   // Calculate bottom padding based on keyboard state and screen type
   const getBottomPadding = () => {
     let padding = extraPadding;
-    
+
     if (screenType === "screen") {
       padding += insets.bottom;
     }
-    
+
     // Add extra padding when keyboard is visible for better UX
     if (keyboard.isVisible && Platform.OS === "ios") {
       padding += 8;
     }
-    
+
     return padding;
   };
 
@@ -79,11 +73,7 @@ export default function KeyboardAvoidingWrapper({
       ]}
     >
       {scrollable ? (
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
-          {...getKeyboardAwareScrollProps()}
-        >
+        <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1 }} {...getKeyboardAwareScrollProps()}>
           {children}
         </ScrollView>
       ) : (
@@ -95,9 +85,7 @@ export default function KeyboardAvoidingWrapper({
   if (dismissOnTap) {
     return (
       <TouchableWithoutFeedback onPress={handleDismiss}>
-        <View className="flex-1">
-          {content}
-        </View>
+        <View className="flex-1">{content}</View>
       </TouchableWithoutFeedback>
     );
   }
@@ -112,11 +100,7 @@ export function ModalKeyboardWrapper({
   ...props
 }: Omit<KeyboardAvoidingWrapperProps, "screenType">) {
   return (
-    <KeyboardAvoidingWrapper
-      className={className}
-      screenType="modal"
-      {...props}
-    >
+    <KeyboardAvoidingWrapper className={className} screenType="modal" {...props}>
       {children}
     </KeyboardAvoidingWrapper>
   );
@@ -129,12 +113,7 @@ export function ScreenKeyboardWrapper({
   ...props
 }: Omit<KeyboardAvoidingWrapperProps, "screenType">) {
   return (
-    <KeyboardAvoidingWrapper
-      className={className}
-      screenType="screen"
-      scrollable={scrollable}
-      {...props}
-    >
+    <KeyboardAvoidingWrapper className={className} screenType="screen" scrollable={scrollable} {...props}>
       {children}
     </KeyboardAvoidingWrapper>
   );

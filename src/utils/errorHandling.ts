@@ -9,8 +9,8 @@ import {
   getSupabaseErrorMessage,
   isRetryableSupabaseError,
   logSupabaseError,
-  type SupabaseError
-} from '../types/supabaseError';
+  type SupabaseError,
+} from "../types/supabaseError";
 
 export interface StandardError {
   code: string;
@@ -35,11 +35,7 @@ export interface ErrorHandlingOptions {
 /**
  * Processes an error into a standardized format
  */
-export const processError = (
-  error: unknown,
-  context?: string,
-  customMessage?: string
-): StandardError => {
+export const processError = (error: unknown, context?: string, customMessage?: string): StandardError => {
   let code = "UNKNOWN_ERROR";
   let message = customMessage || "An unknown error occurred";
   let isRetryable = false;
@@ -64,12 +60,14 @@ export const processError = (
     }
 
     // Handle network errors
-    if (error.name === "NetworkError" || 
-        error.message.toLowerCase().includes("network") ||
-        error.message.toLowerCase().includes("fetch") ||
-        error.message.toLowerCase().includes("connection") ||
-        error.message.toLowerCase().includes("unreachable") ||
-        (error as any).code === "NETWORK_ERROR") {
+    if (
+      error.name === "NetworkError" ||
+      error.message.toLowerCase().includes("network") ||
+      error.message.toLowerCase().includes("fetch") ||
+      error.message.toLowerCase().includes("connection") ||
+      error.message.toLowerCase().includes("unreachable") ||
+      (error as any).code === "NETWORK_ERROR"
+    ) {
       code = "NETWORK_ERROR";
       message = customMessage || "Network connection failed. Please check your internet connection.";
       isRetryable = true;
@@ -100,14 +98,9 @@ export const processError = (
 export const handleStoreError = <T extends { error: StandardError | null; isLoading?: boolean }>(
   setState: (partial: Partial<T>) => void,
   error: unknown,
-  options: ErrorHandlingOptions = {}
+  options: ErrorHandlingOptions = {},
 ): never | void => {
-  const {
-    shouldThrow = false,
-    context,
-    shouldLog = true,
-    customMessage,
-  } = options;
+  const { shouldThrow = false, context, shouldLog = true, customMessage } = options;
 
   const processedError = processError(error, context, customMessage);
 
@@ -136,7 +129,7 @@ export const handleStoreError = <T extends { error: StandardError | null; isLoad
  * Clears error state in a standardized way
  */
 export const clearStoreError = <T extends { error: StandardError | null }>(
-  setState: (partial: Partial<T>) => void
+  setState: (partial: Partial<T>) => void,
 ): void => {
   setState({ error: null } as Partial<T>);
 };
@@ -147,14 +140,14 @@ export const clearStoreError = <T extends { error: StandardError | null }>(
 export const withErrorHandling = async <T extends { error: StandardError | null; isLoading?: boolean }>(
   setState: (partial: Partial<T>) => void,
   operation: () => Promise<void>,
-  options: ErrorHandlingOptions = {}
+  options: ErrorHandlingOptions = {},
 ): Promise<void> => {
   try {
     // Clear previous errors and set loading
     setState({ error: null, isLoading: true } as Partial<T>);
-    
+
     await operation();
-    
+
     // Clear loading state on success
     setState({ isLoading: false } as Partial<T>);
   } catch (error) {
@@ -167,44 +160,44 @@ export const withErrorHandling = async <T extends { error: StandardError | null;
  */
 export function translateSupabaseError(code?: string): string | undefined {
   switch (code) {
-    case 'invalid_login_credentials':
-      return 'Incorrect email or password. Please try again.';
-    case 'user_not_found':
-      return 'No account found with this email address.';
-    case 'user_already_exists':
-      return 'An account with this email already exists.';
-    case 'invalid_email':
-      return 'Please enter a valid email address.';
-    case 'weak_password':
-      return 'Password must be at least 6 characters long.';
-    case 'network_error':
-      return 'Network error. Please check your connection and try again.';
-    case 'email_not_confirmed':
-      return 'Please verify your email address before signing in.';
-    case 'too_many_requests':
-      return 'Too many attempts. Please wait a moment and try again.';
-    case 'signup_disabled':
-      return 'New registrations are temporarily disabled.';
-    case 'invalid_credentials':
-      return 'Invalid email or password. Please check your credentials.';
-    case 'email_address_invalid':
-      return 'Please enter a valid email address.';
-    case 'password_too_short':
-      return 'Password must be at least 6 characters long.';
-    case 'email_address_not_authorized':
-      return 'This email address is not authorized to sign up.';
-    case 'captcha_failed':
-      return 'Security verification failed. Please try again.';
-    case 'over_email_send_rate_limit':
-      return 'Too many emails sent. Please wait before requesting another.';
-    case 'invalid_request':
-      return 'Invalid request. Please check your information and try again.';
-    case 'session_not_found':
-      return 'Your session has expired. Please sign in again.';
-    case 'refresh_token_not_found':
-      return 'Session expired. Please sign in again.';
-    case 'invalid_refresh_token':
-      return 'Session expired. Please sign in again.';
+    case "invalid_login_credentials":
+      return "Incorrect email or password. Please try again.";
+    case "user_not_found":
+      return "No account found with this email address.";
+    case "user_already_exists":
+      return "An account with this email already exists.";
+    case "invalid_email":
+      return "Please enter a valid email address.";
+    case "weak_password":
+      return "Password must be at least 6 characters long.";
+    case "network_error":
+      return "Network error. Please check your connection and try again.";
+    case "email_not_confirmed":
+      return "Please verify your email address before signing in.";
+    case "too_many_requests":
+      return "Too many attempts. Please wait a moment and try again.";
+    case "signup_disabled":
+      return "New registrations are temporarily disabled.";
+    case "invalid_credentials":
+      return "Invalid email or password. Please check your credentials.";
+    case "email_address_invalid":
+      return "Please enter a valid email address.";
+    case "password_too_short":
+      return "Password must be at least 6 characters long.";
+    case "email_address_not_authorized":
+      return "This email address is not authorized to sign up.";
+    case "captcha_failed":
+      return "Security verification failed. Please try again.";
+    case "over_email_send_rate_limit":
+      return "Too many emails sent. Please wait before requesting another.";
+    case "invalid_request":
+      return "Invalid request. Please check your information and try again.";
+    case "session_not_found":
+      return "Your session has expired. Please sign in again.";
+    case "refresh_token_not_found":
+      return "Session expired. Please sign in again.";
+    case "invalid_refresh_token":
+      return "Session expired. Please sign in again.";
     default:
       return undefined;
   }

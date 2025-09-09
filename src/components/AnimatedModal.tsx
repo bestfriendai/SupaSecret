@@ -51,7 +51,7 @@ export default function AnimatedModal({
       isClosing.current = false;
       // Animate in
       backdropOpacityValue.value = withTiming(backdropOpacity, animationConfig);
-      
+
       if (animationType === "scale") {
         scaleValue.value = withSpring(1, springConfig);
       } else if (animationType === "slide") {
@@ -72,15 +72,15 @@ export default function AnimatedModal({
 
   const handleClose = () => {
     if (isClosing.current) return;
-    
+
     isClosing.current = true;
-    
+
     // Dismiss keyboard
     Keyboard.dismiss();
-    
+
     // Animate out
     backdropOpacityValue.value = withTiming(0, animationConfig);
-    
+
     if (animationType === "scale") {
       scaleValue.value = withTiming(0.8, animationConfig, (finished) => {
         if (finished) {
@@ -103,9 +103,12 @@ export default function AnimatedModal({
     }
   };
 
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacityValue.value,
-  }), []);
+  const backdropStyle = useAnimatedStyle(
+    () => ({
+      opacity: backdropOpacityValue.value,
+    }),
+    [],
+  );
 
   const contentStyle = useAnimatedStyle(() => {
     const baseStyle: any = {};
@@ -141,11 +144,8 @@ export default function AnimatedModal({
     >
       <View className="flex-1">
         {/* Animated backdrop */}
-        <Animated.View
-          style={[backdropStyle]}
-          className="absolute inset-0 bg-black"
-        />
-        
+        <Animated.View style={[backdropStyle]} className="absolute inset-0 bg-black" />
+
         {/* Backdrop pressable */}
         <Pressable
           className="flex-1"
@@ -159,10 +159,7 @@ export default function AnimatedModal({
               onPress={(e) => e.stopPropagation()} // Prevent backdrop press
               className="w-full max-w-sm"
             >
-              <Animated.View
-                style={[contentStyle]}
-                className={`bg-gray-900 rounded-2xl p-6 ${className}`}
-              >
+              <Animated.View style={[contentStyle]} className={`bg-gray-900 rounded-2xl p-6 ${className}`}>
                 {children}
               </Animated.View>
             </Pressable>
@@ -242,8 +239,10 @@ export function ConfirmModal({
   return (
     <AnimatedModal visible={visible} onClose={onClose} animationType="scale">
       <View className="items-center">
-        <View className={`w-16 h-16 ${destructive ? 'bg-red-500' : 'bg-yellow-500'} rounded-full items-center justify-center mb-4`}>
-          <Text className="text-white text-24">{destructive ? '⚠️' : '❓'}</Text>
+        <View
+          className={`w-16 h-16 ${destructive ? "bg-red-500" : "bg-yellow-500"} rounded-full items-center justify-center mb-4`}
+        >
+          <Text className="text-white text-24">{destructive ? "⚠️" : "❓"}</Text>
         </View>
         <Text className="text-white text-18 font-semibold mb-2 text-center">{title}</Text>
         <Text className="text-gray-400 text-15 text-center mb-6 leading-5">{message}</Text>
@@ -257,7 +256,7 @@ export function ConfirmModal({
             <Text className="text-white font-semibold text-center">{cancelText}</Text>
           </Pressable>
           <Pressable
-            className={`flex-1 py-3 px-4 rounded-full touch-target ${destructive ? 'bg-red-600' : 'bg-blue-500'}`}
+            className={`flex-1 py-3 px-4 rounded-full touch-target ${destructive ? "bg-red-600" : "bg-blue-500"}`}
             onPress={handleConfirm}
             accessibilityRole="button"
             accessibilityLabel={confirmText}
