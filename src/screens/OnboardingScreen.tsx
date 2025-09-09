@@ -26,7 +26,7 @@ type NavigationProp = NativeStackNavigationProp<any>;
 const onboardingSlides: OnboardingSlideType[] = [
   {
     id: "1",
-    title: "Welcome to Secrets",
+    title: "Welcome to Toxic Confessions",
     subtitle: "Share Anonymously",
     description:
       "A safe space to share your thoughts, feelings, and experiences completely anonymously. No judgment, just understanding.",

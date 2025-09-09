@@ -147,7 +147,7 @@ export default function SignUpScreen() {
             <View className="flex-1 px-6 py-8">
               {/* Welcome Text */}
               <View className="mb-8">
-                <Text className="text-white text-28 font-bold mb-2">Join Secrets</Text>
+                <Text className="text-white text-28 font-bold mb-2">Join Toxic Confessions</Text>
                 <Text className="text-gray-400 text-16 leading-6">
                   Create your account to start sharing anonymously and connect with others safely.
                 </Text>
