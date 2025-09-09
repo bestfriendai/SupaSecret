@@ -18,32 +18,36 @@ ON CONFLICT (id) DO UPDATE SET
 -- Create RLS policies for the avatars bucket
 
 -- Policy: Users can view all avatars (public bucket)
+DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
 CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
 FOR SELECT USING (bucket_id = 'avatars');
 
 -- Policy: Users can upload their own avatars
+DROP POLICY IF EXISTS "Users can upload their own avatar" ON storage.objects;
 CREATE POLICY "Users can upload their own avatar" ON storage.objects
 FOR INSERT WITH CHECK (
-  bucket_id = 'avatars' 
+  bucket_id = 'avatars'
   AND auth.uid()::text = (storage.foldername(name))[1]
   AND (storage.extension(name)) IN ('jpg', 'jpeg', 'png', 'webp')
 );
 
 -- Policy: Users can update their own avatars
+DROP POLICY IF EXISTS "Users can update their own avatar" ON storage.objects;
 CREATE POLICY "Users can update their own avatar" ON storage.objects
 FOR UPDATE USING (
-  bucket_id = 'avatars' 
+  bucket_id = 'avatars'
   AND auth.uid()::text = (storage.foldername(name))[1]
 ) WITH CHECK (
-  bucket_id = 'avatars' 
+  bucket_id = 'avatars'
   AND auth.uid()::text = (storage.foldername(name))[1]
   AND (storage.extension(name)) IN ('jpg', 'jpeg', 'png', 'webp')
 );
 
 -- Policy: Users can delete their own avatars
+DROP POLICY IF EXISTS "Users can delete their own avatar" ON storage.objects;
 CREATE POLICY "Users can delete their own avatar" ON storage.objects
 FOR DELETE USING (
-  bucket_id = 'avatars' 
+  bucket_id = 'avatars'
   AND auth.uid()::text = (storage.foldername(name))[1]
 );
 
@@ -68,14 +72,17 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 -- Create RLS policies for profiles table
 
 -- Policy: Users can view all profiles (for public features)
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Profiles are viewable by everyone" ON public.profiles
 FOR SELECT USING (true);
 
 -- Policy: Users can insert their own profile
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles
 FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Policy: Users can update their own profile
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile" ON public.profiles
 FOR UPDATE USING (auth.uid() = id);
 
@@ -153,13 +160,19 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION public.get_avatar_url(UUID) TO anon, authenticated;
 
 -- Create function to update avatar URL
+-- Users can only update their own avatar (enforced by RLS and auth check)
 CREATE OR REPLACE FUNCTION public.update_avatar_url(user_id UUID, new_avatar_url TEXT)
 RETURNS BOOLEAN AS $$
 BEGIN
-  UPDATE public.profiles 
+  -- Ensure user can only update their own avatar
+  IF user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Access denied: You can only update your own avatar';
+  END IF;
+
+  UPDATE public.profiles
   SET avatar_url = new_avatar_url, updated_at = NOW()
-  WHERE id = user_id AND id = auth.uid();
-  
+  WHERE id = user_id;
+
   RETURN FOUND;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -174,16 +187,21 @@ DECLARE
   deleted_count INTEGER := 0;
 BEGIN
   -- Delete avatar files that are older than 30 days and not referenced in profiles
-  DELETE FROM storage.objects 
-  WHERE bucket_id = 'avatars' 
-    AND created_at < NOW() - INTERVAL '30 days'
-    AND name NOT IN (
-      SELECT SUBSTRING(avatar_url FROM '.*/avatars/(.*)$')
-      FROM public.profiles 
-      WHERE avatar_url IS NOT NULL 
-        AND avatar_url LIKE '%/avatars/%'
-    );
-  
+  -- Using LEFT JOIN for better performance and correct NULL handling
+  DELETE FROM storage.objects
+  WHERE id IN (
+    SELECT o.id
+    FROM storage.objects o
+    LEFT JOIN public.profiles p ON (
+      p.avatar_url IS NOT NULL
+      AND p.avatar_url LIKE '%/avatars/%'
+      AND split_part(split_part(p.avatar_url, '/avatars/', 2), '?', 1) = o.name
+    )
+    WHERE o.bucket_id = 'avatars'
+      AND o.created_at < NOW() - INTERVAL '30 days'
+      AND p.id IS NULL
+  );
+
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RETURN deleted_count;
 END;

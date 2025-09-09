@@ -3,11 +3,11 @@
  * Tracks performance, errors, and user experience metrics
  */
 
-import * as React from 'react';
-import { AppState, AppStateStatus, EmitterSubscription } from 'react-native';
-import * as Device from 'expo-device';
-import * as Application from 'expo-application';
-import NetInfo from '@react-native-community/netinfo';
+import * as React from "react";
+import { AppState, AppStateStatus, EmitterSubscription } from "react-native";
+import * as Device from "expo-device";
+import * as Application from "expo-application";
+import NetInfo from "@react-native-community/netinfo";
 
 export interface HealthMetrics {
   performance: {
@@ -21,12 +21,12 @@ export interface HealthMetrics {
     sessionDuration: number;
     screenViews: Record<string, number>;
     interactions: Record<string, number>;
-    errors: Array<{
+    errors: {
       timestamp: number;
       error: string;
       screen: string;
       userId?: string;
-    }>;
+    }[];
   };
   system: {
     deviceInfo: any;
@@ -41,7 +41,7 @@ class HealthMonitor {
   private metrics: HealthMetrics;
   private sessionStartedAt: number;
   private lastScreenChangeAt: number | null = null;
-  private currentScreen: string = 'Unknown';
+  private currentScreen: string = "Unknown";
   private isMonitoring: boolean = false;
   private reportingInterval: NodeJS.Timeout | null = null;
   private appStateListener: EmitterSubscription | null = null;
@@ -69,8 +69,8 @@ class HealthMonitor {
       },
       system: {
         deviceInfo: {},
-        appVersion: Application.nativeApplicationVersion || 'unknown',
-        networkStatus: 'unknown',
+        appVersion: Application.nativeApplicationVersion || "unknown",
+        networkStatus: "unknown",
         storageUsage: 0,
       },
     };
@@ -81,23 +81,23 @@ class HealthMonitor {
    */
   async startMonitoring() {
     if (this.isMonitoring) return;
-    
+
     this.isMonitoring = true;
-    
+
     // Collect initial system info
     await this.collectSystemInfo();
-    
+
     // Set up periodic monitoring
     this.setupPeriodicMonitoring();
-    
+
     // Set up app state monitoring
     this.setupAppStateMonitoring();
-    
+
     // Set up network monitoring
     this.setupNetworkMonitoring();
-    
+
     if (__DEV__) {
-      console.log('🏥 Health monitoring started');
+      console.log("🏥 Health monitoring started");
     }
   }
 
@@ -106,24 +106,24 @@ class HealthMonitor {
    */
   stopMonitoring() {
     this.isMonitoring = false;
-    
+
     if (this.reportingInterval) {
       clearInterval(this.reportingInterval);
       this.reportingInterval = null;
     }
-    
+
     if (this.appStateListener) {
       this.appStateListener.remove();
       this.appStateListener = null;
     }
-    
+
     if (this.netInfoUnsubscribe) {
       this.netInfoUnsubscribe();
       this.netInfoUnsubscribe = null;
     }
-    
+
     if (__DEV__) {
-      console.log('🏥 Health monitoring stopped');
+      console.log("🏥 Health monitoring stopped");
     }
   }
 
@@ -143,8 +143,7 @@ class HealthMonitor {
     this.lastScreenChangeAt = now;
 
     // Update screen view count
-    this.metrics.user.screenViews[screenName] =
-      (this.metrics.user.screenViews[screenName] || 0) + 1;
+    this.metrics.user.screenViews[screenName] = (this.metrics.user.screenViews[screenName] || 0) + 1;
 
     this.currentScreen = screenName;
 
@@ -157,9 +156,8 @@ class HealthMonitor {
    * Track user interactions
    */
   trackInteraction(action: string, details?: any) {
-    this.metrics.user.interactions[action] = 
-      (this.metrics.user.interactions[action] || 0) + 1;
-    
+    this.metrics.user.interactions[action] = (this.metrics.user.interactions[action] || 0) + 1;
+
     if (__DEV__ && details) {
       console.log(`👆 Interaction: ${action}`, details);
     }
@@ -172,16 +170,16 @@ class HealthMonitor {
     if (!this.metrics.performance.apiResponseTimes[endpoint]) {
       this.metrics.performance.apiResponseTimes[endpoint] = [];
     }
-    
+
     this.metrics.performance.apiResponseTimes[endpoint].push(responseTime);
-    
+
     // Keep only last 100 response times per endpoint
     if (this.metrics.performance.apiResponseTimes[endpoint].length > 100) {
       this.metrics.performance.apiResponseTimes[endpoint].shift();
     }
-    
+
     if (__DEV__) {
-      console.log(`🌐 API ${success ? '✅' : '❌'}: ${endpoint} (${responseTime}ms)`);
+      console.log(`🌐 API ${success ? "✅" : "❌"}: ${endpoint} (${responseTime}ms)`);
     }
   }
 
@@ -195,14 +193,14 @@ class HealthMonitor {
       screen: screen || this.currentScreen,
       userId,
     });
-    
+
     // Keep only last 50 errors
     if (this.metrics.user.errors.length > 50) {
       this.metrics.user.errors.shift();
     }
-    
+
     if (__DEV__) {
-      console.error('🚨 Error tracked:', error.message, 'on', screen || this.currentScreen);
+      console.error("🚨 Error tracked:", error.message, "on", screen || this.currentScreen);
     }
   }
 
@@ -211,9 +209,9 @@ class HealthMonitor {
    */
   trackCrash() {
     this.metrics.performance.crashCount++;
-    
+
     if (__DEV__) {
-      console.error('💥 Crash tracked');
+      console.error("💥 Crash tracked");
     }
   }
 
@@ -232,24 +230,26 @@ class HealthMonitor {
    */
   getHealthSummary() {
     const metrics = this.getMetrics();
-    
+
     // Calculate averages
     const avgApiResponseTimes: Record<string, number> = {};
     for (const [endpoint, times] of Object.entries(metrics.performance.apiResponseTimes)) {
       avgApiResponseTimes[endpoint] = times.reduce((a, b) => a + b, 0) / times.length;
     }
-    
-    const avgMemoryUsage = metrics.performance.memoryUsage.length > 0
-      ? metrics.performance.memoryUsage.reduce((a, b) => a + b, 0) / metrics.performance.memoryUsage.length
-      : 0;
-    
+
+    const avgMemoryUsage =
+      metrics.performance.memoryUsage.length > 0
+        ? metrics.performance.memoryUsage.reduce((a, b) => a + b, 0) / metrics.performance.memoryUsage.length
+        : 0;
+
     return {
       sessionDuration: metrics.user.sessionDuration,
       totalScreenViews: Object.values(metrics.user.screenViews).reduce((a, b) => a + b, 0),
       totalInteractions: Object.values(metrics.user.interactions).reduce((a, b) => a + b, 0),
       totalErrors: metrics.user.errors.length,
       crashCount: metrics.performance.crashCount,
-      avgApiResponseTime: Object.values(avgApiResponseTimes).reduce((a, b) => a + b, 0) / Object.keys(avgApiResponseTimes).length || 0,
+      avgApiResponseTime:
+        Object.values(avgApiResponseTimes).reduce((a, b) => a + b, 0) / Object.keys(avgApiResponseTimes).length || 0,
       avgMemoryUsage,
       networkStatus: metrics.system.networkStatus,
       appVersion: metrics.system.appVersion,
@@ -262,7 +262,7 @@ class HealthMonitor {
   exportMetrics() {
     const metrics = this.getMetrics();
     const summary = this.getHealthSummary();
-    
+
     return {
       timestamp: new Date().toISOString(),
       summary,
@@ -281,46 +281,45 @@ class HealthMonitor {
         modelName: Device.modelName,
         totalMemory: Device.totalMemory,
       };
-      
+
       // Network status
       const netInfo = await NetInfo.fetch();
-      this.metrics.system.networkStatus = `${netInfo.type}-${netInfo.isConnected ? 'connected' : 'disconnected'}`;
-      
+      this.metrics.system.networkStatus = `${netInfo.type}-${netInfo.isConnected ? "connected" : "disconnected"}`;
     } catch (error) {
-      console.error('Failed to collect system info:', error);
+      console.error("Failed to collect system info:", error);
     }
   }
 
   private setupPeriodicMonitoring() {
     this.reportingInterval = setInterval(() => {
       this.collectMemoryUsage();
-      
+
       // Log health summary in development
       if (__DEV__) {
         const summary = this.getHealthSummary();
-        console.log('🏥 Health Summary:', summary);
+        console.log("🏥 Health Summary:", summary);
       }
     }, 30000); // Every 30 seconds
   }
 
   private onAppStateChange = (nextAppState: AppStateStatus) => {
-    this.trackInteraction('app_state_change', { state: nextAppState });
+    this.trackInteraction("app_state_change", { state: nextAppState });
 
-    if (nextAppState === 'background') {
+    if (nextAppState === "background") {
       // App went to background - good time to report metrics
       void this.reportMetrics();
     }
   };
 
   private setupAppStateMonitoring() {
-    this.appStateListener = AppState.addEventListener('change', this.onAppStateChange);
+    this.appStateListener = AppState.addEventListener("change", this.onAppStateChange);
   }
 
   private setupNetworkMonitoring() {
-    this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
-      const status = `${state.type}-${state.isConnected ? 'connected' : 'disconnected'}`;
+    this.netInfoUnsubscribe = NetInfo.addEventListener((state) => {
+      const status = `${state.type}-${state.isConnected ? "connected" : "disconnected"}`;
       this.metrics.system.networkStatus = status;
-      this.trackInteraction('network_change', { status });
+      this.trackInteraction("network_change", { status });
     });
   }
 
@@ -329,9 +328,9 @@ class HealthMonitor {
       if (global.performance && (global.performance as any).memory) {
         const memory = (global.performance as any).memory;
         const usedMB = memory.usedJSHeapSize / 1024 / 1024;
-        
+
         this.metrics.performance.memoryUsage.push(usedMB);
-        
+
         // Keep only last 100 memory readings
         if (this.metrics.performance.memoryUsage.length > 100) {
           this.metrics.performance.memoryUsage.shift();
@@ -344,20 +343,19 @@ class HealthMonitor {
 
   private async reportMetrics() {
     if (!this.isMonitoring) return;
-    
+
     try {
       const report = this.exportMetrics();
-      
+
       // In a real app, you would send this to your analytics service
       if (__DEV__) {
-        console.log('📊 Health Report:', report);
+        console.log("📊 Health Report:", report);
       }
-      
+
       // TODO: Send to analytics service
       // await analyticsService.reportHealth(report);
-      
     } catch (error) {
-      console.error('Failed to report metrics:', error);
+      console.error("Failed to report metrics:", error);
     }
   }
 }
@@ -371,7 +369,7 @@ export const healthMonitor = new HealthMonitor();
 export function useHealthMonitor() {
   React.useEffect(() => {
     healthMonitor.startMonitoring();
-    
+
     return () => {
       healthMonitor.stopMonitoring();
     };

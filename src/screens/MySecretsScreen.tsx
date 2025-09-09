@@ -46,7 +46,8 @@ export default function MySecretsScreen() {
       const query = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(
         (c) =>
-          c.content?.toLowerCase().includes(query) || (c.transcription && c.transcription.toLowerCase().includes(query)),
+          c.content?.toLowerCase().includes(query) ||
+          (c.transcription && c.transcription.toLowerCase().includes(query)),
       );
     }
 
@@ -149,14 +150,14 @@ export default function MySecretsScreen() {
       return (
         <Pressable
           style={{
-            backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'rgba(17, 24, 39, 0.8)',
+            backgroundColor: isSelected ? "rgba(59, 130, 246, 0.1)" : "rgba(17, 24, 39, 0.8)",
             borderRadius: 16,
             padding: 16,
             marginHorizontal: 16,
             marginBottom: 12,
             borderWidth: isSelected ? 1 : 0,
-            borderColor: isSelected ? '#3B82F6' : 'transparent',
-            shadowColor: '#000',
+            borderColor: isSelected ? "#3B82F6" : "transparent",
+            shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.1,
             shadowRadius: 8,
@@ -180,7 +181,7 @@ export default function MySecretsScreen() {
             <View className="flex-row items-center">
               <View
                 style={{
-                  backgroundColor: item.type === "video" ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                  backgroundColor: item.type === "video" ? "rgba(239, 68, 68, 0.2)" : "rgba(59, 130, 246, 0.2)",
                   borderRadius: 8,
                   padding: 6,
                   marginRight: 8,
@@ -192,20 +193,18 @@ export default function MySecretsScreen() {
                   color={item.type === "video" ? "#EF4444" : "#3B82F6"}
                 />
               </View>
-              <Text className="text-gray-400 text-12">
-                {format(new Date(item.timestamp), "MMM d, h:mm a")}
-              </Text>
+              <Text className="text-gray-400 text-12">{format(new Date(item.timestamp), "MMM d, h:mm a")}</Text>
             </View>
 
             {isSelectionMode && (
               <View
                 style={{
-                  backgroundColor: isSelected ? '#3B82F6' : 'rgba(139, 152, 165, 0.2)',
+                  backgroundColor: isSelected ? "#3B82F6" : "rgba(139, 152, 165, 0.2)",
                   borderRadius: 12,
                   width: 24,
                   height: 24,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <Ionicons
@@ -226,7 +225,7 @@ export default function MySecretsScreen() {
               <View className="flex-row items-center">
                 <View
                   style={{
-                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    backgroundColor: "rgba(239, 68, 68, 0.2)",
                     borderRadius: 6,
                     padding: 4,
                     marginRight: 6,
@@ -234,7 +233,7 @@ export default function MySecretsScreen() {
                 >
                   <Ionicons name="heart" size={12} color="#EF4444" />
                 </View>
-                <Text className="text-gray-400 text-12">{item.likes || 0}</Text>
+                <Text className="text-gray-400 text-12">{String(item.likes || 0)}</Text>
               </View>
             </View>
 
@@ -242,7 +241,7 @@ export default function MySecretsScreen() {
               <Pressable
                 onPress={() => handleDeleteSingle(item.id)}
                 style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  backgroundColor: "rgba(239, 68, 68, 0.1)",
                   borderRadius: 8,
                   padding: 8,
                 }}
@@ -295,22 +294,22 @@ export default function MySecretsScreen() {
   return (
     <View className="flex-1 bg-black">
       {/* Compact Header */}
-      <View className="px-4 pt-4 pb-3">
+      <View className="px-4 pt-0 pb-3">
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-gray-400 text-14 font-medium">
-            {filteredConfessions.length} {filteredConfessions.length === 1 ? 'secret' : 'secrets'}
+            {String(filteredConfessions.length)} {filteredConfessions.length === 1 ? "secret" : "secrets"}
           </Text>
 
           {userConfessions.length > 0 && (
             <Pressable
               onPress={handleDeleteAll}
               style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                backgroundColor: "rgba(239, 68, 68, 0.1)",
                 borderRadius: 8,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderWidth: 1,
-                borderColor: 'rgba(239, 68, 68, 0.3)',
+                borderColor: "rgba(239, 68, 68, 0.3)",
               }}
             >
               <Text className="text-red-400 text-12 font-medium">Delete All</Text>
@@ -370,7 +369,7 @@ export default function MySecretsScreen() {
         estimatedItemSize={120}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: 16 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: 0 }}
         ListEmptyComponent={renderEmpty}
       />
     </View>

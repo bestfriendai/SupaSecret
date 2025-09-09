@@ -1,12 +1,12 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface NavigationState {
-  currentAuthScreen: 'onboarding' | 'signin' | 'signup' | null;
+  currentAuthScreen: "onboarding" | "signin" | "signup" | null;
   isAuthenticating: boolean;
   lastAuthAttempt: number | null;
-  
+
   // Actions
-  setCurrentAuthScreen: (screen: 'onboarding' | 'signin' | 'signup' | null) => void;
+  setCurrentAuthScreen: (screen: "onboarding" | "signin" | "signup" | null) => void;
   setAuthenticating: (isAuthenticating: boolean) => void;
   setLastAuthAttempt: (timestamp: number) => void;
   shouldPreventRedirect: () => boolean;
@@ -36,8 +36,8 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
     // Prevent redirect if:
     // 1. Currently authenticating
     // 2. Recent auth attempt (within 5 seconds) and on signin/signup screen
-    const recentAuthAttempt = state.lastAuthAttempt && (now - state.lastAuthAttempt) < 5000;
-    const onAuthScreen = state.currentAuthScreen === 'signin' || state.currentAuthScreen === 'signup';
+    const recentAuthAttempt = Boolean(state.lastAuthAttempt && now - state.lastAuthAttempt < 5000);
+    const onAuthScreen = state.currentAuthScreen === "signin" || state.currentAuthScreen === "signup";
 
     return Boolean(state.isAuthenticating || (recentAuthAttempt && onAuthScreen));
   },

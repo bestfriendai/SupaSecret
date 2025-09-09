@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, Pressable, Dimensions, AppState } from "react-native";
+import { View, Text, Pressable, Dimensions, AppState, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
@@ -58,7 +58,9 @@ export default function EnhancedVideoItem({
     // Use forceUnmuted for video tab, otherwise respect user preference
     p.muted = forceUnmuted ? false : !soundEnabled;
     if (__DEV__) {
-      console.log(`Video player created for ${confession.id}: soundEnabled=${soundEnabled}, forceUnmuted=${forceUnmuted}, muted=${p.muted}`);
+      console.log(
+        `Video player created for ${confession.id}: soundEnabled=${soundEnabled}, forceUnmuted=${forceUnmuted}, muted=${p.muted}`,
+      );
     }
   });
 
@@ -80,7 +82,9 @@ export default function EnhancedVideoItem({
         const shouldBeMuted = forceUnmuted ? false : !soundEnabled;
         player.muted = shouldBeMuted;
         if (__DEV__) {
-          console.log(`Video ${confession.id}: soundEnabled=${soundEnabled}, forceUnmuted=${forceUnmuted}, muted=${player.muted}, shouldBeMuted=${shouldBeMuted}`);
+          console.log(
+            `Video ${confession.id}: soundEnabled=${soundEnabled}, forceUnmuted=${forceUnmuted}, muted=${player.muted}, shouldBeMuted=${shouldBeMuted}`,
+          );
         }
       }
     } catch (e) {
@@ -125,7 +129,9 @@ export default function EnhancedVideoItem({
               if (player && (forceUnmuted || soundEnabled)) {
                 player.muted = false;
                 if (__DEV__) {
-                  console.log(`Force unmuted video ${confession.id}: muted=${player.muted}, forceUnmuted=${forceUnmuted}`);
+                  console.log(
+                    `Force unmuted video ${confession.id}: muted=${player.muted}, forceUnmuted=${forceUnmuted}`,
+                  );
                 }
               }
             }, 100);
@@ -157,13 +163,13 @@ export default function EnhancedVideoItem({
     const handleAppStateChange = (nextAppState: string) => {
       if (player) {
         try {
-          if (nextAppState === 'background' || nextAppState === 'inactive') {
+          if (nextAppState === "background" || nextAppState === "inactive") {
             // App is going to background, pause video
             if (player.playing) {
               wasPlayingRef.current = true;
               player.pause();
             }
-          } else if (nextAppState === 'active' && wasPlayingRef.current && isActive) {
+          } else if (nextAppState === "active" && wasPlayingRef.current && isActive) {
             // App is coming back to foreground, resume if it was playing and is active
             player.play();
           }
@@ -173,29 +179,31 @@ export default function EnhancedVideoItem({
       }
     };
 
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
     return () => subscription?.remove();
   }, [player, isActive]);
 
   return (
-    <View style={{
-      height: screenHeight,
-      width: '100%',
-      backgroundColor: 'black',
-      position: 'relative'
-    }}>
+    <View
+      style={{
+        height: screenHeight,
+        width: "100%",
+        backgroundColor: "black",
+        position: "relative",
+      }}
+    >
       {/* Video Player */}
       <VideoView
         player={player}
         style={{
-          position: 'absolute',
+          position: "absolute",
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          width: '100%',
+          width: "100%",
           height: screenHeight,
-          backgroundColor: 'black'
+          backgroundColor: "black",
         }}
         contentFit="cover"
         nativeControls={false}
@@ -204,7 +212,7 @@ export default function EnhancedVideoItem({
       {/* Tap to toggle play/pause and unmute */}
       <Pressable
         style={{
-          position: 'absolute',
+          position: "absolute",
           top: 0,
           left: 0,
           right: 0,
@@ -325,11 +333,7 @@ export default function EnhancedVideoItem({
                   }
                 } catch (error) {
                   // Show user-facing error feedback instead of console.error
-                  Alert.alert(
-                    'Save Failed',
-                    'Unable to save this confession. Please try again.',
-                    [{ text: 'OK' }]
-                  );
+                  Alert.alert("Save Failed", "Unable to save this confession. Please try again.", [{ text: "OK" }]);
                 } finally {
                   // Always run haptic feedback regardless of success or failure
                   impactAsync();

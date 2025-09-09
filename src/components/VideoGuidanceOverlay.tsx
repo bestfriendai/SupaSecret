@@ -52,7 +52,7 @@ export default function VideoGuidanceOverlay({ isVisible, onDismiss }: VideoGuid
       cancelAnimation(overlayOpacity);
       cancelAnimation(swipeIndicatorY);
       cancelAnimation(heartScale);
-      
+
       overlayOpacity.value = withTiming(0, { duration: 300 });
       swipeIndicatorY.value = 0;
       heartScale.value = 0;

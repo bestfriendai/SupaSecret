@@ -77,13 +77,19 @@ export default function CommentBottomSheet({ isVisible, onClose }: CommentBottom
       }
     });
 
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }), []);
+  const sheetStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ translateY: translateY.value }],
+    }),
+    [],
+  );
 
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
-  }), []);
+  const backdropStyle = useAnimatedStyle(
+    () => ({
+      opacity: backdropOpacity.value,
+    }),
+    [],
+  );
 
   const handleAddComment = () => {
     if (newComment.trim()) {

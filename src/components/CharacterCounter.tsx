@@ -27,7 +27,7 @@ export default function CharacterCounter({
   className = "",
 }: CharacterCounterProps) {
   const progress = useSharedValue(0);
-  
+
   // Calculate progress (0 to 1)
   React.useEffect(() => {
     progress.value = withSpring(currentLength / maxLength, {
@@ -47,9 +47,9 @@ export default function CharacterCounter({
     const color = interpolateColor(
       colorState.value,
       [0, 1, 2],
-      ["#8B98A5", "#F59E0B", "#EF4444"] // gray, yellow, red
+      ["#8B98A5", "#F59E0B", "#EF4444"], // gray, yellow, red
     );
-    
+
     return {
       color,
       transform: [
@@ -67,9 +67,9 @@ export default function CharacterCounter({
     const color = interpolateColor(
       colorState.value,
       [0, 1, 2],
-      ["#10B981", "#F59E0B", "#EF4444"] // green, yellow, red
+      ["#10B981", "#F59E0B", "#EF4444"], // green, yellow, red
     );
-    
+
     return {
       color,
       transform: [
@@ -87,9 +87,9 @@ export default function CharacterCounter({
     const backgroundColor = interpolateColor(
       colorState.value,
       [0, 1, 2],
-      ["#1D9BF0", "#F59E0B", "#EF4444"] // blue, yellow, red
+      ["#1D9BF0", "#F59E0B", "#EF4444"], // blue, yellow, red
     );
-    
+
     return {
       backgroundColor,
       width: `${Math.min(progress.value * 100, 100)}%`,
@@ -105,7 +105,7 @@ export default function CharacterCounter({
 
   const getWarningMessage = () => {
     const remaining = maxLength - currentLength;
-    
+
     if (currentLength > maxLength) {
       return `${Math.abs(remaining)} characters over limit`;
     }
@@ -124,39 +124,30 @@ export default function CharacterCounter({
     <View className={`${className}`}>
       {/* Progress bar */}
       <View className="h-1 bg-gray-800 rounded-full mb-2 overflow-hidden">
-        <Animated.View
-          style={[progressBarStyle]}
-          className="h-full rounded-full"
-        />
+        <Animated.View style={[progressBarStyle]} className="h-full rounded-full" />
       </View>
-      
+
       {/* Counter and status */}
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
           {showIcon && (
             <Animated.View style={iconStyle} className="mr-2">
-              <Ionicons 
-                name={getIconName()} 
-                size={16} 
+              <Ionicons
+                name={getIconName()}
+                size={16}
                 color="#10B981" // This will be overridden by animated style
               />
             </Animated.View>
           )}
-          
+
           {warningMessage && (
-            <Animated.Text 
-              style={textStyle}
-              className="text-13 font-medium"
-            >
+            <Animated.Text style={textStyle} className="text-13 font-medium">
               {warningMessage}
             </Animated.Text>
           )}
         </View>
-        
-        <Animated.Text 
-          style={textStyle}
-          className="text-13 font-mono"
-        >
+
+        <Animated.Text style={textStyle} className="text-13 font-mono">
           {currentLength}/{maxLength}
         </Animated.Text>
       </View>

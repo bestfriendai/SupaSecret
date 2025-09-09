@@ -3,8 +3,8 @@
  * Provides easy access to offline queue functionality
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { offlineQueue, OfflineActionType } from '../utils/offlineQueue';
+import { useEffect, useState, useCallback, useRef } from "react";
+import { offlineQueue, OfflineActionType } from "../utils/offlineQueue";
 
 export interface UseOfflineQueueReturn {
   isOnline: boolean;
@@ -14,7 +14,7 @@ export interface UseOfflineQueueReturn {
     action: () => Promise<T>,
     fallbackType: OfflineActionType,
     fallbackPayload: any,
-    maxRetries?: number
+    maxRetries?: number,
   ) => Promise<T | string>;
 }
 
@@ -24,11 +24,13 @@ export interface UseOfflineQueueReturn {
 export const useOfflineQueue = (): UseOfflineQueueReturn => {
   const [isOnline, setIsOnline] = useState(offlineQueue.getNetworkStatus());
   const [queueSize, setQueueSize] = useState(offlineQueue.getQueueSize());
+  const isOnlineRef = useRef(isOnline);
 
   useEffect(() => {
     // Subscribe to network changes
     const unsubscribe = offlineQueue.onNetworkChange((online) => {
       setIsOnline(online);
+      isOnlineRef.current = online; // Keep ref in sync
       setQueueSize(offlineQueue.getQueueSize());
     });
 
@@ -43,35 +45,40 @@ export const useOfflineQueue = (): UseOfflineQueueReturn => {
     };
   }, []);
 
-  const enqueueAction = useCallback(async (
-    type: OfflineActionType,
-    payload: any,
-    maxRetries: number = 3
-  ): Promise<string> => {
-    return await offlineQueue.enqueue(type, payload, maxRetries);
-  }, []);
+  const enqueueAction = useCallback(
+    async (type: OfflineActionType, payload: any, maxRetries: number = 3): Promise<string> => {
+      return await offlineQueue.enqueue(type, payload, maxRetries);
+    },
+    [],
+  );
 
-  const executeOrQueue = useCallback(async <T>(
-    action: () => Promise<T>,
-    fallbackType: OfflineActionType,
-    fallbackPayload: any,
-    maxRetries: number = 3
-  ): Promise<T | string> => {
-    if (isOnline) {
-      try {
-        return await action();
-      } catch (error) {
-        // If action fails and we're online, still queue it for retry
-        if (__DEV__) {
-          console.warn('Online action failed, queuing for retry:', error);
+  const executeOrQueue = useCallback(
+    async <T>(
+      action: () => Promise<T>,
+      fallbackType: OfflineActionType,
+      fallbackPayload: any,
+      maxRetries: number = 3,
+    ): Promise<T | string> => {
+      // Read current network status at execution time to avoid stale closure
+      const currentlyOnline = offlineQueue.getNetworkStatus();
+
+      if (currentlyOnline) {
+        try {
+          return await action();
+        } catch (error) {
+          // If action fails and we're online, still queue it for retry
+          if (__DEV__) {
+            console.warn("Online action failed, queuing for retry:", error);
+          }
+          return await enqueueAction(fallbackType, fallbackPayload, maxRetries);
         }
+      } else {
+        // Queue the action for later execution
         return await enqueueAction(fallbackType, fallbackPayload, maxRetries);
       }
-    } else {
-      // Queue the action for later execution
-      return await enqueueAction(fallbackType, fallbackPayload, maxRetries);
-    }
-  }, [isOnline, enqueueAction]);
+    },
+    [enqueueAction],
+  );
 
   return {
     isOnline,

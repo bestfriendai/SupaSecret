@@ -21,7 +21,7 @@ const apiRetry = createApiRetry({
     if (__DEV__) {
       console.warn(`[API Retry] Image generation attempt ${attempt} failed, retrying in ${delay}ms:`, error);
     }
-  }
+  },
 });
 
 /**
@@ -41,44 +41,44 @@ export async function generateImage(
 ): Promise<string> {
   return apiRetry(async () => {
     try {
-    // Create request body
-    const requestBody = {
-      projectId: process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID,
-      prompt,
-      options: {
-        ...options,
-      },
-    };
+      // Create request body
+      const requestBody = {
+        projectId: process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID,
+        prompt,
+        options: {
+          ...options,
+        },
+      };
 
-    // Make API request
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+      // Make API request
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("[AssetGenerationService] Error response:", errorData);
-      throw new Error(`Image generation API error: ${response.status} ${JSON.stringify(errorData)}`);
-    }
-
-    const result = await response.json();
-    if (__DEV__) {
-      console.log("[AssetGenerationService] Image generated successfully");
-    }
-
-    // Return the image data from the response
-    if (result.success && result.data) {
-      return result.data.imageUrl as string;
-    } else {
-      if (__DEV__) {
-        console.error("[AssetGenerationService] Invalid response format:", result);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("[AssetGenerationService] Error response:", errorData);
+        throw new Error(`Image generation API error: ${response.status} ${JSON.stringify(errorData)}`);
       }
-      throw new Error("Invalid response format from API");
-    }
+
+      const result = await response.json();
+      if (__DEV__) {
+        console.log("[AssetGenerationService] Image generated successfully");
+      }
+
+      // Return the image data from the response
+      if (result.success && result.data) {
+        return result.data.imageUrl as string;
+      } else {
+        if (__DEV__) {
+          console.error("[AssetGenerationService] Invalid response format:", result);
+        }
+        throw new Error("Invalid response format from API");
+      }
     } catch (error) {
       if (__DEV__) {
         console.error("Image Generation Error:", error);

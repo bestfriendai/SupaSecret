@@ -1,14 +1,14 @@
-import React from 'react';
-import { Pressable, Text, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography, shadows } from '../../design/tokens';
-import { getButtonA11yProps } from '../../utils/accessibility';
+import React from "react";
+import { Pressable, Text, ActivityIndicator, ViewStyle, TextStyle } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, spacing, borderRadius, typography, shadows } from "../../design/tokens";
+import { getButtonA11yProps } from "../../utils/accessibility";
 
 export interface ButtonProps {
   children: React.ReactNode;
   onPress?: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+  size?: "sm" | "md" | "lg";
   disabled?: boolean;
   loading?: boolean;
   leftIcon?: keyof typeof Ionicons.glyphMap;
@@ -23,8 +23,8 @@ export interface ButtonProps {
 export const Button: React.FC<ButtonProps> = ({
   children,
   onPress,
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   disabled = false,
   loading = false,
   leftIcon,
@@ -40,7 +40,7 @@ export const Button: React.FC<ButtonProps> = ({
   // Get variant styles
   const getVariantStyles = (): { container: ViewStyle; text: TextStyle } => {
     switch (variant) {
-      case 'primary':
+      case "primary":
         return {
           container: {
             backgroundColor: isDisabled ? colors.gray[600] : colors.primary[500],
@@ -50,7 +50,7 @@ export const Button: React.FC<ButtonProps> = ({
             color: colors.white,
           },
         };
-      case 'secondary':
+      case "secondary":
         return {
           container: {
             backgroundColor: isDisabled ? colors.gray[700] : colors.secondary[500],
@@ -60,10 +60,10 @@ export const Button: React.FC<ButtonProps> = ({
             color: colors.white,
           },
         };
-      case 'outline':
+      case "outline":
         return {
           container: {
-            backgroundColor: 'transparent',
+            backgroundColor: "transparent",
             borderWidth: 1,
             borderColor: isDisabled ? colors.gray[600] : colors.primary[500],
           },
@@ -71,17 +71,17 @@ export const Button: React.FC<ButtonProps> = ({
             color: isDisabled ? colors.gray[500] : colors.primary[500],
           },
         };
-      case 'ghost':
+      case "ghost":
         return {
           container: {
-            backgroundColor: 'transparent',
+            backgroundColor: "transparent",
             borderWidth: 0,
           },
           text: {
             color: isDisabled ? colors.gray[500] : colors.primary[500],
           },
         };
-      case 'danger':
+      case "danger":
         return {
           container: {
             backgroundColor: isDisabled ? colors.gray[600] : colors.error[500],
@@ -107,7 +107,7 @@ export const Button: React.FC<ButtonProps> = ({
   // Get size styles
   const getSizeStyles = (): { container: ViewStyle; text: TextStyle; iconSize: number } => {
     switch (size) {
-      case 'sm':
+      case "sm":
         return {
           container: {
             paddingHorizontal: spacing[3],
@@ -120,7 +120,7 @@ export const Button: React.FC<ButtonProps> = ({
           },
           iconSize: 16,
         };
-      case 'lg':
+      case "lg":
         return {
           container: {
             paddingHorizontal: spacing[6],
@@ -153,12 +153,12 @@ export const Button: React.FC<ButtonProps> = ({
   const sizeStyles = getSizeStyles();
 
   const containerStyle: ViewStyle = {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: borderRadius.lg,
     opacity: isDisabled ? 0.6 : 1,
-    width: fullWidth ? '100%' : undefined,
+    width: fullWidth ? "100%" : undefined,
     ...shadows.sm,
     ...variantStyles.container,
     ...sizeStyles.container,
@@ -166,7 +166,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const textStyles: TextStyle = {
-    textAlign: 'center',
+    textAlign: "center",
     ...variantStyles.text,
     ...sizeStyles.text,
     ...textStyle,
@@ -176,16 +176,13 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
-      style={({ pressed }) => [
-        containerStyle,
-        pressed && !isDisabled && { opacity: 0.8 },
-      ]}
+      style={({ pressed }) => [containerStyle, pressed && !isDisabled && { opacity: 0.8 }]}
       onPress={onPress}
       disabled={isDisabled}
       {...getButtonA11yProps(
-        accessibilityLabel || (typeof children === 'string' ? children : 'Button'),
+        accessibilityLabel || (typeof children === "string" ? children : "Button"),
         accessibilityHint,
-        isDisabled
+        isDisabled,
       )}
     >
       {loading && (
@@ -195,51 +192,29 @@ export const Button: React.FC<ButtonProps> = ({
           style={{ marginRight: leftIcon || children ? spacing[2] : 0 }}
         />
       )}
-      
+
       {!loading && leftIcon && (
-        <Ionicons
-          name={leftIcon}
-          size={sizeStyles.iconSize}
-          color={iconColor}
-          style={{ marginRight: spacing[2] }}
-        />
+        <Ionicons name={leftIcon} size={sizeStyles.iconSize} color={iconColor} style={{ marginRight: spacing[2] }} />
       )}
 
-      {typeof children === 'string' ? (
-        <Text style={textStyles}>{children}</Text>
-      ) : (
-        children
-      )}
+      {typeof children === "string" ? <Text style={textStyles}>{children}</Text> : children}
 
       {!loading && rightIcon && (
-        <Ionicons
-          name={rightIcon}
-          size={sizeStyles.iconSize}
-          color={iconColor}
-          style={{ marginLeft: spacing[2] }}
-        />
+        <Ionicons name={rightIcon} size={sizeStyles.iconSize} color={iconColor} style={{ marginLeft: spacing[2] }} />
       )}
     </Pressable>
   );
 };
 
 // Preset button components
-export const PrimaryButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button {...props} variant="primary" />
-);
+export const PrimaryButton: React.FC<Omit<ButtonProps, "variant">> = (props) => <Button {...props} variant="primary" />;
 
-export const SecondaryButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
+export const SecondaryButton: React.FC<Omit<ButtonProps, "variant">> = (props) => (
   <Button {...props} variant="secondary" />
 );
 
-export const OutlineButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button {...props} variant="outline" />
-);
+export const OutlineButton: React.FC<Omit<ButtonProps, "variant">> = (props) => <Button {...props} variant="outline" />;
 
-export const GhostButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button {...props} variant="ghost" />
-);
+export const GhostButton: React.FC<Omit<ButtonProps, "variant">> = (props) => <Button {...props} variant="ghost" />;
 
-export const DangerButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button {...props} variant="danger" />
-);
+export const DangerButton: React.FC<Omit<ButtonProps, "variant">> = (props) => <Button {...props} variant="danger" />;

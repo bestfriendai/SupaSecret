@@ -104,7 +104,7 @@ export default function AuthInput({
             label,
             error || placeholder,
             required,
-            false  // multiline
+            false, // multiline
           )}
         />
         {actualRightIcon && (
@@ -113,13 +113,9 @@ export default function AuthInput({
             className="ml-3 p-1"
             disabled={disabled}
             {...getButtonA11yProps(
-              secureTextEntry
-                ? (actualSecureTextEntry ? 'Show password' : 'Hide password')
-                : 'Action button',
-              secureTextEntry
-                ? 'Double tap to toggle password visibility'
-                : undefined,
-              disabled
+              secureTextEntry ? (actualSecureTextEntry ? "Show password" : "Hide password") : "Action button",
+              secureTextEntry ? "Double tap to toggle password visibility" : undefined,
+              disabled,
             )}
           >
             <Ionicons name={actualRightIcon} size={20} color={error ? "#EF4444" : isFocused ? "#1D9BF0" : "#8B98A5"} />
@@ -151,10 +147,10 @@ export default function AuthInput({
           <Text
             className={`text-12 ml-2 ${
               value.length >= maxLength
-                ? 'text-red-400'
+                ? "text-red-400"
                 : value.length > maxLength * 0.8
-                  ? 'text-yellow-400'
-                  : 'text-gray-500'
+                  ? "text-yellow-400"
+                  : "text-gray-500"
             }`}
           >
             {value.length}/{maxLength}

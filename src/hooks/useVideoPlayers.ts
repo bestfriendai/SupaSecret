@@ -87,17 +87,20 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   }, [players, videos.length]);
 
   // Define updateMuteState before using it in useEffect
-  const updateMuteState = useCallback((forceUnmuted?: boolean) => {
-    playersRef.current.forEach((player) => {
-      if (player) {
-        if (forceUnmuted) {
-          player.muted = false;
-        } else {
-          player.muted = !userPreferences.soundEnabled;
+  const updateMuteState = useCallback(
+    (forceUnmuted?: boolean) => {
+      playersRef.current.forEach((player) => {
+        if (player) {
+          if (forceUnmuted) {
+            player.muted = false;
+          } else {
+            player.muted = !userPreferences.soundEnabled;
+          }
         }
-      }
-    });
-  }, [userPreferences.soundEnabled]);
+      });
+    },
+    [userPreferences.soundEnabled],
+  );
 
   // Update mute state when sound preference changes
   useEffect(() => {

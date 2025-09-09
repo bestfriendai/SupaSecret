@@ -235,13 +235,14 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
       overlayOpacity.value = withTiming(0.7, { duration: 200 });
     })
     .onUpdate((event) => {
-      'worklet';
+      "worklet";
       translateY.value = event.translationY;
 
       // Update pull distance for refresh indicator - throttled to reduce JS bridge calls
       if (event.translationY > 0 && currentIndex === 0) {
         const pullValue = Math.min(event.translationY, 120);
-        if (pullValue % 5 === 0) { // Throttle updates to every 5 pixels
+        if (pullValue % 5 === 0) {
+          // Throttle updates to every 5 pixels
           runOnJS(setPullDistance)(pullValue);
         }
       }

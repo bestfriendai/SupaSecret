@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthState>()(
             shouldThrow: true,
             context: "signUp",
             customMessage: "Failed to create account. Please try again.",
-          }
+          },
         );
       },
 
@@ -50,7 +50,7 @@ export const useAuthStore = create<AuthState>()(
             shouldThrow: true,
             context: "signIn",
             customMessage: "Failed to sign in. Please check your credentials.",
-          }
+          },
         );
       },
 
@@ -190,44 +190,46 @@ const cleanupAuthListener = () => {
 const setupAuthListener = () => {
   if (authListener) return; // Already set up
 
-  // Listen to auth state changes
-  authListener = supabase.auth.onAuthStateChange(async (event, session) => {
-    if (__DEV__) {
-      console.log("🔍 Supabase auth event:", event, session ? "with session" : "no session");
-    }
+  try {
+    // Listen to auth state changes
+    authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (__DEV__) {
+        console.log("🔍 Supabase auth event:", event, session ? "with session" : "no session");
+      }
 
-    const { checkAuthState } = useAuthStore.getState();
+      const { checkAuthState } = useAuthStore.getState();
 
-    if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-      // User signed in or token refreshed - update our auth state
-      await checkAuthState();
-    } else if (event === "SIGNED_OUT") {
-      // User signed out - clear our auth state
-      useAuthStore.setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      });
-    } else if (event === "INITIAL_SESSION") {
-      // Initial session check - this happens on app startup
-      if (session) {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        // User signed in or token refreshed - update our auth state
         await checkAuthState();
-      } else {
-        // No session found, user is not authenticated
+      } else if (event === "SIGNED_OUT") {
+        // User signed out - clear our auth state
         useAuthStore.setState({
           user: null,
           isAuthenticated: false,
           isLoading: false,
           error: null,
         });
+      } else if (event === "INITIAL_SESSION") {
+        // Initial session check - this happens on app startup
+        if (session) {
+          await checkAuthState();
+        } else {
+          // No session found, user is not authenticated
+          useAuthStore.setState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
+          });
+        }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.error("❌ Failed to set up auth listener:", error);
+    // Don't assign authListener if setup failed
+  }
 };
 
 // Export functions for app-level management
 export { cleanupAuthListener, setupAuthListener };
-
-// Export cleanup function for app-level cleanup
-export { cleanupAuthListener };

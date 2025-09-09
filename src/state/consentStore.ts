@@ -17,19 +17,24 @@ export interface ConsentPreferences {
   version: string; // Privacy policy version
 }
 
+// Type for boolean-only keys in ConsentPreferences
+type BooleanConsentKey = {
+  [K in keyof ConsentPreferences]: ConsentPreferences[K] extends boolean ? K : never;
+}[keyof ConsentPreferences];
+
 interface ConsentState {
   preferences: ConsentPreferences | null;
   isLoading: boolean;
   error: string | null;
   hasShownConsentDialog: boolean;
-  
+
   // Actions
   updateConsent: (preferences: Partial<ConsentPreferences>) => Promise<void>;
   loadConsent: () => Promise<void>;
   saveConsent: (preferences: ConsentPreferences) => Promise<void>;
   resetConsent: () => Promise<void>;
   setConsentDialogShown: (shown: boolean) => void;
-  hasConsent: (type: keyof ConsentPreferences) => boolean;
+  hasConsent: (type: BooleanConsentKey) => boolean;
   clearError: () => void;
 }
 
@@ -52,11 +57,11 @@ export const useConsentStore = create<ConsentState>()(
 
       updateConsent: async (newPreferences: Partial<ConsentPreferences>) => {
         set({ isLoading: true, error: null });
-        
+
         try {
           const state = get();
           const currentPreferences = state.preferences || DEFAULT_PREFERENCES;
-          
+
           const updatedPreferences: ConsentPreferences = {
             ...currentPreferences,
             ...newPreferences,
@@ -81,19 +86,18 @@ export const useConsentStore = create<ConsentState>()(
 
       loadConsent: async () => {
         set({ isLoading: true, error: null });
-        
+
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
           if (user) {
             // Try to load from backend
-            const { data, error } = await supabase
-              .from("user_consent")
-              .select("*")
-              .eq("user_id", user.id)
-              .single();
+            const { data, error } = await supabase.from("user_consent").select("*").eq("user_id", user.id).single();
 
-            if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+            if (error && error.code !== "PGRST116") {
+              // PGRST116 = no rows returned
               throw error;
             }
 
@@ -106,7 +110,7 @@ export const useConsentStore = create<ConsentState>()(
                 lastUpdated: data.updated_at || new Date().toISOString(),
                 version: data.version || "1.0",
               };
-              
+
               set({ preferences, isLoading: false });
               return;
             }
@@ -117,7 +121,7 @@ export const useConsentStore = create<ConsentState>()(
           if (!state.preferences) {
             set({ preferences: DEFAULT_PREFERENCES });
           }
-          
+
           set({ isLoading: false });
         } catch (error) {
           set({
@@ -130,19 +134,19 @@ export const useConsentStore = create<ConsentState>()(
 
       saveConsent: async (preferences: ConsentPreferences) => {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
           if (user) {
-            const { error } = await supabase
-              .from("user_consent")
-              .upsert({
-                user_id: user.id,
-                analytics: preferences.analytics,
-                advertising: preferences.advertising,
-                personalization: preferences.personalization,
-                version: preferences.version,
-                updated_at: preferences.lastUpdated,
-              });
+            const { error } = await supabase.from("user_consent").upsert({
+              user_id: user.id,
+              analytics: preferences.analytics,
+              advertising: preferences.advertising,
+              personalization: preferences.personalization,
+              version: preferences.version,
+              updated_at: preferences.lastUpdated,
+            });
 
             if (error) throw error;
           }
@@ -156,16 +160,15 @@ export const useConsentStore = create<ConsentState>()(
 
       resetConsent: async () => {
         set({ isLoading: true, error: null });
-        
+
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
           if (user) {
             // Delete from backend
-            await supabase
-              .from("user_consent")
-              .delete()
-              .eq("user_id", user.id);
+            await supabase.from("user_consent").delete().eq("user_id", user.id);
           }
 
           // Reset local state
@@ -186,7 +189,7 @@ export const useConsentStore = create<ConsentState>()(
         set({ hasShownConsentDialog: shown });
       },
 
-      hasConsent: (type: keyof ConsentPreferences) => {
+      hasConsent: (type: BooleanConsentKey) => {
         const state = get();
         if (!state.preferences) return false;
         return state.preferences[type] === true;
@@ -209,15 +212,15 @@ export const useConsentStore = create<ConsentState>()(
 
 // Helper functions for external use
 export const hasAnalyticsConsent = () => {
-  return useConsentStore.getState().hasConsent('analytics');
+  return useConsentStore.getState().hasConsent("analytics");
 };
 
 export const hasAdvertisingConsent = () => {
-  return useConsentStore.getState().hasConsent('advertising');
+  return useConsentStore.getState().hasConsent("advertising");
 };
 
 export const hasPersonalizationConsent = () => {
-  return useConsentStore.getState().hasConsent('personalization');
+  return useConsentStore.getState().hasConsent("personalization");
 };
 
 // Initialize consent on app start

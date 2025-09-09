@@ -1,11 +1,11 @@
-import React, { memo, useMemo, useRef } from 'react';
-import { View } from 'react-native';
-import { FeedAdComponent } from './ads/FeedAdComponent';
-import { useSubscriptionStore } from '../state/subscriptionStore';
+import React, { memo, useMemo, useRef } from "react";
+import { View } from "react-native";
+import { FeedAdComponent } from "./ads/FeedAdComponent";
+import { useSubscriptionStore } from "../state/subscriptionStore";
 
 interface OptimizedAdBannerProps {
   index: number;
-  placement: 'home-feed' | 'video-feed' | 'profile';
+  placement: "home-feed" | "video-feed" | "profile";
   interval?: number;
 }
 
@@ -13,15 +13,11 @@ interface OptimizedAdBannerProps {
  * Optimized ad banner that only renders when necessary
  * and uses memoization to prevent unnecessary re-renders
  */
-const OptimizedAdBanner: React.FC<OptimizedAdBannerProps> = memo(({
-  index,
-  placement,
-  interval = 5,
-}) => {
+const OptimizedAdBanner: React.FC<OptimizedAdBannerProps> = memo(({ index, placement, interval = 5 }) => {
   const { isPremium } = useSubscriptionStore();
 
   // Create stable random offset once per component instance
-  const randomOffsetRef = useRef(() => Math.floor(Math.random() * 2));
+  const randomOffsetRef = useRef(Math.floor(Math.random() * 2));
 
   // Memoize the ad decision to prevent recalculation
   const shouldShowAd = useMemo(() => {
@@ -32,8 +28,8 @@ const OptimizedAdBanner: React.FC<OptimizedAdBannerProps> = memo(({
     if (index === 0) return false;
 
     // Show ad every nth item with deterministic randomization
-    const baseInterval = interval;
-    const randomOffset = randomOffsetRef.current();
+    const baseInterval = Math.max(1, interval); // Ensure interval is at least 1
+    const randomOffset = randomOffsetRef.current;
     const actualInterval = baseInterval + randomOffset;
 
     return index % actualInterval === 0;
@@ -43,24 +39,20 @@ const OptimizedAdBanner: React.FC<OptimizedAdBannerProps> = memo(({
   if (!shouldShowAd) return null;
 
   return (
-    <View 
-      style={{ 
+    <View
+      style={{
         marginVertical: 8,
         paddingHorizontal: 16,
       }}
       accessibilityLabel="Advertisement"
-      accessibilityRole="banner"
+      accessibilityRole="none"
     >
-      <FeedAdComponent
-        index={index}
-        interval={interval}
-        placement={placement}
-      />
+      <FeedAdComponent index={index} interval={interval} placement={placement} />
     </View>
   );
 });
 
-OptimizedAdBanner.displayName = 'OptimizedAdBanner';
+OptimizedAdBanner.displayName = "OptimizedAdBanner";
 
 export default OptimizedAdBanner;
 
@@ -69,11 +61,16 @@ export const shouldShowAdAtIndex = (
   index: number,
   interval: number = 5,
   isPremium: boolean = false,
-  randomOffset: number = 0
+  randomOffset: number = 0,
 ): boolean => {
+  // Return false early for invalid index values
+  if (index < 0 || !Number.isInteger(index)) return false;
   if (isPremium || index === 0) return false;
 
-  const actualInterval = interval + randomOffset;
+  // Sanitize inputs
+  const sanitizedInterval = Math.max(1, Math.floor(interval)); // Ensure positive integer >= 1
+  const sanitizedOffset = Math.max(0, Math.floor(randomOffset)); // Ensure non-negative integer
+  const actualInterval = Math.max(1, sanitizedInterval + sanitizedOffset); // Ensure >= 1
 
   return index % actualInterval === 0;
 };

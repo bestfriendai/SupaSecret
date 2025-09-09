@@ -32,7 +32,10 @@ export async function uploadVideoToSupabase(
   const filename = `${uuidv4()}.mp4`;
   const objectPath = `videos/${userId}/${filename}`;
   // Encode path components separately to preserve slashes for nested paths
-  const encodedPath = objectPath.split('/').map(part => encodeURIComponent(part)).join('/');
+  const encodedPath = objectPath
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
   const url = `${supabaseUrl}/storage/v1/object/${BUCKET}/${encodedPath}`;
 
   const uploadOptions: FileSystem.FileSystemUploadOptions = {

@@ -4,7 +4,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ConfessionState, Confession, UserPreferences, VideoAnalytics } from "../types/confession";
 import { supabase } from "../lib/supabase";
 import { ensureSignedVideoUrl, isLocalUri, uploadVideoToSupabase } from "../utils/storage";
-import { selectWithRetry, insertWithRetry, updateWithRetry, deleteWithRetry, rpcWithRetry } from "../utils/supabaseWithRetry";
+import {
+  selectWithRetry,
+  insertWithRetry,
+  updateWithRetry,
+  deleteWithRetry,
+  rpcWithRetry,
+} from "../utils/supabaseWithRetry";
 import { invalidateCache, registerInvalidationCallback } from "../utils/cacheInvalidation";
 import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 
@@ -164,8 +170,7 @@ export const useConfessionStore = create<ConfessionState>()(
             });
           }
 
-          const FALLBACK_VIDEO =
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+          const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
           const confessions: Confession[] = await Promise.all(
             (finalData || []).map(async (item) => {
@@ -200,7 +205,15 @@ export const useConfessionStore = create<ConfessionState>()(
           const combinedConfessions = [...confessions, ...sampleConfessions];
           const finalConfessions = combinedConfessions.sort((a, b) => b.timestamp - a.timestamp);
 
-          console.log("📥 Final confessions count:", finalConfessions.length, "(", confessions.length, "real +", sampleConfessions.length, "sample) - sorted chronologically");
+          console.log(
+            "📥 Final confessions count:",
+            finalConfessions.length,
+            "(",
+            confessions.length,
+            "real +",
+            sampleConfessions.length,
+            "sample) - sorted chronologically",
+          );
 
           set({
             confessions: finalConfessions,
@@ -236,8 +249,7 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
-          const FALLBACK_VIDEO =
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+          const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
           const newConfessions: Confession[] = await Promise.all(
             (data || []).map(async (item) => {
@@ -294,8 +306,7 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
-          const FALLBACK_VIDEO =
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+          const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
           const userConfessions: Confession[] = await Promise.all(
             (data || []).map(async (item) => {
@@ -353,7 +364,6 @@ export const useConfessionStore = create<ConfessionState>()(
           let signedVideoUrl: string | undefined;
 
           if (confession.type === "video" && confession.videoUri) {
-            if (!user?.id) throw new Error("User not authenticated");
             if (isLocalUri(confession.videoUri)) {
               const result = await uploadVideoToSupabase(confession.videoUri, user.id, opts?.onUploadProgress);
               videoStoragePath = result.path; // store path in DB
@@ -397,8 +407,11 @@ export const useConfessionStore = create<ConfessionState>()(
             type: data.type as "text" | "video",
             content: data.content,
             videoUri:
-              signedVideoUrl || (await ensureSignedVideoUrl(data.video_uri || undefined)) ||
-              (data.type === "video" ? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" : undefined),
+              signedVideoUrl ||
+              (await ensureSignedVideoUrl(data.video_uri || undefined)) ||
+              (data.type === "video"
+                ? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                : undefined),
             transcription: data.transcription || undefined,
             timestamp: new Date(data.created_at).getTime(),
             isAnonymous: data.is_anonymous,
@@ -440,11 +453,7 @@ export const useConfessionStore = create<ConfessionState>()(
           if (!user) throw new Error("User not authenticated");
 
           // Delete confession with explicit user_id check for security
-          const { error } = await supabase
-            .from("confessions")
-            .delete()
-            .eq("id", id)
-            .eq("user_id", user.id);
+          const { error } = await supabase.from("confessions").delete().eq("id", id).eq("user_id", user.id);
 
           if (error) throw error;
 
@@ -568,7 +577,7 @@ export const useConfessionStore = create<ConfessionState>()(
             if (!offlineQueue.getNetworkStatus()) {
               await offlineQueue.enqueue(
                 newIsLiked ? OFFLINE_ACTIONS.LIKE_CONFESSION : OFFLINE_ACTIONS.UNLIKE_CONFESSION,
-                { confessionId: id, isLiked: newIsLiked, likes: optimisticLikes }
+                { confessionId: id, isLiked: newIsLiked, likes: optimisticLikes },
               );
               return;
             }
@@ -593,13 +602,13 @@ export const useConfessionStore = create<ConfessionState>()(
               // If online operation fails, queue it for retry
               await offlineQueue.enqueue(
                 newIsLiked ? OFFLINE_ACTIONS.LIKE_CONFESSION : OFFLINE_ACTIONS.UNLIKE_CONFESSION,
-                { confessionId: id, isLiked: newIsLiked, likes: optimisticLikes }
+                { confessionId: id, isLiked: newIsLiked, likes: optimisticLikes },
               );
               throw error;
             }
 
             // Trigger cache invalidation for like toggle
-            invalidateCache(newIsLiked ? 'confession_liked' : 'confession_unliked', { confessionId: id });
+            invalidateCache(newIsLiked ? "confession_liked" : "confession_unliked", { confessionId: id });
           } catch (error) {
             // Revert optimistic update on error only if not queued
             if (offlineQueue.getNetworkStatus()) {

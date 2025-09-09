@@ -108,7 +108,10 @@ export const testConfessionCreation = async (): Promise<boolean> => {
     console.log("🧪 Testing confession creation...");
 
     // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       console.error("❌ User not authenticated:", userError);
       return false;
@@ -148,10 +151,7 @@ export const testConfessionCreation = async (): Promise<boolean> => {
     console.log("✅ Confession read successfully:", readConfession.content);
 
     // Clean up - delete the test confession
-    const { error: deleteError } = await supabase
-      .from("confessions")
-      .delete()
-      .eq("id", confession.id);
+    const { error: deleteError } = await supabase.from("confessions").delete().eq("id", confession.id);
 
     if (deleteError) {
       console.warn("⚠️  Failed to clean up test confession:", deleteError);

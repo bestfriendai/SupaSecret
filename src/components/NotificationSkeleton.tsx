@@ -31,44 +31,22 @@ export default function NotificationSkeleton() {
     <View className="px-4 py-3 border-b border-gray-800">
       <View className="flex-row items-start">
         {/* Avatar skeleton */}
-        <Animated.View 
-          style={shimmerStyle}
-          className="w-10 h-10 bg-gray-700 rounded-full mr-3"
-        />
-        
+        <Animated.View style={shimmerStyle} className="w-10 h-10 bg-gray-700 rounded-full mr-3" />
+
         <View className="flex-1">
           {/* Title skeleton */}
-          <Animated.View 
-            style={shimmerStyle}
-            className="h-4 bg-gray-700 rounded mb-2"
-            style={{ width: '80%' }}
-          />
-          
+          <Animated.View style={[shimmerStyle, { width: "80%" }]} className="h-4 bg-gray-700 rounded mb-2" />
+
           {/* Content skeleton */}
-          <Animated.View 
-            style={shimmerStyle}
-            className="h-3 bg-gray-700 rounded mb-1"
-            style={{ width: '100%' }}
-          />
-          <Animated.View 
-            style={shimmerStyle}
-            className="h-3 bg-gray-700 rounded mb-2"
-            style={{ width: '60%' }}
-          />
-          
+          <Animated.View style={[shimmerStyle, { width: "100%" }]} className="h-3 bg-gray-700 rounded mb-1" />
+          <Animated.View style={[shimmerStyle, { width: "60%" }]} className="h-3 bg-gray-700 rounded mb-2" />
+
           {/* Timestamp skeleton */}
-          <Animated.View 
-            style={shimmerStyle}
-            className="h-3 bg-gray-700 rounded"
-            style={{ width: '40%' }}
-          />
+          <Animated.View style={[shimmerStyle, { width: "40%" }]} className="h-3 bg-gray-700 rounded" />
         </View>
-        
+
         {/* Unread indicator skeleton */}
-        <Animated.View 
-          style={shimmerStyle}
-          className="w-2 h-2 bg-gray-700 rounded-full ml-2 mt-2"
-        />
+        <Animated.View style={shimmerStyle} className="w-2 h-2 bg-gray-700 rounded-full ml-2 mt-2" />
       </View>
     </View>
   );

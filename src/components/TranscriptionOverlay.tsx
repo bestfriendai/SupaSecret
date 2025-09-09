@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Animated } from 'react-native';
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, Animated } from "react-native";
 // Demo mode - no native voice imports for Expo Go
 // import Voice from '@react-native-voice/voice';
 
@@ -8,21 +8,18 @@ interface TranscriptionOverlayProps {
   onTranscriptionUpdate?: (text: string) => void;
 }
 
-export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
-  isRecording,
-  onTranscriptionUpdate
-}) => {
-  const [transcription, setTranscription] = useState('');
+export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({ isRecording, onTranscriptionUpdate }) => {
+  const [transcription, setTranscription] = useState("");
   const [isListening, setIsListening] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const transcriptionIntervalRef = useRef<number | null>(null);
+  const transcriptionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     // Demo mode - simulate speech recognition
-    console.log('🎯 Demo: Speech recognition simulation setup');
+    console.log("🎯 Demo: Speech recognition simulation setup");
 
     return () => {
-      console.log('🎯 Demo: Speech recognition cleanup');
+      console.log("🎯 Demo: Speech recognition cleanup");
     };
   }, [onTranscriptionUpdate]);
 
@@ -66,15 +63,15 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
   }, [isRecording]);
 
   const startListening = async () => {
-    console.log('🎯 Demo: Starting speech recognition simulation');
+    console.log("🎯 Demo: Starting speech recognition simulation");
     setIsListening(true);
 
     // Simulate transcription updates
     const demoTexts = [
-      'This is my anonymous confession...',
-      'I have something to share...',
-      'Here is what I want to say...',
-      'My secret story is...'
+      "This is my anonymous confession...",
+      "I have something to share...",
+      "Here is what I want to say...",
+      "My secret story is...",
     ];
 
     let textIndex = 0;
@@ -84,6 +81,12 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
         setTranscription(currentText);
         onTranscriptionUpdate?.(currentText);
         textIndex++;
+      } else {
+        // Clear interval when demo text is exhausted
+        if (transcriptionIntervalRef.current) {
+          clearInterval(transcriptionIntervalRef.current);
+          transcriptionIntervalRef.current = null;
+        }
       }
     }, 2000);
 
@@ -92,7 +95,7 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
   };
 
   const stopListening = async () => {
-    console.log('🎯 Demo: Stopping speech recognition simulation');
+    console.log("🎯 Demo: Stopping speech recognition simulation");
     setIsListening(false);
 
     // Clear simulation interval
@@ -107,39 +110,37 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
   return (
     <Animated.View
       style={{
-        position: 'absolute',
+        position: "absolute",
         bottom: 120,
         left: 20,
         right: 20,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
         borderRadius: 12,
         padding: 16,
         opacity: fadeAnim,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
         <View
           style={{
             width: 8,
             height: 8,
             borderRadius: 4,
-            backgroundColor: isListening ? '#10B981' : '#6B7280',
+            backgroundColor: isListening ? "#10B981" : "#6B7280",
             marginRight: 8,
           }}
         />
-        <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
-          Live Transcription
-        </Text>
+        <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "600" }}>Live Transcription</Text>
       </View>
       <Text
         style={{
-          color: '#FFFFFF',
+          color: "#FFFFFF",
           fontSize: 14,
           lineHeight: 20,
           minHeight: 20,
         }}
       >
-        {transcription || (isListening ? 'Listening...' : 'Start speaking...')}
+        {transcription || (isListening ? "Listening..." : "Start speaking...")}
       </Text>
     </Animated.View>
   );

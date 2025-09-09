@@ -31,11 +31,13 @@ export class LRUCache<T> {
       maxMemory: options.maxMemory ?? 50 * 1024 * 1024, // 50MB default
       ttl: options.ttl ?? 30 * 60 * 1000, // 30 minutes default
       onEvict: options.onEvict ?? (() => {}),
-      getSizeOf: options.getSizeOf ?? ((value: any) => {
-        if (typeof value === 'string') return value.length * 2; // UTF-16
-        if (typeof value === 'object') return JSON.stringify(value).length * 2;
-        return 64; // Default size for primitives
-      }),
+      getSizeOf:
+        options.getSizeOf ??
+        ((value: any) => {
+          if (typeof value === "string") return value.length * 2; // UTF-16
+          if (typeof value === "object") return JSON.stringify(value).length * 2;
+          return 64; // Default size for primitives
+        }),
     };
   }
 
@@ -44,7 +46,7 @@ export class LRUCache<T> {
    */
   get(key: string): T | undefined {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       return undefined;
     }
@@ -58,10 +60,10 @@ export class LRUCache<T> {
     // Update access information
     entry.timestamp = Date.now();
     entry.accessCount++;
-    
+
     // Move to end of access order (most recently used)
     this.updateAccessOrder(key);
-    
+
     return entry.value;
   }
 
@@ -103,21 +105,21 @@ export class LRUCache<T> {
    */
   delete(key: string): boolean {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       return false;
     }
 
     // Update memory usage
     this.currentMemoryUsage -= entry.size || 0;
-    
+
     // Remove from cache and access order
     this.cache.delete(key);
     this.removeFromAccessOrder(key);
-    
+
     // Call eviction callback
     this.options.onEvict(key, entry.value);
-    
+
     return true;
   }
 
@@ -137,7 +139,7 @@ export class LRUCache<T> {
     this.cache.forEach((entry, key) => {
       this.options.onEvict(key, entry.value);
     });
-    
+
     this.cache.clear();
     this.accessOrder = [];
     this.currentMemoryUsage = 0;
@@ -149,8 +151,8 @@ export class LRUCache<T> {
   getStats() {
     const now = Date.now();
     let expiredCount = 0;
-    
-    this.cache.forEach(entry => {
+
+    this.cache.forEach((entry) => {
       if (this.isExpired(entry)) {
         expiredCount++;
       }
@@ -171,13 +173,13 @@ export class LRUCache<T> {
    */
   keys(): string[] {
     const validKeys: string[] = [];
-    
+
     this.cache.forEach((entry, key) => {
       if (!this.isExpired(entry)) {
         validKeys.push(key);
       }
     });
-    
+
     return validKeys;
   }
 
@@ -186,13 +188,13 @@ export class LRUCache<T> {
    */
   values(): T[] {
     const validValues: T[] = [];
-    
-    this.cache.forEach(entry => {
+
+    this.cache.forEach((entry) => {
       if (!this.isExpired(entry)) {
         validValues.push(entry.value);
       }
     });
-    
+
     return validValues;
   }
 
@@ -202,19 +204,19 @@ export class LRUCache<T> {
   cleanup(): number {
     let removedCount = 0;
     const now = Date.now();
-    
+
     const keysToDelete: string[] = [];
     this.cache.forEach((entry, key) => {
       if (this.isExpired(entry)) {
         keysToDelete.push(key);
       }
     });
-    
-    keysToDelete.forEach(key => {
+
+    keysToDelete.forEach((key) => {
       this.delete(key);
       removedCount++;
     });
-    
+
     return removedCount;
   }
 
@@ -255,18 +257,18 @@ export class LRUCache<T> {
 
   private calculateHitRate(): number {
     if (this.cache.size === 0) return 0;
-    
+
     let totalRequests = 0;
     let cacheHits = 0;
-    
-    this.cache.forEach(entry => {
+
+    this.cache.forEach((entry) => {
       totalRequests += entry.accessCount;
       // Every access after the first is a cache hit
       if (entry.accessCount > 1) {
         cacheHits += entry.accessCount - 1;
       }
     });
-    
+
     return totalRequests > 0 ? cacheHits / totalRequests : 0;
   }
 }
@@ -274,7 +276,9 @@ export class LRUCache<T> {
 /**
  * Create a specialized cache for different data types
  */
-export const createImageCache = (maxMemory = 100 * 1024 * 1024) => // 100MB
+export const createImageCache = (
+  maxMemory = 100 * 1024 * 1024, // 100MB
+) =>
   new LRUCache<string>({
     maxSize: 200,
     maxMemory,
@@ -283,24 +287,29 @@ export const createImageCache = (maxMemory = 100 * 1024 * 1024) => // 100MB
       // More accurate image size estimation
       const baseSize = uri.length * 2; // URI string size
       // Estimate typical image sizes based on URI patterns
-      if (uri.includes('thumb') || uri.includes('small')) {
+      if (uri.includes("thumb") || uri.includes("small")) {
         return baseSize + 50 * 1024; // 50KB for thumbnails
       }
-      if (uri.includes('large') || uri.includes('full')) {
+      if (uri.includes("large") || uri.includes("full")) {
         return baseSize + 500 * 1024; // 500KB for large images
       }
       return baseSize + 200 * 1024; // 200KB default estimate
     },
   });
 
-export const createDataCache = <T>(maxSize = 100, ttl = 15 * 60 * 1000) => // 15 minutes
+export const createDataCache = <T>(
+  maxSize = 100,
+  ttl = 15 * 60 * 1000, // 15 minutes
+) =>
   new LRUCache<T>({
     maxSize,
     maxMemory: 10 * 1024 * 1024, // 10MB
     ttl,
   });
 
-export const createVideoCache = (maxMemory = 500 * 1024 * 1024) => // 500MB
+export const createVideoCache = (
+  maxMemory = 500 * 1024 * 1024, // 500MB
+) =>
   new LRUCache<string>({
     maxSize: 50,
     maxMemory,
@@ -308,13 +317,13 @@ export const createVideoCache = (maxMemory = 500 * 1024 * 1024) => // 500MB
     getSizeOf: (uri: string) => {
       // More accurate video size estimation based on URI patterns
       const baseSize = uri.length * 2;
-      if (uri.includes('preview') || uri.includes('thumb')) {
+      if (uri.includes("preview") || uri.includes("thumb")) {
         return baseSize + 2 * 1024 * 1024; // 2MB for previews
       }
-      if (uri.includes('720p') || uri.includes('hd')) {
+      if (uri.includes("720p") || uri.includes("hd")) {
         return baseSize + 25 * 1024 * 1024; // 25MB for HD videos
       }
-      if (uri.includes('1080p') || uri.includes('fhd')) {
+      if (uri.includes("1080p") || uri.includes("fhd")) {
         return baseSize + 50 * 1024 * 1024; // 50MB for Full HD
       }
       return baseSize + 15 * 1024 * 1024; // 15MB default estimate

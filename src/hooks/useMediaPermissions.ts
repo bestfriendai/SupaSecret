@@ -4,11 +4,11 @@
  * with proper fallbacks and user guidance
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { Alert, Linking, Platform } from 'react-native';
-import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
+import { useState, useCallback, useEffect } from "react";
+import { Alert, Linking, Platform } from "react-native";
+import { useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from "expo-media-library";
 
 export interface MediaPermissionState {
   camera: boolean;
@@ -28,11 +28,11 @@ export interface MediaPermissionOptions {
  */
 export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
   const { showAlerts = true, autoRequest = false } = options;
-  
+
   const [cameraPermission, requestCamera] = useCameraPermissions();
   const [micPermission, requestMicrophone] = useMicrophonePermissions();
   const [mediaLibraryPermission, requestMediaLibrary] = ImagePicker.useMediaLibraryPermissions();
-  
+
   const [permissionState, setPermissionState] = useState<MediaPermissionState>({
     camera: false,
     microphone: false,
@@ -42,66 +42,57 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
 
   // Update state when permissions change
   useEffect(() => {
-    setPermissionState(prev => ({
+    setPermissionState((prev) => ({
       ...prev,
       camera: cameraPermission?.granted || false,
       microphone: micPermission?.granted || false,
       mediaLibrary: mediaLibraryPermission?.granted || false,
     }));
-  }, [
-    cameraPermission?.granted,
-    micPermission?.granted,
-    mediaLibraryPermission?.granted,
-  ]);
+  }, [cameraPermission?.granted, micPermission?.granted, mediaLibraryPermission?.granted]);
 
   // Auto-request permissions on mount if enabled
   useEffect(() => {
     if (autoRequest) {
-      checkAllPermissions();
+      requestAllPermissions();
     }
-  }, [autoRequest]);
+  }, [autoRequest, requestAllPermissions]);
 
-  const showPermissionAlert = useCallback((
-    title: string,
-    message: string,
-    onRetry?: () => void
-  ) => {
-    if (!showAlerts) return;
+  const showPermissionAlert = useCallback(
+    (title: string, message: string, onRetry?: () => void) => {
+      if (!showAlerts) return;
 
-    Alert.alert(
-      title,
-      message,
-      [
+      Alert.alert(title, message, [
         { text: "Cancel", style: "cancel" },
         ...(onRetry ? [{ text: "Try Again", onPress: onRetry }] : []),
-        { 
-          text: "Open Settings", 
+        {
+          text: "Open Settings",
           onPress: () => Linking.openSettings(),
-          style: "default"
+          style: "default",
         },
-      ],
-    );
-  }, [showAlerts]);
+      ]);
+    },
+    [showAlerts],
+  );
 
   const requestCameraPermission = useCallback(async (): Promise<boolean> => {
     try {
       const result = await requestCamera();
-      
+
       if (!result.granted) {
         showPermissionAlert(
           "Camera Permission Required",
           "Please enable camera access in your device settings to record video confessions.",
-          requestCameraPermission
+          requestCameraPermission,
         );
         return false;
       }
-      
+
       return true;
     } catch (error) {
-      console.error('Camera permission error:', error);
-      setPermissionState(prev => ({ 
-        ...prev, 
-        error: 'Failed to request camera permission' 
+      console.error("Camera permission error:", error);
+      setPermissionState((prev) => ({
+        ...prev,
+        error: "Failed to request camera permission",
       }));
       return false;
     }
@@ -110,22 +101,22 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
   const requestMicrophonePermission = useCallback(async (): Promise<boolean> => {
     try {
       const result = await requestMicrophone();
-      
+
       if (!result.granted) {
         showPermissionAlert(
           "Microphone Permission Required",
           "Please enable microphone access in your device settings to record audio for your video confessions.",
-          requestMicrophonePermission
+          requestMicrophonePermission,
         );
         return false;
       }
-      
+
       return true;
     } catch (error) {
-      console.error('Microphone permission error:', error);
-      setPermissionState(prev => ({ 
-        ...prev, 
-        error: 'Failed to request microphone permission' 
+      console.error("Microphone permission error:", error);
+      setPermissionState((prev) => ({
+        ...prev,
+        error: "Failed to request microphone permission",
       }));
       return false;
     }
@@ -134,84 +125,81 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
   const requestMediaLibraryPermission = useCallback(async (): Promise<boolean> => {
     try {
       const result = await requestMediaLibrary();
-      
+
       if (!result.granted) {
         showPermissionAlert(
           "Photo Library Permission Required",
           "Please enable photo library access in your device settings to select images for your profile.",
-          requestMediaLibraryPermission
+          requestMediaLibraryPermission,
         );
         return false;
       }
-      
+
       return true;
     } catch (error) {
-      console.error('Media library permission error:', error);
-      setPermissionState(prev => ({ 
-        ...prev, 
-        error: 'Failed to request media library permission' 
+      console.error("Media library permission error:", error);
+      setPermissionState((prev) => ({
+        ...prev,
+        error: "Failed to request media library permission",
       }));
       return false;
     }
   }, [requestMediaLibrary, showPermissionAlert]);
 
   const requestAllPermissions = useCallback(async (): Promise<boolean> => {
-    setPermissionState(prev => ({ ...prev, loading: true, error: undefined }));
-    
+    setPermissionState((prev) => ({ ...prev, loading: true, error: undefined }));
+
     try {
       const [cameraGranted, micGranted, mediaLibraryGranted] = await Promise.all([
         requestCameraPermission(),
         requestMicrophonePermission(),
         requestMediaLibraryPermission(),
       ]);
-      
+
       const allGranted = cameraGranted && micGranted && mediaLibraryGranted;
-      
-      setPermissionState(prev => ({
+
+      setPermissionState((prev) => ({
         ...prev,
         loading: false,
         camera: cameraGranted,
         microphone: micGranted,
         mediaLibrary: mediaLibraryGranted,
       }));
-      
+
       return allGranted;
     } catch (error) {
-      console.error('Permission request error:', error);
-      setPermissionState(prev => ({ 
-        ...prev, 
+      console.error("Permission request error:", error);
+      setPermissionState((prev) => ({
+        ...prev,
         loading: false,
-        error: 'Failed to request permissions' 
+        error: "Failed to request permissions",
       }));
       return false;
     }
   }, [requestCameraPermission, requestMicrophonePermission, requestMediaLibraryPermission]);
 
   const requestVideoPermissions = useCallback(async (): Promise<boolean> => {
-    setPermissionState(prev => ({ ...prev, loading: true, error: undefined }));
-    
+    setPermissionState((prev) => ({ ...prev, loading: true, error: undefined }));
+
     try {
-      const [cameraGranted, micGranted] = await Promise.all([
-        requestCameraPermission(),
-        requestMicrophonePermission(),
-      ]);
-      
+      const [cameraGranted, micGranted] = await Promise.all([requestCameraPermission(), requestMicrophonePermission()]);
+
       const allGranted = cameraGranted && micGranted;
-      
-      setPermissionState(prev => ({
+
+      setPermissionState((prev) => ({
         ...prev,
         loading: false,
         camera: cameraGranted,
         microphone: micGranted,
       }));
-      
+
       return allGranted;
     } catch (error) {
-      console.error('Video permission request error:', error);
-      setPermissionState(prev => ({ 
-        ...prev, 
+      console.error("Video permission request error:", error);
+      setPermissionState((prev) => ({
+        ...prev,
         loading: false,
-        error: 'Failed to request video permissions' 
+        error: "Failed to request video permissions",
       }));
       return false;
     }
@@ -221,20 +209,16 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
     const hasCamera = cameraPermission?.granted || false;
     const hasMicrophone = micPermission?.granted || false;
     const hasMediaLibrary = mediaLibraryPermission?.granted || false;
-    
-    setPermissionState(prev => ({
+
+    setPermissionState((prev) => ({
       ...prev,
       camera: hasCamera,
       microphone: hasMicrophone,
       mediaLibrary: hasMediaLibrary,
     }));
-    
+
     return hasCamera && hasMicrophone && hasMediaLibrary;
-  }, [
-    cameraPermission?.granted,
-    micPermission?.granted,
-    mediaLibraryPermission?.granted,
-  ]);
+  }, [cameraPermission?.granted, micPermission?.granted, mediaLibraryPermission?.granted]);
 
   const hasVideoPermissions = useCallback((): boolean => {
     return (cameraPermission?.granted || false) && (micPermission?.granted || false);
@@ -245,47 +229,47 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
       camera: {
         granted: cameraPermission?.granted || false,
         canAskAgain: cameraPermission?.canAskAgain || false,
-        status: cameraPermission?.status || 'undetermined',
+        status: cameraPermission?.status || "undetermined",
       },
       microphone: {
         granted: micPermission?.granted || false,
         canAskAgain: micPermission?.canAskAgain || false,
-        status: micPermission?.status || 'undetermined',
+        status: micPermission?.status || "undetermined",
       },
       mediaLibrary: {
         granted: mediaLibraryPermission?.granted || false,
         canAskAgain: mediaLibraryPermission?.canAskAgain || false,
-        status: mediaLibraryPermission?.status || 'undetermined',
+        status: mediaLibraryPermission?.status || "undetermined",
       },
     };
   }, [cameraPermission, micPermission, mediaLibraryPermission]);
 
   const clearError = useCallback(() => {
-    setPermissionState(prev => ({ ...prev, error: undefined }));
+    setPermissionState((prev) => ({ ...prev, error: undefined }));
   }, []);
 
   return {
     // State
     permissionState,
-    
+
     // Individual permission requests
     requestCameraPermission,
     requestMicrophonePermission,
     requestMediaLibraryPermission,
-    
+
     // Bulk permission requests
     requestAllPermissions,
     requestVideoPermissions,
-    
+
     // Permission checks
     checkAllPermissions,
     hasVideoPermissions,
     hasAllPermissions: permissionState.camera && permissionState.microphone && permissionState.mediaLibrary,
-    
+
     // Utilities
     getPermissionStatus,
     clearError,
-    
+
     // Raw permission objects (for advanced use)
     rawPermissions: {
       camera: cameraPermission,

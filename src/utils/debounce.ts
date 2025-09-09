@@ -3,18 +3,15 @@
  * Prevents excessive API calls and improves performance
  */
 
-import * as React from 'react';
-import { useCallback, useRef, useState, useEffect } from 'react';
+import * as React from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 
 /**
  * Generic debounce function
  */
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): (...args: Parameters<T>) => void {
+export function debounce<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
   let timeoutId: NodeJS.Timeout;
-  
+
   return (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
@@ -27,14 +24,14 @@ export function debounce<T extends (...args: any[]) => any>(
 export function useDebounce<T extends (...args: any[]) => any>(
   callback: T,
   delay: number,
-  deps: React.DependencyList = []
+  deps: React.DependencyList = [],
 ): (...args: Parameters<T>) => void {
   const callbackRef = useRef(callback);
   callbackRef.current = callback;
 
   return useCallback(
     debounce((...args: Parameters<T>) => callbackRef.current(...args), delay),
-    [delay, ...deps]
+    [delay, ...deps],
   );
 }
 
@@ -60,10 +57,7 @@ export function useDebouncedValue<T>(value: T, delay: number): T {
 /**
  * Debounced refresh hook for pull-to-refresh functionality
  */
-export function useDebouncedRefresh(
-  refreshFunction: () => Promise<void> | void,
-  delay: number = 1000
-) {
+export function useDebouncedRefresh(refreshFunction: () => Promise<void> | void, delay: number = 1000) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const lastRefreshTime = useRef(0);
 
@@ -82,7 +76,7 @@ export function useDebouncedRefresh(
     try {
       await refreshFunction();
     } catch (error) {
-      console.error('Refresh failed:', error);
+      console.error("Refresh failed:", error);
     } finally {
       setIsRefreshing(false);
     }
@@ -97,12 +91,9 @@ export function useDebouncedRefresh(
 /**
  * Debounced search hook
  */
-export function useDebouncedSearch(
-  searchFunction: (query: string) => Promise<void> | void,
-  delay: number = 300
-) {
+export function useDebouncedSearch(searchFunction: (query: string) => Promise<void> | void, delay: number = 300) {
   const [isSearching, setIsSearching] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const debouncedSearch = useDebounce(
     async (query: string) => {
@@ -115,19 +106,22 @@ export function useDebouncedSearch(
       try {
         await searchFunction(query);
       } catch (error) {
-        console.error('Search failed:', error);
+        console.error("Search failed:", error);
       } finally {
         setIsSearching(false);
       }
     },
     delay,
-    [searchFunction]
+    [searchFunction],
   );
 
-  const handleSearchChange = useCallback((query: string) => {
-    setSearchQuery(query);
-    debouncedSearch(query);
-  }, [debouncedSearch]);
+  const handleSearchChange = useCallback(
+    (query: string) => {
+      setSearchQuery(query);
+      debouncedSearch(query);
+    },
+    [debouncedSearch],
+  );
 
   return {
     searchQuery,
@@ -140,10 +134,7 @@ export function useDebouncedSearch(
 /**
  * Debounced like toggle to prevent rapid clicking
  */
-export function useDebouncedLikeToggle(
-  likeFunction: (id: string) => Promise<void> | void,
-  delay: number = 500
-) {
+export function useDebouncedLikeToggle(likeFunction: (id: string) => Promise<void> | void, delay: number = 500) {
   const pendingLikes = useRef(new Set<string>());
 
   const debouncedToggleLike = useCallback(
@@ -158,18 +149,18 @@ export function useDebouncedLikeToggle(
       try {
         await likeFunction(id);
       } catch (error) {
-        console.error('Like toggle failed:', error);
+        console.error("Like toggle failed:", error);
       } finally {
         // Remove from pending after delay to prevent rapid clicking
         const timeoutId = setTimeout(() => {
           pendingLikes.current.delete(id);
         }, delay);
-        
+
         // Cleanup timeout on unmount
         return () => clearTimeout(timeoutId);
       }
     },
-    [likeFunction, delay]
+    [likeFunction, delay],
   );
 
   return debouncedToggleLike;
@@ -178,10 +169,7 @@ export function useDebouncedLikeToggle(
 /**
  * Debounced form submission
  */
-export function useDebouncedSubmit<T>(
-  submitFunction: (data: T) => Promise<void> | void,
-  delay: number = 1000
-) {
+export function useDebouncedSubmit<T>(submitFunction: (data: T) => Promise<void> | void, delay: number = 1000) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const lastSubmitTime = useRef(0);
 
@@ -201,13 +189,13 @@ export function useDebouncedSubmit<T>(
       try {
         await submitFunction(data);
       } catch (error) {
-        console.error('Submit failed:', error);
+        console.error("Submit failed:", error);
         throw error; // Re-throw to allow error handling in component
       } finally {
         setIsSubmitting(false);
       }
     },
-    [submitFunction, delay, isSubmitting]
+    [submitFunction, delay, isSubmitting],
   );
 
   return {

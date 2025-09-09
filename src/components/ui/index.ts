@@ -4,44 +4,19 @@
  */
 
 // Button components
-export {
-  Button,
-  PrimaryButton,
-  SecondaryButton,
-  OutlineButton,
-  GhostButton,
-  DangerButton,
-} from './Button';
+export { Button, PrimaryButton, SecondaryButton, OutlineButton, GhostButton, DangerButton } from "./Button";
 
 // Card components
-export {
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-  ElevatedCard,
-  OutlinedCard,
-  FilledCard,
-} from './Card';
+export { Card, CardHeader, CardContent, CardFooter, ElevatedCard, OutlinedCard, FilledCard } from "./Card";
 
 // Enhanced Input components (already created)
-export {
-  EnhancedInput,
-  EmailInput,
-  PasswordInput,
-  SearchInput,
-} from '../EnhancedInput';
+export { EnhancedInput, EmailInput, PasswordInput, SearchInput } from "../EnhancedInput";
 
 // Error State components (already created)
-export {
-  ErrorState,
-  NetworkErrorState,
-  EmptyState,
-  GenericErrorState,
-} from '../ErrorState';
+export { ErrorState, NetworkErrorState, EmptyState, GenericErrorState } from "../ErrorState";
 
 // Re-export design tokens for easy access
-export * from '../../design/tokens';
+export * from "../../design/tokens";
 
 // Type definitions for the design system
 export interface ComponentVariant {
@@ -61,7 +36,7 @@ export interface ComponentTheme {
 // Design system utilities
 export const DesignSystemUtils = {
   // Get component size styles with validation
-  getComponentSize: (size: 'sm' | 'md' | 'lg', type: 'button' | 'input' | 'card') => {
+  getComponentSize: (size: "sm" | "md" | "lg", type: "button" | "input" | "card") => {
     const sizeMap = {
       button: {
         sm: { height: 36, padding: 12 },
@@ -82,15 +57,15 @@ export const DesignSystemUtils = {
 
     // Validate that the type exists
     if (!sizeMap.hasOwnProperty(type)) {
-      throw new Error(`Invalid component type: ${type}. Valid types are: ${Object.keys(sizeMap).join(', ')}`);
+      throw new Error(`Invalid component type: ${type}. Valid types are: ${Object.keys(sizeMap).join(", ")}`);
     }
 
     const typeMap = sizeMap[type];
 
     // Validate that the size exists for this type
-    if (!typeMap.hasOwnProperty(size)) {
+    if (!Object.prototype.hasOwnProperty.call(typeMap, size)) {
       // Return the smallest size as default
-      const defaultSize = 'sm';
+      const defaultSize = "sm";
       console.warn(`Invalid size '${size}' for type '${type}'. Using default size '${defaultSize}'.`);
       return typeMap[defaultSize];
     }
@@ -99,7 +74,7 @@ export const DesignSystemUtils = {
   },
 
   // Get semantic color
-  getSemanticColor: (semantic: 'primary' | 'secondary' | 'success' | 'warning' | 'error', shade: number = 500) => {
+  getSemanticColor: (semantic: "primary" | "secondary" | "success" | "warning" | "error", shade: number = 500) => {
     // This would integrate with your color tokens
     return `var(--color-${semantic}-${shade})`;
   },

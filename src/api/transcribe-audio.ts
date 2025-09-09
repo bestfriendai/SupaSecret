@@ -8,7 +8,8 @@ You can use this function to transcribe audio files, and it will return the text
 const DEV_FALLBACK_TRANSCRIPTION =
   "This is a simulated transcription for development purposes. The actual audio content would be transcribed here in production with a valid API key.";
 // @ts-ignore - __DEV__ may not be defined in all environments
-const isDevFallbackEnabled = typeof __DEV__ !== 'undefined' && __DEV__ === true && process.env.ENABLE_DEV_FALLBACK === "true";
+const isDevFallbackEnabled =
+  typeof __DEV__ !== "undefined" && __DEV__ === true && process.env.ENABLE_DEV_FALLBACK === "true";
 
 /**
  * Transcribe an audio file via server-side endpoint
@@ -46,7 +47,7 @@ export const transcribeAudio = async (localAudioUri: string) => {
     const controller = new AbortController();
     const timeoutMs = 15000; // 15 second timeout
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    
+
     let response;
     try {
       response = await fetch(SERVER_TRANSCRIPTION_ENDPOINT, {
@@ -71,24 +72,24 @@ export const transcribeAudio = async (localAudioUri: string) => {
     }
 
     const result = await response.json();
-    
+
     // Validate response shape
-    if (typeof result !== 'object' || result === null || typeof result.text !== 'string') {
+    if (typeof result !== "object" || result === null || typeof result.text !== "string") {
       console.error("Invalid response format from transcription API:", result);
-      
+
       if (isDevFallbackEnabled) {
         console.warn("Using dev fallback due to invalid response format");
         return DEV_FALLBACK_TRANSCRIPTION;
       }
       throw new Error("Invalid response format from transcription service");
     }
-    
+
     return result.text;
   } catch (error: any) {
     console.error("Transcription error:", error);
 
     // Handle abort errors specifically
-    if (error?.name === 'AbortError') {
+    if (error?.name === "AbortError") {
       if (isDevFallbackEnabled) {
         console.warn("Using dev fallback due to timeout");
         return DEV_FALLBACK_TRANSCRIPTION;

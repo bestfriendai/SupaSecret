@@ -7,7 +7,7 @@ interface CacheEntry {
   timestamp: number;
   size: number;
   accessCount: number;
-  priority: 'high' | 'normal' | 'low';
+  priority: "high" | "normal" | "low";
 }
 
 interface CacheConfig {
@@ -145,8 +145,8 @@ class VideoCacheManager {
       // Calculate normalized recency score (0-1, where 1 is most recent)
       const now = Date.now();
       const maxAge = Math.max(...entries.map(([, entry]) => now - entry.timestamp), 1);
-      const aRecency = 1 - ((now - a.timestamp) / maxAge);
-      const bRecency = 1 - ((now - b.timestamp) / maxAge);
+      const aRecency = 1 - (now - a.timestamp) / maxAge;
+      const bRecency = 1 - (now - b.timestamp) / maxAge;
 
       // Calculate normalized access frequency score (0-1)
       const maxAccess = Math.max(...entries.map(([, entry]) => entry.accessCount), 1);
@@ -168,7 +168,7 @@ class VideoCacheManager {
     }
   }
 
-  async getCachedVideo(uri: string, priority: 'high' | 'normal' | 'low' = 'normal'): Promise<string | null> {
+  async getCachedVideo(uri: string, priority: "high" | "normal" | "low" = "normal"): Promise<string | null> {
     const cacheKey = this.generateCacheKey(uri);
     const entry = this.cache.get(cacheKey);
 
@@ -187,7 +187,7 @@ class VideoCacheManager {
         // Trigger cleanup if we're approaching capacity
         if (this.currentCacheSize > this.config.maxCacheSize * this.config.cleanupThreshold) {
           // Don't await - run cleanup in background
-          this.evictLeastRecentlyUsed().catch(error => {
+          this.evictLeastRecentlyUsed().catch((error) => {
             console.error("Background cleanup failed:", error);
           });
         }
@@ -204,7 +204,7 @@ class VideoCacheManager {
     return null;
   }
 
-  async cacheVideo(uri: string, priority: 'high' | 'normal' | 'low' = 'normal'): Promise<string> {
+  async cacheVideo(uri: string, priority: "high" | "normal" | "low" = "normal"): Promise<string> {
     const cacheKey = this.generateCacheKey(uri);
     const existingEntry = await this.getCachedVideo(uri, priority);
 
@@ -253,16 +253,6 @@ class VideoCacheManager {
     }
   }
 
-  async preloadVideos(uris: string[]): Promise<void> {
-    const preloadPromises = uris.map((uri) =>
-      this.cacheVideo(uri).catch((error) => {
-        console.error(`Failed to preload video ${uri}:`, error);
-      }),
-    );
-
-    await Promise.allSettled(preloadPromises);
-  }
-
   async clearCache(): Promise<void> {
     try {
       await FileSystem.deleteAsync(this.cacheDir, { idempotent: true });
@@ -290,12 +280,15 @@ class VideoCacheManager {
     const lruStats = this.lruCache.getStats();
     const entries = Array.from(this.cache.values());
 
-    const priorityBreakdown = entries.reduce((acc, entry) => {
-      acc[entry.priority] = (acc[entry.priority] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const priorityBreakdown = entries.reduce(
+      (acc, entry) => {
+        acc[entry.priority] = (acc[entry.priority] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
-    const timestamps = entries.map(e => e.timestamp);
+    const timestamps = entries.map((e) => e.timestamp);
 
     return {
       size: this.currentCacheSize,
@@ -311,7 +304,7 @@ class VideoCacheManager {
   /**
    * Preload videos with priority support
    */
-  async preloadVideos(uris: string[], priority: 'high' | 'normal' | 'low' = 'normal'): Promise<void> {
+  async preloadVideos(uris: string[], priority: "high" | "normal" | "low" = "normal"): Promise<void> {
     // Limit concurrent preloads to prevent overwhelming the system
     const chunks = [];
     for (let i = 0; i < uris.length; i += this.config.preloadLimit) {
@@ -339,7 +332,7 @@ class VideoCacheManager {
     if (newConfig.maxEntries || newConfig.maxCacheSize) {
       // Note: LRUCache doesn't support dynamic config updates
       // In a real implementation, you might need to recreate the cache
-      console.warn('Cache config updated, consider restarting the cache for full effect');
+      console.warn("Cache config updated, consider restarting the cache for full effect");
     }
   }
 

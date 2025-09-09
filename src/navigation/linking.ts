@@ -1,63 +1,63 @@
-import { LinkingOptions } from '@react-navigation/native';
-import * as Linking from 'expo-linking';
-import { RootStackParamList } from './AppNavigator';
+import { LinkingOptions } from "@react-navigation/native";
+import * as Linking from "expo-linking";
+import { RootStackParamList } from "./AppNavigator";
 
-const prefix = Linking.createURL('/');
+const prefix = Linking.createURL("/");
 
 export const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: [prefix, 'supasecret://', 'https://supasecret.app', 'https://www.supasecret.app'],
+  prefixes: [prefix, "supasecret://", "https://supasecret.app", "https://www.supasecret.app"],
   config: {
     screens: {
       MainTabs: {
         screens: {
           Home: {
-            path: '/',
+            path: "/",
             screens: {
-              HomeScreen: '',
+              HomeScreen: "",
             },
           },
           Videos: {
-            path: '/videos',
+            path: "/videos",
             screens: {
-              VideoFeedScreen: '',
+              VideoFeedScreen: "",
             },
           },
           Create: {
-            path: '/create',
+            path: "/create",
             screens: {
-              CreateConfessionScreen: '',
+              CreateConfessionScreen: "",
             },
           },
           Trending: {
-            path: '/trending',
+            path: "/trending",
             screens: {
-              TrendingScreen: '',
+              TrendingScreen: "",
             },
           },
           Profile: {
-            path: '/profile',
+            path: "/profile",
             screens: {
-              ProfileScreen: '',
+              ProfileScreen: "",
             },
           },
         },
       },
       SecretDetail: {
-        path: '/secret/:confessionId',
+        path: "/secret/:confessionId",
         parse: {
           confessionId: (confessionId: string) => confessionId,
         },
       },
       VideoPlayer: {
-        path: '/video/:confessionId',
+        path: "/video/:confessionId",
         parse: {
           confessionId: (confessionId: string) => confessionId,
         },
       },
-      VideoRecord: '/record',
-      Saved: '/saved',
+      VideoRecord: "/record",
+      Saved: "/saved",
       Paywall: {
-        path: '/paywall',
+        path: "/paywall",
         parse: {
           feature: (feature: string) => feature,
           source: (source: string) => source,
@@ -65,9 +65,9 @@ export const linking: LinkingOptions<RootStackParamList> = {
       },
       AuthStack: {
         screens: {
-          Onboarding: '/onboarding',
-          SignUp: '/signup',
-          SignIn: '/signin',
+          Onboarding: "/onboarding",
+          SignUp: "/signup",
+          SignIn: "/signin",
         },
       },
     },
@@ -87,7 +87,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
     const onReceiveURL = ({ url }: { url: string }) => listener(url);
 
     // Listen to incoming links from deep linking
-    const subscription = Linking.addEventListener('url', onReceiveURL);
+    const subscription = Linking.addEventListener("url", onReceiveURL);
 
     return () => {
       subscription?.remove();
@@ -109,12 +109,12 @@ export const DeepLinkHandlers = {
 
   // Handle profile sharing links
   handleProfileLink: (userId?: string) => {
-    return userId ? `supasecret://profile/${encodeURIComponent(userId)}` : 'supasecret://profile';
+    return userId ? `supasecret://profile/${encodeURIComponent(userId)}` : "supasecret://profile";
   },
 
   // Handle trending hashtag links
   handleTrendingLink: (hashtag?: string) => {
-    return hashtag ? `supasecret://trending?hashtag=${encodeURIComponent(hashtag)}` : 'supasecret://trending';
+    return hashtag ? `supasecret://trending?hashtag=${encodeURIComponent(hashtag)}` : "supasecret://trending";
   },
 
   // Handle password reset links
@@ -130,11 +130,11 @@ export const DeepLinkHandlers = {
   // Handle paywall links
   handlePaywallLink: (feature?: string, source?: string) => {
     const params = new URLSearchParams();
-    if (feature) params.append('feature', feature);
-    if (source) params.append('source', source);
-    
+    if (feature) params.append("feature", feature);
+    if (source) params.append("source", source);
+
     const queryString = params.toString();
-    return `supasecret://paywall${queryString ? `?${queryString}` : ''}`;
+    return `supasecret://paywall${queryString ? `?${queryString}` : ""}`;
   },
 };
 
@@ -148,16 +148,16 @@ export const URLUtils = {
 
   // Parse hashtag from URL
   parseHashtag: (url: string): string | null => {
-    if (!url || typeof url !== 'string') {
+    if (!url || typeof url !== "string") {
       return null;
     }
 
     try {
       const urlObj = new URL(url);
-      return urlObj.searchParams.get('hashtag');
+      return urlObj.searchParams.get("hashtag");
     } catch (error) {
       if (__DEV__) {
-        console.warn('Failed to parse URL for hashtag:', url, error);
+        console.warn("Failed to parse URL for hashtag:", url, error);
       }
       return null;
     }
@@ -168,11 +168,11 @@ export const URLUtils = {
     try {
       const urlObj = new URL(url);
       const params: Record<string, string> = {};
-      
+
       urlObj.searchParams.forEach((value, key) => {
         params[key] = value;
       });
-      
+
       return params;
     } catch {
       return {};
@@ -183,17 +183,22 @@ export const URLUtils = {
   isValidDeepLink: (url: string): boolean => {
     try {
       const urlObj = new URL(url);
-      const validSchemes = ['supasecret', 'https'];
-      const validHosts = ['supasecret.app', 'www.supasecret.app'];
-      
-      if (urlObj.protocol === 'supasecret:') {
+      const validSchemes = ["supasecret:", "https:"];
+      const validHosts = ["supasecret.app", "www.supasecret.app"];
+
+      // Check if protocol is in allowed schemes
+      if (!validSchemes.includes(urlObj.protocol)) {
+        return false;
+      }
+
+      if (urlObj.protocol === "supasecret:") {
         return true;
       }
-      
-      if (urlObj.protocol === 'https:' && validHosts.includes(urlObj.hostname)) {
+
+      if (urlObj.protocol === "https:" && validHosts.includes(urlObj.hostname)) {
         return true;
       }
-      
+
       return false;
     } catch {
       return false;
@@ -211,14 +216,14 @@ export const URLUtils = {
     let normalizedPath = path.trim();
 
     // Remove leading slashes and add a single one
-    normalizedPath = normalizedPath.replace(/^\/+/, '');
-    if (normalizedPath && !normalizedPath.startsWith('/')) {
-      normalizedPath = '/' + normalizedPath;
+    normalizedPath = normalizedPath.replace(/^\/+/, "");
+    if (normalizedPath && !normalizedPath.startsWith("/")) {
+      normalizedPath = "/" + normalizedPath;
     }
 
     // Remove trailing slashes except for root
     if (normalizedPath.length > 1) {
-      normalizedPath = normalizedPath.replace(/\/+$/, '');
+      normalizedPath = normalizedPath.replace(/\/+$/, "");
     }
 
     // Encode the path while preserving slashes
@@ -230,21 +235,21 @@ export const URLUtils = {
 
 // Analytics tracking for deep links
 export const DeepLinkAnalytics = {
-  trackDeepLinkOpen: (url: string, source: 'app_open' | 'notification' | 'share') => {
+  trackDeepLinkOpen: (url: string, source: "app_open" | "notification" | "share") => {
     // Integrate with your analytics service
     if (__DEV__) {
-      console.log('Deep link opened:', { url, source });
+      console.log("Deep link opened:", { url, source });
     }
-    
+
     // Example: Analytics.track('deep_link_opened', { url, source });
   },
 
-  trackDeepLinkShare: (type: 'secret' | 'video' | 'profile' | 'trending', id?: string) => {
+  trackDeepLinkShare: (type: "secret" | "video" | "profile" | "trending", id?: string) => {
     // Integrate with your analytics service
     if (__DEV__) {
-      console.log('Deep link shared:', { type, id });
+      console.log("Deep link shared:", { type, id });
     }
-    
+
     // Example: Analytics.track('deep_link_shared', { type, id });
   },
 };
@@ -253,27 +258,27 @@ export const DeepLinkAnalytics = {
 export const DeepLinkErrorHandler = {
   handleInvalidLink: (url: string) => {
     if (__DEV__) {
-      console.warn('Invalid deep link:', url);
+      console.warn("Invalid deep link:", url);
     }
-    
+
     // Could show a toast or redirect to home
     // Example: showToast('Invalid link', 'error');
   },
 
-  handleMissingContent: (type: 'secret' | 'video' | 'profile', id: string) => {
+  handleMissingContent: (type: "secret" | "video" | "profile", id: string) => {
     if (__DEV__) {
-      console.warn('Content not found for deep link:', { type, id });
+      console.warn("Content not found for deep link:", { type, id });
     }
-    
+
     // Could show an error screen or redirect
     // Example: showToast('Content not found', 'error');
   },
 
   handleAuthRequired: (targetUrl: string) => {
     if (__DEV__) {
-      console.log('Authentication required for deep link:', targetUrl);
+      console.log("Authentication required for deep link:", targetUrl);
     }
-    
+
     // Store the target URL and redirect to auth
     // Example: AuthStore.setPendingDeepLink(targetUrl);
   },

@@ -212,7 +212,7 @@ export default function EnhancedCommentBottomSheet({ bottomSheetModalRef }: Enha
                     style={{
                       color: "#FFFFFF",
                       fontSize: 15,
-                      textAlignVertical: 'top',
+                      textAlignVertical: "top",
                     }}
                   />
                   {newComment.length > 400 && (
@@ -230,7 +230,7 @@ export default function EnhancedCommentBottomSheet({ bottomSheetModalRef }: Enha
                   onPress={handleAddComment}
                   disabled={!newComment.trim()}
                   style={{
-                    shadowColor: newComment.trim() ? '#3B82F6' : 'transparent',
+                    shadowColor: newComment.trim() ? "#3B82F6" : "transparent",
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.3,
                     shadowRadius: 4,

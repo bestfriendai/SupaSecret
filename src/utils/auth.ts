@@ -1,5 +1,6 @@
 import { User, AuthCredentials, SignUpData } from "../types/auth";
 import { supabase } from "../lib/supabase";
+import Constants from "expo-constants";
 
 // Email validation
 export const validateEmail = (email: string): boolean => {
@@ -321,8 +322,9 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
     throw new AuthError("INVALID_EMAIL", "Please enter a valid email address");
   }
 
-  // Properly construct redirect URL
-  const baseUrl = (process.env.EXPO_PUBLIC_APP_URL || 'supasecret://').replace(/\/+$/, '');
+  // Properly construct redirect URL using Expo Constants
+  const appUrl = Constants.expoConfig?.extra?.appUrl || Constants.manifest?.extra?.appUrl || "supasecret://";
+  const baseUrl = appUrl.replace(/\/+$/, "");
   const redirectTo = `${baseUrl}/reset-password`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {

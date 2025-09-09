@@ -59,10 +59,10 @@ export const useNotificationStore = create<NotificationState>()(
 
       loadNotifications: async () => {
         set({ isLoading: true, error: null });
-        
+
         // Set up real-time subscriptions if not already done
         setupNotificationSubscriptions();
-        
+
         try {
           const {
             data: { user },
@@ -321,7 +321,7 @@ const cleanupNotificationSubscriptions = () => {
 // Function to set up real-time subscriptions for notifications
 const setupNotificationSubscriptions = () => {
   if (notificationChannel) return; // Already set up
-  
+
   notificationChannel = supabase
     .channel("notifications")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {

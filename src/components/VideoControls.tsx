@@ -41,14 +41,20 @@ export default function VideoControls({
     });
   }, [showSpeedOptions]);
 
-  const controlsStyle = useAnimatedStyle(() => ({
-    opacity: controlsOpacity.value,
-  }), []);
+  const controlsStyle = useAnimatedStyle(
+    () => ({
+      opacity: controlsOpacity.value,
+    }),
+    [],
+  );
 
-  const speedOptionsStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: speedOptionsScale.value }],
-    opacity: speedOptionsScale.value,
-  }), []);
+  const speedOptionsStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ scale: speedOptionsScale.value }],
+      opacity: speedOptionsScale.value,
+    }),
+    [],
+  );
 
   const handleSpeedChange = async (speed: number) => {
     try {
@@ -136,7 +142,7 @@ export default function VideoControls({
           className="w-12 h-12 bg-black/70 rounded-full items-center justify-center"
           {...getButtonA11yProps(
             `Playback speed ${formatSpeed(userPreferences.playbackSpeed)}`,
-            'Double tap to change playback speed'
+            "Double tap to change playback speed",
           )}
         >
           <Text className="text-white text-12 font-bold">{formatSpeed(userPreferences.playbackSpeed)}</Text>
@@ -149,10 +155,7 @@ export default function VideoControls({
             className={`w-12 h-12 rounded-full items-center justify-center ${
               captionsEnabled ? "bg-blue-600" : "bg-black/70"
             }`}
-            {...getSwitchA11yProps(
-              'Captions',
-              captionsEnabled
-            )}
+            {...getSwitchA11yProps("Captions", captionsEnabled)}
           >
             <Ionicons name="text" size={20} color={captionsEnabled ? "#FFFFFF" : "#8B98A5"} />
           </Pressable>

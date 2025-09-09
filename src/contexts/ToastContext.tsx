@@ -1,12 +1,12 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { View, Text, Pressable, Animated, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { View, Text, Pressable, Animated, Dimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 
 export interface Toast {
   id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: "success" | "error" | "warning" | "info";
   message: string;
   duration?: number;
   action?: { label: string; onPress: () => void };
@@ -14,7 +14,7 @@ export interface Toast {
 }
 
 interface ToastContextType {
-  showToast: (toast: Omit<Toast, 'id'>) => void;
+  showToast: (toast: Omit<Toast, "id">) => void;
   hideToast: (id: string) => void;
   clearAllToasts: () => void;
 }
@@ -28,12 +28,12 @@ const ToastContext = createContext<ToastContextType>({
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
+    throw new Error("useToast must be used within a ToastProvider");
   }
   return context;
 };
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get("window");
 
 interface ToastItemProps {
   toast: Toast;
@@ -88,35 +88,35 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 
   const getToastStyles = () => {
     switch (toast.type) {
-      case 'success':
+      case "success":
         return {
-          backgroundColor: '#10B981',
-          borderColor: '#059669',
-          iconName: 'checkmark-circle' as const,
+          backgroundColor: "#10B981",
+          borderColor: "#059669",
+          iconName: "checkmark-circle" as const,
         };
-      case 'error':
+      case "error":
         return {
-          backgroundColor: '#EF4444',
-          borderColor: '#DC2626',
-          iconName: 'alert-circle' as const,
+          backgroundColor: "#EF4444",
+          borderColor: "#DC2626",
+          iconName: "alert-circle" as const,
         };
-      case 'warning':
+      case "warning":
         return {
-          backgroundColor: '#F59E0B',
-          borderColor: '#D97706',
-          iconName: 'warning' as const,
+          backgroundColor: "#F59E0B",
+          borderColor: "#D97706",
+          iconName: "warning" as const,
         };
-      case 'info':
+      case "info":
         return {
-          backgroundColor: '#3B82F6',
-          borderColor: '#2563EB',
-          iconName: 'information-circle' as const,
+          backgroundColor: "#3B82F6",
+          borderColor: "#2563EB",
+          iconName: "information-circle" as const,
         };
       default:
         return {
-          backgroundColor: '#6B7280',
-          borderColor: '#4B5563',
-          iconName: 'information-circle' as const,
+          backgroundColor: "#6B7280",
+          borderColor: "#4B5563",
+          iconName: "information-circle" as const,
         };
     }
   };
@@ -139,45 +139,40 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
             borderColor: styles.borderColor,
             borderRadius: 12,
             padding: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
+            flexDirection: "row",
+            alignItems: "center",
             minHeight: 60,
           }}
         >
-          <Ionicons
-            name={styles.iconName}
-            size={24}
-            color={styles.backgroundColor}
-            style={{ marginRight: 12 }}
-          />
-          
+          <Ionicons name={styles.iconName} size={24} color={styles.backgroundColor} style={{ marginRight: 12 }} />
+
           <View style={{ flex: 1 }}>
             <Text
               style={{
-                color: '#FFFFFF',
+                color: "#FFFFFF",
                 fontSize: 15,
-                fontWeight: '500',
+                fontWeight: "500",
                 lineHeight: 20,
               }}
               numberOfLines={3}
             >
               {toast.message}
             </Text>
-            
+
             {toast.action && (
               <Pressable
                 onPress={toast.action.onPress}
                 style={{
                   marginTop: 8,
-                  alignSelf: 'flex-start',
+                  alignSelf: "flex-start",
                 }}
               >
                 <Text
                   style={{
                     color: styles.backgroundColor,
                     fontSize: 14,
-                    fontWeight: '600',
-                    textDecorationLine: 'underline',
+                    fontWeight: "600",
+                    textDecorationLine: "underline",
                   }}
                 >
                   {toast.action.label}
@@ -214,12 +209,12 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) =>
   return (
     <SafeAreaView
       style={{
-        position: 'absolute',
+        position: "absolute",
         top: 0,
         left: 0,
         right: 0,
         zIndex: 9999,
-        pointerEvents: 'box-none',
+        pointerEvents: "box-none",
       }}
     >
       <View
@@ -229,11 +224,7 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) =>
         }}
       >
         {toasts.map((toast) => (
-          <ToastItem
-            key={toast.id}
-            toast={toast}
-            onDismiss={onDismiss}
-          />
+          <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
         ))}
       </View>
     </SafeAreaView>
@@ -243,15 +234,15 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) =>
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback((toast: Omit<Toast, 'id'>) => {
+  const showToast = useCallback((toast: Omit<Toast, "id">) => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
     const newToast: Toast = { ...toast, id };
-    
-    setToasts(prev => [...prev, newToast]);
+
+    setToasts((prev) => [...prev, newToast]);
   }, []);
 
   const hideToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const clearAllToasts = useCallback(() => {
@@ -271,16 +262,12 @@ export const useToastHelpers = () => {
   const { showToast } = useToast();
 
   return {
-    showSuccess: (message: string, action?: Toast['action']) =>
-      showToast({ type: 'success', message, action }),
-    
-    showError: (message: string, action?: Toast['action']) =>
-      showToast({ type: 'error', message, action }),
-    
-    showWarning: (message: string, action?: Toast['action']) =>
-      showToast({ type: 'warning', message, action }),
-    
-    showInfo: (message: string, action?: Toast['action']) =>
-      showToast({ type: 'info', message, action }),
+    showSuccess: (message: string, action?: Toast["action"]) => showToast({ type: "success", message, action }),
+
+    showError: (message: string, action?: Toast["action"]) => showToast({ type: "error", message, action }),
+
+    showWarning: (message: string, action?: Toast["action"]) => showToast({ type: "warning", message, action }),
+
+    showInfo: (message: string, action?: Toast["action"]) => showToast({ type: "info", message, action }),
   };
 };

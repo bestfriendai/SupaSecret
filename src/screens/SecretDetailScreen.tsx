@@ -59,8 +59,8 @@ export default function SecretDetailScreen() {
 
   useEffect(() => {
     if (confessionId) {
-      loadReplies(confessionId).catch(error => {
-        console.error('Failed to load replies in SecretDetailScreen:', error);
+      loadReplies(confessionId).catch((error) => {
+        console.error("Failed to load replies in SecretDetailScreen:", error);
         // Don't show alert immediately, let the store handle the error state
       });
     }
@@ -68,13 +68,21 @@ export default function SecretDetailScreen() {
 
   useEffect(() => {
     if (repliesError) {
-      console.error('Replies error:', repliesError);
+      console.error("Replies error:", repliesError);
       Alert.alert("Error Loading Replies", repliesError, [
-        { text: "Retry", onPress: () => {
-          clearError();
-          loadReplies(confessionId);
-        }},
-        { text: "OK", onPress: () => clearError() }
+        {
+          text: "Retry",
+          onPress: async () => {
+            clearError();
+            try {
+              await loadReplies(confessionId);
+            } catch (error) {
+              console.error("Failed to retry loading replies:", error);
+              Alert.alert("Error", "Failed to load replies. Please try again.");
+            }
+          },
+        },
+        { text: "OK", onPress: () => clearError() },
       ]);
     }
   }, [repliesError, clearError, confessionId, loadReplies]);
@@ -87,7 +95,7 @@ export default function SecretDetailScreen() {
       Alert.alert(
         "Sample Content",
         "This is sample content for demonstration. Replies can only be added to real confessions.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
       return;
     }
@@ -298,9 +306,7 @@ export default function SecretDetailScreen() {
               <TextInput
                 className="flex-1 bg-gray-800 rounded-full px-4 py-2 text-white text-15 mr-3"
                 placeholder={
-                  isValidForDatabase(confessionId)
-                    ? "Add an anonymous reply..."
-                    : "Sample content - replies disabled"
+                  isValidForDatabase(confessionId) ? "Add an anonymous reply..." : "Sample content - replies disabled"
                 }
                 placeholderTextColor="#8B98A5"
                 value={newReply}
@@ -311,9 +317,7 @@ export default function SecretDetailScreen() {
               />
               <Pressable
                 className={`rounded-full p-2 ${
-                  newReply.trim() && !isSubmitting && isValidForDatabase(confessionId)
-                    ? "bg-blue-500"
-                    : "bg-gray-700"
+                  newReply.trim() && !isSubmitting && isValidForDatabase(confessionId) ? "bg-blue-500" : "bg-gray-700"
                 }`}
                 onPress={handleAddReply}
                 disabled={!newReply.trim() || isSubmitting || !isValidForDatabase(confessionId)}
@@ -321,11 +325,7 @@ export default function SecretDetailScreen() {
                 <Ionicons
                   name="send"
                   size={18}
-                  color={
-                    newReply.trim() && !isSubmitting && isValidForDatabase(confessionId)
-                      ? "#FFFFFF"
-                      : "#8B98A5"
-                  }
+                  color={newReply.trim() && !isSubmitting && isValidForDatabase(confessionId) ? "#FFFFFF" : "#8B98A5"}
                 />
               </Pressable>
             </View>

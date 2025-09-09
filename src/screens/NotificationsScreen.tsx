@@ -141,7 +141,7 @@ export default function NotificationsScreen() {
                   {item.count > 1 && (
                     <Text className="text-blue-400 font-medium">
                       {" "}
-                      and {item.count - 1} other{item.count > 2 ? "s" : ""}
+                      and {String(item.count - 1)} other{item.count > 2 ? "s" : ""}
                     </Text>
                   )}
                 </Text>
@@ -187,7 +187,7 @@ export default function NotificationsScreen() {
       {/* Header */}
       <View
         style={{
-          paddingTop: insets.top + 20,
+          paddingTop: 0,
           paddingHorizontal: 20,
           paddingBottom: 16,
           borderBottomWidth: 1,
@@ -197,7 +197,7 @@ export default function NotificationsScreen() {
         <View className="flex-row justify-between items-center">
           <View>
             <Text className="text-white text-20 font-bold">Notifications</Text>
-            {unreadCount > 0 && <Text className="text-blue-400 text-12 mt-1">{unreadCount} unread</Text>}
+            {unreadCount > 0 && <Text className="text-blue-400 text-12 mt-1">{String(unreadCount)} unread</Text>}
           </View>
 
           <View className="flex-row">
@@ -207,7 +207,7 @@ export default function NotificationsScreen() {
                 className="bg-blue-600 px-3 py-2 rounded-lg mr-2"
                 {...getButtonA11yProps(
                   `Mark all ${unreadCount} notifications as read`,
-                  'Double tap to mark all notifications as read'
+                  "Double tap to mark all notifications as read",
                 )}
               >
                 <Text className="text-white text-12 font-medium">Mark All Read</Text>
@@ -218,10 +218,7 @@ export default function NotificationsScreen() {
               <Pressable
                 onPress={handleClearAll}
                 className="bg-gray-700 px-3 py-2 rounded-lg"
-                {...getButtonA11yProps(
-                  'Clear all notifications',
-                  'Double tap to clear all notifications'
-                )}
+                {...getButtonA11yProps("Clear all notifications", "Double tap to clear all notifications")}
               >
                 <Text className="text-white text-12 font-medium">Clear All</Text>
               </Pressable>
@@ -247,12 +244,7 @@ export default function NotificationsScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: 16 }}
         ListEmptyComponent={renderEmpty}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#1D9BF0"
-            colors={["#1D9BF0"]}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D9BF0" colors={["#1D9BF0"]} />
         }
       />
     </View>

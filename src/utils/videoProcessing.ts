@@ -1,7 +1,7 @@
 import * as FileSystem from "expo-file-system";
 import { transcribeAudio } from "../api/transcribe-audio";
-import { Anonymiser } from '../services/Anonymiser';
-import type { ProcessedVideo, VideoProcessingOptions } from '../services/IAnonymiser';
+import { Anonymiser } from "../services/Anonymiser";
+import type { ProcessedVideo, VideoProcessingOptions } from "../services/IAnonymiser";
 
 // Global FFmpeg availability check
 let ffmpegAvailable: boolean | null = null;
@@ -260,10 +260,9 @@ export const cleanupTemporaryFiles = async (): Promise<void> => {
 
         if (fileInfo.exists && fileInfo.modificationTime) {
           // Normalize modificationTime to milliseconds (FileSystem might return seconds)
-          const modificationTimeMs = fileInfo.modificationTime > 1e10 
-            ? fileInfo.modificationTime 
-            : fileInfo.modificationTime * 1000;
-          
+          const modificationTimeMs =
+            fileInfo.modificationTime > 1e10 ? fileInfo.modificationTime : fileInfo.modificationTime * 1000;
+
           if (modificationTimeMs < oneHourAgo) {
             await FileSystem.deleteAsync(filePath, { idempotent: true });
           }

@@ -12,8 +12,8 @@ export interface VideoProcessingOptions {
   enableFaceBlur?: boolean;
   enableVoiceChange?: boolean;
   enableTranscription?: boolean;
-  quality?: 'high' | 'medium' | 'low';
-  voiceEffect?: 'deep' | 'light';
+  quality?: "high" | "medium" | "low";
+  voiceEffect?: "deep" | "light";
   onProgress?: (progress: number, status: string) => void;
 }
 
