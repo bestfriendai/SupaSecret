@@ -29,7 +29,7 @@
         "NSSpeechRecognitionUsageDescription": "Speech recognition generates live captions for anonymous video confessions. All processing happens on-device to protect your privacy.",
         "NSPhotoLibraryUsageDescription": "Photo library access is used to save processed anonymous videos with metadata stripped for complete privacy protection."
       },
-      "bundleIdentifier": "com.trappat.toxicconfessions"
+      "bundleIdentifier": "com.toxic.confessions"
     },
     "android": {
       "edgeToEdgeEnabled": true,
@@ -43,7 +43,7 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_EXTERNAL_STORAGE"
       ],
-      "package": "com.trappat.toxicconfessions"
+      "package": "com.toxic.confessions"
     }
   }
 }
