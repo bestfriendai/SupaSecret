@@ -21,9 +21,6 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     flowType: "pkce", // Use PKCE flow for better security in React Native
     debug: __DEV__, // Enable debug mode in development
     storageKey: "supabase-auth-token", // Custom storage key
-    // Improved session management
-    sessionRefreshInterval: 1000 * 60 * 30, // 30 minutes
-    retryOnFailure: true,
   },
   // Global configuration for better performance
   global: {

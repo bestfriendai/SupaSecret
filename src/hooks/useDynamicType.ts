@@ -3,7 +3,6 @@ import { AccessibilityInfo, PixelRatio } from "react-native";
 
 export interface DynamicTypeSettings {
   fontScale: number;
-  isLargeTextEnabled: boolean;
   isBoldTextEnabled: boolean;
   isReduceMotionEnabled: boolean;
   isScreenReaderEnabled: boolean;
@@ -41,7 +40,6 @@ const BASE_FONT_SIZES = {
 export const useDynamicType = () => {
   const [settings, setSettings] = useState<DynamicTypeSettings>({
     fontScale: PixelRatio.getFontScale(),
-    isLargeTextEnabled: false,
     isBoldTextEnabled: false,
     isReduceMotionEnabled: false,
     isScreenReaderEnabled: false,
@@ -50,19 +48,15 @@ export const useDynamicType = () => {
   useEffect(() => {
     const loadAccessibilitySettings = async () => {
       try {
-        const [isLargeTextEnabled, isBoldTextEnabled, isReduceMotionEnabled, isScreenReaderEnabled] = await Promise.all(
-          [
-            // Feature-detect accessibility APIs before calling
-            AccessibilityInfo.isLargeTextEnabled?.() ?? Promise.resolve(false),
-            AccessibilityInfo.isBoldTextEnabled?.() ?? Promise.resolve(false),
-            AccessibilityInfo.isReduceMotionEnabled?.() ?? Promise.resolve(false),
-            AccessibilityInfo.isScreenReaderEnabled?.() ?? Promise.resolve(false),
-          ],
-        );
+        const [isBoldTextEnabled, isReduceMotionEnabled, isScreenReaderEnabled] = await Promise.all([
+          // Feature-detect accessibility APIs before calling
+          AccessibilityInfo.isBoldTextEnabled?.() ?? Promise.resolve(false),
+          AccessibilityInfo.isReduceMotionEnabled?.() ?? Promise.resolve(false),
+          AccessibilityInfo.isScreenReaderEnabled?.() ?? Promise.resolve(false),
+        ]);
 
         setSettings((prev) => ({
           ...prev,
-          isLargeTextEnabled,
           isBoldTextEnabled,
           isReduceMotionEnabled,
           isScreenReaderEnabled,
@@ -84,26 +78,9 @@ export const useDynamicType = () => {
       AccessibilityInfo.addEventListener("screenReaderChanged", (isScreenReaderEnabled) => {
         setSettings((prev) => ({ ...prev, isScreenReaderEnabled }));
       }),
-      AccessibilityInfo.addEventListener("largeTextChanged", (isLargeTextEnabled) => {
-        setSettings((prev) => ({ ...prev, isLargeTextEnabled }));
-      }),
       AccessibilityInfo.addEventListener("boldTextChanged", (isBoldTextEnabled) => {
         setSettings((prev) => ({ ...prev, isBoldTextEnabled }));
       }),
-      // Note: fontScaleChanged may not be available on all RN versions
-      // Using a try-catch to handle gracefully
-      (() => {
-        try {
-          return AccessibilityInfo.addEventListener("fontScaleChanged", (fontScale) => {
-            setSettings((prev) => ({ ...prev, fontScale }));
-          });
-        } catch (error) {
-          if (__DEV__) {
-            console.warn("fontScaleChanged event not supported:", error);
-          }
-          return null;
-        }
-      })(),
     ].filter(Boolean);
 
     return () => {
@@ -114,8 +91,7 @@ export const useDynamicType = () => {
   // Calculate scaled font sizes based on user preferences
   const getScaledFontSizes = (): ScaledFontSizes => {
     const scale = settings.fontScale;
-    const largeTextMultiplier = settings.isLargeTextEnabled ? 1.2 : 1;
-    const finalScale = scale * largeTextMultiplier;
+    const finalScale = scale;
 
     return Object.entries(BASE_FONT_SIZES).reduce((acc, [key, size]) => {
       acc[key as keyof ScaledFontSizes] = Math.round(size * finalScale);
@@ -151,20 +127,20 @@ export const useDynamicType = () => {
     return settings.isReduceMotionEnabled ? 0 : baseDuration;
   };
 
-  // Get spacing scale based on large text preference
+  // Get spacing scale based on font scale
   const getSpacingScale = (): number => {
-    return settings.isLargeTextEnabled ? 1.15 : 1;
+    return settings.fontScale > 1.2 ? 1.15 : 1;
   };
 
   // Check if text should be larger for better readability
   const shouldUseLargerText = (): boolean => {
-    return settings.fontScale > 1.3 || settings.isLargeTextEnabled;
+    return settings.fontScale > 1.3;
   };
 
   // Get minimum touch target size (44pt recommended by Apple/Google)
   const getMinTouchTargetSize = (): number => {
     const baseSize = 44;
-    return settings.isLargeTextEnabled ? baseSize * 1.2 : baseSize;
+    return settings.fontScale > 1.2 ? baseSize * 1.2 : baseSize;
   };
 
   // Get contrast ratio adjustments
