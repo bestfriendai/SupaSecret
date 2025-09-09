@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "vibecode",
-    "slug": "vibecode",
-    "scheme": "vibecode",
+    "name": "Toxic Confessions",
+    "slug": "toxic-confessions",
+    "scheme": "toxicconfessions",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -29,7 +29,7 @@
         "NSSpeechRecognitionUsageDescription": "Speech recognition generates live captions for anonymous video confessions. All processing happens on-device to protect your privacy.",
         "NSPhotoLibraryUsageDescription": "Photo library access is used to save processed anonymous videos with metadata stripped for complete privacy protection."
       },
-      "bundleIdentifier": "com.trappat.vibecode"
+      "bundleIdentifier": "com.trappat.toxicconfessions"
     },
     "android": {
       "edgeToEdgeEnabled": true,
@@ -43,7 +43,7 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_EXTERNAL_STORAGE"
       ],
-      "package": "com.trappat.vibecode"
+      "package": "com.trappat.toxicconfessions"
     }
   }
 }
