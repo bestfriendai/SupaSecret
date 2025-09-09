@@ -5,7 +5,7 @@ import { RootStackParamList } from "./AppNavigator";
 const prefix = Linking.createURL("/");
 
 export const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: [prefix, "supasecret://", "https://supasecret.app", "https://www.supasecret.app"],
+  prefixes: [prefix, "toxicconfessions://", "https://toxicconfessions.app", "https://www.toxicconfessions.app"],
   config: {
     screens: {
       MainTabs: {
@@ -99,22 +99,22 @@ export const linking: LinkingOptions<RootStackParamList> = {
 export const DeepLinkHandlers = {
   // Handle secret sharing links
   handleSecretLink: (confessionId: string) => {
-    return `supasecret://secret/${encodeURIComponent(confessionId)}`;
+    return `toxicconfessions://secret/${encodeURIComponent(confessionId)}`;
   },
 
   // Handle video sharing links
   handleVideoLink: (confessionId: string) => {
-    return `supasecret://video/${encodeURIComponent(confessionId)}`;
+    return `toxicconfessions://video/${encodeURIComponent(confessionId)}`;
   },
 
   // Handle profile sharing links
   handleProfileLink: (userId?: string) => {
-    return userId ? `supasecret://profile/${encodeURIComponent(userId)}` : "supasecret://profile";
+    return userId ? `toxicconfessions://profile/${encodeURIComponent(userId)}` : "toxicconfessions://profile";
   },
 
   // Handle trending hashtag links
   handleTrendingLink: (hashtag?: string) => {
-    return hashtag ? `supasecret://trending?hashtag=${encodeURIComponent(hashtag)}` : "supasecret://trending";
+    return hashtag ? `toxicconfessions://trending?hashtag=${encodeURIComponent(hashtag)}` : "toxicconfessions://trending";
   },
 
   // Handle password reset links
