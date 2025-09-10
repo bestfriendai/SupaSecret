@@ -145,7 +145,7 @@ export default function VideoControls({
             "Double tap to change playback speed",
           )}
         >
-          <Text className="text-white text-12 font-bold">{formatSpeed(userPreferences.playbackSpeed)}</Text>
+          <Text className="text-white text-12 font-bold">{formatSpeed(userPreferences.playback_speed)}</Text>
         </Pressable>
 
         {/* Captions Control */}

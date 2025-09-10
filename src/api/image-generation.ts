@@ -1,107 +1,146 @@
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
-This is a custom asset generation service that uses a custom API endpoint maintained by Vibecode. If the user wants to build an app that generates images, assets, icons, or anything else, you must use this internal endpoint. Do not attempt to use replicate or chatgpt.
-You may update this service, but you should not need to.
-This endpoint uses openai's latest image generation API, AKA gpt4o, AKA gpt-image-1, so if the user is asking for that, this is the right service to use.
-Does not support video and audio generation.
+This is a custom client for the Image Generation API. You may update this service, but you should not need to.
 */
-
-import { createApiRetry } from "../utils/retryLogic";
-
-// API endpoint configuration
-const baseUrl = "https://api.vibecodeapp.com";
-const endpoint = "/api/storage/generate-image";
-
-// Create retry wrapper for API calls
-const apiRetry = createApiRetry({
-  maxAttempts: 3,
-  initialDelay: 2000, // Longer delay for image generation
-  maxDelay: 15000,
-  onRetry: (error, attempt, delay) => {
-    if (__DEV__) {
-      console.warn(`[API Retry] Image generation attempt ${attempt} failed, retrying in ${delay}ms:`, error);
-    }
-  },
-});
+import {
+  executeApiRequest,
+  validateApiResponse,
+  logApiRequest,
+  logApiResponse,
+  handleApiError,
+} from "../utils/apiUtils";
+import { createApiError, API_ERROR_CODES } from "../types/apiError";
 
 /**
- * Generate an image using the custom API endpoint
- * @param prompt The text prompt to generate an image from
- * @param options Optional parameters for image generation
- * @returns URL of the generated image, usable to render in the app directly.
+ * Generate an image using the Image Generation API
+ * @param prompt - The prompt to generate an image from
+ * @param options - The options for the request
+ * @returns The response from the API
  */
-export async function generateImage(
+export const generateImage = async (
   prompt: string,
   options?: {
-    size?: "1024x1024" | "1536x1024" | "1024x1536" | "auto";
-    quality?: "low" | "medium" | "high" | "auto";
-    format?: "png" | "jpeg" | "webp";
-    background?: undefined | "transparent";
+    model?: string;
+    width?: number;
+    height?: number;
+    steps?: number;
+    seed?: number;
   },
-): Promise<string> {
-  return apiRetry(async () => {
-    try {
-      // Create request body
-      const requestBody = {
-        projectId: process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID,
-        prompt,
-        options: {
-          ...options,
-        },
-      };
+): Promise<{ imageUrl: string }> => {
+  const startTime = Date.now();
+  const context = "generateImage";
 
-      // Make API request
-      const response = await fetch(`${baseUrl}${endpoint}`, {
+  try {
+    // Validate inputs
+    if (!prompt || prompt.trim() === "") {
+      const error = createApiError(
+        "image-generation",
+        "Prompt is required and cannot be empty",
+        API_ERROR_CODES.MISSING_PARAMETER,
+      );
+      handleApiError(error, "image-generation", context);
+    }
+
+    // Validate options
+    const model = options?.model || "flux";
+    const width = options?.width || 1024;
+    const height = options?.height || 1024;
+    const steps = options?.steps || 4;
+    const seed = options?.seed;
+
+    if (width <= 0 || height <= 0) {
+      const error = createApiError(
+        "image-generation",
+        "Width and height must be positive numbers",
+        API_ERROR_CODES.INVALID_PARAMETER,
+      );
+      handleApiError(error, "image-generation", context);
+    }
+
+    if (steps <= 0 || steps > 50) {
+      const error = createApiError(
+        "image-generation",
+        "Steps must be between 1 and 50",
+        API_ERROR_CODES.INVALID_PARAMETER,
+      );
+      handleApiError(error, "image-generation", context);
+    }
+
+    return await executeApiRequest(async () => {
+      const apiKey = process.env.EXPO_PUBLIC_VIBECODE_IMAGE_API_KEY;
+      if (!apiKey) {
+        const error = createApiError(
+          "image-generation",
+          "Image generation API key not found in environment variables",
+          API_ERROR_CODES.API_KEY_NOT_FOUND,
+        );
+        handleApiError(error, "image-generation", context);
+      }
+
+      // Log request for debugging
+      logApiRequest("image-generation", "/generate", "POST", {
+        prompt,
+        model,
+        width,
+        height,
+        steps,
+        seed,
+      });
+
+      const response = await fetch("https://api.vibecode.com/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-API-Key": apiKey,
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          prompt,
+          model,
+          width,
+          height,
+          steps,
+          seed,
+        }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("[AssetGenerationService] Error response:", errorData);
-        throw new Error(`Image generation API error: ${response.status} ${JSON.stringify(errorData)}`);
+        const errorData = await response.json().catch(() => ({}));
+        const error = createApiError(
+          "image-generation",
+          errorData.message || `HTTP error! status: ${response.status}`,
+          undefined,
+          response.status,
+          errorData,
+          response.status >= 500, // Retry on server errors
+        );
+        handleApiError(error, "image-generation", context);
       }
 
-      const result = await response.json();
-      if (__DEV__) {
-        console.log("[AssetGenerationService] Image generated successfully");
-      }
+      const data = await response.json();
 
-      // Return the image data from the response
-      if (result.success && result.data) {
-        return result.data.imageUrl as string;
-      } else {
-        if (__DEV__) {
-          console.error("[AssetGenerationService] Invalid response format:", result);
-        }
-        throw new Error("Invalid response format from API");
-      }
-    } catch (error) {
-      if (__DEV__) {
-        console.error("Image Generation Error:", error);
-      }
-      throw error;
-    }
-  });
-}
+      // Log response for debugging
+      logApiResponse("image-generation", "/generate", data, Date.now() - startTime);
 
-/**
- * Convert aspect ratio to size format
- * @param aspectRatio The aspect ratio to convert
- * @returns The corresponding size format
- */
-export function convertAspectRatioToSize(aspectRatio: string): "1024x1024" | "1536x1024" | "1024x1536" | "auto" {
-  switch (aspectRatio) {
-    case "1:1":
-      return "1024x1024";
-    case "3:2":
-      return "1536x1024";
-    case "2:3":
-      return "1024x1536";
-    default:
-      return "auto";
+      // Validate response structure
+      const validatedResponse = validateApiResponse(
+        data,
+        ["imageUrl"],
+        "image-generation",
+        context,
+      ) as { imageUrl: string };
+
+      return {
+        imageUrl: validatedResponse.imageUrl,
+      };
+    }, {
+      serviceName: "image-generation",
+      context,
+      timeoutMs: 120000, // 2 minute timeout for image generation
+      maxRetries: 3,
+    });
+  } catch (error) {
+    handleApiError(error, "image-generation", context);
+    // This line is unreachable because handleApiError always throws
+    throw new Error("Unreachable code");
   }
-}
+};

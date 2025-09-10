@@ -74,7 +74,7 @@ export type SupabaseErrorCode = (typeof SUPABASE_ERROR_CODES)[keyof typeof SUPAB
  */
 export const isSupabaseError = (error: unknown): error is SupabaseError => {
   return (
-    typeof error === "object" && error !== null && "message" in error && typeof (error as any).message === "string"
+    typeof error === "object" && error !== null && "message" in error && typeof (error as SupabaseError).message === "string"
   );
 };
 
@@ -86,8 +86,10 @@ export const isPostgrestError = (error: unknown): error is PostgrestError => {
     isSupabaseError(error) &&
     "code" in error &&
     "details" in error &&
-    typeof (error as any).code === "string" &&
-    typeof (error as any).details === "string"
+    "hint" in error &&
+    typeof (error as PostgrestError).code === "string" &&
+    typeof (error as PostgrestError).details === "string" &&
+    typeof (error as PostgrestError).hint === "string"
   );
 };
 
@@ -118,7 +120,7 @@ export const getSupabaseErrorCode = (error: unknown): string | undefined => {
   }
 
   if (isSupabaseError(error) && "code" in error) {
-    return (error as any).code;
+    return (error as SupabaseError).code;
   }
 
   return undefined;
@@ -191,7 +193,7 @@ export const getSupabaseErrorMessage = (error: unknown): string => {
 export const isRetryableSupabaseError = (error: unknown): boolean => {
   const code = getSupabaseErrorCode(error);
 
-  const retryableCodes = [
+  const retryableCodes: SupabaseErrorCode[] = [
     SUPABASE_ERROR_CODES.CONNECTION_FAILURE,
     SUPABASE_ERROR_CODES.CONNECTION_EXCEPTION,
     SUPABASE_ERROR_CODES.CONNECTION_DOES_NOT_EXIST,
@@ -201,7 +203,7 @@ export const isRetryableSupabaseError = (error: unknown): boolean => {
     SUPABASE_ERROR_CODES.TIMEOUT_ERROR,
   ];
 
-  return code ? retryableCodes.includes(code as any) : false;
+  return code ? retryableCodes.includes(code as SupabaseErrorCode) : false;
 };
 
 /**

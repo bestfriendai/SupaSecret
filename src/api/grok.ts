@@ -9,14 +9,47 @@ grok-3-fast-latest
 grok-3-mini-latest
 */
 import OpenAI from "openai";
+import { validateEnvironmentVariables, handleApiError } from "../utils/apiUtils";
+import { createApiError, API_ERROR_CODES } from "../types/apiError";
 
 export const getGrokClient = () => {
-  const apiKey = process.env.EXPO_PUBLIC_VIBECODE_GROK_API_KEY;
-  if (!apiKey) {
-    console.warn("Grok API key not found in environment variables");
+  try {
+    const apiKey = process.env.EXPO_PUBLIC_VIBECODE_GROK_API_KEY;
+    if (!apiKey) {
+      const error = createApiError(
+        "grok",
+        "Grok API key not found in environment variables",
+        API_ERROR_CODES.API_KEY_NOT_FOUND,
+      );
+      handleApiError(error, "grok", "getGrokClient");
+    }
+    
+    return new OpenAI({
+      apiKey: apiKey,
+      baseURL: "https://api.x.ai/v1",
+    });
+  } catch (error) {
+    handleApiError(error, "grok", "getGrokClient");
   }
-  return new OpenAI({
-    apiKey: apiKey,
-    baseURL: "https://api.x.ai/v1",
-  });
+};
+
+/**
+ * Validate Grok model name
+ */
+export const validateGrokModel = (model: string): void => {
+  const validModels = [
+    "grok-3-latest",
+    "grok-3-fast-latest",
+    "grok-3-mini-latest",
+    "grok-3-beta", // Default model used in chat-service
+  ];
+  
+  if (!validModels.includes(model)) {
+    const error = createApiError(
+      "grok",
+      `Invalid model name: ${model}`,
+      API_ERROR_CODES.INVALID_PARAMETER,
+    );
+    handleApiError(error, "grok", "validateGrokModel");
+  }
 };

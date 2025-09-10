@@ -136,12 +136,12 @@ export const useConfessionStore = create<ConfessionState>()(
       videoAnalytics: {},
       userPreferences: {
         autoplay: true,
-        soundEnabled: true,
-        qualityPreference: "auto",
-        dataUsageMode: "unlimited",
-        captionsDefault: true,
-        hapticsEnabled: true,
-        reducedMotion: false,
+        sound_enabled: true,
+        quality_preference: "auto",
+        data_usage_mode: "unlimited",
+        captions_default: true,
+        haptics_enabled: true,
+        reduced_motion: false,
         playbackSpeed: 1.0,
       },
       isLoading: false,
@@ -601,13 +601,14 @@ export const useConfessionStore = create<ConfessionState>()(
 
             // Try RPC first for server-verified toggle
             const { data: rpcData, error: rpcError } = await wrapWithRetry(async () => {
-              return await supabase.rpc("toggle_confession_like", {
-                confession_uuid: id,
+              return await rpcWithRetry("toggle_like", {
+                confession_id: id,
+                user_id: (await supabase.auth.getUser()).data.user?.id,
               });
             })();
 
-            if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData[0]?.likes_count !== undefined) {
-              const serverCount = rpcData[0].likes_count as number;
+            if (!rpcError && rpcData && rpcData.new_likes !== undefined) {
+              const serverCount = rpcData.new_likes as number;
               set((state) => ({
                 confessions: state.confessions.map((c) => (c.id === id ? { ...c, likes: serverCount } : c)),
               }));
@@ -682,10 +683,12 @@ export const useConfessionStore = create<ConfessionState>()(
         try {
           const { error } = await supabase.from("video_analytics").upsert({
             confession_id: id,
-            watch_time: analytics.watchTime,
-            completion_rate: analytics.completionRate,
-            last_watched: analytics.lastWatched
-              ? new Date(analytics.lastWatched).toISOString()
+            watch_time: analytics.watch_time,
+            completion_rate: analytics.completion_rate,
+            last_watched: analytics.last_watched
+              ? analytics.last_watched
+                ? new Date(analytics.last_watched).toISOString()
+                : undefined
               : new Date().toISOString(),
             interactions: analytics.interactions,
           });
@@ -732,13 +735,13 @@ export const useConfessionStore = create<ConfessionState>()(
           if (data) {
             const preferences: UserPreferences = {
               autoplay: data.autoplay,
-              soundEnabled: data.sound_enabled,
-              qualityPreference: data.quality_preference as "auto" | "high" | "medium" | "low",
-              dataUsageMode: data.data_usage_mode as "unlimited" | "wifi-only" | "minimal",
-              captionsDefault: data.captions_default ?? true,
-              hapticsEnabled: data.haptics_enabled ?? true,
-              reducedMotion: data.reduced_motion ?? false,
-              playbackSpeed: 1.0,
+              sound_enabled: data.sound_enabled,
+              quality_preference: data.quality_preference as "auto" | "high" | "medium" | "low",
+              data_usage_mode: data.data_usage_mode as "unlimited" | "wifi-only" | "minimal",
+              captions_default: data.captions_default ?? true,
+              haptics_enabled: data.haptics_enabled ?? true,
+              reduced_motion: data.reduced_motion ?? false,
+              playback_speed: 1.0,
             };
             set({ userPreferences: preferences, isLoading: false });
           } else {

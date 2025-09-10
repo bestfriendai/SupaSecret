@@ -32,42 +32,42 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   // Create video players using individual hooks (following Rules of Hooks)
   const player0 = useVideoPlayer(videos.length > 0 ? videos[0]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
-    player.muted = !userPreferences.soundEnabled;
+    player.muted = !userPreferences.sound_enabled;
   });
 
   const player1 = useVideoPlayer(videos.length > 1 ? videos[1]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
-    player.muted = !userPreferences.soundEnabled;
+    player.muted = !userPreferences.sound_enabled;
   });
 
   const player2 = useVideoPlayer(videos.length > 2 ? videos[2]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
-    player.muted = !userPreferences.soundEnabled;
+    player.muted = !userPreferences.sound_enabled;
   });
 
   const player3 = useVideoPlayer(videos.length > 3 ? videos[3]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
-    player.muted = !userPreferences.soundEnabled;
+    player.muted = !userPreferences.sound_enabled;
   });
 
   const player4 = useVideoPlayer(videos.length > 4 ? videos[4]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
-    player.muted = !userPreferences.soundEnabled;
+    player.muted = !userPreferences.sound_enabled;
   });
 
   const player5 = useVideoPlayer(videos.length > 5 ? videos[5]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
-    player.muted = !userPreferences.soundEnabled;
+    player.muted = !userPreferences.sound_enabled;
   });
 
   const player6 = useVideoPlayer(videos.length > 6 ? videos[6]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
-    player.muted = !userPreferences.soundEnabled;
+    player.muted = !userPreferences.sound_enabled;
   });
 
   const player7 = useVideoPlayer(videos.length > 7 ? videos[7]?.videoUri || FALLBACK_VIDEO : null, (player) => {
     player.loop = true;
-    player.muted = !userPreferences.soundEnabled;
+    player.muted = !userPreferences.sound_enabled;
   });
 
   // Store players in a stable array
@@ -94,18 +94,18 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
           if (forceUnmuted) {
             player.muted = false;
           } else {
-            player.muted = !userPreferences.soundEnabled;
+            player.muted = !userPreferences.sound_enabled;
           }
         }
       });
     },
-    [userPreferences.soundEnabled],
+    [userPreferences.sound_enabled],
   );
 
   // Update mute state when sound preference changes
   useEffect(() => {
     updateMuteState();
-  }, [userPreferences.soundEnabled, updateMuteState]);
+  }, [userPreferences.sound_enabled, updateMuteState]);
 
   const getPlayer = (index: number) => {
     return playersRef.current.get(index) || null;
