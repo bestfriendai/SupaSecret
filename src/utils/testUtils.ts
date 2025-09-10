@@ -17,12 +17,7 @@ export const mockData = {
     isAnonymous: true,
     likes: Math.floor(Math.random() * 100),
     isLiked: Math.random() > 0.5,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    hashtags: ["#test", "#development"],
-    transcription: null,
-    video_url: null,
-    thumbnail_url: null,
+    timestamp: Date.now(),
     ...overrides,
   }),
 
@@ -30,19 +25,20 @@ export const mockData = {
     ...mockData.confession(),
     type: "video",
     content: "This is a video confession.",
-    video_url: "https://example.com/video.mp4",
-    thumbnail_url: "https://example.com/thumbnail.jpg",
+    videoUri: "https://example.com/video.mp4",
     transcription: "This is the transcription of the video confession.",
     ...overrides,
   }),
 
   notification: (overrides: Partial<Notification> = {}): Notification => ({
     id: `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    user_id: "test_user",
     type: "like",
-    title: "Someone liked your secret",
+    entity_id: "test_confession_id",
+    entity_type: "confession",
+    actor_user_id: null,
     message: "Your secret received a new like!",
-    data: { confession_id: "test_confession_id" },
-    read: false,
+    read_at: null,
     created_at: new Date().toISOString(),
     ...overrides,
   }),
@@ -72,20 +68,18 @@ export const mockData = {
         content: `Test confession #${index + 1} with some interesting content to test the UI.`,
         likes: Math.floor(Math.random() * 50),
         isLiked: Math.random() > 0.7,
-        hashtags: [`#test${index}`, "#development"],
       }),
     );
   },
 
   notificationBatch: (count: number = 5): Notification[] => {
-    const types: Notification["type"][] = ["like", "comment", "mention", "follow"];
+    const types: Notification["type"][] = ["like", "reply"];
 
     return Array.from({ length: count }, (_, index) =>
       mockData.notification({
         type: types[index % types.length],
-        title: `Test notification #${index + 1}`,
         message: `This is test notification #${index + 1}`,
-        read: Math.random() > 0.5,
+        read_at: Math.random() > 0.5 ? new Date().toISOString() : null,
       }),
     );
   },
@@ -105,13 +99,13 @@ export const testEnvironment = {
 /**
  * Performance testing utilities
  */
-export const performance = {
+export const perf = {
   measureRender: (componentName: string, renderFn: () => void) => {
     if (!__DEV__) return renderFn();
 
-    const startTime = performance.now();
+    const startTime = Date.now();
     const result = renderFn();
-    const endTime = performance.now();
+    const endTime = Date.now();
 
     console.log(`🎯 ${componentName} render time: ${(endTime - startTime).toFixed(2)}ms`);
     return result;
@@ -120,18 +114,18 @@ export const performance = {
   measureAsync: async (operationName: string, asyncFn: () => Promise<any>) => {
     if (!__DEV__) return await asyncFn();
 
-    const startTime = performance.now();
+    const startTime = Date.now();
     const result = await asyncFn();
-    const endTime = performance.now();
+    const endTime = Date.now();
 
     console.log(`⏱️ ${operationName} execution time: ${(endTime - startTime).toFixed(2)}ms`);
     return result;
   },
 
   logMemoryUsage: (label: string) => {
-    if (!__DEV__ || !global.performance?.memory) return;
+    if (!__DEV__ || !(global as any).performance?.memory) return;
 
-    const memory = (global.performance as any).memory;
+    const memory = (global as any).performance.memory;
     console.log(`💾 ${label} Memory Usage:`, {
       used: `${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
       total: `${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
@@ -179,16 +173,16 @@ export const uiTesting = {
   },
 
   createMockNavigation: () => ({
-    navigate: jest.fn(),
-    goBack: jest.fn(),
-    reset: jest.fn(),
-    setParams: jest.fn(),
-    dispatch: jest.fn(),
-    isFocused: jest.fn(() => true),
-    canGoBack: jest.fn(() => true),
-    getId: jest.fn(() => "test-screen"),
-    getParent: jest.fn(),
-    getState: jest.fn(),
+    navigate: jestShim.fn(),
+    goBack: jestShim.fn(),
+    reset: jestShim.fn(),
+    setParams: jestShim.fn(),
+    dispatch: jestShim.fn(),
+    isFocused: jestShim.fn(() => true),
+    canGoBack: jestShim.fn(() => true),
+    getId: jestShim.fn(() => "test-screen"),
+    getParent: jestShim.fn(),
+    getState: jestShim.fn(),
   }),
 
   createMockRoute: (name: string, params: any = {}) => ({
@@ -293,6 +287,8 @@ export const a11yTesting = {
 /**
  * Debug utilities
  */
+const jestShim: any = (global as any).jest || { fn: () => () => {} };
+
 export const debug = {
   logProps: (componentName: string, props: any) => {
     if (__DEV__) {
@@ -320,7 +316,7 @@ export const debug = {
 
   logPerformance: (operation: string, startTime: number) => {
     if (__DEV__) {
-      const duration = performance.now() - startTime;
+      const duration = Date.now() - startTime;
       console.log(`⚡ ${operation}: ${duration.toFixed(2)}ms`);
     }
   },

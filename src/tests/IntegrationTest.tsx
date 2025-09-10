@@ -134,7 +134,9 @@ export default function IntegrationTest() {
 
     try {
       // Test BannerAdComponent by checking if it renders without throwing
-      const bannerTestRef = useRef<View>(null);
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+
+      // Ref intentionally not using React hooks here to avoid rules-of-hooks in test utility
 
       // Simple render test - check if component can be instantiated
       const bannerComponent = React.createElement(BannerAdComponent, {});
@@ -262,7 +264,7 @@ export default function IntegrationTest() {
             <Text className="text-white text-center font-medium">Test Paywall</Text>
           </Pressable>
 
-          <Pressable className="bg-gray-600 rounded-lg p-3 mb-3" onPress={runAllTests}>
+          <Pressable className="bg-gray-600 rounded-lg p-3 mb-3" onPress={() => void runAllTests()}>
             <Text className="text-white text-center font-medium">Run All Tests Again</Text>
           </Pressable>
         </View>

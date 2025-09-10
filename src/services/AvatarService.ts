@@ -77,8 +77,8 @@ export class AvatarService {
       const uploadData = await storageWithRetry.upload(AVATAR_BUCKET, filePath, blob, {
         upsert: true,
         retryOptions: {
-          maxRetries: 3,
-          baseDelay: 1000,
+          maxAttempts: 3,
+          initialDelay: 1000,
           maxDelay: 5000,
         },
       });
@@ -187,7 +187,7 @@ export class AvatarService {
   static async updateUserAvatar(userId: string, avatarUrl: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from("profiles")
+        .from("profiles" as any)
         .update({
           avatar_url: avatarUrl,
           updated_at: new Date().toISOString(),

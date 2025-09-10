@@ -24,8 +24,8 @@ const loadNativeModules = async () => {
 
     if (!FaceDetection) {
       try {
-        const faceModule = await import("@react-native-ml-kit/face-detection");
-        FaceDetection = faceModule.default || faceModule.FaceDetection || faceModule;
+        const faceModule: any = await import("@react-native-ml-kit/face-detection");
+        FaceDetection = faceModule.default || faceModule;
       } catch (error) {
         console.warn("Face detection module not available:", error);
         // Provide fallback that will apply general blur

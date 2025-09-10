@@ -45,7 +45,7 @@ export default function AnonymizerBuildTest() {
           enableTranscription: true,
           quality: "medium",
           voiceEffect: "deep",
-          onProgress: (progress, status) => {
+          onProgress: (progress: number, status: string) => {
             addLog(`  Progress: ${progress}% - ${status}`);
           },
         });

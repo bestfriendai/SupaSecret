@@ -2,10 +2,10 @@ import React, { useCallback, useMemo, useState } from "react";
 import { View, Text, Pressable, Share, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { PreferenceAwareHaptics } from "../utils/haptics";
 import { generateConfessionLink, generateShareMessage } from "../utils/links";
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
-import { useReportStore } from "../state/reportStore";
+// import { useReportStore } from "../state/reportStore";
 import ReportModal from "./ReportModal";
 import { BlurView } from "expo-blur";
 
@@ -20,7 +20,8 @@ export default function EnhancedShareBottomSheet({
   confessionText,
   bottomSheetModalRef,
 }: EnhancedShareBottomSheetProps) {
-  const { impactAsync } = usePreferenceAwareHaptics();
+  // Use static haptics API to avoid hook-driven re-renders
+  const impactAsync = PreferenceAwareHaptics.impactAsync;
   const [showModal, setShowModal] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
@@ -55,7 +56,7 @@ export default function EnhancedShareBottomSheet({
     } catch (error) {
       console.error("Share failed:", error);
     }
-  }, [confessionId, confessionText, bottomSheetModalRef]);
+  }, [confessionId, confessionText, bottomSheetModalRef, impactAsync]);
 
   const handleCopyLink = useCallback(async () => {
     try {
@@ -67,7 +68,7 @@ export default function EnhancedShareBottomSheet({
     } catch (error) {
       console.error("Copy failed:", error);
     }
-  }, [confessionId, bottomSheetModalRef]);
+  }, [confessionId, bottomSheetModalRef, impactAsync]);
 
   const handleCopyText = useCallback(async () => {
     try {
@@ -78,13 +79,13 @@ export default function EnhancedShareBottomSheet({
     } catch (error) {
       console.error("Copy failed:", error);
     }
-  }, [confessionText, bottomSheetModalRef]);
+  }, [confessionText, bottomSheetModalRef, impactAsync]);
 
   const handleReport = useCallback(() => {
     setReportModalVisible(true);
     bottomSheetModalRef.current?.dismiss();
     impactAsync();
-  }, []);
+  }, [bottomSheetModalRef, impactAsync]);
 
   const handleReportModalClose = () => {
     setReportModalVisible(false);

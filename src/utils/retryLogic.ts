@@ -4,6 +4,29 @@
  */
 
 import { isRetryableSupabaseError, getSupabaseErrorCode } from "../types/supabaseError";
+// Global retry event subscription for lightweight UX signals
+export type RetryEventSource = "supabase" | "api" | "unknown";
+export interface RetryEvent {
+  source: RetryEventSource;
+  attempt: number;
+  delay: number;
+  error: unknown;
+}
+
+const retryListeners = new Set<(e: RetryEvent) => void>();
+export const subscribeRetryEvents = (listener: (e: RetryEvent) => void) => {
+  retryListeners.add(listener);
+  return () => retryListeners.delete(listener);
+};
+const emitRetryEvent = (event: RetryEvent) => {
+  retryListeners.forEach((l) => {
+    try {
+      l(event);
+    } catch {
+      // ignore listener errors
+    }
+  });
+};
 
 export interface RetryOptions {
   /** Maximum number of retry attempts (default: 3) */
@@ -165,6 +188,11 @@ export const withRetryResult = async <T>(
  * Create a retry wrapper for Supabase operations
  */
 export const createSupabaseRetry = (options: RetryOptions = {}) => {
+  const onRetryCombined = (error: unknown, attempt: number, delay: number) => {
+    emitRetryEvent({ source: "supabase", attempt, delay, error });
+    options.onRetry?.(error, attempt, delay);
+  };
+
   const supabaseOptions: RetryOptions = {
     maxAttempts: 3,
     initialDelay: 1000,
@@ -198,6 +226,7 @@ export const createSupabaseRetry = (options: RetryOptions = {}) => {
 
       return false;
     },
+    onRetry: onRetryCombined,
     ...options,
   };
 
@@ -208,6 +237,11 @@ export const createSupabaseRetry = (options: RetryOptions = {}) => {
  * Create a retry wrapper for API calls
  */
 export const createApiRetry = (options: RetryOptions = {}) => {
+  const onRetryCombined = (error: unknown, attempt: number, delay: number) => {
+    emitRetryEvent({ source: "api", attempt, delay, error });
+    options.onRetry?.(error, attempt, delay);
+  };
+
   const apiOptions: RetryOptions = {
     maxAttempts: 3,
     initialDelay: 500,
@@ -231,6 +265,7 @@ export const createApiRetry = (options: RetryOptions = {}) => {
 
       return false;
     },
+    onRetry: onRetryCombined,
     ...options,
   };
 

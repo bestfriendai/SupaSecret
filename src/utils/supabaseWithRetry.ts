@@ -25,7 +25,8 @@ export const selectWithRetry = async <T = any>(table: string, query?: string, op
   const retry = options ? createSupabaseRetry(options) : defaultRetry;
 
   return retry(async () => {
-    let queryBuilder = supabase.from(table).select(query || "*");
+    const client: any = supabase as any;
+    let queryBuilder = client.from(table).select(query || "*");
     const { data, error } = await queryBuilder;
 
     if (error) throw error;
@@ -40,7 +41,8 @@ export const insertWithRetry = async <T = any>(table: string, values: any | any[
   const retry = options ? createSupabaseRetry(options) : defaultRetry;
 
   return retry(async () => {
-    const { data, error } = await supabase.from(table).insert(values).select();
+    const client: any = supabase as any;
+    const { data, error } = await client.from(table).insert(values).select();
 
     if (error) throw error;
     return data as T[];
@@ -59,7 +61,8 @@ export const updateWithRetry = async <T = any>(
   const retry = options ? createSupabaseRetry(options) : defaultRetry;
 
   return retry(async () => {
-    let queryBuilder = supabase.from(table).update(values);
+    const client: any = supabase as any;
+    let queryBuilder = client.from(table).update(values);
 
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {
@@ -80,7 +83,8 @@ export const deleteWithRetry = async (table: string, filters: Record<string, any
   const retry = options ? createSupabaseRetry(options) : defaultRetry;
 
   return retry(async () => {
-    let queryBuilder = supabase.from(table).delete();
+    const client: any = supabase as any;
+    let queryBuilder = client.from(table).delete();
 
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {
@@ -101,7 +105,8 @@ export const rpcWithRetry = async <T = any>(functionName: string, params?: any, 
   const retry = options ? createSupabaseRetry(options) : defaultRetry;
 
   return retry(async () => {
-    const { data, error } = await supabase.rpc(functionName, params);
+    const client: any = supabase as any;
+    const { data, error } = await client.rpc(functionName, params);
 
     if (error) throw error;
     return data as T;

@@ -1,3 +1,5 @@
+/* eslint-disable expo/no-dynamic-env-var */
+
 import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";

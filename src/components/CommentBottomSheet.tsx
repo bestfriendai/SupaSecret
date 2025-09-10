@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { InlineCharacterCounter } from "./CharacterCounter";
+import { sanitizeText } from "../utils/sanitize";
 
 interface Comment {
   id: string;
@@ -185,7 +186,7 @@ export default function CommentBottomSheet({ isVisible, onClose }: CommentBottom
                         {format(new Date(comment.timestamp), "MMM d, h:mm a")}
                       </Text>
                     </View>
-                    <Text className="text-white text-15 leading-5 mb-2">{comment.text}</Text>
+                    <Text className="text-white text-15 leading-5 mb-2">{sanitizeText(comment.text)}</Text>
                     <View className="flex-row items-center">
                       <Pressable className="flex-row items-center mr-4" onPress={() => toggleCommentLike(comment.id)}>
                         <Ionicons

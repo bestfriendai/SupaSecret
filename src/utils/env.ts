@@ -1,9 +1,11 @@
 import Constants from "expo-constants";
 
+const ownership = Constants.appOwnership as unknown as "expo" | "standalone" | null;
+
 export const env = {
-  expoGo: Constants.appOwnership === "expo",
-  devClient: Constants.appOwnership === null || Constants.appOwnership === "development",
-  standalone: Constants.appOwnership === "standalone",
+  expoGo: ownership === "expo",
+  devClient: ownership === null,
+  standalone: ownership === "standalone",
   get ffmpegReady(): boolean {
     return !!(global as any).__ffmpegAvailable;
   },

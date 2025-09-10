@@ -104,7 +104,7 @@ async function processSaveConfession(payload: { confessionId: string }): Promise
   if (!user) throw new Error("User not authenticated");
 
   const { error } = await supabase
-    .from("user_saved_confessions")
+    .from("user_saved_confessions" as any)
     .upsert({ user_id: user.id, confession_id: confessionId }, { onConflict: "user_id,confession_id" });
 
   if (error) throw error;
@@ -122,7 +122,7 @@ async function processUnsaveConfession(payload: { confessionId: string }): Promi
   if (!user) throw new Error("User not authenticated");
 
   const { error } = await supabase
-    .from("user_saved_confessions")
+    .from("user_saved_confessions" as any)
     .delete()
     .eq("user_id", user.id)
     .eq("confession_id", confessionId);

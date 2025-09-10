@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { Database } from "../types/database";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
@@ -9,11 +9,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing required Supabase environment variables. Please check your .env file.");
 }
 
-// 2025 Best Practices: Enhanced Supabase configuration with proper storage and error handling
+// SDK 53: Secure storage adapter for enhanced security on iOS 18
+const supabaseStorage = {
+  getItem: (key: string) => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+};
+
+// SDK 53: Enhanced Supabase configuration with secure storage and improved security
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // Use AsyncStorage for React Native session persistence
-    storage: AsyncStorage,
+    // Use expo-secure-store for enhanced security on iOS 18
+    storage: supabaseStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

@@ -26,7 +26,7 @@ const loadRevenueCat = async () => {
       PurchasesPackage = RevenueCatModule.PurchasesPackage;
       console.log("🚀 RevenueCat module loaded successfully");
     } catch (error) {
-      console.warn("RevenueCat not available, running in demo mode:", error.message);
+      console.warn("RevenueCat not available, running in demo mode:", (error as any)?.message || String(error));
       console.log("🎯 RevenueCat demo mode - react-native-purchases not installed");
     }
   }
@@ -75,7 +75,7 @@ export class RevenueCatService {
       console.log("🚀 RevenueCat initialized for development build");
       this.isInitialized = true;
     } catch (error) {
-      console.warn("RevenueCat initialization failed, running in demo mode:", error.message);
+      console.warn("RevenueCat initialization failed, running in demo mode:", (error as any)?.message || String(error));
       this.isInitialized = true;
     }
   }
@@ -180,7 +180,7 @@ export class RevenueCatService {
       const isPremium = activeSubscriptions.length > 0;
 
       // Update user subscription status in Supabase
-      const { error } = await supabase.from("user_subscriptions").upsert({
+      const { error } = await supabase.from("user_subscriptions" as any).upsert({
         user_id: user.id,
         is_premium: isPremium,
         subscription_ids: activeSubscriptions,

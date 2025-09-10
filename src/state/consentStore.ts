@@ -94,7 +94,11 @@ export const useConsentStore = create<ConsentState>()(
 
           if (user) {
             // Try to load from backend
-            const { data, error } = await supabase.from("user_consent").select("*").eq("user_id", user.id).single();
+            const { data, error } = await supabase
+              .from("user_consent" as any)
+              .select("*")
+              .eq("user_id", user.id)
+              .single();
 
             if (error && error.code !== "PGRST116") {
               // PGRST116 = no rows returned
@@ -102,13 +106,14 @@ export const useConsentStore = create<ConsentState>()(
             }
 
             if (data) {
+              const row: any = data as any;
               const preferences: ConsentPreferences = {
-                analytics: data.analytics || false,
-                advertising: data.advertising || false,
-                personalization: data.personalization || false,
+                analytics: !!row.analytics,
+                advertising: !!row.advertising,
+                personalization: !!row.personalization,
                 essential: true,
-                lastUpdated: data.updated_at || new Date().toISOString(),
-                version: data.version || "1.0",
+                lastUpdated: row.updated_at || new Date().toISOString(),
+                version: row.version || "1.0",
               };
 
               set({ preferences, isLoading: false });
@@ -139,7 +144,7 @@ export const useConsentStore = create<ConsentState>()(
           } = await supabase.auth.getUser();
 
           if (user) {
-            const { error } = await supabase.from("user_consent").upsert({
+            const { error } = await supabase.from("user_consent" as any).upsert({
               user_id: user.id,
               analytics: preferences.analytics,
               advertising: preferences.advertising,
@@ -168,7 +173,10 @@ export const useConsentStore = create<ConsentState>()(
 
           if (user) {
             // Delete from backend
-            await supabase.from("user_consent").delete().eq("user_id", user.id);
+            await supabase
+              .from("user_consent" as any)
+              .delete()
+              .eq("user_id", user.id);
           }
 
           // Reset local state

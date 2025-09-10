@@ -247,7 +247,7 @@ export class ServiceInitializer {
       // Initialize push notification service if available
       const pushModule = await import("../utils/pushNotifications");
       const pushNotificationManager = pushModule.pushNotificationManager;
-      await pushNotificationManager.initialize();
+      await (pushNotificationManager as any)?.initialize?.();
       console.log("🚀 Push notifications initialized");
     } catch (error) {
       console.warn("Push notifications initialization failed:", error);

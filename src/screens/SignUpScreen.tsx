@@ -19,11 +19,11 @@ import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
 import { AlertModal } from "../components/AnimatedModal";
 import { getPrivacyPolicyUrl, getTermsOfServiceUrl } from "../constants/urls";
-import { RootStackParamList } from "../navigation/AppNavigator";
+import { AuthStackParamList } from "../navigation/AppNavigator";
 import { useAuthStore } from "../state/authStore";
 import { validateEmail, validatePassword, getPasswordStrength } from "../utils/auth";
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type NavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
 export default function SignUpScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -253,10 +253,17 @@ export default function SignUpScreen() {
                     <Text
                       className="text-blue-400 underline"
                       onPress={() => {
-                        navigation.navigate("WebView", {
-                          url: getTermsOfServiceUrl(),
-                          title: "Terms of Service",
-                        });
+                        const parentNav = (navigation as any)?.getParent?.();
+                        if (parentNav)
+                          parentNav.navigate("WebView", {
+                            url: getTermsOfServiceUrl(),
+                            title: "Terms of Service",
+                          });
+                        else
+                          (navigation as any).navigate("WebView", {
+                            url: getTermsOfServiceUrl(),
+                            title: "Terms of Service",
+                          });
                       }}
                     >
                       Terms of Service
@@ -265,10 +272,17 @@ export default function SignUpScreen() {
                     <Text
                       className="text-blue-400 underline"
                       onPress={() => {
-                        navigation.navigate("WebView", {
-                          url: getPrivacyPolicyUrl(),
-                          title: "Privacy Policy",
-                        });
+                        const parentNav = (navigation as any)?.getParent?.();
+                        if (parentNav)
+                          parentNav.navigate("WebView", {
+                            url: getPrivacyPolicyUrl(),
+                            title: "Privacy Policy",
+                          });
+                        else
+                          (navigation as any).navigate("WebView", {
+                            url: getPrivacyPolicyUrl(),
+                            title: "Privacy Policy",
+                          });
                       }}
                     >
                       Privacy Policy

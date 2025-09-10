@@ -13,13 +13,14 @@ import {
 import { cleanupNotificationSubscriptions, setupNotificationSubscriptions } from "./src/state/notificationStore";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ToastProvider } from "./src/contexts/ToastContext";
+import RetryBanner from "./src/components/RetryBanner";
 import { offlineQueue } from "./src/utils/offlineQueue";
 import { initializeServices } from "./src/services/ServiceInitializer";
 import { checkEnvironment } from "./src/utils/environmentCheck";
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
-There are already environment keys in the project. 
+There are already environment keys in the project.
 Before telling the user to add them, check if you already have access to the required keys through bash.
 Directly access them with process.env.${key}
 
@@ -129,6 +130,7 @@ export default function App() {
       >
         <GestureHandlerRootView className="flex-1">
           <ToastProvider>
+            <RetryBanner />
             <BottomSheetModalProvider>
               <AppNavigator />
             </BottomSheetModalProvider>

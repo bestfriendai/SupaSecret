@@ -60,7 +60,7 @@ export const useSavedStore = create<SavedState>()(
           } = await supabase.auth.getUser();
           if (user) {
             const { error } = await supabase
-              .from("user_saved_confessions")
+              .from("user_saved_confessions" as any)
               .insert({ user_id: user.id, confession_id: confessionId });
 
             if (error) {
@@ -106,7 +106,7 @@ export const useSavedStore = create<SavedState>()(
           } = await supabase.auth.getUser();
           if (user) {
             const { error } = await supabase
-              .from("user_saved_confessions")
+              .from("user_saved_confessions" as any)
               .delete()
               .eq("user_id", user.id)
               .eq("confession_id", confessionId);
@@ -170,10 +170,16 @@ export const useSavedStore = create<SavedState>()(
           if (error) throw error;
 
           // Process confessions to add like status
-          const processedConfessions = (confessions || []).map((confession) => ({
-            ...confession,
-            isLiked: confession.confession_likes?.length > 0,
-            likes: confession.likes || 0,
+          const processedConfessions: Confession[] = (confessions || []).map((row: any) => ({
+            id: row.id,
+            type: row.type,
+            content: row.content,
+            videoUri: row.video_uri ?? undefined,
+            transcription: row.transcription ?? undefined,
+            timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+            isAnonymous: !!row.is_anonymous,
+            likes: row.likes ?? 0,
+            isLiked: (row.confession_likes?.length ?? 0) > 0,
           }));
 
           set({
@@ -222,10 +228,16 @@ export const useSavedStore = create<SavedState>()(
 
           if (error) throw error;
 
-          const processedConfessions = (confessions || []).map((confession) => ({
-            ...confession,
-            isLiked: confession.confession_likes?.length > 0,
-            likes: confession.likes || 0,
+          const processedConfessions: Confession[] = (confessions || []).map((row: any) => ({
+            id: row.id,
+            type: row.type,
+            content: row.content,
+            videoUri: row.video_uri ?? undefined,
+            transcription: row.transcription ?? undefined,
+            timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+            isAnonymous: !!row.is_anonymous,
+            likes: row.likes ?? 0,
+            isLiked: (row.confession_likes?.length ?? 0) > 0,
           }));
 
           set({

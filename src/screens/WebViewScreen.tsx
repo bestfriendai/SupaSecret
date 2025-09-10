@@ -204,7 +204,6 @@ const WebViewScreen: React.FC = () => {
               thirdPartyCookiesEnabled={false}
               sharedCookiesEnabled={false}
               // Styling
-              backgroundColor="#000000"
               // User agent for better compatibility
               userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
             />

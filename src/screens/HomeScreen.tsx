@@ -66,7 +66,7 @@ export default function HomeScreen() {
   const [pullDistance, setPullDistance] = useState(0);
   const [isEnhancedRefreshing, setIsEnhancedRefreshing] = useState(false);
   const scrollY = useSharedValue(0);
-  const flashListRef = useRef<FlashList<any>>(null);
+  const flashListRef = useRef<any>(null);
 
   // Check network connectivity and handle errors
   useEffect(() => {
@@ -364,7 +364,7 @@ export default function HomeScreen() {
             <AnimatedFlashList
               ref={(ref) => {
                 flashListRef.current = ref;
-                scrollViewRef.current = ref;
+                scrollViewRef.current = ref as any;
               }}
               data={confessions}
               renderItem={renderItem}

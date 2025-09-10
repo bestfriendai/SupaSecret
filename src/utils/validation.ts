@@ -186,16 +186,22 @@ export function validateField<T>(value: T, rules: ValidationRule<T>[]): Validati
 /**
  * Validate an object with field rules
  */
+type FieldRules<T> = { [K in keyof T]?: ValidationRule<NonNullable<T[K]>>[] };
+
 export function validateObject<T extends Record<string, any>>(
   data: T,
-  rules: Partial<Record<keyof T, ValidationRule<T[keyof T]>[]>>,
+  rules: FieldRules<T>,
 ): Record<keyof T, ValidationResult> & { isValid: boolean } {
   const results = {} as Record<keyof T, ValidationResult>;
   let isValid = true;
 
-  for (const [field, fieldRules] of Object.entries(rules) as [keyof T, ValidationRule<T[keyof T]>[]][]) {
+  for (const field of Object.keys(rules) as (keyof T)[]) {
+    const fieldRules = rules[field];
     if (fieldRules) {
-      const result = validateField(data[field], fieldRules);
+      const result = validateField(
+        data[field] as NonNullable<T[typeof field]>,
+        fieldRules as ValidationRule<NonNullable<T[typeof field]>>[],
+      );
       results[field] = result;
 
       if (!result.isValid) {
@@ -271,10 +277,7 @@ export const reportValidation = {
 /**
  * Real-time validation hook for forms
  */
-export function useFormValidation<T extends Record<string, any>>(
-  initialData: T,
-  rules: Partial<Record<keyof T, ValidationRule<T[keyof T]>[]>>,
-) {
+export function useFormValidation<T extends Record<string, any>>(initialData: T, rules: FieldRules<T>) {
   const [data, setData] = React.useState(initialData);
   const [errors, setErrors] = React.useState<Partial<Record<keyof T, string>>>({});
   const [warnings, setWarnings] = React.useState<Partial<Record<keyof T, string[]>>>({});

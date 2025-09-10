@@ -4,7 +4,7 @@
  */
 
 import * as React from "react";
-import { AppState, AppStateStatus, EmitterSubscription } from "react-native";
+import { AppState, AppStateStatus } from "react-native";
 import * as Device from "expo-device";
 import * as Application from "expo-application";
 import NetInfo from "@react-native-community/netinfo";
@@ -44,7 +44,7 @@ class HealthMonitor {
   private currentScreen: string = "Unknown";
   private isMonitoring: boolean = false;
   private reportingInterval: NodeJS.Timeout | null = null;
-  private appStateListener: EmitterSubscription | null = null;
+  private appStateListener: ReturnType<typeof AppState.addEventListener> | null = null;
   private netInfoUnsubscribe: (() => void) | null = null;
 
   constructor() {
