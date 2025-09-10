@@ -6,6 +6,8 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, run
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useReportStore } from "../state/reportStore";
 import { ReportReason, REPORT_REASON_LABELS, REPORT_REASON_DESCRIPTIONS } from "../types/report";
+import { t } from "../utils/i18n";
+import { trackInteraction } from "../utils/reviewPrompt";
 
 interface ReportModalProps {
   isVisible: boolean;
@@ -83,16 +85,17 @@ export default function ReportModal({ isVisible, onClose, confessionId, replyId,
 
   const handleSubmit = async () => {
     if (!selectedReason) {
-      Alert.alert("Error", "Please select a reason for reporting");
+      Alert.alert(t("common.error"), "Please select a reason for reporting");
       return;
     }
 
     if (selectedReason === "other" && !additionalDetails.trim()) {
-      Alert.alert("Error", "Please provide additional details for 'Other' reason");
+      Alert.alert(t("common.error"), "Please provide additional details for 'Other' reason");
       return;
     }
 
     setIsSubmitting(true);
+    trackInteraction(); // Track user interaction for review prompting
 
     try {
       await createReport({
@@ -103,11 +106,7 @@ export default function ReportModal({ isVisible, onClose, confessionId, replyId,
       });
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      Alert.alert(
-        "Report Submitted",
-        `Thank you for reporting this ${contentType}. We'll review it and take appropriate action.`,
-        [{ text: "OK", onPress: onClose }],
-      );
+      Alert.alert(t("reports.submitted"), t("reports.submittedMessage"), [{ text: t("common.ok"), onPress: onClose }]);
     } catch (error) {
       // Error is handled by the store and useEffect above
     } finally {
@@ -167,9 +166,7 @@ export default function ReportModal({ isVisible, onClose, confessionId, replyId,
 
           {/* Header */}
           <View className="flex-row items-center justify-between mb-6">
-            <Text className="text-white text-18 font-semibold">
-              Report {contentType === "confession" ? "Secret" : "Reply"}
-            </Text>
+            <Text className="text-white text-18 font-semibold">{t("reports.title")}</Text>
             <Pressable onPress={onClose}>
               <Ionicons name="close" size={24} color="#8B98A5" />
             </Pressable>

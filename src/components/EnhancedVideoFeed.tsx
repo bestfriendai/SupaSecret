@@ -7,7 +7,7 @@ import { BlurView } from "expo-blur";
 import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
 import { format } from "date-fns";
-import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { PreferenceAwareHaptics } from "../utils/haptics";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import Animated, {
   useSharedValue,
@@ -63,7 +63,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const userPreferences = useConfessionStore((state) => state.userPreferences);
   const updateVideoAnalytics = useConfessionStore((state) => state.updateVideoAnalytics);
   const videoConfessions = confessions.filter((c) => c.type === "video") as VideoItem[];
-  const { impactAsync } = usePreferenceAwareHaptics();
+
   const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -106,17 +106,22 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   }, [isFocused, videoPlayers, videoConfessions.length, currentIndex]);
 
   // Handle screen focus for initial setup (when navigating to this screen)
+  // We intentionally avoid depending on currentIndex here to prevent re-triggering on index changes.
   useFocusEffect(
-    useCallback(() => {
-      // Initial setup when screen gains focus
-      if (videoConfessions.length > 0 && currentIndex === 0) {
-        setCurrentIndex(0);
-      }
-      return () => {
-        // Cleanup when screen loses focus (navigating away from screen entirely)
-        videoPlayers.pauseAll();
-      };
-    }, [videoPlayers, videoConfessions.length]),
+    useCallback(
+      () => {
+        // Initial setup when screen gains focus
+        if (videoConfessions.length > 0 && currentIndex === 0) {
+          setCurrentIndex(0);
+        }
+        return () => {
+          // Cleanup when screen loses focus (navigating away from screen entirely)
+          videoPlayers.pauseAll();
+        };
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [videoPlayers, videoConfessions.length],
+    ),
   );
 
   // Reference current video and player for use across effects/render
@@ -160,7 +165,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
       setTimeout(() => setIsVideoLoading(false), 300);
 
       // Haptic feedback
-      impactAsync();
+      PreferenceAwareHaptics.impactAsync();
     },
     [currentIndex, videoConfessions.length, videoPlayers],
   );
@@ -170,7 +175,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     // Simulate refresh delay
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsRefreshing(false);
-    impactAsync();
+    PreferenceAwareHaptics.impactAsync();
   }, []);
 
   const handleSpeedChange = useCallback(
@@ -218,7 +223,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
           if (player.currentTime !== undefined && player.duration !== undefined) {
             trackVideoProgress(currentVideo.id, player.currentTime, player.duration);
           }
-        } catch (_error) {
+        } catch {
           // Ignore errors when accessing player properties
         }
       }, 2000); // Reduced frequency to improve performance
@@ -294,7 +299,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
 
       runOnJS(() => {
         toggleLike(videoConfessions[currentIndex]?.id);
-        impactAsync();
+        PreferenceAwareHaptics.impactAsync();
       })();
     });
 
@@ -428,7 +433,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                         className={`rounded-full px-2 py-1 ${captionsEnabled ? "bg-blue-500" : "bg-black/50"}`}
                         onPress={() => {
                           setCaptionsEnabled(!captionsEnabled);
-                          impactAsync();
+                          PreferenceAwareHaptics.impactAsync();
                         }}
                       >
                         <Text className={`text-11 font-medium ${captionsEnabled ? "text-white" : "text-gray-300"}`}>
@@ -459,7 +464,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   isActive={currentVideo.isLiked}
                   onPress={() => {
                     toggleLike(currentVideo.id);
-                    impactAsync();
+                    PreferenceAwareHaptics.impactAsync();
                   }}
                 />
 
@@ -469,7 +474,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   onPress={() => {
                     const ref = commentSheetRef.current;
                     if (ref && typeof ref.present === "function") ref.present();
-                    impactAsync();
+                    PreferenceAwareHaptics.impactAsync();
                   }}
                 />
 
@@ -479,7 +484,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   onPress={() => {
                     const ref = shareSheetRef.current;
                     if (ref && typeof ref.present === "function") ref.present();
-                    impactAsync();
+                    PreferenceAwareHaptics.impactAsync();
                   }}
                 />
 
@@ -493,7 +498,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                     } else {
                       saveConfession(currentVideo.id);
                     }
-                    impactAsync();
+                    PreferenceAwareHaptics.impactAsync();
                   }}
                 />
 
@@ -502,7 +507,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                   label="Report"
                   onPress={() => {
                     setReportModalVisible(true);
-                    impactAsync();
+                    PreferenceAwareHaptics.impactAsync();
                   }}
                 />
               </View>
@@ -571,7 +576,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
                 } else {
                   videoPlayers.playVideo(currentIndex);
                 }
-                impactAsync();
+                PreferenceAwareHaptics.impactAsync();
               }}
               accessibilityRole="button"
               accessibilityLabel={currentPlayer?.playing ? "Pause video" : "Play video"}
@@ -581,7 +586,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
         </GestureDetector>
 
         {/* Comment Bottom Sheet */}
-        <EnhancedCommentBottomSheet bottomSheetModalRef={commentSheetRef} />
+        <EnhancedCommentBottomSheet bottomSheetModalRef={commentSheetRef} confessionId={currentVideo.id} />
 
         {/* Share Bottom Sheet */}
         <EnhancedShareBottomSheet

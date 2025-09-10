@@ -56,7 +56,7 @@ export default function VideoProcessingTest() {
         enableTranscription: true,
         quality: "medium",
         voiceEffect: "deep",
-        onProgress: (prog, stat) => {
+        onProgress: (prog: number, stat: string) => {
           setProgress(prog);
           setStatus(stat);
           addLog(`Progress: ${prog}% - ${stat}`);
@@ -119,7 +119,7 @@ export default function VideoProcessingTest() {
           enableTranscription: true,
           quality: "medium",
           voiceEffect: "light",
-          onProgress: (prog, stat) => {
+          onProgress: (prog: number, stat: string) => {
             setProgress(prog);
             setStatus(stat);
             addLog(`Progress: ${prog}% - ${stat}`);

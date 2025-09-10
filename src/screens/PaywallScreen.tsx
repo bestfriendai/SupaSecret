@@ -67,12 +67,8 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
   const handleRestore = async () => {
     impactAsync();
     try {
-      const success = await restorePurchases();
-      if (success) {
-        Alert.alert("Restore Complete", "Your purchases have been restored successfully.");
-      } else {
-        Alert.alert("No Purchases Found", "No previous purchases were found to restore.");
-      }
+      await restorePurchases();
+      Alert.alert("Restore Complete", "Your purchases have been restored successfully.");
     } catch (err) {
       Alert.alert("Restore Failed", "Unable to restore purchases. Please try again.");
     }

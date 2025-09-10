@@ -166,7 +166,6 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
           selectionColor="#3B82F6"
           accessibilityLabel={label}
           accessibilityHint={helperText}
-          accessibilityInvalid={!!(error && touched)}
         />
 
         {/* Right Icon */}

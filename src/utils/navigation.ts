@@ -75,7 +75,7 @@ export const safeGoBackFromModal = (navigation: NavigationProp<any>) => {
  * Safe navigation for detail screens
  * Goes back if possible, otherwise goes to home tab
  */
-export const safeGoBackFromDetail = (navigation: NavigationProp<any>) => {
+export const safeGoBackFromDetail = (navigation: any) => {
   if (navigation.canGoBack()) {
     navigation.goBack();
   } else {

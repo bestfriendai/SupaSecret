@@ -19,7 +19,13 @@
       ],
       "expo-audio",
       "expo-camera",
-      "expo-av"
+      "expo-av",
+      "expo-asset",
+      "expo-mail-composer",
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-video",
+      "expo-web-browser"
     ],
     "ios": {
       "supportsTablet": true,
@@ -27,7 +33,11 @@
         "NSCameraUsageDescription": "Camera access is required to record anonymous videos. Faces are blurred and voices modulated for privacy—no data is stored without processing.",
         "NSMicrophoneUsageDescription": "Microphone access enables voice recording with automatic pitch shifting for anonymity. Audio is processed on-device and never sent unmodulated.",
         "NSSpeechRecognitionUsageDescription": "Speech recognition generates live captions for anonymous video confessions. All processing happens on-device to protect your privacy.",
-        "NSPhotoLibraryUsageDescription": "Photo library access is used to save processed anonymous videos with metadata stripped for complete privacy protection."
+        "NSPhotoLibraryUsageDescription": "Photo library access is used to save processed anonymous videos with metadata stripped for complete privacy protection.",
+        "NSUserNotificationsUsageDescription": "Notifications are used to inform you about app updates and important privacy-related information.",
+        "NSUserNotifications": {
+          "types": ["alert", "badge", "sound"]
+        }
       },
       "bundleIdentifier": "com.toxic.confessions"
     },

@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
 import { Audio } from "expo-av";
 import { format } from "date-fns";
-import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { PreferenceAwareHaptics } from "../utils/haptics";
 import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
 import { useGlobalVideoStore } from "../state/globalVideoStore";
@@ -26,7 +26,7 @@ interface EnhancedVideoItemProps {
   screenFocused?: boolean; // New: explicitly pause/mute on tab blur
 }
 
-export default function EnhancedVideoItem({
+function EnhancedVideoItem({
   confession,
   isActive,
   onClose,
@@ -40,7 +40,6 @@ export default function EnhancedVideoItem({
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const { isSaved, saveConfession, unsaveConfession } = useSavedStore();
   const { registerVideoPlayer, unregisterVideoPlayer, updatePlayerState } = useGlobalVideoStore();
-  const { impactAsync } = usePreferenceAwareHaptics();
   const wasPlayingRef = useRef(false);
 
   const sourceUri =
@@ -231,7 +230,7 @@ export default function EnhancedVideoItem({
                 }
                 player.play();
               }
-              impactAsync();
+              PreferenceAwareHaptics.impactAsync();
             }
           } catch (e) {
             if (__DEV__) console.warn("Video tap handler failed:", e);
@@ -260,7 +259,7 @@ export default function EnhancedVideoItem({
                     if (player) {
                       const newMutedState = !player.muted;
                       player.muted = newMutedState;
-                      impactAsync();
+                      PreferenceAwareHaptics.impactAsync();
                       if (__DEV__) {
                         console.log(`Manual audio toggle for ${confession.id}: muted=${newMutedState}`);
                       }
@@ -295,7 +294,7 @@ export default function EnhancedVideoItem({
             isActive={confession.isLiked}
             onPress={() => {
               toggleLike(confession.id);
-              impactAsync();
+              PreferenceAwareHaptics.impactAsync();
             }}
           />
 
@@ -304,7 +303,7 @@ export default function EnhancedVideoItem({
             label="Reply"
             onPress={() => {
               onCommentPress?.(confession.id);
-              impactAsync();
+              PreferenceAwareHaptics.impactAsync();
             }}
           />
 
@@ -313,7 +312,7 @@ export default function EnhancedVideoItem({
             label="Share"
             onPress={() => {
               onSharePress?.(confession.id, confession.transcription || confession.content || "");
-              impactAsync();
+              PreferenceAwareHaptics.impactAsync();
             }}
           />
 
@@ -331,16 +330,16 @@ export default function EnhancedVideoItem({
                   } else {
                     await saveConfession(confession.id);
                   }
-                } catch (error) {
+                } catch {
                   // Show user-facing error feedback instead of console.error
                   Alert.alert("Save Failed", "Unable to save this confession. Please try again.", [{ text: "OK" }]);
                 } finally {
                   // Always run haptic feedback regardless of success or failure
-                  impactAsync();
+                  PreferenceAwareHaptics.impactAsync();
                 }
                 return; // Skip the duplicate impactAsync call below
               }
-              impactAsync();
+              PreferenceAwareHaptics.impactAsync();
             }}
           />
 
@@ -349,7 +348,7 @@ export default function EnhancedVideoItem({
             label="Report"
             onPress={() => {
               onReportPress?.(confession.id, confession.transcription || confession.content || "");
-              impactAsync();
+              PreferenceAwareHaptics.impactAsync();
             }}
           />
         </View>
@@ -407,7 +406,7 @@ export default function EnhancedVideoItem({
           } catch (e) {
             if (__DEV__) console.warn("Toggle play failed:", e);
           }
-          impactAsync();
+          PreferenceAwareHaptics.impactAsync();
         }}
       />
 
@@ -415,3 +414,12 @@ export default function EnhancedVideoItem({
     </View>
   );
 }
+
+export default React.memo(EnhancedVideoItem, (prev, next) => {
+  return (
+    prev.confession?.id === next.confession?.id &&
+    prev.isActive === next.isActive &&
+    prev.screenFocused === next.screenFocused &&
+    prev.forceUnmuted === next.forceUnmuted
+  );
+});

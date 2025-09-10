@@ -10,9 +10,11 @@ import {
   updateWithRetry,
   deleteWithRetry,
   rpcWithRetry,
+  wrapWithRetry,
 } from "../utils/supabaseWithRetry";
 import { invalidateCache, registerInvalidationCallback } from "../utils/cacheInvalidation";
 import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
+import { trackPositiveInteraction, showReviewPrompt } from "../utils/reviewPrompt";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();
@@ -153,11 +155,13 @@ export const useConfessionStore = create<ConfessionState>()(
         try {
           const INITIAL_LIMIT = 20;
 
-          const { data: finalData, error } = await supabase
-            .from("confessions")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(INITIAL_LIMIT);
+          const { data: finalData, error } = await wrapWithRetry(async () => {
+            return await supabase
+              .from("confessions")
+              .select("*")
+              .order("created_at", { ascending: false })
+              .limit(INITIAL_LIMIT);
+          })();
 
           if (error) throw error;
 
@@ -173,7 +177,7 @@ export const useConfessionStore = create<ConfessionState>()(
           const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
           const confessions: Confession[] = await Promise.all(
-            (finalData || []).map(async (item) => {
+            ((finalData as any[]) || []).map(async (item: any) => {
               const base: Confession = {
                 id: item.id,
                 type: item.type as "text" | "video",
@@ -186,9 +190,9 @@ export const useConfessionStore = create<ConfessionState>()(
                 isLiked: false,
               };
 
-              if (base.type === "video" && (item.video_uri || item.video_url)) {
+              if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
                 // Handle both video_uri and video_url fields for compatibility
-                const videoPath = item.video_uri || item.video_url;
+                const videoPath = item.video_uri || (item as any).video_url;
                 base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
               } else if (base.type === "video" && !item.video_uri && !item.video_url) {
                 // Ensure we never render a blank player in dev/demo data
@@ -240,19 +244,21 @@ export const useConfessionStore = create<ConfessionState>()(
           const LOAD_MORE_LIMIT = 10;
           const lastConfession = confessions[confessions.length - 1];
 
-          const { data, error } = await supabase
-            .from("confessions")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .lt("created_at", new Date(lastConfession.timestamp).toISOString())
-            .limit(LOAD_MORE_LIMIT);
+          const { data, error } = await wrapWithRetry(async () => {
+            return await supabase
+              .from("confessions")
+              .select("*")
+              .order("created_at", { ascending: false })
+              .lt("created_at", new Date(lastConfession.timestamp).toISOString())
+              .limit(LOAD_MORE_LIMIT);
+          })();
 
           if (error) throw error;
 
           const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
           const newConfessions: Confession[] = await Promise.all(
-            (data || []).map(async (item) => {
+            ((data as any[]) || []).map(async (item: any) => {
               const base: Confession = {
                 id: item.id,
                 type: item.type as "text" | "video",
@@ -265,9 +271,9 @@ export const useConfessionStore = create<ConfessionState>()(
                 isLiked: false,
               };
 
-              if (base.type === "video" && (item.video_uri || item.video_url)) {
+              if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
                 // Handle both video_uri and video_url fields for compatibility
-                const videoPath = item.video_uri || item.video_url;
+                const videoPath = item.video_uri || (item as any).video_url;
                 base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
               } else if (base.type === "video" && !item.video_uri && !item.video_url) {
                 base.videoUri = FALLBACK_VIDEO;
@@ -322,11 +328,11 @@ export const useConfessionStore = create<ConfessionState>()(
                 isLiked: false,
               };
 
-              if (base.type === "video" && (item.video_uri || item.video_url)) {
+              if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
                 // Handle both video_uri and video_url fields for compatibility
-                const videoPath = item.video_uri || item.video_url;
+                const videoPath = item.video_uri || (item as any).video_url;
                 base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
-              } else if (base.type === "video" && !item.video_uri && !item.video_url) {
+              } else if (base.type === "video" && !item.video_uri && !(item as any).video_url) {
                 base.videoUri = FALLBACK_VIDEO;
               }
 
@@ -432,6 +438,12 @@ export const useConfessionStore = create<ConfessionState>()(
 
           // Trigger cache invalidation for new confession
           invalidateCache("confession_created", { confessionId: newConfession.id });
+
+          // Track positive interaction for review prompting (successful confession creation)
+          trackPositiveInteraction();
+
+          // Show review prompt if conditions are met
+          showReviewPrompt();
 
           console.log("✅ Confession added successfully to timeline");
         } catch (error) {
@@ -560,6 +572,11 @@ export const useConfessionStore = create<ConfessionState>()(
             const newIsLiked = !curr.isLiked;
             const optimisticLikes = (curr.likes || 0) + (curr.isLiked ? -1 : 1);
 
+            // Track positive interaction for review prompting (only when liking)
+            if (newIsLiked) {
+              trackPositiveInteraction();
+            }
+
             set((state) => ({
               confessions: state.confessions.map((c) =>
                 c.id === id ? { ...c, isLiked: newIsLiked, likes: optimisticLikes } : c,
@@ -583,9 +600,11 @@ export const useConfessionStore = create<ConfessionState>()(
             }
 
             // Try RPC first for server-verified toggle
-            const { data: rpcData, error: rpcError } = await supabase.rpc("toggle_confession_like", {
-              confession_uuid: id,
-            });
+            const { data: rpcData, error: rpcError } = await wrapWithRetry(async () => {
+              return await supabase.rpc("toggle_confession_like", {
+                confession_uuid: id,
+              });
+            })();
 
             if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData[0]?.likes_count !== undefined) {
               const serverCount = rpcData[0].likes_count as number;
@@ -596,7 +615,9 @@ export const useConfessionStore = create<ConfessionState>()(
             }
 
             // Fallback to direct update if RPC fails
-            const { error } = await supabase.from("confessions").update({ likes: optimisticLikes }).eq("id", id);
+            const { error } = await wrapWithRetry(async () => {
+              return await supabase.from("confessions").update({ likes: optimisticLikes }).eq("id", id);
+            })();
 
             if (error) {
               // If online operation fails, queue it for retry

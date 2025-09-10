@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>()(
         await withErrorHandling(
           set,
           async () => {
-            const user = await signInUser(credentials, persistSession);
+            const user = await signInUser(credentials);
             set({
               user,
               isAuthenticated: true,
@@ -93,7 +93,11 @@ export const useAuthStore = create<AuthState>()(
           };
           set({
             isLoading: false,
-            error: authError,
+            error: {
+              code: authError.code,
+              message: authError.message,
+              timestamp: Date.now(),
+            },
           });
           throw error;
         }

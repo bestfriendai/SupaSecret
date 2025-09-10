@@ -45,7 +45,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   const shareSheetRef = useRef<BottomSheetModal>(null);
 
   // State for current video being interacted with
-  const [currentVideoId, setCurrentVideoId] = useState<string>("");
+  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
   const [currentVideoText, setCurrentVideoText] = useState<string>("");
   const [reportModalVisible, setReportModalVisible] = useState(false);
 
@@ -162,8 +162,9 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
           decelerationRate="fast"
           extraData={{ currentIndex, isFocused }}
           showsVerticalScrollIndicator={false}
-          removeClippedSubviews={false}
+          removeClippedSubviews={true}
           estimatedItemSize={screenHeight}
+          drawDistance={screenHeight * 2}
           initialScrollIndex={initialIndex}
           getItemType={() => "video"}
           overrideItemLayout={(layout) => {
@@ -178,12 +179,16 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
       </View>
 
       {/* Comment Bottom Sheet */}
-      <EnhancedCommentBottomSheet bottomSheetModalRef={commentSheetRef} />
+      <EnhancedCommentBottomSheet
+        bottomSheetModalRef={commentSheetRef}
+        confessionId={currentVideoId || ""}
+        key={currentVideoId || "empty"}
+      />
 
       {/* Share Bottom Sheet */}
       <EnhancedShareBottomSheet
         bottomSheetModalRef={shareSheetRef}
-        confessionId={currentVideoId}
+        confessionId={currentVideoId || ""}
         confessionText={currentVideoText}
       />
 
@@ -191,7 +196,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
       <ReportModal
         isVisible={reportModalVisible}
         onClose={() => setReportModalVisible(false)}
-        confessionId={currentVideoId}
+        confessionId={currentVideoId || undefined}
         contentType="confession"
       />
     </>

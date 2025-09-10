@@ -1,6 +1,12 @@
 import { User, AuthCredentials, SignUpData } from "../types/auth";
 import { supabase } from "../lib/supabase";
 import Constants from "expo-constants";
+import { sanitizeText } from "./sanitize";
+
+// SDK 53: Input sanitization to prevent XSS vulnerabilities
+export const sanitizeInput = (input: string): string => {
+  return sanitizeText(input);
+};
 
 // Email validation
 export const validateEmail = (email: string): boolean => {
@@ -104,7 +110,8 @@ export const signUpUser = async (data: SignUpData): Promise<User> => {
   };
 
   if (username?.trim()) {
-    profileUpdates.username = username.trim();
+    // SDK 53: Sanitize username to prevent XSS
+    profileUpdates.username = sanitizeInput(username);
   }
 
   const { error: profileError } = await supabase
@@ -122,7 +129,7 @@ export const signUpUser = async (data: SignUpData): Promise<User> => {
   const user: User = {
     id: authData.user.id,
     email: authData.user.email!,
-    username: username?.trim() || undefined,
+    username: username?.trim() ? sanitizeInput(username) : undefined,
     createdAt: Date.now(),
     isOnboarded: true, // Mark as onboarded after successful signup
     lastLoginAt: Date.now(),
@@ -297,7 +304,10 @@ export const updateUserData = async (userId: string, updates: Partial<User>): Pr
 
   // Prepare updates for the database
   const profileUpdates: any = {};
-  if (updates.username !== undefined) profileUpdates.username = updates.username;
+  if (updates.username !== undefined) {
+    // SDK 53: Sanitize username to prevent XSS
+    profileUpdates.username = updates.username ? sanitizeInput(updates.username) : updates.username;
+  }
   if (updates.isOnboarded !== undefined) profileUpdates.is_onboarded = updates.isOnboarded;
 
   // Update user profile in Supabase
@@ -323,7 +333,8 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
   }
 
   // Properly construct redirect URL using Expo Constants
-  const appUrl = Constants.expoConfig?.extra?.appUrl || Constants.manifest?.extra?.appUrl || "supasecret://";
+  const appUrl =
+    (Constants.expoConfig as any)?.extra?.appUrl || (Constants.manifest as any)?.extra?.appUrl || "supasecret://";
   const baseUrl = appUrl.replace(/\/+$/, "");
   const redirectTo = `${baseUrl}/reset-password`;
 

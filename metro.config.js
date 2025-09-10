@@ -23,13 +23,15 @@ const config = getDefaultConfig(__dirname);
 // Add project root explicitly
 config.projectRoot = __dirname;
 
-// Add module resolution options
+// Add module resolution options for SDK 53
 config.resolver = {
   ...config.resolver,
   useWatchman: false,
   resolverMainFields: ['react-native', 'browser', 'main'],
   sourceExts: ['jsx', 'js', 'ts', 'tsx', 'json', 'cjs', 'mjs'],
   assetExts: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ttf', 'otf', 'woff', 'woff2'],
+  // SDK 53: Enable package.json exports field by default
+  unstable_enablePackageExports: true,
 };
 
 // Simple transformer configuration that doesn't require additional packages

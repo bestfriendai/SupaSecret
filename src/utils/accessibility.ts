@@ -244,9 +244,8 @@ export const getListItemA11yProps = (label: string, index: number, total: number
  * Utility to combine multiple accessibility props
  */
 export const combineA11yProps = (...props: (A11yProps | undefined)[]): A11yProps => {
-  return props.reduce((combined, current) => {
-    if (!current) return combined;
-
+  const validProps = props.filter((p): p is A11yProps => !!p);
+  return validProps.reduce((combined, current) => {
     return {
       ...combined,
       ...current,

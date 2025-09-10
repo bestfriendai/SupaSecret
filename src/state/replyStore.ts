@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
+import { wrapWithRetry } from "../utils/supabaseWithRetry";
 import { invalidateCache } from "../utils/cacheInvalidation";
 import { isValidForDatabase } from "../utils/uuid";
 
@@ -37,11 +38,13 @@ export interface Reply {
 
 export interface ReplyState {
   replies: Record<string, Reply[]>; // confessionId -> replies
+  pagination: Record<string, { hasMore: boolean; lastCreatedAt?: string; isLoadingMore?: boolean }>;
   isLoading: boolean;
   error: string | null;
 
   // Actions
   loadReplies: (confessionId: string) => Promise<void>;
+  loadMoreReplies: (confessionId: string) => Promise<void>;
   addReply: (confessionId: string, content: string, isAnonymous?: boolean) => Promise<void>;
   deleteReply: (replyId: string, confessionId: string) => Promise<void>;
   toggleReplyLike: (replyId: string, confessionId: string) => Promise<void>;
@@ -53,6 +56,7 @@ export const useReplyStore = create<ReplyState>()(
   persist(
     (set, get) => ({
       replies: {},
+      pagination: {},
       isLoading: false,
       error: null,
 
@@ -85,11 +89,15 @@ export const useReplyStore = create<ReplyState>()(
           } = await supabase.auth.getUser();
 
           // Load replies
-          const { data, error } = await supabase
-            .from("replies")
-            .select("*")
-            .eq("confession_id", confessionId)
-            .order("created_at", { ascending: false });
+          const INITIAL_LIMIT = 20;
+          const { data, error } = await wrapWithRetry(async () => {
+            return await supabase
+              .from("replies")
+              .select("*")
+              .eq("confession_id", confessionId)
+              .order("created_at", { ascending: false })
+              .limit(INITIAL_LIMIT);
+          })();
 
           if (error) {
             console.error("Supabase error loading replies:", error);
@@ -111,7 +119,7 @@ export const useReplyStore = create<ReplyState>()(
                 console.warn("Failed to load user likes for replies:", likesError);
               }
 
-              userLikes = likesData?.map((like) => like.reply_id) || [];
+              userLikes = likesData?.map((like) => like.reply_id).filter((v): v is string => !!v) || [];
             } catch (likesError) {
               console.warn("Error loading user likes:", likesError);
               // Continue without user likes
@@ -133,10 +141,22 @@ export const useReplyStore = create<ReplyState>()(
             console.log(`Loaded ${replies.length} replies for confession ${confessionId}`);
           }
 
+          const hasMore = (data?.length || 0) >= INITIAL_LIMIT;
+          const lastCreatedAt: string | undefined =
+            data && data.length > 0 ? data[data.length - 1].created_at : undefined;
+
           set((state) => ({
             replies: {
               ...state.replies,
               [confessionId]: replies,
+            },
+            pagination: {
+              ...state.pagination,
+              [confessionId]: {
+                hasMore,
+                lastCreatedAt,
+                isLoadingMore: false,
+              },
             },
             isLoading: false,
           }));
@@ -159,6 +179,72 @@ export const useReplyStore = create<ReplyState>()(
             error: errorMessage,
             isLoading: false,
           });
+        }
+      },
+
+      loadMoreReplies: async (confessionId: string) => {
+        const state = get();
+        const page = state.pagination[confessionId] || {};
+        if (page.isLoadingMore || page.hasMore === false) return;
+
+        set({
+          pagination: {
+            ...state.pagination,
+            [confessionId]: { ...page, isLoadingMore: true },
+          },
+          error: null,
+        });
+
+        try {
+          const LIMIT = 10;
+          const { data, error } = await wrapWithRetry(async () => {
+            let q = supabase
+              .from("replies")
+              .select("*")
+              .eq("confession_id", confessionId)
+              .order("created_at", { ascending: false })
+              .limit(LIMIT);
+            if (page.lastCreatedAt) {
+              q = q.lt("created_at", page.lastCreatedAt);
+            }
+            return await q;
+          })();
+
+          if (error) throw error;
+
+          const newReplies: Reply[] = (data || []).map((item: any) => ({
+            id: item.id,
+            confessionId: item.confession_id,
+            userId: item.user_id || undefined,
+            content: item.content,
+            isAnonymous: item.is_anonymous,
+            likes: item.likes || 0,
+            isLiked: false,
+            timestamp: new Date(item.created_at).getTime(),
+          }));
+
+          const hasMore = (data?.length || 0) >= LIMIT;
+          const lastCreatedAt: string | undefined =
+            data && data.length > 0 ? data[data.length - 1].created_at : page.lastCreatedAt;
+
+          set((curr) => ({
+            replies: {
+              ...curr.replies,
+              [confessionId]: [...(curr.replies[confessionId] || []), ...newReplies],
+            },
+            pagination: {
+              ...curr.pagination,
+              [confessionId]: { hasMore, lastCreatedAt, isLoadingMore: false },
+            },
+          }));
+        } catch (err) {
+          set((curr) => ({
+            error: err instanceof Error ? err.message : "Failed to load more replies",
+            pagination: {
+              ...curr.pagination,
+              [confessionId]: { ...(curr.pagination[confessionId] || {}), isLoadingMore: false },
+            },
+          }));
         }
       },
 
@@ -332,7 +418,7 @@ export const useReplyStore = create<ReplyState>()(
 
       getRepliesForConfession: (confessionId: string) => {
         const state = get();
-        return state.replies[confessionId] || [];
+        return state.replies[confessionId] ?? [];
       },
     }),
     {

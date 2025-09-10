@@ -6,6 +6,7 @@ import type { TabParamList } from "../navigation/AppNavigator";
 import { useTrendingStore } from "../state/trendingStore";
 import { extractHashtags } from "../utils/trending";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
+import { sanitizeText } from "../utils/sanitize";
 
 interface HashtagTextProps {
   text: string;
@@ -43,12 +44,19 @@ export default function HashtagText({
   };
 
   const renderTextWithHashtags = () => {
-    // Extract all hashtags from the text
-    const hashtags = extractHashtags(text);
+    // SDK 53: Sanitize text content to prevent XSS - handle null/undefined
+    if (!text || typeof text !== "string") {
+      return "";
+    }
+
+    const sanitizedText = sanitizeText(text);
+
+    // Extract all hashtags from the sanitized text
+    const hashtags = extractHashtags(sanitizedText);
 
     if (hashtags.length === 0) {
       // No hashtags, return plain text
-      return text;
+      return sanitizedText;
     }
 
     // Split text by hashtags and create clickable elements
@@ -59,13 +67,13 @@ export default function HashtagText({
     const hashtagRegex = /#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi;
     let match;
 
-    while ((match = hashtagRegex.exec(text)) !== null) {
+    while ((match = hashtagRegex.exec(sanitizedText)) !== null) {
       const hashtag = match[0];
       const startIndex = match.index;
 
       // Add text before hashtag
       if (startIndex > lastIndex) {
-        parts.push(text.substring(lastIndex, startIndex));
+        parts.push(sanitizedText.substring(lastIndex, startIndex));
       }
 
       // Add clickable hashtag
@@ -83,8 +91,8 @@ export default function HashtagText({
     }
 
     // Add remaining text after last hashtag
-    if (lastIndex < text.length) {
-      parts.push(text.substring(lastIndex));
+    if (lastIndex < sanitizedText.length) {
+      parts.push(sanitizedText.substring(lastIndex));
     }
 
     return parts;
