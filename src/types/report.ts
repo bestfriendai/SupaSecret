@@ -11,33 +11,33 @@ export type ReportStatus = "pending" | "reviewed" | "resolved" | "dismissed";
 
 export interface Report {
   id: string;
-  confessionId?: string;
-  replyId?: string;
-  reporterUserId: string;
+  confession_id?: string | null;
+  reply_id?: string | null;
+  reporter_user_id: string;
   reason: ReportReason;
-  additionalDetails?: string;
+  additional_details?: string | null;
   status: ReportStatus;
-  createdAt: string;
-  reviewedAt?: string;
-  reviewedBy?: string;
+  created_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
 }
 
 export interface CreateReportRequest {
-  confessionId?: string;
-  replyId?: string;
+  confession_id?: string | null;
+  reply_id?: string | null;
   reason: ReportReason;
-  additionalDetails?: string;
+  additional_details?: string | null;
 }
 
 export interface ReportState {
   reports: Report[];
-  isLoading: boolean;
+  is_loading: boolean;
   error: string | null;
 
   // Actions
-  createReport: (report: CreateReportRequest) => Promise<void>;
-  getUserReports: () => Promise<void>;
-  clearError: () => void;
+  create_report: (report: CreateReportRequest) => Promise<void>;
+  get_user_reports: () => Promise<void>;
+  clear_error: () => void;
 }
 
 // Human-readable labels for report reasons
@@ -61,3 +61,25 @@ export const REPORT_REASON_DESCRIPTIONS: Record<ReportReason, string> = {
   hate_speech: "Discriminatory or hateful language",
   other: "Other reason not listed above",
 };
+
+export interface ReportApiResponse {
+  report: Report;
+  success: boolean;
+  message?: string;
+}
+
+export interface ReportApiErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    details?: string;
+  };
+}
+
+export interface ReportListApiResponse {
+  reports: Report[];
+  totalCount: number;
+  hasMore: boolean;
+  page: number;
+  pageSize: number;
+}

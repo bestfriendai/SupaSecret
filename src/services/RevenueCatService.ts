@@ -102,7 +102,7 @@ export class RevenueCatService {
     }
   }
 
-  static async purchasePackage(packageToPurchase: any): Promise<any> {
+  static async purchasePackage(packageToPurchase: any): Promise<{ customerInfo: any; productIdentifier: string } | { mockCustomerInfo: boolean }> {
     await this.initialize();
 
     if (IS_EXPO_GO) {
@@ -135,7 +135,7 @@ export class RevenueCatService {
     }
   }
 
-  static async restorePurchases(): Promise<any> {
+  static async restorePurchases(): Promise<{ customerInfo: any } | { mockCustomerInfo: boolean }> {
     await this.initialize();
 
     if (IS_EXPO_GO) {
@@ -211,7 +211,7 @@ export class RevenueCatService {
   }
 
   // Get customer info
-  static async getCustomerInfo(): Promise<any> {
+  static async getCustomerInfo(): Promise<any | { mockCustomerInfo: boolean } | null> {
     await this.initialize();
 
     if (IS_EXPO_GO) {

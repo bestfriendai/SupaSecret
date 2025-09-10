@@ -52,3 +52,27 @@ export interface NotificationState {
   clearError: () => void;
   cleanup: () => void;
 }
+
+export interface NotificationApiResponse {
+  notification: Notification;
+  success: boolean;
+  message?: string;
+}
+
+export interface NotificationApiErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    details?: string;
+  };
+}
+
+export interface NotificationListApiResponse {
+  notifications: Notification[];
+  groupedNotifications: GroupedNotification[];
+  totalCount: number;
+  unreadCount: number;
+  hasMore: boolean;
+  page: number;
+  pageSize: number;
+}

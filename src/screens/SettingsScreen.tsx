@@ -200,36 +200,36 @@ export default function SettingsScreen() {
               <SettingsToggle
                 title="Sound Enabled"
                 description="Play audio for videos and interactions"
-                value={userPreferences.soundEnabled}
-                onValueChange={(value) => handlePreferenceUpdate("soundEnabled", value)}
+                value={userPreferences.sound_enabled}
+                onValueChange={(value) => handlePreferenceUpdate("sound_enabled", value)}
                 icon="volume-high"
               />
               <SettingsToggle
                 title="Captions by Default"
                 description="Show captions on videos when available"
-                value={userPreferences.captionsDefault}
-                onValueChange={(value) => handlePreferenceUpdate("captionsDefault", value)}
+                value={userPreferences.captions_default}
+                onValueChange={(value) => handlePreferenceUpdate("captions_default", value)}
                 icon="text"
               />
               <SettingsToggle
                 title="Haptic Feedback"
                 description="Vibrate on interactions and gestures"
-                value={userPreferences.hapticsEnabled}
-                onValueChange={(value) => handlePreferenceUpdate("hapticsEnabled", value)}
+                value={userPreferences.haptics_enabled}
+                onValueChange={(value) => handlePreferenceUpdate("haptics_enabled", value)}
                 icon="phone-portrait"
               />
               <SettingsToggle
                 title="Reduce Motion"
                 description="Minimize animations and transitions"
-                value={userPreferences.reducedMotion}
-                onValueChange={(value) => handlePreferenceUpdate("reducedMotion", value)}
+                value={userPreferences.reduced_motion}
+                onValueChange={(value) => handlePreferenceUpdate("reduced_motion", value)}
                 icon="speedometer"
               />
               <SettingsPicker
                 title="Video Quality"
                 description="Choose video playback quality"
-                value={userPreferences.qualityPreference}
-                onValueChange={(value) => handlePreferenceUpdate("qualityPreference", value)}
+                value={userPreferences.quality_preference}
+                onValueChange={(value) => handlePreferenceUpdate("quality_preference", value)}
                 icon="videocam"
                 options={[
                   { value: "auto", label: "Auto", description: "Adjust quality based on connection" },
@@ -241,8 +241,8 @@ export default function SettingsScreen() {
               <SettingsPicker
                 title="Data Usage"
                 description="Control when to use mobile data"
-                value={userPreferences.dataUsageMode}
-                onValueChange={(value) => handlePreferenceUpdate("dataUsageMode", value)}
+                value={userPreferences.data_usage_mode}
+                onValueChange={(value) => handlePreferenceUpdate("data_usage_mode", value)}
                 icon="cellular"
                 options={[
                   { value: "unlimited", label: "Unlimited", description: "Use data freely" },
