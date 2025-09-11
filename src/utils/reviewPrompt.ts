@@ -195,7 +195,9 @@ export class ReviewPromptManager {
       await AsyncStorage.setItem(STORAGE_KEYS.HAS_PROMPTED, "true");
       options.onReviewCompleted?.();
     } catch (error) {
-      console.warn("Error showing review prompt:", error);
+      if (__DEV__) {
+        console.warn("Error showing review prompt:", error);
+      }
       // Mark as declined if there was an error
       await AsyncStorage.setItem(STORAGE_KEYS.USER_DECLINED, "true");
       await AsyncStorage.setItem(STORAGE_KEYS.LAST_PROMPT_DATE, new Date().toISOString());

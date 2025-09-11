@@ -11,7 +11,7 @@ export class PreferenceAwareHaptics {
   static async impactAsync(style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) {
     const { userPreferences } = useConfessionStore.getState();
 
-    if (userPreferences.hapticsEnabled) {
+    if (userPreferences.haptics_enabled) {
       try {
         await Haptics.impactAsync(style);
       } catch (error) {
@@ -28,7 +28,7 @@ export class PreferenceAwareHaptics {
   static async notificationAsync(type: Haptics.NotificationFeedbackType = Haptics.NotificationFeedbackType.Success) {
     const { userPreferences } = useConfessionStore.getState();
 
-    if (userPreferences.hapticsEnabled) {
+    if (userPreferences.haptics_enabled) {
       try {
         await Haptics.notificationAsync(type);
       } catch (error) {
@@ -45,7 +45,7 @@ export class PreferenceAwareHaptics {
   static async selectionAsync() {
     const { userPreferences } = useConfessionStore.getState();
 
-    if (userPreferences.hapticsEnabled) {
+    if (userPreferences.haptics_enabled) {
       try {
         await Haptics.selectionAsync();
       } catch (error) {
@@ -61,7 +61,7 @@ export class PreferenceAwareHaptics {
  * Hook-based haptics utility for use in React components
  */
 export const usePreferenceAwareHaptics = () => {
-  const hapticsEnabled = useConfessionStore((state) => state.userPreferences.hapticsEnabled);
+  const hapticsEnabled = useConfessionStore((state) => state.userPreferences.haptics_enabled);
 
   const impactAsync = async (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
     if (hapticsEnabled) {

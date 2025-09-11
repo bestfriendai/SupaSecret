@@ -16,10 +16,14 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({ isRe
 
   useEffect(() => {
     // Demo mode - simulate speech recognition
-    console.log("🎯 Demo: Speech recognition simulation setup");
+    if (__DEV__) {
+      console.log("🎯 Demo: Speech recognition simulation setup");
+    }
 
     return () => {
-      console.log("🎯 Demo: Speech recognition cleanup");
+      if (__DEV__) {
+        console.log("🎯 Demo: Speech recognition cleanup");
+      }
     };
   }, [onTranscriptionUpdate]);
 
@@ -63,7 +67,9 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({ isRe
   }, [isRecording]);
 
   const startListening = async () => {
-    console.log("🎯 Demo: Starting speech recognition simulation");
+    if (__DEV__) {
+      console.log("🎯 Demo: Starting speech recognition simulation");
+    }
     setIsListening(true);
 
     // Simulate transcription updates
@@ -95,7 +101,9 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({ isRe
   };
 
   const stopListening = async () => {
-    console.log("🎯 Demo: Stopping speech recognition simulation");
+    if (__DEV__) {
+      console.log("🎯 Demo: Stopping speech recognition simulation");
+    }
     setIsListening(false);
 
     // Clear simulation interval

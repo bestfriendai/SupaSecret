@@ -44,6 +44,41 @@ export default function VideoRecordScreen() {
   const navigation = useNavigation();
   const addConfession = useConfessionStore((state) => state.addConfession);
 
+  // Mount/recording guards to prevent camera-unmounted errors
+  const isMountedRef = useRef(true);
+  const isRecordingRef = useRef(false);
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    const removeBeforeRemove = (navigation as any).addListener?.("beforeRemove", (e: any) => {
+      // If recording, stop it before navigating away to avoid unmounted errors
+      if (isRecordingRef.current) {
+        e.preventDefault();
+        try {
+          cameraRef.current?.stopRecording();
+        } catch {}
+        // Allow navigation to proceed after a brief tick
+        setTimeout(() => {
+          (navigation as any).dispatch?.(e.data.action);
+        }, 200);
+      }
+    });
+
+    return () => {
+      isMountedRef.current = false;
+      try {
+        if (isRecordingRef.current) {
+          cameraRef.current?.stopRecording();
+        }
+      } catch {}
+      removeBeforeRemove && removeBeforeRemove();
+    };
+  }, [navigation]);
+
   // Animation values for TikTok-like UI
   const recordButtonScale = useSharedValue(1);
   const recordButtonOpacity = useSharedValue(1);
@@ -106,6 +141,7 @@ export default function VideoRecordScreen() {
     type: "success" | "error",
     buttons?: { text: string; onPress?: () => void }[],
   ) => {
+    if (!isMountedRef.current) return;
     setModalMessage(message);
     setModalType(type);
     setModalButtons(buttons || [{ text: "OK", onPress: () => setShowModal(false) }]);
@@ -133,18 +169,23 @@ export default function VideoRecordScreen() {
 
   // Cleanup function to prevent memory leaks
   const cleanup = () => {
+    try {
+      if (isRecordingRef.current) {
+        cameraRef.current?.stopRecording();
+      }
+    } catch {}
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    if (recordingPromiseRef.current) {
-      recordingPromiseRef.current = null;
+    recordingPromiseRef.current = null;
+    if (isMountedRef.current) {
+      setIsRecording(false);
+      setRecordingTime(0);
+      setIsProcessing(false);
+      setProcessingProgress(0);
+      setProcessingStatus("");
     }
-    setIsRecording(false);
-    setRecordingTime(0);
-    setIsProcessing(false);
-    setProcessingProgress(0);
-    setProcessingStatus("");
   };
 
   const toggleCameraFacing = () => {

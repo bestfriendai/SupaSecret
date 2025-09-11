@@ -24,10 +24,14 @@ const loadRevenueCat = async () => {
       CustomerInfo = RevenueCatModule.CustomerInfo;
       PurchasesOffering = RevenueCatModule.PurchasesOffering;
       PurchasesPackage = RevenueCatModule.PurchasesPackage;
-      console.log("🚀 RevenueCat module loaded successfully");
+      if (__DEV__) {
+        console.log("🚀 RevenueCat module loaded successfully");
+      }
     } catch (error) {
-      console.warn("RevenueCat not available, running in demo mode:", (error as any)?.message || String(error));
-      console.log("🎯 RevenueCat demo mode - react-native-purchases not installed");
+      if (__DEV__) {
+        console.warn("RevenueCat not available, running in demo mode:", (error as any)?.message || String(error));
+        console.log("🎯 RevenueCat demo mode - react-native-purchases not installed");
+      }
     }
   }
 };
@@ -56,7 +60,9 @@ export class RevenueCatService {
       await loadRevenueCat();
 
       if (!Purchases) {
-        console.log("🎯 RevenueCat not available, running in demo mode");
+        if (__DEV__) {
+          console.log("🎯 RevenueCat not available, running in demo mode");
+        }
         this.isInitialized = true;
         return;
       }
@@ -72,10 +78,14 @@ export class RevenueCatService {
         await Purchases.setLogLevel("DEBUG");
       }
 
-      console.log("🚀 RevenueCat initialized for development build");
+      if (__DEV__) {
+        console.log("🚀 RevenueCat initialized for development build");
+      }
       this.isInitialized = true;
     } catch (error) {
-      console.warn("RevenueCat initialization failed, running in demo mode:", (error as any)?.message || String(error));
+      if (__DEV__) {
+        console.warn("RevenueCat initialization failed, running in demo mode:", (error as any)?.message || String(error));
+      }
       this.isInitialized = true;
     }
   }
@@ -106,10 +116,14 @@ export class RevenueCatService {
     await this.initialize();
 
     if (IS_EXPO_GO) {
-      console.log("🎯 Demo: Simulating purchase...");
+      if (__DEV__) {
+        console.log("🎯 Demo: Simulating purchase...");
+      }
       return new Promise((resolve) => {
         setTimeout(() => {
-          console.log("✅ Demo purchase completed successfully!");
+          if (__DEV__) {
+            console.log("✅ Demo purchase completed successfully!");
+          }
           resolve({ mockCustomerInfo: true });
         }, 2000);
       });
@@ -120,17 +134,23 @@ export class RevenueCatService {
         throw new Error("RevenueCat not initialized");
       }
 
-      console.log("🚀 Purchasing package:", packageToPurchase);
+      if (__DEV__) {
+        console.log("🚀 Purchasing package:", packageToPurchase);
+      }
       const { customerInfo, productIdentifier } = await Purchases.purchasePackage(packageToPurchase);
 
-      console.log("✅ Purchase completed successfully!", { customerInfo, productIdentifier });
+      if (__DEV__) {
+        console.log("✅ Purchase completed successfully!", { customerInfo, productIdentifier });
+      }
 
       // Update subscription status in Supabase
       await this.syncSubscriptionStatus(customerInfo);
 
       return { customerInfo, productIdentifier };
     } catch (error) {
-      console.error("Purchase failed:", error);
+      if (__DEV__) {
+        console.error("Purchase failed:", error);
+      }
       throw error;
     }
   }

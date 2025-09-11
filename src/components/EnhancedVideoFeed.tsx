@@ -69,7 +69,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
-  const [captionsEnabled, setCaptionsEnabled] = useState(userPreferences.captionsDefault);
+  const [captionsEnabled, setCaptionsEnabled] = useState(userPreferences.captions_default);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [showGuidance, setShowGuidance] = useState(true);
   const [showControls, setShowControls] = useState(false);

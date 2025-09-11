@@ -10,7 +10,7 @@ import { useConsentStore, ConsentPreferences } from "../state/consentStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 
 // Privacy Policy URL - replace with your actual privacy policy URL
-const PRIVACY_POLICY_URL = "https://supasecret.app/privacy-policy";
+const PRIVACY_POLICY_URL = "https://toxicconfessions.app/privacy";
 
 interface ConsentDialogProps {
   visible: boolean;

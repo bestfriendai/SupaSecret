@@ -65,25 +65,19 @@ serve(async (req) => {
     console.log("Processing request:", { videoUrl, videoPath, uploadId, options });
 
     // Handle different payload formats from client
-    let finalVideoUrl = videoUrl;
+    // Prefer storage path contract for private buckets
+    const storagePath = videoPath || undefined;
 
-    if (!finalVideoUrl && videoPath) {
-      // Convert videoPath to public URL
-      const { data: urlData } = supabaseClient.storage.from("videos").getPublicUrl(videoPath);
-      finalVideoUrl = urlData.publicUrl;
-      console.log("Converted videoPath to URL:", finalVideoUrl);
-    }
-
-    if (!finalVideoUrl && uploadId) {
-      // For uploadId, assume it's a filename in the videos bucket
+    if (!videoUrl && !storagePath && uploadId) {
+      // Deprecated: derive a best-effort path; clients should send videoPath explicitly
       const fileName = uploadId.includes(".") ? uploadId : `${uploadId}.mp4`;
-      const { data: urlData } = supabaseClient.storage.from("videos").getPublicUrl(fileName);
-      finalVideoUrl = urlData.publicUrl;
-      console.log("Converted uploadId to URL:", finalVideoUrl);
+      // Default to confessions bucket root when path is unknown
+      console.warn("[process-video] uploadId provided without videoPath; assuming confessions/" + fileName);
+      // Note: We do not generate a public URL here; clients must use signed URLs for private buckets
     }
 
-    if (!finalVideoUrl) {
-      throw new Error("Video URL, videoPath, or uploadId is required");
+    if (!videoUrl && !storagePath) {
+      throw new Error("videoPath is required for private storage; send the storage path returned from upload");
     }
 
     // For now, let's just return a successful response without actually processing
@@ -93,7 +87,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        processedVideoUrl: finalVideoUrl, // Return the processed URL
+        storagePath: storagePath || null,
         thumbnailUrl: null,
         transcription: "Mock transcription for testing",
         duration: 30,

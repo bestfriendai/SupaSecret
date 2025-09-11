@@ -334,7 +334,7 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
 
   // Properly construct redirect URL using Expo Constants
   const appUrl =
-    (Constants.expoConfig as any)?.extra?.appUrl || (Constants.manifest as any)?.extra?.appUrl || "supasecret://";
+    (Constants.expoConfig as any)?.extra?.appUrl || (Constants.manifest as any)?.extra?.appUrl || "toxicconfessions://";
   const baseUrl = appUrl.replace(/\/+$/, "");
   const redirectTo = `${baseUrl}/reset-password`;
 
@@ -404,7 +404,7 @@ export const debugAuthState = async () => {
 
     // Check AsyncStorage directly
     const AsyncStorage = await import("@react-native-async-storage/async-storage");
-    const supabaseSession = await AsyncStorage.default.getItem("sb-xhtqobjcbjgzxkgfyvdj-auth-token");
+    const supabaseSession = await AsyncStorage.default.getItem("supabase-auth-token");
     console.log("🔍 AsyncStorage Supabase Token:", supabaseSession ? "exists" : "null");
 
     const authStorage = await AsyncStorage.default.getItem("auth-storage");
