@@ -27,7 +27,6 @@ import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11y
 import { useDebouncedLikeToggle } from "../utils/debounce";
 import { withRefreshErrorHandling } from "../utils/refreshErrorHandler";
 import Animated from "react-native-reanimated";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -338,59 +337,57 @@ export default function HomeScreen() {
   }, [isLoading]);
 
   return (
-    <GestureHandlerRootView className="flex-1">
-      <View className="flex-1 bg-black">
-        <View className="flex-1">
-          <Animated.View className="flex-1">
-            <FlashList
-              ref={(ref) => {
-                flashListRef.current = ref;
-                scrollViewRef.current = ref as any;
-              }}
-              data={confessions}
-              renderItem={renderItem}
-              keyExtractor={(item: any) => item.id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-              onEndReached={onEndReached}
-              onEndReachedThreshold={0.5}
-              ListFooterComponent={renderFooter}
-              ListEmptyComponent={networkError ? <NetworkErrorState onRetry={onRefresh} /> : renderEmpty()}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={["#1D9BF0"]}
-                  tintColor="#1D9BF0"
-                />
-              }
-              onViewableItemsChanged={({ viewableItems }) => {
-                const visibleIds = viewableItems.map((item) => item.item.id);
-                loadRepliesForVisibleItems(visibleIds);
-              }}
-              viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-              extraData={{ refreshing, isLoadingMore, networkError }}
-            />
-          </Animated.View>
-        </View>
-
-        {/* Report Modal */}
-        <ReportModal
-          isVisible={reportModalVisible}
-          onClose={handleReportModalClose}
-          confessionId={reportingConfessionId || undefined}
-          contentType="confession"
-        />
-
-        {/* Feed Action Sheet */}
-        {reportingConfessionId && (
-          <FeedActionSheet
-            confessionId={reportingConfessionId}
-            confessionText={selectedConfessionText}
-            bottomSheetModalRef={actionSheetRef}
+    <View className="flex-1 bg-black">
+      <View className="flex-1">
+        <Animated.View className="flex-1">
+          <FlashList
+            ref={(ref) => {
+              flashListRef.current = ref;
+              scrollViewRef.current = ref as any;
+            }}
+            data={confessions}
+            renderItem={renderItem}
+            keyExtractor={(item: any) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            onEndReached={onEndReached}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={renderFooter}
+            ListEmptyComponent={networkError ? <NetworkErrorState onRetry={onRefresh} /> : renderEmpty()}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#1D9BF0"]}
+                tintColor="#1D9BF0"
+              />
+            }
+            onViewableItemsChanged={({ viewableItems }) => {
+              const visibleIds = viewableItems.map((item) => item.item.id);
+              loadRepliesForVisibleItems(visibleIds);
+            }}
+            viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+            extraData={{ refreshing, isLoadingMore, networkError }}
           />
-        )}
+        </Animated.View>
       </View>
-    </GestureHandlerRootView>
+
+      {/* Report Modal */}
+      <ReportModal
+        isVisible={reportModalVisible}
+        onClose={handleReportModalClose}
+        confessionId={reportingConfessionId || undefined}
+        contentType="confession"
+      />
+
+      {/* Feed Action Sheet */}
+      {reportingConfessionId && (
+        <FeedActionSheet
+          confessionId={reportingConfessionId}
+          confessionText={selectedConfessionText}
+          bottomSheetModalRef={actionSheetRef}
+        />
+      )}
+    </View>
   );
 }

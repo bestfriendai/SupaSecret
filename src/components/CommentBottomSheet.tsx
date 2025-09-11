@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
@@ -7,6 +7,8 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, run
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { InlineCharacterCounter } from "./CharacterCounter";
 import { sanitizeText } from "../utils/sanitize";
+import { BottomSheetKeyboardWrapper } from "./KeyboardAvoidingWrapper";
+import { getOptimizedTextInputProps } from "../utils/keyboardUtils";
 
 interface Comment {
   id: string;
@@ -208,7 +210,7 @@ export default function CommentBottomSheet({ isVisible, onClose }: CommentBottom
           </ScrollView>
 
           {/* Comment Input */}
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
+          <BottomSheetKeyboardWrapper>
             <SafeAreaView>
               <View className="flex-row items-center px-4 py-3 border-t border-gray-800">
                 <View className="w-8 h-8 bg-gray-700 rounded-full items-center justify-center mr-3">
@@ -216,6 +218,7 @@ export default function CommentBottomSheet({ isVisible, onClose }: CommentBottom
                 </View>
                 <View className="flex-1 mr-3">
                   <TextInput
+                    {...getOptimizedTextInputProps("comment")}
                     className="bg-gray-800 rounded-full px-4 py-2 text-white text-15"
                     placeholder="Add a comment..."
                     placeholderTextColor="#8B98A5"
@@ -243,7 +246,7 @@ export default function CommentBottomSheet({ isVisible, onClose }: CommentBottom
                 </Pressable>
               </View>
             </SafeAreaView>
-          </KeyboardAvoidingView>
+          </BottomSheetKeyboardWrapper>
         </Animated.View>
       </GestureDetector>
     </View>

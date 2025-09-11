@@ -3,11 +3,6 @@ import {
   View,
   Text,
   Pressable,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  TouchableWithoutFeedback,
-  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -22,6 +17,8 @@ import { getPrivacyPolicyUrl, getTermsOfServiceUrl } from "../constants/urls";
 import { AuthStackParamList } from "../navigation/AppNavigator";
 import { useAuthStore } from "../state/authStore";
 import { validateEmail, validatePassword, getPasswordStrength } from "../utils/auth";
+import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
+import { getOptimizedTextInputProps } from "../utils/keyboardUtils";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
@@ -122,26 +119,19 @@ export default function SignUpScreen() {
   const passwordStrength = getPasswordStrength(formData.password);
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView className="flex-1 bg-black">
-        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : "height"}>
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+    <SafeAreaView className="flex-1 bg-black">
+      <ScreenKeyboardWrapper className="flex-1" scrollable={true}>
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-6 py-4">
+          <Pressable
+            onPress={() => navigation.goBack()}
+            className="w-10 h-10 items-center justify-center rounded-full bg-gray-900"
           >
-            {/* Header */}
-            <View className="flex-row items-center justify-between px-6 py-4">
-              <Pressable
-                onPress={() => navigation.goBack()}
-                className="w-10 h-10 items-center justify-center rounded-full bg-gray-900"
-              >
-                <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-              </Pressable>
-              <Text className="text-white text-18 font-semibold">Create Account</Text>
-              <View className="w-10" />
-            </View>
+            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          </Pressable>
+          <Text className="text-white text-18 font-semibold">Create Account</Text>
+          <View className="w-10" />
+        </View>
 
             {/* Content */}
             <View className="flex-1 px-6 py-8">
@@ -320,9 +310,6 @@ export default function SignUpScreen() {
                 </Text>
               </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-
         {/* Animated Modal */}
         <AlertModal
           visible={showModal}
@@ -331,7 +318,7 @@ export default function SignUpScreen() {
           message={modalMessage}
           confirmText="OK"
         />
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+      </ScreenKeyboardWrapper>
+    </SafeAreaView>
   );
 }

@@ -7,6 +7,8 @@ import { format } from "date-fns";
 import TrendingSkeleton from "../components/TrendingSkeleton";
 import { getButtonA11yProps, getCloseButtonA11yProps } from "../utils/accessibility";
 import { useDebouncedSearch } from "../utils/debounce";
+import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
+import { getOptimizedTextInputProps, dismissKeyboard } from "../utils/keyboardUtils";
 
 type TimePeriod = 24 | 168 | 720; // 24h, 1w, 1m
 type ViewMode = "hashtags" | "secrets";
@@ -136,7 +138,7 @@ export default function TrendingScreen() {
   );
 
   return (
-    <View className="flex-1 bg-black">
+    <ScreenKeyboardWrapper className="flex-1 bg-black" scrollable={true} dismissOnTap={true}>
       {/* Search and Filters */}
       <View className="px-4 py-3 border-b border-gray-800">
         <View className="flex-row items-center justify-between mb-3">
@@ -149,11 +151,13 @@ export default function TrendingScreen() {
         <View className="flex-row items-center bg-gray-900 rounded-full px-4 py-2 mb-3">
           <Ionicons name="search" size={16} color="#8B98A5" />
           <TextInput
+            {...getOptimizedTextInputProps("search")}
             className="flex-1 text-white text-15 ml-2"
             placeholder="Search hashtags..."
             placeholderTextColor="#8B98A5"
             value={searchQuery}
             onChangeText={handleSearchChange}
+            onSubmitEditing={() => dismissKeyboard()}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={handleClearSearch} {...getCloseButtonA11yProps()}>
@@ -260,6 +264,6 @@ export default function TrendingScreen() {
           </View>
         ) : null}
       </ScrollView>
-    </View>
+    </ScreenKeyboardWrapper>
   );
 }

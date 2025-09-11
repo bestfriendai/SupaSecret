@@ -14,6 +14,7 @@ import { BlurView } from "expo-blur";
 import { InlineCharacterCounter } from "./CharacterCounter";
 import { sanitizeText } from "../utils/sanitize";
 import { useReplyStore } from "../state/replyStore";
+import { useToastHelpers } from "../contexts/ToastContext";
 
 interface EnhancedCommentBottomSheetProps {
   bottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
@@ -59,6 +60,9 @@ const EnhancedCommentBottomSheet = React.memo(
     // Generate stable anonymous ID for current user's input avatar
     const userAnonymousId = useMemo(() => generateAnonymousId(), []);
 
+    // Toast helpers for user feedback
+    const { showSuccess, showError } = useToastHelpers();
+
     // Store bindings - using simple selectors to avoid infinite loops
     const allReplies = useReplyStore((s) => s.replies);
     const allPagination = useReplyStore((s) => s.pagination);
@@ -103,12 +107,18 @@ const EnhancedCommentBottomSheet = React.memo(
     const handleAddComment = useCallback(async () => {
       const text = newComment.trim();
       if (!text) return;
+
       try {
         await addReply(confessionId, text, true);
         setNewComment("");
         PreferenceAwareHaptics.impactAsync();
-      } catch {}
-    }, [newComment, addReply, confessionId]);
+        showSuccess("Comment added successfully!");
+      } catch (error) {
+        console.error("Failed to add comment:", error);
+        showError("Failed to add comment. Please try again.");
+        PreferenceAwareHaptics.impactAsync();
+      }
+    }, [newComment, addReply, confessionId, showSuccess, showError]);
 
     const toggleCommentLikeLocal = useCallback(
       (replyId: string) => {
