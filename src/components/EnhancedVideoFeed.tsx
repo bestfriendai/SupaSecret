@@ -182,8 +182,8 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
     (speed: number) => {
       // Apply speed to current video player
       const player = videoPlayers.getPlayer(currentIndex);
-      if (player && player.setPlaybackRate) {
-        player.setPlaybackRate(speed);
+      if (player) {
+        player.playbackRate = speed;
       }
     },
     [currentIndex, videoPlayers],

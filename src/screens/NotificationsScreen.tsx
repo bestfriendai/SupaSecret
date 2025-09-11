@@ -238,7 +238,6 @@ export default function NotificationsScreen() {
       <FlashList
         data={groupedNotifications}
         renderItem={renderItem}
-        estimatedItemSize={80}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: 16 }}

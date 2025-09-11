@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useAnimatedStyle, interpolate } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, interpolate, SharedValue } from "react-native-reanimated";
 import { OnboardingSlide as OnboardingSlideType } from "../types/auth";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -9,7 +9,7 @@ const { width: screenWidth } = Dimensions.get("window");
 interface OnboardingSlideProps {
   slide: OnboardingSlideType;
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
 }
 
 export default function OnboardingSlide({ slide, index, scrollX }: OnboardingSlideProps) {

@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { Audio } from "expo-av";
+import { setAudioModeAsync } from "expo-audio";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { useAuthStore, cleanupAuthListener, setupAuthListener } from "./src/state/authStore";
 import {
@@ -40,28 +40,43 @@ const openai_api_key = Constants.expoConfig.extra.apikey;
 */
 
 export default function App() {
-  const checkAuthState = useAuthStore((state) => state.checkAuthState);
-  const loadConfessions = useConfessionStore((state) => state.loadConfessions);
-  const loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
+  // Debug: Log component render
+  console.log("[DEBUG] App component rendering...");
+  
+  // Debug: Wrap store hooks in try-catch
+  let checkAuthState, loadConfessions, loadUserPreferences;
+  try {
+    checkAuthState = useAuthStore((state) => state.checkAuthState);
+    loadConfessions = useConfessionStore((state) => state.loadConfessions);
+    loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
+    console.log("[DEBUG] Store hooks initialized successfully");
+  } catch (error) {
+    console.error("[DEBUG] Store hook initialization error:", error);
+    console.error("[DEBUG] Error stack:", error.stack);
+  }
 
   useEffect(() => {
+    console.log("[DEBUG] App useEffect running...");
+    
     const initializeApp = async () => {
       try {
+        console.log("[DEBUG] Starting app initialization...");
+        
         // Check environment and log dependency availability
         try {
           checkEnvironment();
+          console.log("[DEBUG] Environment check completed");
         } catch (error) {
           console.error("❌ Environment check failed:", error);
           // Continue initialization even if environment check fails
         }
 
         // Configure audio session for video playback
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
+        await setAudioModeAsync({
+          allowsRecording: false,
+          shouldPlayInBackground: false,
+          playsInSilentMode: true,
+          interruptionModeAndroid: "duckOthers",
         });
 
         // Set up Supabase subscriptions
@@ -119,12 +134,18 @@ export default function App() {
     };
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
 
+  console.log("[DEBUG] Rendering App JSX...");
+  
+  // Debug: Add error boundary with detailed logging
   return (
     <SafeAreaProvider>
       <ErrorBoundary
         onError={(error, errorInfo) => {
           // Log to crash analytics in production
           console.error("App-level error:", error, errorInfo);
+          console.error("[DEBUG] Error boundary caught:", error.message);
+          console.error("[DEBUG] Error stack:", error.stack);
+          console.error("[DEBUG] Error info:", JSON.stringify(errorInfo, null, 2));
         }}
         resetOnPropsChange={true}
       >

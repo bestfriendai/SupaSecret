@@ -1,5 +1,5 @@
-import * as FileSystem from "expo-file-system";
-import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system/legacy";
+import { setAudioModeAsync } from "expo-audio";
 // Demo mode - no native voice imports for Expo Go
 // import Voice from '@react-native-voice/voice';
 import * as VideoThumbnails from "expo-video-thumbnails";
@@ -71,7 +71,9 @@ export class VideoProcessingService implements IAnonymiser {
       }
 
       // Upload video to Supabase storage using streaming helper
-      const upload = await uploadVideoToSupabase(videoUri, user.id, (p) => onProgress?.(10 + (p * 0.2) / 100, "Uploading video..."));
+      const upload = await uploadVideoToSupabase(videoUri, user.id, (p) =>
+        onProgress?.(10 + (p * 0.2) / 100, "Uploading video..."),
+      );
 
       onProgress?.(30, "Processing video on server...");
 

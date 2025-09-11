@@ -163,12 +163,11 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
           extraData={{ currentIndex, isFocused }}
           showsVerticalScrollIndicator={false}
           removeClippedSubviews={true}
-          estimatedItemSize={screenHeight}
           drawDistance={screenHeight * 2}
           initialScrollIndex={initialIndex}
           getItemType={() => "video"}
-          overrideItemLayout={(layout) => {
-            layout.size = screenHeight;
+          overrideItemLayout={(layout: { span?: number }) => {
+            layout.span = 1;
           }}
           contentContainerStyle={{ backgroundColor: "black" }}
           bounces={false}

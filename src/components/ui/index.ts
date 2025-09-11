@@ -55,15 +55,15 @@ export const DesignSystemUtils = {
       },
     } as const;
 
-    // Validate that the type exists
-    if (!sizeMap.hasOwnProperty(type)) {
+    // Validate that the type exists - using 'in' operator for React 19 compatibility
+    if (!(type in sizeMap)) {
       throw new Error(`Invalid component type: ${type}. Valid types are: ${Object.keys(sizeMap).join(", ")}`);
     }
 
     const typeMap = sizeMap[type];
 
     // Validate that the size exists for this type
-    if (!Object.prototype.hasOwnProperty.call(typeMap, size)) {
+    if (!(size in typeMap)) {
       // Return the smallest size as default
       const defaultSize = "sm";
       console.warn(`Invalid size '${size}' for type '${type}'. Using default size '${defaultSize}'.`);

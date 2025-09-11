@@ -366,7 +366,6 @@ export default function MySecretsScreen() {
       <FlashList
         data={filteredConfessions}
         renderItem={renderItem}
-        estimatedItemSize={120}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: 0 }}

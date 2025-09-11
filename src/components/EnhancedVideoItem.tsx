@@ -3,7 +3,7 @@ import { View, Text, Pressable, Dimensions, AppState, Alert } from "react-native
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
-import { Audio } from "expo-av";
+import { setAudioModeAsync } from "expo-audio";
 import { format } from "date-fns";
 import { PreferenceAwareHaptics } from "../utils/haptics";
 import { useConfessionStore } from "../state/confessionStore";
@@ -101,12 +101,11 @@ function EnhancedVideoItem({
           }
           // Ensure audio session is active when video becomes active
           try {
-            await Audio.setAudioModeAsync({
-              allowsRecordingIOS: false,
-              staysActiveInBackground: false,
-              playsInSilentModeIOS: true,
-              shouldDuckAndroid: true,
-              playThroughEarpieceAndroid: false,
+            await setAudioModeAsync({
+              allowsRecording: false,
+              shouldPlayInBackground: false,
+              playsInSilentMode: true,
+              interruptionModeAndroid: "duckOthers",
             });
           } catch (audioError) {
             if (__DEV__) console.warn("Failed to set audio mode:", audioError);
@@ -207,8 +206,6 @@ function EnhancedVideoItem({
         contentFit="cover"
         nativeControls={false}
       />
-
-
 
       {/* Top Overlay */}
       <View className="absolute top-0 left-0 right-0 z-10">

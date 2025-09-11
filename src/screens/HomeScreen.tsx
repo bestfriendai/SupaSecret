@@ -27,8 +27,6 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11yProps } from "../utils/accessibility";
 import { useDebouncedRefresh, useDebouncedLikeToggle } from "../utils/debounce";
 import Animated, { useSharedValue, useAnimatedScrollHandler, runOnJS } from "react-native-reanimated";
-
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList);
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function HomeScreen() {
@@ -361,14 +359,13 @@ export default function HomeScreen() {
       <View className="flex-1 bg-black">
         <View className="flex-1">
           <Animated.View className="flex-1">
-            <AnimatedFlashList
+            <FlashList
               ref={(ref) => {
                 flashListRef.current = ref;
                 scrollViewRef.current = ref as any;
               }}
               data={confessions}
               renderItem={renderItem}
-              estimatedItemSize={200}
               keyExtractor={(item: any) => item.id}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}

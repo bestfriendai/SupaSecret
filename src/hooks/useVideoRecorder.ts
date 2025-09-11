@@ -7,7 +7,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Platform } from "react-native";
 import { CameraView, CameraType } from "expo-camera";
-import { Audio } from "expo-av";
+import { requestRecordingPermissionsAsync, setAudioModeAsync } from "expo-audio";
 import { env } from "../utils/env";
 import { useMediaPermissions } from "./useMediaPermissions";
 import { processVideoDualMode, ProcessingMode } from "../utils/videoProcessing";
@@ -49,7 +49,7 @@ export interface VideoRecorderControls {
 }
 
 export interface VideoRecorderData {
-  cameraRef: React.RefObject<CameraView | null>;
+  cameraRef: React.RefObject<CameraView>;
   facing: CameraType;
   liveTranscription: string;
   processedVideo?: ProcessedVideo;
@@ -74,10 +74,10 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   } = options;
 
   // Refs
-  const cameraRef = useRef<CameraView | null>(null);
+  const cameraRef = useRef<CameraView>(null);
   const recordingRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioRecorderRef = useRef<Audio.Recording | null>(null);
+  const audioRecorderRef = useRef<any | null>(null);
   const speechRecognitionRef = useRef<any>(null);
 
   // State
@@ -103,11 +103,10 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   useEffect(() => {
     const initializeAudio = async () => {
       try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
+        await setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
+          interruptionModeAndroid: "duckOthers",
         });
       } catch (error) {
         console.warn("Failed to initialize audio session:", error);

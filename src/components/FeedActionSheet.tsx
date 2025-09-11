@@ -11,7 +11,7 @@ import { BlurView } from "expo-blur";
 interface FeedActionSheetProps {
   confessionId: string;
   confessionText: string;
-  bottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
+  bottomSheetModalRef: React.RefObject<BottomSheetModal>;
 }
 
 export default function FeedActionSheet({ confessionId, confessionText, bottomSheetModalRef }: FeedActionSheetProps) {

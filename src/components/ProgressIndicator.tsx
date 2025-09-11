@@ -1,10 +1,10 @@
 import React from "react";
 import { View } from "react-native";
-import Animated, { useAnimatedStyle, interpolate } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, interpolate, SharedValue } from "react-native-reanimated";
 
 interface ProgressIndicatorProps {
   totalSlides: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
   screenWidth: number;
 }
 
@@ -14,7 +14,7 @@ function ProgressDot({
   screenWidth,
 }: {
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
   screenWidth: number;
 }) {
   const animatedStyle = useAnimatedStyle(() => {
