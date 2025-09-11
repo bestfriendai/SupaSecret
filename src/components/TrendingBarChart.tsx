@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View } from "react-native";
+
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -34,6 +34,7 @@ export default function TrendingBarChart({
     } else {
       progress.value = percentage / 100;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [percentage, animated]);
 
   const barStyle = useAnimatedStyle(() => {

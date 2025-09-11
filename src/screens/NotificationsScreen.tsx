@@ -28,7 +28,7 @@ export default function NotificationsScreen() {
   } = useNotificationStore();
 
   // Debounced refresh functionality
-  const { isRefreshing: _isRefreshing, refresh } = useDebouncedRefresh(loadNotifications, 1000);
+  const { refresh } = useDebouncedRefresh(loadNotifications, 1000);
 
   // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {
@@ -52,7 +52,7 @@ export default function NotificationsScreen() {
         // Mark all notifications in the group as read
         await Promise.all(notification.notifications.filter((n) => !n.read_at).map((n) => markAsRead(n.id)));
         impactAsync();
-      } catch (error) {
+      } catch {
         Alert.alert("Error", "Failed to mark notification as read");
       }
     },
@@ -65,7 +65,7 @@ export default function NotificationsScreen() {
     try {
       await markAllAsRead();
       impactAsync();
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to mark all as read");
     }
   }, [markAllAsRead, unreadCount, impactAsync]);
@@ -85,7 +85,7 @@ export default function NotificationsScreen() {
             try {
               await clearAllNotifications();
               impactAsync();
-            } catch (error) {
+            } catch {
               Alert.alert("Error", "Failed to clear notifications");
             }
           },

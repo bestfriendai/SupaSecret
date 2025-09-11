@@ -5,8 +5,6 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 import HomeScreen from "../screens/HomeScreen";
 import CreateConfessionScreen from "../screens/CreateConfessionScreen";
 import VideoRecordScreen from "../screens/VideoRecordScreen";
@@ -25,7 +23,7 @@ import PaywallScreen from "../screens/PaywallScreen";
 import WebViewScreen from "../screens/WebViewScreen";
 import { useAuthStore } from "../state/authStore";
 import { useGlobalVideoStore } from "../state/globalVideoStore";
-import TrendingBar from "../components/TrendingBar";
+
 import AppHeader from "../components/AppHeader";
 import { linking } from "./linking";
 
@@ -219,7 +217,7 @@ export default function AppNavigator() {
       console.log("[AppNavigator] SHOWING LOADING SCREEN - isLoading is true");
     }
     return (
-      <View className="flex-1 bg-black items-center justify-center">
+      <View style={{ flex: 1, backgroundColor: "black", alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator size="large" color="#1D9BF0" />
       </View>
     );

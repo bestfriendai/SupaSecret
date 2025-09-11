@@ -30,6 +30,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ visible, onClose, on
       }, 5000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [error, clearError]);
 
   const handlePurchase = async () => {

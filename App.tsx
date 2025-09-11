@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { setAudioModeAsync } from "expo-audio";
+import * as Audio from "expo-audio";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { useAuthStore, cleanupAuthListener, setupAuthListener } from "./src/state/authStore";
 import {
@@ -70,7 +70,7 @@ export default function App() {
 
         // Configure audio session for video playback
         try {
-          await setAudioModeAsync({
+          await Audio.setAudioModeAsync({
             allowsRecording: false,
             shouldPlayInBackground: false,
             playsInSilentMode: true,

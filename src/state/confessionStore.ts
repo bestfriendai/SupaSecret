@@ -1,18 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ConfessionState, Confession, UserPreferences, VideoAnalytics } from "../types/confession";
+import { ConfessionState, Confession, UserPreferences } from "../types/confession";
 import { supabase } from "../lib/supabase";
 import { ensureSignedVideoUrl, isLocalUri, uploadVideoToSupabase } from "../utils/storage";
-import {
-  selectWithRetry,
-  insertWithRetry,
-  updateWithRetry,
-  deleteWithRetry,
-  rpcWithRetry,
-  wrapWithRetry,
-} from "../utils/supabaseWithRetry";
-import { invalidateCache, registerInvalidationCallback } from "../utils/cacheInvalidation";
+import { rpcWithRetry, wrapWithRetry } from "../utils/supabaseWithRetry";
+import { invalidateCache } from "../utils/cacheInvalidation";
 import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 import { trackPositiveInteraction, showReviewPrompt } from "../utils/reviewPrompt";
 

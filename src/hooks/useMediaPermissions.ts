@@ -5,10 +5,9 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { Alert, Linking, Platform } from "react-native";
+import { Alert, Linking } from "react-native";
 import { useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import * as MediaLibrary from "expo-media-library";
 
 export interface MediaPermissionState {
   camera: boolean;
