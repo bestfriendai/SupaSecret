@@ -21,12 +21,12 @@ import ReportModal from "../components/ReportModal";
 import FeedActionSheet from "../components/FeedActionSheet";
 import ConfessionSkeleton from "../components/ConfessionSkeleton";
 import HashtagText from "../components/HashtagText";
-import PullToRefresh from "../components/PullToRefresh";
 
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11yProps } from "../utils/accessibility";
-import { useDebouncedRefresh, useDebouncedLikeToggle } from "../utils/debounce";
-import Animated, { useSharedValue, useAnimatedScrollHandler, runOnJS } from "react-native-reanimated";
+import { useDebouncedLikeToggle } from "../utils/debounce";
+import { withRefreshErrorHandling } from "../utils/refreshErrorHandler";
+import Animated, { useSharedValue, useAnimatedScrollHandler } from "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function HomeScreen() {
@@ -43,14 +43,13 @@ export default function HomeScreen() {
     console.log("🏠 HomeScreen: Confessions count changed:", confessions.length);
   }, [confessions.length]);
 
-  // Debounced refresh and like toggle
-  const { refresh: _refresh } = useDebouncedRefresh(loadConfessions, 1000);
+  // Debounced like toggle
   const debouncedToggleLike = useDebouncedLikeToggle(toggleLike, 500);
   const hasMore = useConfessionStore((state) => state.hasMore);
   const { getRepliesForConfession } = useReplyStore();
   const { isSaved } = useSavedStore();
   const { loadRepliesForVisibleItems, clearLoadedReplies } = useOptimizedReplies();
-  const { scrollViewRef, handleScroll } = useScrollRestoration({ key: "home-feed" });
+  const { scrollViewRef } = useScrollRestoration({ key: "home-feed" });
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
   const [refreshing, setRefreshing] = useState(false);
@@ -60,9 +59,7 @@ export default function HomeScreen() {
   const [networkError, setNetworkError] = useState(false);
   const actionSheetRef = useRef<BottomSheetModal | null>(null);
 
-  // Enhanced pull-to-refresh state
-  const [pullDistance, setPullDistance] = useState(0);
-  const [isEnhancedRefreshing, setIsEnhancedRefreshing] = useState(false);
+  // Scroll restoration state
   const scrollY = useSharedValue(0);
   const flashListRef = useRef<any>(null);
 
@@ -90,83 +87,65 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     console.log("🔄 HomeScreen: Pull to refresh started");
     setRefreshing(true);
-    setIsEnhancedRefreshing(true);
 
-    try {
-      // Debug: Check store state before refresh
-      if (__DEV__) {
-        console.log("🔄 HomeScreen: Store state before refresh:");
-        checkConfessionStoreState();
-      }
+    const result = await withRefreshErrorHandling(
+      async () => {
+        // Debug: Check store state before refresh
+        if (__DEV__) {
+          console.log("🔄 HomeScreen: Store state before refresh:");
+          await checkConfessionStoreState();
+        }
 
-      // Check network connectivity first
-      const netInfo = await NetInfo.fetch();
-      if (!netInfo.isConnected) {
-        console.log("❌ HomeScreen: No network connection");
-        setNetworkError(true);
-        return;
-      }
+        // Check network connectivity first
+        const netInfo = await NetInfo.fetch();
+        if (!netInfo.isConnected) {
+          console.log("❌ HomeScreen: No network connection");
+          setNetworkError(true);
+          throw new Error("No network connection");
+        }
 
-      console.log("✅ HomeScreen: Network connected, proceeding with refresh");
-      setNetworkError(false);
+        console.log("✅ HomeScreen: Network connected, proceeding with refresh");
+        setNetworkError(false);
 
-      // Call loadConfessions directly instead of debounced version for pull-to-refresh
-      console.log("🔄 HomeScreen: Calling loadConfessions directly");
-      await loadConfessions();
+        // Call loadConfessions directly instead of debounced version for pull-to-refresh
+        console.log("🔄 HomeScreen: Calling loadConfessions directly");
+        await loadConfessions();
 
-      // Clear loaded replies cache to force reload
-      clearLoadedReplies();
+        // Clear loaded replies cache to force reload
+        clearLoadedReplies();
 
-      // Debug: Check store state after refresh
-      if (__DEV__) {
-        console.log("🔄 HomeScreen: Store state after refresh:");
-        setTimeout(() => checkConfessionStoreState(), 1000);
-      }
-    } catch (error) {
-      console.error("❌ HomeScreen: Refresh failed:", error);
+        // Debug: Check store state after refresh
+        if (__DEV__) {
+          console.log("🔄 HomeScreen: Store state after refresh:");
+          setTimeout(async () => {
+            await checkConfessionStoreState();
+          }, 1000);
+        }
+
+        return true;
+      },
+      "home-screen-refresh",
+      false, // Don't show alert, we handle it with setNetworkError
+    );
+
+    if (!result) {
       setNetworkError(true);
-    } finally {
-      console.log("🔄 HomeScreen: Pull to refresh completed");
-      setRefreshing(false);
-      setIsEnhancedRefreshing(false);
     }
+
+    console.log("🔄 HomeScreen: Pull to refresh completed");
+    setRefreshing(false);
   }, [loadConfessions, clearLoadedReplies]);
 
-  const handleEnhancedRefresh = useCallback(async () => {
-    setIsEnhancedRefreshing(true);
-    await onRefresh();
-  }, [onRefresh]);
-
-  const onRefreshComplete = useCallback(() => {
-    // Called when trending hint animation completes
-    impactAsync();
-  }, [impactAsync]);
-
-  // Scroll handler for enhanced pull-to-refresh using overscroll (y < 0)
-  const REFRESH_THRESHOLD = 80;
+  // Simplified scroll handler for scroll restoration only
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       const y = event.contentOffset.y || 0;
       scrollY.value = y;
-      if (y <= 0) {
-        // Update pull distance based on overscroll
-        runOnJS(setPullDistance)(Math.max(0, -y));
-      } else {
-        runOnJS(setPullDistance)(0);
-      }
 
-      // Handle scroll restoration - pass contentOffset directly since it's a worklet event
-      runOnJS(handleScroll)(event.contentOffset);
+      // Note: Temporarily disabled scroll restoration to avoid runOnJS deprecation issues
+      // This can be re-enabled later with proper worklet handling
     },
   });
-
-  // Trigger refresh when user releases after passing threshold
-  const onScrollEndDrag = (e: any) => {
-    const y = e?.nativeEvent?.contentOffset?.y ?? 0;
-    if (y <= -REFRESH_THRESHOLD && !isEnhancedRefreshing) {
-      handleEnhancedRefresh();
-    }
-  };
 
   const onEndReached = useCallback(async () => {
     if (!isLoadingMore && hasMore) {
@@ -180,42 +159,54 @@ export default function HomeScreen() {
     }
   }, [isLoadingMore, hasMore, loadMoreConfessions]);
 
-  const handleToggleLike = async (confessionId: string) => {
-    await debouncedToggleLike(confessionId);
-    impactAsync();
-  };
+  const handleToggleLike = useCallback(
+    async (confessionId: string) => {
+      await debouncedToggleLike(confessionId);
+      impactAsync();
+    },
+    [debouncedToggleLike, impactAsync],
+  );
 
-  const handleSecretPress = (confession: any) => {
-    impactAsync();
-    if (confession.type === "video") {
-      // Navigate to full-screen video player
-      navigation.navigate("VideoPlayer", { confessionId: confession.id });
-    } else {
-      // Navigate to text confession detail
-      navigation.navigate("SecretDetail", { confessionId: confession.id });
-    }
-  };
+  const handleSecretPress = useCallback(
+    (confession: any) => {
+      impactAsync();
+      if (confession.type === "video") {
+        // Navigate to full-screen video player
+        navigation.navigate("VideoPlayer", { confessionId: confession.id });
+      } else {
+        // Navigate to text confession detail
+        navigation.navigate("SecretDetail", { confessionId: confession.id });
+      }
+    },
+    [impactAsync, navigation],
+  );
 
-  const handleReportPress = (confessionId: string, event: any) => {
-    event.stopPropagation(); // Prevent navigation to detail screen
-    setReportingConfessionId(confessionId);
-    setReportModalVisible(true);
-    impactAsync();
-  };
+  const handleReportPress = useCallback(
+    (confessionId: string, event: any) => {
+      event.stopPropagation(); // Prevent navigation to detail screen
+      setReportingConfessionId(confessionId);
+      setReportModalVisible(true);
+      impactAsync();
+    },
+    [impactAsync],
+  );
 
-  const handleActionSheetPress = (confessionId: string, confessionText: string, event: any) => {
-    event.stopPropagation();
-    setReportingConfessionId(confessionId);
-    setSelectedConfessionText(confessionText);
-    impactAsync();
-    const ref = actionSheetRef.current;
-    if (ref && typeof ref.present === "function") ref.present();
-  };
+  const handleActionSheetPress = useCallback(
+    (confessionId: string, confessionText: string, event: any) => {
+      event.stopPropagation();
+      setReportingConfessionId(confessionId);
+      setSelectedConfessionText(confessionText);
+      impactAsync();
+      const ref = actionSheetRef.current;
+      if (ref && typeof ref.present === "function") ref.present();
+    },
+    [impactAsync],
+  );
 
-  const handleReportModalClose = () => {
+  const handleReportModalClose = useCallback(() => {
     setReportModalVisible(false);
     setReportingConfessionId(null);
-  };
+  }, []);
 
   const renderItem = useCallback(
     ({ item: confession, index }: { item: any; index: number }) => {
@@ -372,7 +363,7 @@ export default function HomeScreen() {
               onEndReached={onEndReached}
               onEndReachedThreshold={0.5}
               ListFooterComponent={renderFooter}
-              ListEmptyComponent={networkError ? () => <NetworkErrorState onRetry={onRefresh} /> : renderEmpty}
+              ListEmptyComponent={networkError ? <NetworkErrorState onRetry={onRefresh} /> : renderEmpty()}
               refreshing={refreshing}
               onRefresh={onRefresh}
               onViewableItemsChanged={({ viewableItems }) => {
@@ -382,19 +373,9 @@ export default function HomeScreen() {
               viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
               extraData={{ refreshing, isLoadingMore, networkError }}
               onScroll={scrollHandler}
-              onScrollEndDrag={onScrollEndDrag}
               scrollEventThrottle={16}
             />
           </Animated.View>
-
-          {/* Enhanced Pull to Refresh Overlay */}
-          <PullToRefresh
-            pullDistance={pullDistance}
-            isRefreshing={isEnhancedRefreshing}
-            threshold={REFRESH_THRESHOLD}
-            context="secrets"
-            onRefreshComplete={onRefreshComplete}
-          />
         </View>
 
         {/* Report Modal */}

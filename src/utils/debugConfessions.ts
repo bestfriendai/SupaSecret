@@ -140,14 +140,15 @@ export const debugRealtimeSubscription = () => {
   };
 };
 
-export const checkConfessionStoreState = () => {
+export const checkConfessionStoreState = async () => {
   if (!__DEV__) return;
 
   // This will be called from the component to check store state
   console.log("🔍 Debug: Checking confession store state...");
 
-  // Import dynamically to avoid circular dependencies
-  import("../state/confessionStore").then(({ useConfessionStore }) => {
+  try {
+    // Import dynamically to avoid circular dependencies
+    const { useConfessionStore } = await import("../state/confessionStore");
     const state = useConfessionStore.getState();
     console.log("📊 Store state:", {
       confessionsCount: state.confessions.length,
@@ -159,5 +160,7 @@ export const checkConfessionStoreState = () => {
     if (state.confessions.length > 0) {
       console.log("📝 Latest confession:", state.confessions[0]);
     }
-  });
+  } catch (error) {
+    console.error("❌ Error checking store state:", error);
+  }
 };

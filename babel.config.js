@@ -13,8 +13,8 @@ module.exports = function (api) {
           },
         },
       ],
-      // React Native Reanimated plugin MUST be last for v4 compatibility
-      "react-native-reanimated/plugin",
+      // React Native Worklets plugin MUST be last for v4 compatibility
+      "react-native-worklets/plugin",
     ],
   };
 };

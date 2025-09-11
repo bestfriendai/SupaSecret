@@ -281,6 +281,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
       actionButtonsTranslateX.value = interpolate(event.translationX, [-100, 0, 100], [20, 0, -20], "clamp");
     })
     .onEnd((event) => {
+      "worklet";
       const shouldSwipe = Math.abs(event.translationY) > SWIPE_THRESHOLD;
       const shouldRefresh = event.translationY > 80 && currentIndex === 0;
 

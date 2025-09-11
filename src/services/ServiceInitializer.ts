@@ -69,7 +69,9 @@ export class ServiceInitializer {
       try {
         await AdMobService.initialize();
         result.initializedServices.push("AdMob");
-        console.log("✅ AdMob initialized");
+        if (__DEV__) {
+          console.log("✅ AdMob initialized");
+        }
       } catch (error) {
         const errorMsg = `AdMob initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`;
         if (IS_EXPO_GO) {
@@ -77,7 +79,9 @@ export class ServiceInitializer {
         } else {
           result.errors.push(errorMsg);
         }
-        console.error("❌", errorMsg);
+        if (__DEV__) {
+          console.error("❌", errorMsg);
+        }
       }
     }
 
@@ -145,11 +149,15 @@ export class ServiceInitializer {
       try {
         await this.initializePushNotifications();
         result.initializedServices.push("Push Notifications");
-        console.log("✅ Push notifications initialized");
+        if (__DEV__) {
+          console.log("✅ Push notifications initialized");
+        }
       } catch (error) {
         const errorMsg = `Push notifications initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`;
         result.warnings.push(errorMsg);
-        console.warn("⚠️", errorMsg);
+        if (__DEV__) {
+          console.warn("⚠️", errorMsg);
+        }
       }
     }
 
@@ -157,10 +165,12 @@ export class ServiceInitializer {
     this.initializationResult = result;
 
     // Log summary
-    console.log("🎯 Service initialization complete:");
-    console.log(`✅ Initialized: ${result.initializedServices.join(", ")}`);
-    if (result.warnings.length > 0) {
-      console.log(`⚠️ Warnings: ${result.warnings.length}`);
+    if (__DEV__) {
+      console.log("🎯 Service initialization complete:");
+      console.log(`✅ Initialized: ${result.initializedServices.join(", ")}`);
+      if (result.warnings.length > 0) {
+        console.log(`⚠️ Warnings: ${result.warnings.length}`);
+      }
     }
     if (result.errors.length > 0) {
       console.log(`❌ Errors: ${result.errors.length}`);

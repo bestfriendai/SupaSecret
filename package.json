@@ -13,7 +13,10 @@
     "migrate:videos:exec": "node scripts/migrate-videos-to-confessions.js --execute",
     "migrate:videos:update-db": "node scripts/migrate-videos-to-confessions.js --execute --update-db",
     "migrate:copy-storage": "node scripts/copy-storage-objects.js",
-    "complete-implementation": "node scripts/complete-implementation.js"
+    "complete-implementation": "node scripts/complete-implementation.js",
+    "video-cleanup:report": "node scripts/video-cleanup-report.js",
+    "video-cleanup:dry-run": "node scripts/video-cleanup-report.js --dry-run",
+    "video-cleanup:cleanup": "node scripts/video-cleanup-report.js --cleanup"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
