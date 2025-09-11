@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, RefreshControl } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,7 +26,7 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11yProps } from "../utils/accessibility";
 import { useDebouncedLikeToggle } from "../utils/debounce";
 import { withRefreshErrorHandling } from "../utils/refreshErrorHandler";
-import Animated, { useSharedValue, useAnimatedScrollHandler } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function HomeScreen() {
@@ -59,8 +59,7 @@ export default function HomeScreen() {
   const [networkError, setNetworkError] = useState(false);
   const actionSheetRef = useRef<BottomSheetModal | null>(null);
 
-  // Scroll restoration state
-  const scrollY = useSharedValue(0);
+  // FlashList ref for potential future scroll restoration
   const flashListRef = useRef<any>(null);
 
   // Check network connectivity and handle errors
@@ -136,16 +135,9 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [loadConfessions, clearLoadedReplies]);
 
-  // Simplified scroll handler for scroll restoration only
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      const y = event.contentOffset.y || 0;
-      scrollY.value = y;
-
-      // Note: Temporarily disabled scroll restoration to avoid runOnJS deprecation issues
-      // This can be re-enabled later with proper worklet handling
-    },
-  });
+  // Note: Removed useAnimatedScrollHandler to fix FlashList "_c.call is not a function" error
+  // FlashList has its own internal scroll handling that conflicts with Reanimated's scroll handler
+  // Scroll restoration can be implemented differently if needed
 
   const onEndReached = useCallback(async () => {
     if (!isLoadingMore && hasMore) {
@@ -364,16 +356,20 @@ export default function HomeScreen() {
               onEndReachedThreshold={0.5}
               ListFooterComponent={renderFooter}
               ListEmptyComponent={networkError ? <NetworkErrorState onRetry={onRefresh} /> : renderEmpty()}
-              refreshing={refreshing}
-              onRefresh={onRefresh}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={["#1D9BF0"]}
+                  tintColor="#1D9BF0"
+                />
+              }
               onViewableItemsChanged={({ viewableItems }) => {
                 const visibleIds = viewableItems.map((item) => item.item.id);
                 loadRepliesForVisibleItems(visibleIds);
               }}
               viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
               extraData={{ refreshing, isLoadingMore, networkError }}
-              onScroll={scrollHandler}
-              scrollEventThrottle={16}
             />
           </Animated.View>
         </View>

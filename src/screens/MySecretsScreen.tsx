@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Text, Pressable, TextInput, Alert } from "react-native";
+import { View, Text, Pressable, TextInput, Alert, RefreshControl } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,12 +24,22 @@ export default function MySecretsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Debounce search query to improve performance
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
 
   useEffect(() => {
     loadUserConfessions();
+  }, [loadUserConfessions]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadUserConfessions();
+    } finally {
+      setRefreshing(false);
+    }
   }, [loadUserConfessions]);
 
   // Filter and search confessions
@@ -370,6 +380,14 @@ export default function MySecretsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: 0 }}
         ListEmptyComponent={renderEmpty}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#1D9BF0"
+            colors={["#1D9BF0"]}
+          />
+        }
       />
     </View>
   );

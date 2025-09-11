@@ -21,7 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import AnimatedActionButton from "./AnimatedActionButton";
-import PullToRefresh from "./PullToRefresh";
+import PullToRefreshOverlay from "./PullToRefreshOverlay";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
 import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
 import ReportModal from "./ReportModal";
@@ -59,6 +59,7 @@ interface EnhancedVideoFeedProps {
 
 export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const confessions = useConfessionStore((state) => state.confessions);
+  const loadConfessions = useConfessionStore((state) => state.loadConfessions);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const userPreferences = useConfessionStore((state) => state.userPreferences);
   const updateVideoAnalytics = useConfessionStore((state) => state.updateVideoAnalytics);
@@ -172,11 +173,13 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    // Simulate refresh delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsRefreshing(false);
+    try {
+      await loadConfessions();            // <-- real fetch
+    } finally {
+      setIsRefreshing(false);
+    }
     PreferenceAwareHaptics.impactAsync();
-  }, []);
+  }, [loadConfessions]);
 
   const handleSpeedChange = useCallback(
     (speed: number) => {
@@ -410,7 +413,13 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
             />
 
             {/* Pull to Refresh Indicator */}
-            <PullToRefresh pullDistance={pullDistance} isRefreshing={isRefreshing} threshold={80} />
+            <PullToRefreshOverlay
+              pullDistance={pullDistance}
+              isRefreshing={isRefreshing}
+              threshold={80}
+              context="videos"
+              onRefreshComplete={() => PreferenceAwareHaptics.impactAsync()}
+            />
 
             {/* Heart Animation Overlay */}
             <Animated.View
