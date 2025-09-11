@@ -19,7 +19,7 @@ import Animated, {
   withSequence,
   withDelay,
 } from "react-native-reanimated";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import AnimatedActionButton from "./AnimatedActionButton";
 import PullToRefreshOverlay from "./PullToRefreshOverlay";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
@@ -381,9 +381,8 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   // currentVideo/currentPlayer are defined above
 
   return (
-    <GestureHandlerRootView className="flex-1">
+    <View className="flex-1 bg-black">
       <StatusBar hidden />
-      <View className="flex-1 bg-black">
         <GestureDetector gesture={composedGestures}>
           <Animated.View style={[{ flex: 1 }, containerStyle]}>
             {/* Video Player */}
@@ -637,6 +636,5 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
         {/* First-time User Guidance */}
         <VideoGuidanceOverlay isVisible={showGuidance} onDismiss={() => setShowGuidance(false)} />
       </View>
-    </GestureHandlerRootView>
   );
 }
