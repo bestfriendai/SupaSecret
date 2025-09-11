@@ -33,16 +33,38 @@ interface StatItemProps {
 const StatItem: React.FC<StatItemProps> = ({ icon, label, value, onPress, color = "#FF6B35" }) => (
   <TouchableOpacity
     onPress={onPress}
-    className="flex-1 items-center p-6 bg-gray-900 rounded-2xl mx-2 border border-gray-800"
+    style={{
+      flex: 1,
+      alignItems: 'center',
+      padding: 20,
+      backgroundColor: '#1F2937',
+      borderRadius: 16,
+      marginHorizontal: 6,
+      borderWidth: 1,
+      borderColor: '#374151',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3
+    }}
     activeOpacity={0.7}
     accessibilityLabel={`${label}: ${value}`}
     accessibilityRole="button"
   >
-    <View className="w-12 h-12 rounded-full items-center justify-center mb-3" style={{ backgroundColor: `${color}20` }}>
+    <View style={{
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+      backgroundColor: `${color}20`
+    }}>
       <Ionicons name={icon} size={24} color={color} />
     </View>
-    <Text className="text-2xl font-bold text-white mb-1">{value}</Text>
-    <Text className="text-gray-400 text-sm text-center">{label}</Text>
+    <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 4 }}>{value}</Text>
+    <Text style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center' }}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -149,17 +171,30 @@ const ProfileScreen = () => {
 
   // Computed values - use destructured values
   const finalIsPremium = isPremium || currentTier === "plus";
-  const finalUserConfessions = userConfessions || [];
 
-  const userStats = useMemo(
-    () => ({
+  const userStats = useMemo(() => {
+    const finalUserConfessions = userConfessions || [];
+    // Get video analytics from store
+    const { videoAnalytics } = useConfessionStore.getState();
+
+    // Calculate total views from video analytics
+    const totalViews = finalUserConfessions.reduce((acc, confession) => {
+      const analytics = videoAnalytics[confession.id];
+      if (analytics) {
+        // Use watch_sessions as view count, fallback to interactions
+        return acc + (analytics.watch_sessions || analytics.interactions || 0);
+      }
+      // For confessions without analytics, assume at least 1 view (the user's own view)
+      return acc + 1;
+    }, 0);
+
+    return {
       confessions: finalUserConfessions.length,
       likes: finalUserConfessions.reduce((acc, confession) => acc + (confession.likes || 0), 0),
-      views: finalUserConfessions.reduce((acc, confession) => acc + (confession.timestamp || 0), 0), // Use timestamp as proxy for views
+      views: totalViews,
       memberSince: user?.createdAt ? new Date(user.createdAt).getFullYear() : new Date().getFullYear(),
-    }),
-    [finalUserConfessions, user],
-  );
+    };
+  }, [userConfessions, user]);
 
   // Handlers
   const onRefresh = useCallback(async () => {
@@ -328,30 +363,61 @@ const ProfileScreen = () => {
           />
         }
       >
-        {/* User Info Section */}
-        <View className="px-6 py-8">
-          <View className="flex-row items-center mb-6">
-            <View className="w-24 h-24 bg-gradient-to-br from-orange-500 to-pink-600 rounded-full items-center justify-center mr-4 shadow-lg">
-              <Ionicons name="person" size={36} color="white" />
+        {/* User Info Section - Improved Layout */}
+        <View style={{ paddingHorizontal: 24, paddingVertical: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+            <View style={{
+              width: 80,
+              height: 80,
+              backgroundColor: '#FF6B35',
+              borderRadius: 40,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 16,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8
+            }}>
+              <Ionicons name="person" size={32} color="white" />
               {finalIsPremium && (
-                <View className="absolute -top-1 -right-1 w-8 h-8 bg-yellow-500 rounded-full items-center justify-center border-2 border-black">
-                  <Ionicons name="star" size={14} color="black" />
+                <View style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  width: 24,
+                  height: 24,
+                  backgroundColor: '#FFD700',
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: '#000'
+                }}>
+                  <Ionicons name="star" size={12} color="black" />
                 </View>
               )}
             </View>
-            <View className="flex-1">
-              <Text className="text-xl font-semibold text-white mb-1" numberOfLines={1}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: 'white', marginBottom: 4 }} numberOfLines={1}>
                 {user?.email || "Anonymous User"}
               </Text>
-              <Text className="text-gray-400 text-sm">Member since {userStats.memberSince}</Text>
+              <Text style={{ color: '#9CA3AF', fontSize: 14 }}>Member since {userStats.memberSince}</Text>
+              {finalIsPremium && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                  <Ionicons name="star" size={14} color="#FFD700" />
+                  <Text style={{ color: '#FFD700', fontSize: 12, marginLeft: 4, fontWeight: '600' }}>Premium Member</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
 
-        {/* Stats Section */}
-        <View className="px-4 mb-6">
-          <Text className="text-lg font-semibold text-white mb-4 px-2">Your Stats</Text>
-          <View className="flex-row justify-between">
+        {/* Stats Section - Improved Layout */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: 'white', marginBottom: 16, paddingHorizontal: 8 }}>Your Stats</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <StatItem
               icon="document-text"
               label="Confessions"
