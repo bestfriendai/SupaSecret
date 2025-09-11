@@ -90,7 +90,12 @@ export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds 
 
     if (error) {
       if (__DEV__) {
-        console.error("Failed to create signed URL:", error);
+        // Only log as warning for "Object not found" errors since these are expected for orphaned DB entries
+        if (error.message?.includes("Object not found")) {
+          console.warn(`⚠️ Video file not found in storage: ${pathOrUrl}`);
+        } else {
+          console.error("Failed to create signed URL:", error);
+        }
       }
       // Return empty string as fallback - calling code should handle this gracefully
       return "";
@@ -99,7 +104,12 @@ export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds 
     return data?.signedUrl || "";
   } catch (error) {
     if (__DEV__) {
-      console.error("Error creating signed URL:", error);
+      // More specific error logging
+      if (error instanceof Error && error.message?.includes("Object not found")) {
+        console.warn(`⚠️ Video file not found in storage: ${pathOrUrl}`);
+      } else {
+        console.error("Error creating signed URL:", error);
+      }
     }
     // Return empty string as fallback
     return "";

@@ -13,14 +13,15 @@ import { createApiError, API_ERROR_CODES } from "../types/apiError";
 
 export const getOpenAIClient = () => {
   try {
-    const apiKey = process.env.EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY;
+    const apiKey = process.env.EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY || process.env.EXPO_PUBLIC_OPENAI_API_KEY;
     if (!apiKey) {
       const error = createApiError(
         "openai",
-        "OpenAI API key not found in environment variables",
+        "OpenAI API key not found in environment variables. Please set EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY or EXPO_PUBLIC_OPENAI_API_KEY",
         API_ERROR_CODES.API_KEY_NOT_FOUND,
       );
       handleApiError(error, "openai", "getOpenAIClient");
+      return null; // Return null instead of throwing to prevent app crashes
     }
 
     return new OpenAI({
@@ -28,6 +29,7 @@ export const getOpenAIClient = () => {
     });
   } catch (error) {
     handleApiError(error, "openai", "getOpenAIClient");
+    return null; // Return null on error to prevent app crashes
   }
 };
 

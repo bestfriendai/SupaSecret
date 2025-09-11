@@ -67,6 +67,7 @@ export default function ReportModal({ isVisible, onClose, confessionId, replyId,
       }
     })
     .onEnd((event) => {
+      "worklet";
       if (event.translationY > MODAL_HEIGHT * 0.3) {
         translateY.value = withSpring(MODAL_HEIGHT);
         runOnJS(onClose)();

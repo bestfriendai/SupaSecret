@@ -13,14 +13,15 @@ import { createApiError, API_ERROR_CODES } from "../types/apiError";
 
 export const getAnthropicClient = () => {
   try {
-    const apiKey = process.env.EXPO_PUBLIC_VIBECODE_ANTHROPIC_API_KEY;
+    const apiKey = process.env.EXPO_PUBLIC_VIBECODE_ANTHROPIC_API_KEY || process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
     if (!apiKey) {
       const error = createApiError(
         "anthropic",
-        "Anthropic API key not found in environment variables",
+        "Anthropic API key not found in environment variables. Please set EXPO_PUBLIC_VIBECODE_ANTHROPIC_API_KEY or EXPO_PUBLIC_ANTHROPIC_API_KEY",
         API_ERROR_CODES.API_KEY_NOT_FOUND,
       );
       handleApiError(error, "anthropic", "getAnthropicClient");
+      return null; // Return null instead of throwing to prevent app crashes
     }
 
     return new Anthropic({
@@ -28,6 +29,7 @@ export const getAnthropicClient = () => {
     });
   } catch (error) {
     handleApiError(error, "anthropic", "getAnthropicClient");
+    return null; // Return null on error to prevent app crashes
   }
 };
 

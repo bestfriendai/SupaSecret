@@ -41,6 +41,7 @@ export default function ShareModal({ isVisible, onClose, confessionId, confessio
       }
     })
     .onEnd((event) => {
+      "worklet";
       if (event.translationY > MODAL_HEIGHT * 0.3) {
         translateY.value = withSpring(MODAL_HEIGHT);
         runOnJS(onClose)();
