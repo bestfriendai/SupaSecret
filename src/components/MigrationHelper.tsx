@@ -23,7 +23,9 @@ export default function MigrationHelper() {
     setStatus("idle");
 
     try {
-      console.log("🚀 Starting reports table setup...");
+      if (__DEV__) {
+        console.log("🚀 Starting reports table setup...");
+      }
 
       // First check if table already exists
       const tableExists = await testReportsTable();

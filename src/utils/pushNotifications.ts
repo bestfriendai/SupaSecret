@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
 
 // Configure notification behavior
@@ -61,9 +62,15 @@ export class PushNotificationManager {
       }
 
       // Get push token
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
-      });
+      const projectId =
+        process.env.EXPO_PUBLIC_PROJECT_ID ||
+        (Constants.expoConfig as any)?.extra?.eas?.projectId ||
+        (Constants.manifest as any)?.extra?.eas?.projectId;
+      if (!projectId) {
+        console.warn("Expo projectId missing; skipping push token registration");
+        return null;
+      }
+      const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
 
       this.pushToken = tokenData.data;
 

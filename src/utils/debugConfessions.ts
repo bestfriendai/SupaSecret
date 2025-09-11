@@ -37,7 +37,9 @@ export const debugConfessionPosting = async () => {
       return;
     }
 
-    console.log("✅ Can read confessions:", confessions?.length || 0);
+    if (__DEV__) {
+      console.log("✅ Can read confessions:", confessions?.length || 0);
+    }
 
     // 3. Try to insert a test confession
     const testConfession = {
@@ -49,7 +51,9 @@ export const debugConfessionPosting = async () => {
       is_anonymous: true,
     };
 
-    console.log("📝 Inserting test confession:", testConfession);
+    if (__DEV__) {
+      console.log("📝 Inserting test confession:", testConfession);
+    }
 
     const { data: insertData, error: insertError } = await supabase
       .from("confessions")
@@ -58,7 +62,9 @@ export const debugConfessionPosting = async () => {
       .single();
 
     if (insertError) {
-      console.error("❌ Insert error:", insertError);
+      if (__DEV__) {
+        console.error("❌ Insert error:", insertError);
+      }
       return;
     }
 
@@ -135,6 +141,8 @@ export const debugRealtimeSubscription = () => {
 };
 
 export const checkConfessionStoreState = () => {
+  if (!__DEV__) return;
+
   // This will be called from the component to check store state
   console.log("🔍 Debug: Checking confession store state...");
 

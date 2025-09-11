@@ -3,6 +3,7 @@ import * as VideoThumbnails from "expo-video-thumbnails";
 import { transcribeAudio } from "../api/transcribe-audio";
 import { env } from "./env";
 import type { ProcessedVideo, VideoProcessingOptions } from "../services/IAnonymiser";
+import { ensureSignedVideoUrl, uploadVideoToSupabase } from "./storage";
 
 export enum ProcessingMode {
   LOCAL = "local", // On-device processing with FFmpeg
@@ -182,35 +183,20 @@ const processVideoServer = async (
 
     onProgress?.(15, "Uploading video to server...");
 
-    // Read and upload video file
-    const videoBase64 = await FileSystem.readAsStringAsync(videoUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    const fileName = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}.mp4`;
-    const { data: uploadData, error: uploadError } = await supabase.storage.from("videos").upload(
-      fileName,
-      Uint8Array.from(atob(videoBase64), (c) => c.charCodeAt(0)),
-      {
-        contentType: "video/mp4",
-      },
-    );
-
-    if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`);
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData?.user) {
+      throw new Error("User not authenticated");
     }
+
+    const uploadRes = await uploadVideoToSupabase(videoUri, userData.user.id);
+    const uploadStoragePath = uploadRes.path;
 
     onProgress?.(40, "Processing video on server...");
 
-    // Get the full URL for the uploaded video
-    const { data: videoUrlData } = supabase.storage.from("videos").getPublicUrl(uploadData.path);
-    const fullVideoUrl = videoUrlData.publicUrl;
-
-    // Call Edge Function
+    // Call Edge Function with storage path (private bucket contract)
     const { data: processData, error: processError } = await supabase.functions.invoke("process-video", {
       body: {
-        videoUrl: fullVideoUrl,
-        videoPath: uploadData.path, // Keep both for compatibility
+        videoPath: uploadStoragePath,
         options: {
           enableFaceBlur: options.enableFaceBlur,
           enableVoiceChange: options.enableVoiceChange,
@@ -236,16 +222,13 @@ const processVideoServer = async (
 
     onProgress?.(80, "Processing complete!");
 
-    // Since our Edge Function currently returns the original video URL,
-    // we don't need to download a new file. In a real implementation,
-    // the Edge Function would process the video and return a new file path.
-
-    // For now, we'll just return the original video with processing metadata
+    const storagePath: string | undefined = processData.storagePath || undefined;
+    const signedUrl = await ensureSignedVideoUrl(storagePath);
 
     onProgress?.(100, "Server processing complete!");
 
     return {
-      uri: videoUri, // Return original video for now
+      uri: signedUrl || videoUri,
       transcription: processData.transcription || "Mock transcription for testing",
       duration: processData.duration || 30,
       thumbnailUri: processData.thumbnailUrl || "",

@@ -49,7 +49,7 @@ export default function PullToRefresh({
 
   useEffect(() => {
     if (isRefreshing) {
-      if (!userPreferences.reducedMotion) {
+      if (!userPreferences.reduced_motion) {
         rotation.value = withRepeat(
           withTiming(360, {
             duration: 1000,
@@ -80,7 +80,7 @@ export default function PullToRefresh({
         }, 3000);
       }
     }
-  }, [isRefreshing, userPreferences.reducedMotion, trendingHashtags, onRefreshComplete]);
+  }, [isRefreshing, userPreferences.reduced_motion, trendingHashtags, onRefreshComplete]);
 
   // Dynamic messaging based on context and pull state
   const getContextualMessage = () => {
@@ -197,7 +197,7 @@ export default function PullToRefresh({
               iconStyle,
             ]}
           >
-            {isRefreshing && !userPreferences.reducedMotion ? (
+            {isRefreshing && !userPreferences.reduced_motion ? (
               // Use Lottie animation for enhanced refresh experience
               <Ionicons name="refresh" size={20} color="#FFFFFF" />
             ) : (

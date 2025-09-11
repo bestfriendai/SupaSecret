@@ -31,11 +31,11 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
 
   // Debug focus changes and handle global video pause
   useEffect(() => {
-    console.log(`🎥 OptimizedVideoList: isFocused changed to ${isFocused}`);
+    if (__DEV__) console.log(`🎥 OptimizedVideoList: isFocused changed to ${isFocused}`);
 
     if (!isFocused) {
       // When tab loses focus, force all video items to pause
-      console.log(`🎥 Tab lost focus - forcing all videos to pause`);
+      if (__DEV__) console.log(`🎥 Tab lost focus - forcing all videos to pause`);
       // Note: FlashList will re-render items based on extraData including isFocused
     }
   }, [isFocused]);

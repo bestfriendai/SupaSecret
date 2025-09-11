@@ -58,7 +58,7 @@ export default function VideoControls({
 
   const handleSpeedChange = async (speed: number) => {
     try {
-      await updateUserPreferences({ playbackSpeed: speed });
+      await updateUserPreferences({ playback_speed: speed });
       onSpeedChange(speed);
       setShowSpeedOptions(false);
       impactAsync();
@@ -70,7 +70,7 @@ export default function VideoControls({
   const handleCaptionsToggle = async () => {
     const newValue = !captionsEnabled;
     try {
-      await updateUserPreferences({ captionsDefault: newValue });
+      await updateUserPreferences({ captions_default: newValue });
       onCaptionsToggle(newValue);
       impactAsync();
     } catch (error) {
@@ -119,12 +119,12 @@ export default function VideoControls({
                 paddingVertical: 8,
                 paddingHorizontal: 12,
                 borderRadius: 8,
-                backgroundColor: userPreferences.playbackSpeed === speed ? "rgba(59, 130, 246, 0.3)" : "transparent",
+                backgroundColor: userPreferences.playback_speed === speed ? "rgba(59, 130, 246, 0.3)" : "transparent",
               }}
             >
               <Text
                 className={`text-center font-medium ${
-                  userPreferences.playbackSpeed === speed ? "text-blue-400" : "text-white"
+                  userPreferences.playback_speed === speed ? "text-blue-400" : "text-white"
                 }`}
               >
                 {formatSpeed(speed)}
@@ -141,7 +141,7 @@ export default function VideoControls({
           onPress={() => setShowSpeedOptions(!showSpeedOptions)}
           className="w-12 h-12 bg-black/70 rounded-full items-center justify-center"
           {...getButtonA11yProps(
-            `Playback speed ${formatSpeed(userPreferences.playbackSpeed)}`,
+            `Playback speed ${formatSpeed(userPreferences.playback_speed)}`,
             "Double tap to change playback speed",
           )}
         >

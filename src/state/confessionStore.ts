@@ -142,7 +142,7 @@ export const useConfessionStore = create<ConfessionState>()(
         captions_default: true,
         haptics_enabled: true,
         reduced_motion: false,
-        playbackSpeed: 1.0,
+        playback_speed: 1.0,
       },
       isLoading: false,
       isLoadingMore: false,
@@ -206,7 +206,7 @@ export const useConfessionStore = create<ConfessionState>()(
           console.log("📥 Processed", confessions.length, "real confessions");
 
           // Combine real and sample confessions, then sort by timestamp (newest first)
-          const combinedConfessions = [...confessions, ...sampleConfessions];
+          const combinedConfessions = __DEV__ ? [...confessions, ...sampleConfessions] : [...confessions];
           const finalConfessions = combinedConfessions.sort((a, b) => b.timestamp - a.timestamp);
 
           console.log(
@@ -364,7 +364,9 @@ export const useConfessionStore = create<ConfessionState>()(
             throw new Error("User not authenticated");
           }
 
-          console.log("👤 User authenticated:", user.id);
+          if (__DEV__) {
+            console.log("👤 User authenticated:", user.id);
+          }
 
           let videoStoragePath: string | undefined;
           let signedVideoUrl: string | undefined;
@@ -375,11 +377,9 @@ export const useConfessionStore = create<ConfessionState>()(
               videoStoragePath = result.path; // store path in DB
               signedVideoUrl = result.signedUrl; // use for immediate playback
             } else {
-              // Already a remote URL (e.g., previously signed URL)
+              // Already a remote URL (likely a signed URL) – do not persist path to DB
               signedVideoUrl = confession.videoUri;
-              // Optionally, do not store signed URL in DB; keep it as content path if you have it
-              // For now, store the URL directly
-              videoStoragePath = confession.videoUri;
+              videoStoragePath = undefined;
             }
           }
 
@@ -406,7 +406,9 @@ export const useConfessionStore = create<ConfessionState>()(
             throw new Error("No data returned from confession insert");
           }
 
-          console.log("✅ Confession inserted successfully:", data);
+          if (__DEV__) {
+            console.log("✅ Confession inserted successfully:", data);
+          }
 
           const newConfession: Confession = {
             id: data.id,
@@ -686,9 +688,7 @@ export const useConfessionStore = create<ConfessionState>()(
             watch_time: analytics.watch_time,
             completion_rate: analytics.completion_rate,
             last_watched: analytics.last_watched
-              ? analytics.last_watched
-                ? new Date(analytics.last_watched).toISOString()
-                : undefined
+              ? new Date(analytics.last_watched).toISOString()
               : new Date().toISOString(),
             interactions: analytics.interactions,
           });
@@ -741,7 +741,7 @@ export const useConfessionStore = create<ConfessionState>()(
               captions_default: data.captions_default ?? true,
               haptics_enabled: data.haptics_enabled ?? true,
               reduced_motion: data.reduced_motion ?? false,
-              playback_speed: 1.0,
+              playback_speed: (data as any).playback_speed ?? 1.0,
             };
             set({ userPreferences: preferences, isLoading: false });
           } else {
@@ -763,15 +763,17 @@ export const useConfessionStore = create<ConfessionState>()(
           } = await supabase.auth.getUser();
           if (!user) throw new Error("User not authenticated");
 
+          const curr = get().userPreferences;
           const { error } = await supabase.from("user_preferences").upsert({
             user_id: user.id,
-            autoplay: preferences.autoplay,
-            sound_enabled: preferences.soundEnabled,
-            quality_preference: preferences.qualityPreference,
-            data_usage_mode: preferences.dataUsageMode,
-            captions_default: preferences.captionsDefault,
-            haptics_enabled: preferences.hapticsEnabled,
-            reduced_motion: preferences.reducedMotion,
+            autoplay: preferences.autoplay ?? curr.autoplay,
+            sound_enabled: (preferences as any).sound_enabled ?? curr.sound_enabled,
+            quality_preference: (preferences as any).quality_preference ?? curr.quality_preference,
+            data_usage_mode: (preferences as any).data_usage_mode ?? curr.data_usage_mode,
+            captions_default: (preferences as any).captions_default ?? curr.captions_default,
+            haptics_enabled: (preferences as any).haptics_enabled ?? curr.haptics_enabled,
+            reduced_motion: (preferences as any).reduced_motion ?? curr.reduced_motion,
+            playback_speed: (preferences as any).playback_speed ?? curr.playback_speed,
           });
 
           if (error) throw error;
@@ -779,7 +781,28 @@ export const useConfessionStore = create<ConfessionState>()(
           set((state) => ({
             userPreferences: {
               ...state.userPreferences,
-              ...preferences,
+              ...(preferences.autoplay !== undefined && { autoplay: preferences.autoplay }),
+              ...((preferences as any).sound_enabled !== undefined && {
+                sound_enabled: (preferences as any).sound_enabled,
+              }),
+              ...((preferences as any).quality_preference !== undefined && {
+                quality_preference: (preferences as any).quality_preference,
+              }),
+              ...((preferences as any).data_usage_mode !== undefined && {
+                data_usage_mode: (preferences as any).data_usage_mode,
+              }),
+              ...((preferences as any).captions_default !== undefined && {
+                captions_default: (preferences as any).captions_default,
+              }),
+              ...((preferences as any).haptics_enabled !== undefined && {
+                haptics_enabled: (preferences as any).haptics_enabled,
+              }),
+              ...((preferences as any).reduced_motion !== undefined && {
+                reduced_motion: (preferences as any).reduced_motion,
+              }),
+              ...((preferences as any).playback_speed !== undefined && {
+                playback_speed: (preferences as any).playback_speed,
+              }),
             },
             isLoading: false,
           }));

@@ -45,7 +45,7 @@ function EnhancedVideoItem({
   const sourceUri =
     confession.videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
-  const soundEnabled = useConfessionStore((state) => state.userPreferences.soundEnabled);
+  const soundEnabled = useConfessionStore((state) => state.userPreferences.sound_enabled);
 
   // Debug log for sound preferences
   if (__DEV__) {
@@ -208,35 +208,7 @@ function EnhancedVideoItem({
         nativeControls={false}
       />
 
-      {/* Tap to toggle play/pause and unmute */}
-      <Pressable
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 1,
-        }}
-        onPress={() => {
-          try {
-            if (player) {
-              if (player.playing) {
-                player.pause();
-              } else {
-                // When resuming, ensure audio is enabled based on forceUnmuted or user preference
-                if (forceUnmuted || soundEnabled) {
-                  player.muted = false;
-                }
-                player.play();
-              }
-              PreferenceAwareHaptics.impactAsync();
-            }
-          } catch (e) {
-            if (__DEV__) console.warn("Video tap handler failed:", e);
-          }
-        }}
-      />
+
 
       {/* Top Overlay */}
       <View className="absolute top-0 left-0 right-0 z-10">

@@ -2,11 +2,17 @@ import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 import { Database } from "../types/database";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing required Supabase environment variables. Please check your .env file.");
+  const msg = "Missing required Supabase environment variables. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY (or provide the legacy *_VIBECODE_* vars).";
+  if (__DEV__) {
+    // Surface a clearer message in development rather than a silent failure
+    // eslint-disable-next-line no-console
+    console.error(msg);
+  }
+  throw new Error(msg);
 }
 
 // SDK 53: Secure storage adapter for enhanced security on iOS 18

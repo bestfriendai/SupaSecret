@@ -11,33 +11,33 @@ export type ReportStatus = "pending" | "reviewed" | "resolved" | "dismissed";
 
 export interface Report {
   id: string;
-  confession_id?: string | null;
-  reply_id?: string | null;
-  reporter_user_id: string;
+  confessionId?: string;
+  replyId?: string;
+  reporterUserId: string;
   reason: ReportReason;
-  additional_details?: string | null;
+  additionalDetails?: string;
   status: ReportStatus;
-  created_at: string;
-  reviewed_at?: string | null;
-  reviewed_by?: string | null;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
 }
 
 export interface CreateReportRequest {
-  confession_id?: string | null;
-  reply_id?: string | null;
+  confessionId?: string;
+  replyId?: string;
   reason: ReportReason;
-  additional_details?: string | null;
+  additionalDetails?: string;
 }
 
 export interface ReportState {
   reports: Report[];
-  is_loading: boolean;
+  isLoading: boolean;
   error: string | null;
 
   // Actions
-  create_report: (report: CreateReportRequest) => Promise<void>;
-  get_user_reports: () => Promise<void>;
-  clear_error: () => void;
+  createReport: (report: CreateReportRequest) => Promise<void>;
+  getUserReports: () => Promise<void>;
+  clearError: () => void;
 }
 
 // Human-readable labels for report reasons

@@ -7,8 +7,8 @@ import * as Linking from "expo-linking";
 // Configuration for link generation
 const LINK_CONFIG = {
   // Use app deep link for production, fallback to web URL for sharing
-  appScheme: "supasecret",
-  webDomain: "secrets.app",
+  appScheme: "toxicconfessions",
+  webDomain: "toxicconfessions.app",
   // You can configure this based on environment
   useDeepLinks: true,
 };

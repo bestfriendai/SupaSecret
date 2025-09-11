@@ -4,6 +4,7 @@ import { Audio } from "expo-av";
 // import Voice from '@react-native-voice/voice';
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { IAnonymiser, ProcessedVideo, VideoProcessingOptions } from "./IAnonymiser";
+import { ensureSignedVideoUrl, uploadVideoToSupabase } from "../utils/storage";
 import { supabase } from "../lib/supabase";
 import { env } from "../utils/env";
 
@@ -69,35 +70,15 @@ export class VideoProcessingService implements IAnonymiser {
         return await this.processVideoLocally(videoUri, options, onProgress);
       }
 
-      // Upload video to Supabase storage with user-specific folder structure
-      const fileName = `${user.id}/upload_${Date.now()}_${Math.random().toString(36).substring(7)}.mp4`;
-      const videoFile = await FileSystem.readAsStringAsync(videoUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const { data: uploadData, error: uploadError } = await supabase.storage.from("videos").upload(
-        fileName,
-        Uint8Array.from(atob(videoFile), (c) => c.charCodeAt(0)),
-        {
-          contentType: "video/mp4",
-        },
-      );
-
-      if (uploadError) {
-        console.error("Upload failed:", uploadError);
-        return await this.processVideoLocally(videoUri, options, onProgress);
-      }
+      // Upload video to Supabase storage using streaming helper
+      const upload = await uploadVideoToSupabase(videoUri, user.id, (p) => onProgress?.(10 + (p * 0.2) / 100, "Uploading video..."));
 
       onProgress?.(30, "Processing video on server...");
 
-      // Get the full URL for the uploaded video
-      const { data: videoUrlData } = supabase.storage.from("videos").getPublicUrl(uploadData.path);
-      const fullVideoUrl = videoUrlData.publicUrl;
-
-      // Call Edge Function for processing
+      // Call Edge Function for processing using storage path (private bucket)
       const { data: processData, error: processError } = await supabase.functions.invoke("process-video", {
         body: {
-          videoUrl: fullVideoUrl,
+          videoPath: upload.path,
           options: {
             enableFaceBlur: options.enableFaceBlur,
             enableVoiceChange: options.enableVoiceChange,
@@ -121,10 +102,11 @@ export class VideoProcessingService implements IAnonymiser {
 
       onProgress?.(80, "Processing complete!");
 
-      // For now, just return the original video with mock processing results
-      // The Edge Function is working but we're keeping it simple
+      const storagePath: string | undefined = processData?.storagePath || undefined;
+      const signedUrl = await ensureSignedVideoUrl(storagePath);
+
       return {
-        uri: videoUri, // Return original video
+        uri: signedUrl || videoUri,
         transcription: processData?.transcription || "Mock transcription for testing",
         duration: processData?.duration || 30,
         thumbnailUri: "",

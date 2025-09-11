@@ -21,7 +21,7 @@ export async function uploadVideoToSupabase(
   userId: string,
   onProgress?: (progressPercent: number) => void,
 ): Promise<UploadResult> {
-  const supabaseUrl = process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
   if (!supabaseUrl) throw new Error("Missing Supabase URL");
 
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -30,7 +30,7 @@ export async function uploadVideoToSupabase(
   if (!accessToken) throw new Error("Not authenticated");
 
   const filename = `${uuidv4()}.mp4`;
-  const objectPath = `videos/${userId}/${filename}`;
+  const objectPath = `confessions/${userId}/${filename}`;
   // Encode path components separately to preserve slashes for nested paths
   const encodedPath = objectPath
     .split("/")

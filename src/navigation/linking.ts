@@ -121,12 +121,12 @@ export const DeepLinkHandlers = {
 
   // Handle password reset links
   handlePasswordResetLink: (token: string) => {
-    return `supasecret://reset-password?token=${encodeURIComponent(token)}`;
+    return `toxicconfessions://reset-password?token=${encodeURIComponent(token)}`;
   },
 
   // Handle email verification links
   handleEmailVerificationLink: (token: string) => {
-    return `supasecret://verify-email?token=${encodeURIComponent(token)}`;
+    return `toxicconfessions://verify-email?token=${encodeURIComponent(token)}`;
   },
 
   // Handle paywall links
@@ -136,7 +136,7 @@ export const DeepLinkHandlers = {
     if (source) params.append("source", source);
 
     const queryString = params.toString();
-    return `supasecret://paywall${queryString ? `?${queryString}` : ""}`;
+    return `toxicconfessions://paywall${queryString ? `?${queryString}` : ""}`;
   },
 };
 
@@ -185,15 +185,15 @@ export const URLUtils = {
   isValidDeepLink: (url: string): boolean => {
     try {
       const urlObj = new URL(url);
-      const validSchemes = ["supasecret:", "https:"];
-      const validHosts = ["supasecret.app", "www.supasecret.app"];
+      const validSchemes = ["toxicconfessions:", "https:"];
+      const validHosts = ["toxicconfessions.app", "www.toxicconfessions.app"];
 
       // Check if protocol is in allowed schemes
       if (!validSchemes.includes(urlObj.protocol)) {
         return false;
       }
 
-      if (urlObj.protocol === "supasecret:") {
+      if (urlObj.protocol === "toxicconfessions:") {
         return true;
       }
 
@@ -209,7 +209,7 @@ export const URLUtils = {
 
   // Generate shareable URL for web
   generateWebURL: (path: string): string => {
-    return `https://supasecret.app${path}`;
+    return `https://toxicconfessions.app${path}`;
   },
 
   // Generate app deep link
@@ -231,7 +231,7 @@ export const URLUtils = {
     // Encode the path while preserving slashes
     const encodedPath = encodeURI(normalizedPath);
 
-    return `supasecret://${encodedPath}`;
+    return `toxicconfessions://${encodedPath}`;
   },
 };
 

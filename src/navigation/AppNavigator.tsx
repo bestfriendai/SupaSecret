@@ -152,7 +152,7 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: "Secrets",
+          title: "Toxic Confessions",
           header: () => <AppHeader title="Toxic Confessions" showTrendingBar={true} />,
         }}
       />
@@ -221,21 +221,25 @@ export default function AppNavigator() {
   // Show auth stack if: not authenticated OR authenticated but not onboarded
   const shouldShowAuth = !isAuthenticated || (isAuthenticated && user && !user.isOnboarded);
 
-  console.log("[AppNavigator] Navigation decision:", {
-    isAuthenticated,
-    user: user ? `${user.email} (onboarded: ${user.isOnboarded})` : null,
-    shouldShowAuth,
-    reason: !isAuthenticated
-      ? "not authenticated"
-      : isAuthenticated && user && !user.isOnboarded
-        ? "not onboarded"
-        : "fully authenticated",
-  });
+  if (__DEV__) {
+    console.log("[AppNavigator] Navigation decision:", {
+      isAuthenticated,
+      user: user ? `${user.email} (onboarded: ${user.isOnboarded})` : null,
+      shouldShowAuth,
+      reason: !isAuthenticated
+        ? "not authenticated"
+        : isAuthenticated && user && !user.isOnboarded
+          ? "not onboarded"
+          : "fully authenticated",
+    });
+  }
 
-  if (shouldShowAuth) {
-    console.log("[AppNavigator] RENDERING AUTH STACK - user needs authentication/onboarding");
-  } else {
-    console.log("[AppNavigator] RENDERING MAIN TABS - user is fully authenticated");
+  if (__DEV__) {
+    if (shouldShowAuth) {
+      console.log("[AppNavigator] RENDERING AUTH STACK - user needs authentication/onboarding");
+    } else {
+      console.log("[AppNavigator] RENDERING MAIN TABS - user is fully authenticated");
+    }
   }
 
   return (
@@ -342,7 +346,7 @@ export default function AppNavigator() {
               name="Paywall"
               component={PaywallScreen}
               options={{
-                title: "SupaSecret Plus",
+                title: "Toxic Confessions Plus",
                 headerShown: false,
               }}
             />

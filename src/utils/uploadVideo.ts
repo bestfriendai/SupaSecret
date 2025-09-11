@@ -1,6 +1,7 @@
 import * as FileSystem from "expo-file-system";
 import { supabase } from "../lib/supabase";
 import { env } from "./env";
+import { uploadVideoToSupabase } from "./storage";
 
 export interface UploadResult {
   uploadId: string;
@@ -53,39 +54,23 @@ export const uploadVideoAnonymously = async (videoUri: string, options: UploadOp
     const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const fileName = `${uploadId}.mp4`;
 
-    // Read video file as base64
-    const videoBase64 = await FileSystem.readAsStringAsync(videoUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
     onProgress?.(20, "Uploading video...");
 
-    // Upload to Supabase storage
-    const { data: uploadData, error: uploadError } = await supabase.storage.from("videos").upload(
-      fileName,
-      Uint8Array.from(atob(videoBase64), (c) => c.charCodeAt(0)),
-      {
-        contentType: "video/mp4",
-        upsert: false,
-      },
-    );
-
-    if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`);
+    // Require auth for private bucket upload; use streaming helper
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData?.user) {
+      throw new Error("You must be signed in to upload video");
     }
+
+    const upload = await uploadVideoToSupabase(videoUri, userData.user.id, (p) => onProgress?.(20 + (p * 0.2) / 100, "Uploading video..."));
 
     onProgress?.(40, "Initiating processing...");
 
-    // Get the full URL for the uploaded video
-    const { data: videoUrlData } = supabase.storage.from("videos").getPublicUrl(uploadData.path);
-    const fullVideoUrl = videoUrlData.publicUrl;
-
-    // Call Edge Function for processing
+    // Call Edge Function for processing using storage path (no public URL)
     const { data: processData, error: processError } = await supabase.functions.invoke("process-video", {
       body: {
-        videoUrl: fullVideoUrl,
         uploadId,
-        videoPath: uploadData.path, // Keep for compatibility
+        videoPath: upload.path,
         options: {
           enableFaceBlur,
           enableVoiceChange,
@@ -142,7 +127,7 @@ export const pollProcessingStatus = async (
 
       // Check for status file in storage
       const statusFileName = `status_${uploadId}.json`;
-      const { data: statusData, error } = await supabase.storage.from("videos").download(statusFileName);
+      const { data: statusData, error } = await supabase.storage.from("confessions").download(statusFileName);
 
       if (error) {
         if (error.message.includes("not found")) {
@@ -200,7 +185,7 @@ export const downloadProcessedVideo = async (
   try {
     onProgress?.(5, "Starting download...");
 
-    const { data: videoData, error: downloadError } = await supabase.storage.from("videos").download(processedVideoUrl);
+    const { data: videoData, error: downloadError } = await supabase.storage.from("confessions").download(processedVideoUrl);
 
     if (downloadError) {
       throw new Error(`Download failed: ${downloadError.message}`);

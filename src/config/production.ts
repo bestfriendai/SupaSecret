@@ -38,8 +38,8 @@ export const PRODUCTION_CONFIG = {
       PREMIUM: "premium",
     },
     PRODUCTS: {
-      MONTHLY: "supasecret_premium_monthly",
-      YEARLY: "supasecret_premium_yearly",
+      MONTHLY: "toxicconfessions_premium_monthly",
+      YEARLY: "toxicconfessions_premium_yearly",
     },
   },
 
@@ -95,7 +95,7 @@ export const PRODUCTION_CONFIG = {
   // App Store Configuration
   APP_STORE: {
     IOS_APP_ID: "123456789",
-    ANDROID_PACKAGE_NAME: "com.yourcompany.supasecret",
+    ANDROID_PACKAGE_NAME: "com.toxic.confessions",
 
     // App Store Connect API (for analytics)
     APP_STORE_CONNECT_KEY_ID: "your-key-id",
@@ -115,10 +115,10 @@ export const PRODUCTION_CONFIG = {
 
   // Legal URLs
   LEGAL: {
-    PRIVACY_POLICY_URL: "https://supasecret.app/privacy",
-    TERMS_OF_SERVICE_URL: "https://supasecret.app/terms",
-    HELP_SUPPORT_URL: "https://supasecret.app/help",
-    CONTACT_URL: "https://supasecret.app/contact",
+    PRIVACY_POLICY_URL: "https://toxicconfessions.app/privacy",
+    TERMS_OF_SERVICE_URL: "https://toxicconfessions.app/terms",
+    HELP_SUPPORT_URL: "https://toxicconfessions.app/help",
+    CONTACT_URL: "https://toxicconfessions.app/contact",
   },
 
   // Feature Flags
