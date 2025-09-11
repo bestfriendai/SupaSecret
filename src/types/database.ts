@@ -511,7 +511,7 @@ export interface Database {
       };
     };
     Views: {
-      [_ in never]: never;
+      [__ in never]: never;
     };
     Functions: {
       exec_sql: {
@@ -571,10 +571,10 @@ export interface Database {
       };
     };
     Enums: {
-      [_ in never]: never;
+      [__ in never]: never;
     };
     CompositeTypes: {
-      [_ in never]: never;
+      [___ in never]: never;
     };
   };
 }

@@ -216,24 +216,45 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
 
   // Set up progress tracking for current video with proper cleanup
   useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
     const player = videoPlayers.getPlayer(currentIndex);
     if (player && currentVideo && isFocused) {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         try {
-          if (player.currentTime !== undefined && player.duration !== undefined) {
+          // Check if player is still valid before accessing properties
+          if (player && player.currentTime !== undefined && player.duration !== undefined) {
             trackVideoProgress(currentVideo.id, player.currentTime, player.duration);
           }
-        } catch {
-          // Ignore errors when accessing player properties
+        } catch (error) {
+          // Clear interval if player is no longer valid
+          if (interval) {
+            clearInterval(interval);
+            interval = null;
+          }
+          if (__DEV__) {
+            console.warn("Video progress tracking error:", error);
+          }
         }
       }, 2000); // Reduced frequency to improve performance
-
-      return () => {
-        clearInterval(interval);
-      };
     }
-    return undefined;
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
   }, [currentIndex, currentVideo, videoPlayers, trackVideoProgress, isFocused]);
+
+  // Cleanup on component unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Ensure all videos are stopped and cleaned up
+      videoPlayers.stopAll();
+      videoPlayers.cleanup();
+    };
+  }, [videoPlayers]);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {

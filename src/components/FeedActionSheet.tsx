@@ -11,14 +11,14 @@ import { BlurView } from "expo-blur";
 interface FeedActionSheetProps {
   confessionId: string;
   confessionText: string;
-  bottomSheetModalRef: React.RefObject<BottomSheetModal>;
+  bottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
 }
 
 export default function FeedActionSheet({ confessionId, confessionText, bottomSheetModalRef }: FeedActionSheetProps) {
   const [showModal, setShowModal] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState<"success" | "confirm">("success");
+  const [_modalType, setModalType] = useState<"success" | "confirm">("success");
 
   const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
   const { impactAsync } = usePreferenceAwareHaptics();

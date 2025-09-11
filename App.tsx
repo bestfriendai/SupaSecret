@@ -42,26 +42,23 @@ const openai_api_key = Constants.expoConfig.extra.apikey;
 export default function App() {
   // Debug: Log component render
   console.log("[DEBUG] App component rendering...");
-  
-  // Debug: Wrap store hooks in try-catch
-  let checkAuthState, loadConfessions, loadUserPreferences;
-  try {
-    checkAuthState = useAuthStore((state) => state.checkAuthState);
-    loadConfessions = useConfessionStore((state) => state.loadConfessions);
-    loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
+
+  // Store hooks must be called unconditionally at the top level
+  const checkAuthState = useAuthStore((state) => state.checkAuthState);
+  const loadConfessions = useConfessionStore((state) => state.loadConfessions);
+  const loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
+
+  if (__DEV__) {
     console.log("[DEBUG] Store hooks initialized successfully");
-  } catch (error) {
-    console.error("[DEBUG] Store hook initialization error:", error);
-    console.error("[DEBUG] Error stack:", error.stack);
   }
 
   useEffect(() => {
     console.log("[DEBUG] App useEffect running...");
-    
+
     const initializeApp = async () => {
       try {
         console.log("[DEBUG] Starting app initialization...");
-        
+
         // Check environment and log dependency availability
         try {
           checkEnvironment();
@@ -72,17 +69,31 @@ export default function App() {
         }
 
         // Configure audio session for video playback
-        await setAudioModeAsync({
-          allowsRecording: false,
-          shouldPlayInBackground: false,
-          playsInSilentMode: true,
-          interruptionModeAndroid: "duckOthers",
-        });
+        try {
+          await setAudioModeAsync({
+            allowsRecording: false,
+            shouldPlayInBackground: false,
+            playsInSilentMode: true,
+            interruptionModeAndroid: "duckOthers",
+          });
+        } catch (error) {
+          if (__DEV__) {
+            console.warn("Failed to configure audio session:", error);
+          }
+          // Continue initialization even if audio setup fails
+        }
 
-        // Set up Supabase subscriptions
-        setupAuthListener();
-        setupConfessionSubscriptions();
-        setupNotificationSubscriptions();
+        // Set up Supabase subscriptions with error handling
+        try {
+          setupAuthListener();
+          setupConfessionSubscriptions();
+          setupNotificationSubscriptions();
+        } catch (error) {
+          if (__DEV__) {
+            console.warn("Failed to setup subscriptions:", error);
+          }
+          // Continue initialization even if subscriptions fail
+        }
 
         // Initialize all production services
         const serviceResult = await initializeServices();
@@ -93,12 +104,17 @@ export default function App() {
           console.warn("Service initialization warnings:", serviceResult.warnings);
         }
 
-        // Initialize auth state first
-        await checkAuthState();
-
-        // Load initial data
-        await loadConfessions();
-        await loadUserPreferences();
+        // Initialize auth state and load initial data
+        try {
+          await checkAuthState();
+          await loadConfessions();
+          await loadUserPreferences();
+        } catch (error) {
+          if (__DEV__) {
+            console.warn("Failed to load initial data:", error);
+          }
+          // Continue initialization even if data loading fails
+        }
 
         if (__DEV__) {
           console.log("🚀 App initialization complete with audio session configured and subscriptions set up");
@@ -135,7 +151,7 @@ export default function App() {
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
 
   console.log("[DEBUG] Rendering App JSX...");
-  
+
   // Debug: Add error boundary with detailed logging
   return (
     <SafeAreaProvider>
@@ -143,9 +159,18 @@ export default function App() {
         onError={(error, errorInfo) => {
           // Log to crash analytics in production
           console.error("App-level error:", error, errorInfo);
-          console.error("[DEBUG] Error boundary caught:", error.message);
-          console.error("[DEBUG] Error stack:", error.stack);
-          console.error("[DEBUG] Error info:", JSON.stringify(errorInfo, null, 2));
+
+          // Safely handle error properties with type checking
+          if (error instanceof Error) {
+            console.error("[DEBUG] Error boundary caught:", error.message);
+            console.error("[DEBUG] Error stack:", error.stack);
+          } else {
+            console.error("[DEBUG] Error boundary caught unknown error:", error);
+          }
+
+          if (__DEV__) {
+            console.error("[DEBUG] Error info:", JSON.stringify(errorInfo, null, 2));
+          }
         }}
         resetOnPropsChange={true}
       >

@@ -85,6 +85,23 @@ export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds 
   if (!pathOrUrl) return "";
   if (isHttpUrl(pathOrUrl)) return pathOrUrl;
 
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(pathOrUrl, expiresInSeconds);
-  return data?.signedUrl || "";
+  try {
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(pathOrUrl, expiresInSeconds);
+
+    if (error) {
+      if (__DEV__) {
+        console.error("Failed to create signed URL:", error);
+      }
+      // Return empty string as fallback - calling code should handle this gracefully
+      return "";
+    }
+
+    return data?.signedUrl || "";
+  } catch (error) {
+    if (__DEV__) {
+      console.error("Error creating signed URL:", error);
+    }
+    // Return empty string as fallback
+    return "";
+  }
 }

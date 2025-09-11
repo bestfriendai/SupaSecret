@@ -15,21 +15,21 @@
     BATCH_SIZE (default: 100)
 */
 
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require("@supabase/supabase-js");
 
 function parseArgs() {
   const args = process.argv.slice(2);
   const has = (k) => args.includes(k);
   const getKV = (k, def) => {
-    const p = args.find(a => a.startsWith(`${k}=`));
-    return p ? p.split('=').slice(1).join('=') : def;
+    const p = args.find((a) => a.startsWith(`${k}=`));
+    return p ? p.split("=").slice(1).join("=") : def;
   };
   return {
-    dryRun: has('--dry-run') || (!has('--execute') && !has('--dry-run')),
-    execute: has('--execute'),
-    updateDb: has('--update-db'),
-    prefix: getKV('--prefix', ''),
-    batchSize: Number(getKV('--batch', process.env.BATCH_SIZE || '100')) || 100,
+    dryRun: has("--dry-run") || (!has("--execute") && !has("--dry-run")),
+    execute: has("--execute"),
+    updateDb: has("--update-db"),
+    prefix: getKV("--prefix", ""),
+    batchSize: Number(getKV("--batch", process.env.BATCH_SIZE || "100")) || 100,
   };
 }
 
@@ -41,9 +41,9 @@ function requireEnv(name) {
 
 function guessContentType(name) {
   const lower = name.toLowerCase();
-  if (lower.endsWith('.mp4')) return 'video/mp4';
-  if (lower.endsWith('.mov')) return 'video/quicktime';
-  if (lower.endsWith('.avi')) return 'video/x-msvideo';
+  if (lower.endsWith(".mp4")) return "video/mp4";
+  if (lower.endsWith(".mov")) return "video/quicktime";
+  if (lower.endsWith(".avi")) return "video/x-msvideo";
   return undefined;
 }
 
@@ -53,12 +53,14 @@ async function listFolder(supabase, bucket, prefix) {
   const files = [];
   const folders = [];
   for (;;) {
-    const { data, error } = await supabase.storage.from(bucket).list(prefix, { limit, offset, sortBy: { column: 'name', order: 'asc' } });
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .list(prefix, { limit, offset, sortBy: { column: "name", order: "asc" } });
     if (error) throw error;
     if (!data || data.length === 0) break;
     for (const it of data) {
       // Heuristic: folders usually have no metadata/size
-      const isFolder = !it.metadata || typeof it.metadata.size !== 'number';
+      const isFolder = !it.metadata || typeof it.metadata.size !== "number";
       if (isFolder) folders.push(it.name);
       else files.push({ name: it.name, size: it.metadata.size, mimetype: it.metadata.mimetype });
     }
@@ -68,7 +70,7 @@ async function listFolder(supabase, bucket, prefix) {
   return { files, folders };
 }
 
-async function walkAllFiles(supabase, bucket, basePrefix = '') {
+async function walkAllFiles(supabase, bucket, basePrefix = "") {
   const stack = [basePrefix];
   const all = [];
   while (stack.length) {
@@ -90,15 +92,19 @@ async function copyObjects(supabase, srcBucket, dstBucket, objects, batchSize = 
   let copied = 0;
   for (let i = 0; i < objects.length; i += batchSize) {
     const batch = objects.slice(i, i + batchSize);
-    await Promise.all(batch.map(async (obj) => {
-      const { data: file, error: dlErr } = await supabase.storage.from(srcBucket).download(obj.path);
-      if (dlErr) throw dlErr;
-      const contentType = obj.mimetype || guessContentType(obj.path);
-      const { error: upErr } = await supabase.storage.from(dstBucket).upload(obj.path, file, { upsert: true, contentType });
-      if (upErr) throw upErr;
-      copied++;
-      if (copied % 25 === 0) console.log(`[copy] ${copied}/${objects.length} files...`);
-    }));
+    await Promise.all(
+      batch.map(async (obj) => {
+        const { data: file, error: dlErr } = await supabase.storage.from(srcBucket).download(obj.path);
+        if (dlErr) throw dlErr;
+        const contentType = obj.mimetype || guessContentType(obj.path);
+        const { error: upErr } = await supabase.storage
+          .from(dstBucket)
+          .upload(obj.path, file, { upsert: true, contentType });
+        if (upErr) throw upErr;
+        copied++;
+        if (copied % 25 === 0) console.log(`[copy] ${copied}/${objects.length} files...`);
+      }),
+    );
   }
   return copied;
 }
@@ -112,16 +118,19 @@ async function updateDbPaths(supabase, table, column, batchSize = 500) {
     const { data: rows, error } = await supabase
       .from(table)
       .select(`id, ${column}`)
-      .like(column, 'videos/%')
+      .like(column, "videos/%")
       .range(from, to);
     if (error) throw error;
     if (!rows || rows.length === 0) break;
 
     for (const row of rows) {
       const oldVal = row[column];
-      const newVal = typeof oldVal === 'string' ? oldVal.replace(/^videos\//, 'confessions/') : oldVal;
+      const newVal = typeof oldVal === "string" ? oldVal.replace(/^videos\//, "confessions/") : oldVal;
       if (oldVal !== newVal) {
-        const { error: upErr } = await supabase.from(table).update({ [column]: newVal }).eq('id', row.id);
+        const { error: upErr } = await supabase
+          .from(table)
+          .update({ [column]: newVal })
+          .eq("id", row.id);
         if (upErr) throw upErr;
         updated++;
       }
@@ -134,10 +143,10 @@ async function updateDbPaths(supabase, table, column, batchSize = 500) {
 
 (async function main() {
   const args = parseArgs();
-  const url = requireEnv('SUPABASE_URL');
-  const serviceKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
-  const table = process.env.CONFESSIONS_TABLE || 'confessions';
-  const column = process.env.VIDEO_URI_COLUMN || 'video_uri';
+  const url = requireEnv("SUPABASE_URL");
+  const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const table = process.env.CONFESSIONS_TABLE || "confessions";
+  const column = process.env.VIDEO_URI_COLUMN || "video_uri";
   const client = createClient(url, serviceKey, { auth: { persistSession: false } });
 
   console.log(`\nMigration plan: videos → confessions`);
@@ -147,11 +156,14 @@ async function updateDbPaths(supabase, table, column, batchSize = 500) {
   console.log(`  prefix: '${args.prefix}'  batchSize: ${args.batchSize}`);
 
   console.log(`\n[1/3] Inventory (read-only)…`);
-  const objects = await walkAllFiles(client, 'videos', args.prefix);
+  const objects = await walkAllFiles(client, "videos", args.prefix);
   const total = objects.length;
   const bytes = objects.reduce((a, b) => a + (b.size || 0), 0);
-  console.log(`Found ${total} files in videos/${args.prefix || ''} (approx ${(bytes / (1024*1024)).toFixed(1)} MB).`);
-  console.log(`Sample:`, objects.slice(0, 5).map(o => o.path));
+  console.log(`Found ${total} files in videos/${args.prefix || ""} (approx ${(bytes / (1024 * 1024)).toFixed(1)} MB).`);
+  console.log(
+    `Sample:`,
+    objects.slice(0, 5).map((o) => o.path),
+  );
 
   if (args.dryRun) {
     console.log(`\nDry-run complete. No changes performed.`);
@@ -165,7 +177,7 @@ async function updateDbPaths(supabase, table, column, batchSize = 500) {
   }
 
   console.log(`\n[2/3] Copying storage objects videos → confessions…`);
-  const copied = await copyObjects(client, 'videos', 'confessions', objects, Math.min(args.batchSize, 50));
+  const copied = await copyObjects(client, "videos", "confessions", objects, Math.min(args.batchSize, 50));
   console.log(`Copied ${copied}/${total} files.`);
 
   if (args.updateDb) {
@@ -179,4 +191,3 @@ async function updateDbPaths(supabase, table, column, batchSize = 500) {
   console.error(err);
   process.exit(1);
 });
-

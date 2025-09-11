@@ -16,4 +16,3 @@ export async function testReportSystem(): Promise<boolean> {
     return false;
   }
 }
-

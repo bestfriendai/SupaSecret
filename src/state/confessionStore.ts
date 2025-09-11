@@ -150,7 +150,9 @@ export const useConfessionStore = create<ConfessionState>()(
       error: null,
 
       loadConfessions: async () => {
-        console.log("📥 Loading confessions...");
+        if (__DEV__) {
+          console.log("📥 Loading confessions...");
+        }
         set({ isLoading: true, error: null, hasMore: true });
         try {
           const INITIAL_LIMIT = 20;
@@ -165,13 +167,15 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
-          console.log("📥 Loaded", finalData?.length || 0, "confessions from database");
-          if (finalData && finalData.length > 0) {
-            console.log("📥 Latest confession from DB:", {
-              id: finalData[0].id,
-              content: finalData[0].content.substring(0, 50) + "...",
-              created_at: finalData[0].created_at,
-            });
+          if (__DEV__) {
+            console.log("📥 Loaded", finalData?.length || 0, "confessions from database");
+            if (finalData && finalData.length > 0) {
+              console.log("📥 Latest confession from DB:", {
+                id: finalData[0].id,
+                content: finalData[0].content.substring(0, 50) + "...",
+                created_at: finalData[0].created_at,
+              });
+            }
           }
 
           const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
@@ -397,12 +401,16 @@ export const useConfessionStore = create<ConfessionState>()(
             .single();
 
           if (error) {
-            console.error("❌ Database insert error:", error);
+            if (__DEV__) {
+              console.error("❌ Database insert error:", error);
+            }
             throw error;
           }
 
           if (!data) {
-            console.error("❌ No data returned from insert");
+            if (__DEV__) {
+              console.error("❌ No data returned from insert");
+            }
             throw new Error("No data returned from confession insert");
           }
 

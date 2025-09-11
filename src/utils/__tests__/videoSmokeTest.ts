@@ -1,7 +1,7 @@
 /**
  * End-to-end smoke test for video pipeline
  * Tests: record → process → upload → playback flow
- * 
+ *
  * This is a development-only test that can be run manually to verify
  * the complete video processing pipeline works correctly.
  */
@@ -24,7 +24,7 @@ export async function testSignedUrlGeneration(): Promise<SmokeTestResult> {
     // Test with a mock storage path
     const mockPath = "confessions/test-user/test-video.mp4";
     const signedUrl = await ensureSignedVideoUrl(mockPath);
-    
+
     if (!signedUrl) {
       return {
         success: false,
@@ -107,7 +107,7 @@ export async function testEdgeFunctionConnectivity(): Promise<SmokeTestResult> {
     return {
       success: true,
       step: "edge-function-connectivity",
-      details: { 
+      details: {
         success: data.success,
         hasStoragePath: !!data.storagePath,
         message: data.message,
@@ -128,7 +128,10 @@ export async function testEdgeFunctionConnectivity(): Promise<SmokeTestResult> {
 export async function testDatabaseConnectivity(): Promise<SmokeTestResult> {
   try {
     // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return {
         success: false,
@@ -199,7 +202,7 @@ export async function runVideoSmokeTest(): Promise<{
   const edgeTest = await testEdgeFunctionConnectivity();
   results.push(edgeTest);
 
-  const successCount = results.filter(r => r.success).length;
+  const successCount = results.filter((r) => r.success).length;
   const totalCount = results.length;
   const allPassed = successCount === totalCount;
 
@@ -220,27 +223,27 @@ export function logSmokeTestResults(testResults: Awaited<ReturnType<typeof runVi
 
   console.log("\n🧪 Video Pipeline Smoke Test Results");
   console.log("=====================================");
-  
+
   testResults.results.forEach((result, index) => {
     const icon = result.success ? "✅" : "❌";
     console.log(`${icon} ${index + 1}. ${result.step}`);
-    
+
     if (result.error) {
       console.log(`   Error: ${result.error}`);
     }
-    
+
     if (result.details) {
       console.log(`   Details:`, result.details);
     }
   });
 
   console.log("\n" + testResults.summary);
-  
+
   if (testResults.success) {
     console.log("🎉 All tests passed! Video pipeline is working correctly.");
   } else {
     console.log("⚠️  Some tests failed. Check the details above.");
   }
-  
+
   console.log("=====================================\n");
 }

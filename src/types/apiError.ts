@@ -51,25 +51,25 @@ export const API_ERROR_CODES = {
   INVALID_API_KEY: "invalid_api_key",
   API_KEY_NOT_FOUND: "api_key_not_found",
   UNAUTHORIZED: "unauthorized",
-  
+
   // Rate limiting
   RATE_LIMITED: "rate_limited",
   TOO_MANY_REQUESTS: "too_many_requests",
-  
+
   // Request errors
   INVALID_REQUEST: "invalid_request",
   MISSING_PARAMETER: "missing_parameter",
   INVALID_PARAMETER: "invalid_parameter",
-  
+
   // Server errors
   INTERNAL_ERROR: "internal_error",
   SERVICE_UNAVAILABLE: "service_unavailable",
   TIMEOUT: "timeout",
-  
+
   // Network errors
   NETWORK_ERROR: "network_error",
   CONNECTION_ERROR: "connection_error",
-  
+
   // Content errors
   CONTENT_FILTERED: "content_filtered",
   CONTENT_POLICY_VIOLATION: "content_policy_violation",

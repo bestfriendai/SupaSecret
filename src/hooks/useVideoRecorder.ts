@@ -49,7 +49,7 @@ export interface VideoRecorderControls {
 }
 
 export interface VideoRecorderData {
-  cameraRef: React.RefObject<CameraView>;
+  cameraRef: React.RefObject<CameraView | null>;
   facing: CameraType;
   liveTranscription: string;
   processedVideo?: ProcessedVideo;

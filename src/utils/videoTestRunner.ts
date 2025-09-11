@@ -1,6 +1,6 @@
 /**
  * Comprehensive video pipeline test runner
- * 
+ *
  * This utility provides a complete test suite for the video processing pipeline
  * including upload, processing, storage, and playback verification.
  */
@@ -32,24 +32,24 @@ interface VideoTestSuite {
  */
 async function testVideoUriHandling(): Promise<TestResult> {
   const startTime = Date.now();
-  
+
   try {
     // Test storage path handling
     const storagePath = "confessions/test-user/test-video.mp4";
     const signedUrl = await ensureSignedVideoUrl(storagePath);
-    
+
     if (!signedUrl || !signedUrl.startsWith("https://")) {
       throw new Error("Invalid signed URL generated");
     }
-    
+
     // Test HTTP URL passthrough
     const httpUrl = "https://example.com/video.mp4";
     const passthroughUrl = await ensureSignedVideoUrl(httpUrl);
-    
+
     if (passthroughUrl !== httpUrl) {
       throw new Error("HTTP URL passthrough failed");
     }
-    
+
     return {
       testName: "Video URI Handling",
       success: true,
@@ -75,7 +75,7 @@ async function testVideoUriHandling(): Promise<TestResult> {
  */
 async function testDatabaseConstraints(): Promise<TestResult> {
   const startTime = Date.now();
-  
+
   try {
     // Check that only storage paths are stored, not URLs
     const { data, error } = await supabase
@@ -83,17 +83,15 @@ async function testDatabaseConstraints(): Promise<TestResult> {
       .select("video_uri")
       .not("video_uri", "is", null)
       .limit(10);
-    
+
     if (error) throw error;
-    
-    const httpUrls = (data || []).filter(row => 
-      row.video_uri && row.video_uri.startsWith("http")
-    );
-    
+
+    const httpUrls = (data || []).filter((row) => row.video_uri && row.video_uri.startsWith("http"));
+
     if (httpUrls.length > 0) {
       throw new Error(`Found ${httpUrls.length} HTTP URLs in video_uri column`);
     }
-    
+
     return {
       testName: "Database Constraints",
       success: true,
@@ -119,7 +117,7 @@ async function testDatabaseConstraints(): Promise<TestResult> {
  */
 async function testEdgeFunctionFormat(): Promise<TestResult> {
   const startTime = Date.now();
-  
+
   try {
     const { data, error } = await supabase.functions.invoke("process-video", {
       body: {
@@ -132,26 +130,25 @@ async function testEdgeFunctionFormat(): Promise<TestResult> {
         },
       },
     });
-    
+
     if (error) throw error;
-    
+
     // Verify response structure
     const requiredFields = ["success", "storagePath"];
-    const missingFields = requiredFields.filter(field => !(field in data));
-    
+    const missingFields = requiredFields.filter((field) => !(field in data));
+
     if (missingFields.length > 0) {
       throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
     }
-    
+
     // Verify no public URLs are returned
-    const hasPublicUrl = "processedVideoUrl" in data && 
-                        data.processedVideoUrl && 
-                        data.processedVideoUrl.startsWith("http");
-    
+    const hasPublicUrl =
+      "processedVideoUrl" in data && data.processedVideoUrl && data.processedVideoUrl.startsWith("http");
+
     if (hasPublicUrl) {
       throw new Error("Edge Function returned public URL instead of storage path");
     }
-    
+
     return {
       testName: "Edge Function Format",
       success: true,
@@ -178,7 +175,7 @@ async function testEdgeFunctionFormat(): Promise<TestResult> {
  */
 async function testBucketConsistency(): Promise<TestResult> {
   const startTime = Date.now();
-  
+
   try {
     // Check that all video paths use confessions bucket
     const { data, error } = await supabase
@@ -186,13 +183,13 @@ async function testBucketConsistency(): Promise<TestResult> {
       .select("video_uri")
       .not("video_uri", "is", null)
       .limit(20);
-    
+
     if (error) throw error;
-    
-    const videoPaths = (data || []).map(row => row.video_uri).filter(Boolean) as string[];
-    const videosBucketPaths = videoPaths.filter(path => path.startsWith("videos/"));
-    const confessionsBucketPaths = videoPaths.filter(path => path.startsWith("confessions/"));
-    
+
+    const videoPaths = (data || []).map((row) => row.video_uri).filter(Boolean) as string[];
+    const videosBucketPaths = videoPaths.filter((path) => path.startsWith("videos/"));
+    const confessionsBucketPaths = videoPaths.filter((path) => path.startsWith("confessions/"));
+
     return {
       testName: "Bucket Consistency",
       success: true,
@@ -229,44 +226,39 @@ export async function runCompleteVideoTests(): Promise<VideoTestSuite> {
       },
     };
   }
-  
+
   const startTime = Date.now();
   const results: TestResult[] = [];
-  
+
   console.log("\n🧪 Starting Complete Video Pipeline Tests");
   console.log("==========================================");
-  
+
   // Run all tests
-  const tests = [
-    testVideoUriHandling,
-    testDatabaseConstraints,
-    testEdgeFunctionFormat,
-    testBucketConsistency,
-  ];
-  
+  const tests = [testVideoUriHandling, testDatabaseConstraints, testEdgeFunctionFormat, testBucketConsistency];
+
   for (const test of tests) {
     console.log(`\n⏳ Running ${test.name}...`);
     const result = await test();
     results.push(result);
-    
+
     const icon = result.success ? "✅" : "❌";
     console.log(`${icon} ${result.testName} (${result.duration}ms)`);
-    
+
     if (result.error) {
       console.log(`   Error: ${result.error}`);
     }
-    
+
     if (result.details) {
       console.log(`   Details:`, result.details);
     }
   }
-  
+
   // Run smoke tests
   console.log("\n⏳ Running Smoke Tests...");
   const smokeTestResults = await runVideoSmokeTest();
-  
+
   // Convert smoke test results to our format
-  smokeTestResults.results.forEach(smokeResult => {
+  smokeTestResults.results.forEach((smokeResult) => {
     results.push({
       testName: `Smoke: ${smokeResult.step}`,
       success: smokeResult.success,
@@ -275,18 +267,18 @@ export async function runCompleteVideoTests(): Promise<VideoTestSuite> {
       details: smokeResult.details,
     });
   });
-  
+
   const totalDuration = Date.now() - startTime;
-  const passed = results.filter(r => r.success).length;
+  const passed = results.filter((r) => r.success).length;
   const failed = results.length - passed;
-  
+
   const summary = {
     total: results.length,
     passed,
     failed,
     duration: totalDuration,
   };
-  
+
   console.log("\n📊 Test Summary");
   console.log("================");
   console.log(`Total Tests: ${summary.total}`);
@@ -294,15 +286,15 @@ export async function runCompleteVideoTests(): Promise<VideoTestSuite> {
   console.log(`Failed: ${summary.failed}`);
   console.log(`Duration: ${summary.duration}ms`);
   console.log(`Success Rate: ${((passed / results.length) * 100).toFixed(1)}%`);
-  
+
   if (failed === 0) {
     console.log("\n🎉 All tests passed! Video pipeline is working correctly.");
   } else {
     console.log(`\n⚠️  ${failed} test(s) failed. Check the details above.`);
   }
-  
+
   console.log("==========================================\n");
-  
+
   return {
     results,
     summary,
@@ -314,22 +306,19 @@ export async function runCompleteVideoTests(): Promise<VideoTestSuite> {
  */
 export async function quickVideoHealthCheck(): Promise<boolean> {
   if (!__DEV__) return true;
-  
+
   try {
     // Test basic signed URL generation
     const testPath = "confessions/health-check/test.mp4";
     const signedUrl = await ensureSignedVideoUrl(testPath);
-    
+
     if (!signedUrl || !signedUrl.startsWith("https://")) {
       return false;
     }
-    
+
     // Test database connectivity
-    const { error } = await supabase
-      .from("confessions")
-      .select("id")
-      .limit(1);
-    
+    const { error } = await supabase.from("confessions").select("id").limit(1);
+
     return !error;
   } catch {
     return false;

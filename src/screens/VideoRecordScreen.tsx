@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, Modal, Alert } from "react-native";
+import { View, Text, Pressable, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, CameraType } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,10 +16,7 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
-  withSequence,
-  runOnJS,
   interpolate,
-  Extrapolate,
 } from "react-native-reanimated";
 import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
 import Constants from "expo-constants";
@@ -85,7 +82,7 @@ export default function VideoRecordScreen() {
   const controlsOpacity = useSharedValue(1);
   const blurIntensity = useSharedValue(25);
   const captionsScale = useSharedValue(1);
-  const isExpoGo = Constants.appOwnership === "expo";
+  const _isExpoGo = Constants.appOwnership === "expo";
 
   // Animated styles
   const recordButtonAnimatedStyle = useAnimatedStyle(() => ({
@@ -97,7 +94,7 @@ export default function VideoRecordScreen() {
     opacity: controlsOpacity.value,
   }));
 
-  const blurAnimatedStyle = useAnimatedStyle(() => ({
+  const _blurAnimatedStyle = useAnimatedStyle(() => ({
     opacity: interpolate(blurIntensity.value, [0, 50], [0, 1]),
   }));
 

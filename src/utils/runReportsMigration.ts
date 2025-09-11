@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabase";
 export async function runReportsMigration(): Promise<boolean> {
   if (__DEV__) {
     console.warn(
-      "[runReportsMigration] Client-side migrations are disabled. Please run SQL migrations via Supabase migrations or the Dashboard."
+      "[runReportsMigration] Client-side migrations are disabled. Please run SQL migrations via Supabase migrations or the Dashboard.",
     );
   }
   return false;
@@ -20,7 +20,7 @@ export async function runReportsMigration(): Promise<boolean> {
 export async function runReportsMigrationDirect(): Promise<boolean> {
   if (__DEV__) {
     console.warn(
-      "[runReportsMigrationDirect] Disabled. Use server-side migrations instead (SQL files / Supabase Dashboard)."
+      "[runReportsMigrationDirect] Disabled. Use server-side migrations instead (SQL files / Supabase Dashboard).",
     );
   }
   return false;

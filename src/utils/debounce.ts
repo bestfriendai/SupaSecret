@@ -4,7 +4,7 @@
  */
 
 import * as React from "react";
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useEffect } from "react";
 
 /**
  * Generic debounce function
@@ -157,7 +157,7 @@ export function useDebouncedLikeToggle(likeFunction: (id: string) => Promise<voi
           pendingLikes.current.delete(id);
           timeoutRefs.current.delete(id);
         }, delay);
-        
+
         // Store timeout reference for cleanup
         timeoutRefs.current.set(id, timeoutId);
       }

@@ -61,13 +61,27 @@ export class PushNotificationManager {
         return null;
       }
 
-      // Get push token
+      // Get push token with comprehensive fallback strategy
       const projectId =
         process.env.EXPO_PUBLIC_PROJECT_ID ||
+        process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID ||
         (Constants.expoConfig as any)?.extra?.eas?.projectId ||
-        (Constants.manifest as any)?.extra?.eas?.projectId;
+        (Constants.manifest as any)?.extra?.eas?.projectId ||
+        (Constants.expoConfig as any)?.projectId ||
+        (Constants.manifest as any)?.projectId;
+
       if (!projectId) {
-        console.warn("Expo projectId missing; skipping push token registration");
+        if (__DEV__) {
+          console.warn("Expo projectId missing from all sources; skipping push token registration");
+          console.warn("Available sources checked:", {
+            env_project_id: !!process.env.EXPO_PUBLIC_PROJECT_ID,
+            env_vibecode_project_id: !!process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID,
+            expo_config_eas: !!(Constants.expoConfig as any)?.extra?.eas?.projectId,
+            manifest_eas: !!(Constants.manifest as any)?.extra?.eas?.projectId,
+            expo_config_direct: !!(Constants.expoConfig as any)?.projectId,
+            manifest_direct: !!(Constants.manifest as any)?.projectId,
+          });
+        }
         return null;
       }
       const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
@@ -85,18 +99,33 @@ export class PushNotificationManager {
   }
 
   /**
-   * Store push token in database
+   * Store push token in database with proper error handling
    */
   private async storePushToken(token: string): Promise<void> {
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      if (!user) {
+        if (__DEV__) {
+          console.warn("Cannot store push token: User not authenticated");
+        }
+        return;
+      }
 
-      // Create push_tokens table if it doesn't exist (this would be in a migration)
       const platform: "ios" | "android" | "web" =
         Platform.OS === "ios" || Platform.OS === "android" || Platform.OS === "web" ? Platform.OS : "web";
+
+      // First check if the push_tokens table exists by attempting a simple query
+      const { error: tableCheckError } = await supabase.from("push_tokens").select("user_id").limit(1);
+
+      if (tableCheckError) {
+        if (__DEV__) {
+          console.warn("push_tokens table may not exist:", tableCheckError.message);
+          console.warn("Push token storage skipped - ensure database migration is run");
+        }
+        return;
+      }
 
       const { error } = await supabase.from("push_tokens").upsert(
         {
@@ -109,10 +138,16 @@ export class PushNotificationManager {
       );
 
       if (error) {
-        console.error("Error storing push token:", error);
+        if (__DEV__) {
+          console.error("Error storing push token:", error);
+        }
+      } else if (__DEV__) {
+        console.log("Push token stored successfully");
       }
     } catch (error) {
-      console.error("Error storing push token:", error);
+      if (__DEV__) {
+        console.error("Error storing push token:", error);
+      }
     }
   }
 

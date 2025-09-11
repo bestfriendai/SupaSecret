@@ -3,7 +3,6 @@
  * Coordinates initialization of all production services
  */
 
-import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { getConfig, validateProductionConfig, isFeatureEnabled } from "../config/production";
 import { AdMobService } from "./AdMobService";

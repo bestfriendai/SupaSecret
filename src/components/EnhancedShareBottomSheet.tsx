@@ -12,7 +12,7 @@ import { BlurView } from "expo-blur";
 interface EnhancedShareBottomSheetProps {
   confessionId: string;
   confessionText: string;
-  bottomSheetModalRef: React.RefObject<BottomSheetModal>;
+  bottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
 }
 
 export default function EnhancedShareBottomSheet({

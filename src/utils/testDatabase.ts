@@ -21,10 +21,7 @@ export async function runAllTests(): Promise<void> {
 
     // 2) Ping a lightweight table or function (read-only)
     // Try selecting a single row from confessions (public content)
-    const { data: conf, error: confErr } = await supabase
-      .from("confessions")
-      .select("id, created_at")
-      .limit(1);
+    const { data: conf, error: confErr } = await supabase.from("confessions").select("id, created_at").limit(1);
 
     if (confErr) {
       console.warn("[DB-TEST] Read from confessions failed:", confErr.message);
@@ -37,4 +34,3 @@ export async function runAllTests(): Promise<void> {
     console.error("[DB-TEST] Unexpected error:", e?.message || e);
   }
 }
-

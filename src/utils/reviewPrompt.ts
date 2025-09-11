@@ -1,7 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as StoreReview from "expo-store-review";
-import { Platform } from "react-native";
-import { t } from "./i18n";
 
 // Storage keys
 const STORAGE_KEYS = {

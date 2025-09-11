@@ -31,7 +31,7 @@ const checkFFmpegAvailability = async (): Promise<boolean> => {
     if (ffmpegAvailable) {
       (global as any).__ffmpegAvailable = true;
     }
-  } catch (error) {
+  } catch (_error) {
     ffmpegAvailable = false;
   }
 

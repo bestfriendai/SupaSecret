@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
-import { env } from "./env";
+
 import { uploadVideoToSupabase } from "./storage";
 
 export interface UploadResult {
@@ -52,7 +52,7 @@ export const uploadVideoAnonymously = async (videoUri: string, options: UploadOp
 
     // Generate unique upload ID
     const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    const fileName = `${uploadId}.mp4`;
+    const _fileName = `${uploadId}.mp4`;
 
     onProgress?.(20, "Uploading video...");
 
@@ -62,7 +62,9 @@ export const uploadVideoAnonymously = async (videoUri: string, options: UploadOp
       throw new Error("You must be signed in to upload video");
     }
 
-    const upload = await uploadVideoToSupabase(videoUri, userData.user.id, (p) => onProgress?.(20 + (p * 0.2) / 100, "Uploading video..."));
+    const upload = await uploadVideoToSupabase(videoUri, userData.user.id, (p) =>
+      onProgress?.(20 + (p * 0.2) / 100, "Uploading video..."),
+    );
 
     onProgress?.(40, "Initiating processing...");
 
@@ -185,7 +187,9 @@ export const downloadProcessedVideo = async (
   try {
     onProgress?.(5, "Starting download...");
 
-    const { data: videoData, error: downloadError } = await supabase.storage.from("confessions").download(processedVideoUrl);
+    const { data: videoData, error: downloadError } = await supabase.storage
+      .from("confessions")
+      .download(processedVideoUrl);
 
     if (downloadError) {
       throw new Error(`Download failed: ${downloadError.message}`);
