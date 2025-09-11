@@ -74,7 +74,10 @@ export type SupabaseErrorCode = (typeof SUPABASE_ERROR_CODES)[keyof typeof SUPAB
  */
 export const isSupabaseError = (error: unknown): error is SupabaseError => {
   return (
-    typeof error === "object" && error !== null && "message" in error && typeof (error as SupabaseError).message === "string"
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as SupabaseError).message === "string"
   );
 };
 

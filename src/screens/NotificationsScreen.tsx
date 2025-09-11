@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNotificationStore } from "../state/notificationStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import type { GroupedNotification } from "../types/notification";
 import NotificationSkeleton from "../components/NotificationSkeleton";
 import { getButtonA11yProps } from "../utils/accessibility";
@@ -28,7 +28,7 @@ export default function NotificationsScreen() {
   } = useNotificationStore();
 
   // Debounced refresh functionality
-  const { isRefreshing, refresh } = useDebouncedRefresh(loadNotifications, 1000);
+  const { isRefreshing: _isRefreshing, refresh } = useDebouncedRefresh(loadNotifications, 1000);
 
   // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {

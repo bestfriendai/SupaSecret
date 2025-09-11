@@ -149,7 +149,7 @@ export class LRUCache<T> {
    * Get cache statistics
    */
   getStats() {
-    const now = Date.now();
+    const _now = Date.now();
     let expiredCount = 0;
 
     this.cache.forEach((entry) => {
@@ -203,7 +203,7 @@ export class LRUCache<T> {
    */
   cleanup(): number {
     let removedCount = 0;
-    const now = Date.now();
+    const _now = Date.now();
 
     const keysToDelete: string[] = [];
     this.cache.forEach((entry, key) => {

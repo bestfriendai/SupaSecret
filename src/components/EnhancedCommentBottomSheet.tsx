@@ -16,7 +16,7 @@ import { sanitizeText } from "../utils/sanitize";
 import { useReplyStore } from "../state/replyStore";
 
 interface EnhancedCommentBottomSheetProps {
-  bottomSheetModalRef: React.RefObject<BottomSheetModal>;
+  bottomSheetModalRef: React.RefObject<BottomSheetModal | null>;
   confessionId: string;
 }
 
@@ -200,7 +200,14 @@ const EnhancedCommentBottomSheet = React.memo(
           {/* Comments List */}
           <BottomSheetFlatList
             data={replies}
-            keyExtractor={(item: { id: string; timestamp: number; likes: number; isLiked?: boolean; userId?: string; content: string }) => item.id}
+            keyExtractor={(item: {
+              id: string;
+              timestamp: number;
+              likes: number;
+              isLiked?: boolean;
+              userId?: string;
+              content: string;
+            }) => item.id}
             renderItem={renderComment}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}

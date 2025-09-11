@@ -16,10 +16,7 @@ import { createApiRetry } from "./retryLogic";
 /**
  * Validate that required environment variables are present
  */
-export const validateEnvironmentVariables = (
-  requiredVars: string[],
-  serviceName: string,
-): void => {
+export const validateEnvironmentVariables = (requiredVars: string[], serviceName: string): void => {
   const missingVars: string[] = [];
 
   for (const varName of requiredVars) {
@@ -73,10 +70,7 @@ export const handleApiError = (
 /**
  * Create a timeout promise for API requests
  */
-export const createTimeoutPromise = (
-  timeoutMs: number,
-  errorMessage: string = "Request timed out",
-): Promise<never> => {
+export const createTimeoutPromise = (timeoutMs: number, errorMessage: string = "Request timed out"): Promise<never> => {
   return new Promise((_, reject) => {
     const timeoutId = setTimeout(() => {
       clearTimeout(timeoutId);
@@ -185,15 +179,7 @@ export const sanitizeRequestData = (data: unknown): unknown => {
   const sanitized = { ...(data as Record<string, unknown>) };
 
   // Remove potentially sensitive fields
-  const sensitiveFields = [
-    "apiKey",
-    "api_key",
-    "password",
-    "token",
-    "secret",
-    "authorization",
-    "auth",
-  ];
+  const sensitiveFields = ["apiKey", "api_key", "password", "token", "secret", "authorization", "auth"];
 
   for (const field of sensitiveFields) {
     if (field in sanitized) {
@@ -207,12 +193,7 @@ export const sanitizeRequestData = (data: unknown): unknown => {
 /**
  * Log API request for debugging (in development only)
  */
-export const logApiRequest = (
-  serviceName: string,
-  endpoint: string,
-  method: string,
-  data: unknown,
-): void => {
+export const logApiRequest = (serviceName: string, endpoint: string, method: string, data: unknown): void => {
   if (process.env.NODE_ENV === "development") {
     console.log(`[API Request] ${serviceName} ${method} ${endpoint}:`, {
       data: sanitizeRequestData(data),
@@ -224,12 +205,7 @@ export const logApiRequest = (
 /**
  * Log API response for debugging (in development only)
  */
-export const logApiResponse = (
-  serviceName: string,
-  endpoint: string,
-  response: unknown,
-  durationMs: number,
-): void => {
+export const logApiResponse = (serviceName: string, endpoint: string, response: unknown, durationMs: number): void => {
   if (process.env.NODE_ENV === "development") {
     console.log(`[API Response] ${serviceName} ${endpoint} (${durationMs}ms):`, {
       response,

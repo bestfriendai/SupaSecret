@@ -344,7 +344,7 @@ class VideoCacheManager {
     const initialCount = this.cache.size;
 
     // Clean up expired entries from LRU cache
-    const expiredRemoved = this.lruCache.cleanup();
+    const _expiredRemoved = this.lruCache.cleanup();
 
     // Force eviction if still over threshold
     if (this.currentCacheSize > this.config.maxCacheSize * 0.8) {

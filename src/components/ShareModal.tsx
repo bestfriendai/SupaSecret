@@ -6,7 +6,7 @@ import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { generateConfessionLink, generateShareMessage } from "../utils/links";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { useReportStore } from "../state/reportStore";
+
 import ReportModal from "./ReportModal";
 
 interface ShareModalProps {

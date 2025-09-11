@@ -8,7 +8,7 @@ claude-3-7-sonnet-latest
 claude-3-5-haiku-latest
 */
 import Anthropic from "@anthropic-ai/sdk";
-import { validateEnvironmentVariables, handleApiError } from "../utils/apiUtils";
+import { handleApiError } from "../utils/apiUtils";
 import { createApiError, API_ERROR_CODES } from "../types/apiError";
 
 export const getAnthropicClient = () => {
@@ -22,7 +22,7 @@ export const getAnthropicClient = () => {
       );
       handleApiError(error, "anthropic", "getAnthropicClient");
     }
-    
+
     return new Anthropic({
       apiKey: apiKey,
     });
@@ -41,13 +41,9 @@ export const validateAnthropicModel = (model: string): void => {
     "claude-3-5-haiku-latest",
     "claude-3-5-sonnet-20240620", // Default model used in chat-service
   ];
-  
+
   if (!validModels.includes(model)) {
-    const error = createApiError(
-      "anthropic",
-      `Invalid model name: ${model}`,
-      API_ERROR_CODES.INVALID_PARAMETER,
-    );
+    const error = createApiError("anthropic", `Invalid model name: ${model}`, API_ERROR_CODES.INVALID_PARAMETER);
     handleApiError(error, "anthropic", "validateAnthropicModel");
   }
 };

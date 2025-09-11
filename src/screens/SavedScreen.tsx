@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { View, Text, Pressable, RefreshControl } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,15 +21,15 @@ export default function SavedScreen() {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const {
     savedConfessions,
-    savedConfessionIds,
+    savedConfessionIds: _savedConfessionIds,
     isLoading,
     isLoadingMore,
     hasMore,
-    error,
+    error: _error,
     loadSavedConfessions,
     loadMoreSavedConfessions,
     unsaveConfession,
-    clearError,
+    clearError: _clearError,
   } = useSavedStore();
   const { getRepliesForConfession } = useReplyStore();
   const insets = useSafeAreaInsets();

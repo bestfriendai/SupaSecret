@@ -11,7 +11,7 @@ import { useReplyStore } from "../state/replyStore";
 import { useSavedStore } from "../state/savedStore";
 import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { debugConfessionPosting, checkConfessionStoreState } from "../utils/debugConfessions";
+import { checkConfessionStoreState } from "../utils/debugConfessions";
 import { useOptimizedReplies } from "../hooks/useOptimizedReplies";
 import { NetworkErrorState } from "../components/ErrorState";
 import OptimizedAdBanner from "../components/OptimizedAdBanner";
@@ -44,7 +44,7 @@ export default function HomeScreen() {
   }, [confessions.length]);
 
   // Debounced refresh and like toggle
-  const { refresh } = useDebouncedRefresh(loadConfessions, 1000);
+  const { refresh: _refresh } = useDebouncedRefresh(loadConfessions, 1000);
   const debouncedToggleLike = useDebouncedLikeToggle(toggleLike, 500);
   const hasMore = useConfessionStore((state) => state.hasMore);
   const { getRepliesForConfession } = useReplyStore();

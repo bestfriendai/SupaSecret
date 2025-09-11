@@ -31,11 +31,11 @@ module.exports = {
         "8xl": "72px",
         "9xl": "80px",
         // Twitter-like text sizes
-        "11": "11px",
-        "13": "13px",
-        "15": "15px",
-        "17": "17px",
-        "20": "20px",
+        11: "11px",
+        13: "13px",
+        15: "15px",
+        17: "17px",
+        20: "20px",
       },
     },
   },
@@ -47,19 +47,19 @@ module.exports = {
       // space-{n}  ->  gap: {n}
       matchUtilities(
         { space: (value) => ({ gap: value }) },
-        { values: spacing, type: ["length", "number", "percentage"] }
+        { values: spacing, type: ["length", "number", "percentage"] },
       );
 
       // space-x-{n}  ->  column-gap: {n}
       matchUtilities(
         { "space-x": (value) => ({ columnGap: value }) },
-        { values: spacing, type: ["length", "number", "percentage"] }
+        { values: spacing, type: ["length", "number", "percentage"] },
       );
 
       // space-y-{n}  ->  row-gap: {n}
       matchUtilities(
         { "space-y": (value) => ({ rowGap: value }) },
-        { values: spacing, type: ["length", "number", "percentage"] }
+        { values: spacing, type: ["length", "number", "percentage"] },
       );
     }),
   ],

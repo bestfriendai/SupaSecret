@@ -14,7 +14,7 @@ import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
 import { getButtonA11yProps } from "../utils/accessibility";
 import { validateEmail, sendPasswordReset } from "../utils/auth";
 import { useToastHelpers } from "../contexts/ToastContext";
-import { getUserFriendlyMessage } from "../utils/errorHandling";
+
 import { safeGoBackFromAuth } from "../utils/navigation";
 
 type NavigationProp = NativeStackNavigationProp<any>;

@@ -98,7 +98,9 @@ function MainTabs() {
   // Global video pause handler
   const handleTabChange = (state: any) => {
     const currentRoute = state.routes[state.index];
-    console.log(`🎥 Tab changed to: ${currentRoute.name}`);
+    if (__DEV__) {
+      console.log(`🎥 Tab changed to: ${currentRoute.name}`);
+    }
     setCurrentTab(currentRoute.name);
   };
 
@@ -196,20 +198,26 @@ export default function AppNavigator() {
   const { isAuthenticated, isLoading, user, checkAuthState } = useAuthStore();
 
   useEffect(() => {
-    console.log("[AppNavigator] Mount useEffect - calling checkAuthState");
+    if (__DEV__) {
+      console.log("[AppNavigator] Mount useEffect - calling checkAuthState");
+    }
     checkAuthState();
   }, [checkAuthState]);
 
-  console.log("[AppNavigator] Rendering - current state:", {
-    isAuthenticated,
-    isLoading,
-    hasUser: !!user,
-    userId: user?.id,
-  });
+  if (__DEV__) {
+    console.log("[AppNavigator] Rendering - current state:", {
+      isAuthenticated,
+      isLoading,
+      hasUser: !!user,
+      userId: user?.id,
+    });
+  }
 
   // Show loading screen while checking auth state
   if (isLoading) {
-    console.log("[AppNavigator] SHOWING LOADING SCREEN - isLoading is true");
+    if (__DEV__) {
+      console.log("[AppNavigator] SHOWING LOADING SCREEN - isLoading is true");
+    }
     return (
       <View className="flex-1 bg-black items-center justify-center">
         <ActivityIndicator size="large" color="#1D9BF0" />

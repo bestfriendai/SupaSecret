@@ -66,78 +66,78 @@ export const generateImage = async (
       handleApiError(error, "image-generation", context);
     }
 
-    return await executeApiRequest(async () => {
-      const apiKey = process.env.EXPO_PUBLIC_VIBECODE_IMAGE_API_KEY;
-      if (!apiKey) {
-        const error = createApiError(
-          "image-generation",
-          "Image generation API key not found in environment variables",
-          API_ERROR_CODES.API_KEY_NOT_FOUND,
-        );
-        handleApiError(error, "image-generation", context);
-      }
+    return await executeApiRequest(
+      async () => {
+        const apiKey = process.env.EXPO_PUBLIC_VIBECODE_IMAGE_API_KEY;
+        if (!apiKey) {
+          const error = createApiError(
+            "image-generation",
+            "Image generation API key not found in environment variables",
+            API_ERROR_CODES.API_KEY_NOT_FOUND,
+          );
+          handleApiError(error, "image-generation", context);
+        }
 
-      // Log request for debugging
-      logApiRequest("image-generation", "/generate", "POST", {
-        prompt,
-        model,
-        width,
-        height,
-        steps,
-        seed,
-      });
-
-      const response = await fetch("https://api.vibecode.com/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
-        body: JSON.stringify({
+        // Log request for debugging
+        logApiRequest("image-generation", "/generate", "POST", {
           prompt,
           model,
           width,
           height,
           steps,
           seed,
-        }),
-      });
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const error = createApiError(
-          "image-generation",
-          errorData.message || `HTTP error! status: ${response.status}`,
-          undefined,
-          response.status,
-          errorData,
-          response.status >= 500, // Retry on server errors
-        );
-        handleApiError(error, "image-generation", context);
-      }
+        const response = await fetch("https://api.vibecode.com/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": apiKey,
+          },
+          body: JSON.stringify({
+            prompt,
+            model,
+            width,
+            height,
+            steps,
+            seed,
+          }),
+        });
 
-      const data = await response.json();
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const error = createApiError(
+            "image-generation",
+            errorData.message || `HTTP error! status: ${response.status}`,
+            undefined,
+            response.status,
+            errorData,
+            response.status >= 500, // Retry on server errors
+          );
+          handleApiError(error, "image-generation", context);
+        }
 
-      // Log response for debugging
-      logApiResponse("image-generation", "/generate", data, Date.now() - startTime);
+        const data = await response.json();
 
-      // Validate response structure
-      const validatedResponse = validateApiResponse(
-        data,
-        ["imageUrl"],
-        "image-generation",
+        // Log response for debugging
+        logApiResponse("image-generation", "/generate", data, Date.now() - startTime);
+
+        // Validate response structure
+        const validatedResponse = validateApiResponse(data, ["imageUrl"], "image-generation", context) as {
+          imageUrl: string;
+        };
+
+        return {
+          imageUrl: validatedResponse.imageUrl,
+        };
+      },
+      {
+        serviceName: "image-generation",
         context,
-      ) as { imageUrl: string };
-
-      return {
-        imageUrl: validatedResponse.imageUrl,
-      };
-    }, {
-      serviceName: "image-generation",
-      context,
-      timeoutMs: 120000, // 2 minute timeout for image generation
-      maxRetries: 3,
-    });
+        timeoutMs: 120000, // 2 minute timeout for image generation
+        maxRetries: 3,
+      },
+    );
   } catch (error) {
     handleApiError(error, "image-generation", context);
     // This line is unreachable because handleApiError always throws

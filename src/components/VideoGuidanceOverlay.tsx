@@ -4,7 +4,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
   withSequence,
   withDelay,

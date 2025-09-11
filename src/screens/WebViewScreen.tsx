@@ -22,7 +22,7 @@ type WebViewScreenNavigationProp = StackNavigationProp<RootStackParamList, "WebV
 
 // URL allowlist for security - only allow these domains and schemes
 const ALLOWED_SCHEMES = ["http", "https"];
-const ALLOWED_DOMAINS = [
+const _ALLOWED_DOMAINS = [
   // Add your trusted domains here
   "example.com",
   "privacy-policy-domain.com",

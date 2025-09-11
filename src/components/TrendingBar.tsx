@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -17,7 +17,7 @@ interface TrendingBarProps {
 
 export default function TrendingBar({ visible = true }: TrendingBarProps) {
   const navigation = useNavigation<NavigationProp>();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [_isRefreshing, setIsRefreshing] = useState(false);
   const { impactAsync } = usePreferenceAwareHaptics();
 
   const { trendingHashtags, isLoading, error, loadTrendingHashtags, searchByHashtag } = useTrendingStore();

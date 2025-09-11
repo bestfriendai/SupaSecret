@@ -9,7 +9,6 @@ import {
   getSupabaseErrorMessage,
   isRetryableSupabaseError,
   logSupabaseError,
-  type SupabaseError,
 } from "../types/supabaseError";
 
 export interface StandardError {

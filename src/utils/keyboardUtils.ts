@@ -5,7 +5,7 @@
 
 import { Keyboard, Platform, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 
 export interface KeyboardInfo {
   isVisible: boolean;
@@ -116,7 +116,7 @@ export const useKeyboardPadding = (additionalPadding = 0) => {
  */
 export const useSafeKeyboardHeight = () => {
   const keyboard = useKeyboard();
-  const insets = useSafeAreaInsets();
+  const _insets = useSafeAreaInsets();
 
   if (!keyboard.isVisible) return 0;
 

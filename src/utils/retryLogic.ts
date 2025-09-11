@@ -3,7 +3,7 @@
  * Provides robust error handling for transient network errors
  */
 
-import { isRetryableSupabaseError, getSupabaseErrorCode } from "../types/supabaseError";
+import { isRetryableSupabaseError } from "../types/supabaseError";
 // Global retry event subscription for lightweight UX signals
 export type RetryEventSource = "supabase" | "api" | "unknown";
 export interface RetryEvent {
@@ -123,7 +123,7 @@ export const withRetry = async <T>(operation: () => Promise<T>, options: RetryOp
     onRetry,
   } = options;
 
-  const startTime = Date.now();
+  const _startTime = Date.now();
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {

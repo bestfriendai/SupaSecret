@@ -1,4 +1,3 @@
-import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
 import { getConfig } from "../config/production";
@@ -12,18 +11,18 @@ const REVENUECAT_API_KEY = config.REVENUECAT.API_KEY;
 
 // Lazy load RevenueCat to prevent Expo Go crashes
 let Purchases: any = null;
-let CustomerInfo: any = null;
-let PurchasesOffering: any = null;
-let PurchasesPackage: any = null;
+let _CustomerInfo: any = null;
+let _PurchasesOffering: any = null;
+let _PurchasesPackage: any = null;
 
 const loadRevenueCat = async () => {
   if (!Purchases && !IS_EXPO_GO) {
     try {
       const RevenueCatModule = require("react-native-purchases");
       Purchases = RevenueCatModule.default;
-      CustomerInfo = RevenueCatModule.CustomerInfo;
-      PurchasesOffering = RevenueCatModule.PurchasesOffering;
-      PurchasesPackage = RevenueCatModule.PurchasesPackage;
+      _CustomerInfo = RevenueCatModule.CustomerInfo;
+      _PurchasesOffering = RevenueCatModule.PurchasesOffering;
+      _PurchasesPackage = RevenueCatModule.PurchasesPackage;
       if (__DEV__) {
         console.log("🚀 RevenueCat module loaded successfully");
       }
@@ -84,7 +83,10 @@ export class RevenueCatService {
       this.isInitialized = true;
     } catch (error) {
       if (__DEV__) {
-        console.warn("RevenueCat initialization failed, running in demo mode:", (error as any)?.message || String(error));
+        console.warn(
+          "RevenueCat initialization failed, running in demo mode:",
+          (error as any)?.message || String(error),
+        );
       }
       this.isInitialized = true;
     }
@@ -112,7 +114,9 @@ export class RevenueCatService {
     }
   }
 
-  static async purchasePackage(packageToPurchase: any): Promise<{ customerInfo: any; productIdentifier: string } | { mockCustomerInfo: boolean }> {
+  static async purchasePackage(
+    packageToPurchase: any,
+  ): Promise<{ customerInfo: any; productIdentifier: string } | { mockCustomerInfo: boolean }> {
     await this.initialize();
 
     if (IS_EXPO_GO) {
