@@ -14,18 +14,23 @@
           "ios": {
             "useFrameworks": "static",
             "deploymentTarget": "15.1"
+          },
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
           }
         }
       ],
       "expo-audio",
       "expo-camera",
-      "expo-av",
       "expo-asset",
       "expo-mail-composer",
       "expo-notifications",
       "expo-secure-store",
       "expo-video",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font",
+      "expo-localization"
     ],
     "ios": {
       "supportsTablet": true,
@@ -43,6 +48,7 @@
     },
     "android": {
       "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",

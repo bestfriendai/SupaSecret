@@ -3,7 +3,7 @@
  * Handles avatar upload, compression, and management with Supabase Storage
  */
 
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import { supabase } from "../lib/supabase";
 import { storageWithRetry } from "../utils/supabaseWithRetry";

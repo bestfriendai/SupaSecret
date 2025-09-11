@@ -221,7 +221,6 @@ export default function SavedScreen() {
           data={savedConfessions}
           renderItem={renderConfession}
           keyExtractor={(item) => item.id}
-          estimatedItemSize={200}
           contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 16 }}
           showsVerticalScrollIndicator={false}
           refreshControl={

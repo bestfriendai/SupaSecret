@@ -24,7 +24,8 @@ interface ScrollRestorationOptions {
 export const useScrollRestoration = (options: ScrollRestorationOptions) => {
   const { key, enabled = true, debounceMs = 500, maxAge = 5 * 60 * 1000 } = options; // 5 minutes default
 
-  const scrollViewRef = useRef<ScrollView | FlatList<any> | SectionList<any, any> | FlashList<any> | null>(null);
+  // Use 'any' type for the ref to handle FlashList without type errors
+  const scrollViewRef = useRef<ScrollView | FlatList<any> | SectionList<any, any> | any>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedPosition = useRef<ScrollPosition | null>(null);
   const isRestoringRef = useRef(false);
@@ -99,7 +100,7 @@ export const useScrollRestoration = (options: ScrollRestorationOptions) => {
           }
           // Check for FlatList/FlashList scrollToOffset method
           else if (typeof (scrollComponent as any).scrollToOffset === "function") {
-            (scrollComponent as FlatList<any> | FlashList<any>).scrollToOffset({
+            (scrollComponent as FlatList<any> | any).scrollToOffset({
               offset: position.y,
               animated: false,
             });

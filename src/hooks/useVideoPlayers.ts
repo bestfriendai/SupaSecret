@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useCallback } from "react";
 import { AppState } from "react-native";
-import { useVideoPlayer } from "expo-video";
+import { useVideoPlayer, VideoPlayer } from "expo-video";
 import { useConfessionStore } from "../state/confessionStore";
 
 interface VideoItem {
@@ -10,7 +10,7 @@ interface VideoItem {
 }
 
 interface VideoPlayerManager {
-  getPlayer: (index: number) => any;
+  getPlayer: (index: number) => VideoPlayer | null;
   playVideo: (index: number) => void;
   pauseVideo: (index: number) => void;
   pauseAll: () => void;
@@ -22,7 +22,7 @@ interface VideoPlayerManager {
 }
 
 export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
-  const playersRef = useRef<Map<number, any>>(new Map());
+  const playersRef = useRef<Map<number, VideoPlayer>>(new Map());
   const currentPlayingRef = useRef<number>(-1);
   const userPreferences = useConfessionStore((state) => state.userPreferences);
 
@@ -107,74 +107,73 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     updateMuteState();
   }, [userPreferences.sound_enabled, updateMuteState]);
 
-  const getPlayer = (index: number) => {
+  const getPlayer = (index: number): VideoPlayer | null => {
     return playersRef.current.get(index) || null;
   };
 
-  const preloadNeighbors = (currentIndex: number) => {
-    // Preload previous video
-    if (currentIndex > 0) {
-      const prevPlayer = playersRef.current.get(currentIndex - 1);
-      if (prevPlayer) {
-        try {
-          // Load the video without playing
-          prevPlayer.currentTime = 0;
-        } catch (error) {
-          if (__DEV__) {
-            console.warn(`Failed to preload previous video:`, error);
-          }
-        }
-      }
-    }
-
-    // Preload next video
-    if (currentIndex < videos.length - 1) {
-      const nextPlayer = playersRef.current.get(currentIndex + 1);
-      if (nextPlayer) {
-        try {
-          // Load the video without playing
-          nextPlayer.currentTime = 0;
-        } catch (error) {
-          if (__DEV__) {
-            console.warn(`Failed to preload next video:`, error);
-          }
-        }
-      }
-    }
-  };
-
-  const playVideo = (index: number) => {
-    try {
-      const player = playersRef.current.get(index);
-      if (player) {
-        // Pause currently playing video
-        if (currentPlayingRef.current !== -1 && currentPlayingRef.current !== index) {
-          const currentPlayer = playersRef.current.get(currentPlayingRef.current);
-          try {
-            if (currentPlayer && typeof currentPlayer.pause === "function") {
-              currentPlayer.pause();
-            }
-          } catch (error) {
-            if (__DEV__) {
-              console.warn(`Failed to pause current player:`, error);
+  const playVideo = useCallback(
+    (index: number) => {
+      try {
+        const player = playersRef.current.get(index);
+        if (player) {
+          // Pause currently playing video
+          if (currentPlayingRef.current !== -1 && currentPlayingRef.current !== index) {
+            const currentPlayer = playersRef.current.get(currentPlayingRef.current);
+            try {
+              if (currentPlayer && typeof currentPlayer.pause === "function") {
+                currentPlayer.pause();
+              }
+            } catch (error) {
+              if (__DEV__) {
+                console.warn(`Failed to pause current player:`, error);
+              }
             }
           }
+
+          player.play();
+          currentPlayingRef.current = index;
+
+          // Preload neighboring videos for smoother experience
+          // Preload previous video
+          if (index > 0) {
+            const prevPlayer = playersRef.current.get(index - 1);
+            if (prevPlayer) {
+              try {
+                // Load the video without playing
+                prevPlayer.currentTime = 0;
+              } catch (error) {
+                if (__DEV__) {
+                  console.warn(`Failed to preload previous video:`, error);
+                }
+              }
+            }
+          }
+
+          // Preload next video
+          if (index < videos.length - 1) {
+            const nextPlayer = playersRef.current.get(index + 1);
+            if (nextPlayer) {
+              try {
+                // Load the video without playing
+                nextPlayer.currentTime = 0;
+              } catch (error) {
+                if (__DEV__) {
+                  console.warn(`Failed to preload next video:`, error);
+                }
+              }
+            }
+          }
         }
-
-        player.play();
-        currentPlayingRef.current = index;
-
-        // Preload neighboring videos for smoother experience
-        preloadNeighbors(index);
+      } catch (error) {
+        if (__DEV__) {
+          console.warn(`Failed to play video ${index}:`, error);
+        }
       }
-    } catch (error) {
-      if (__DEV__) {
-        console.warn(`Failed to play video ${index}:`, error);
-      }
-    }
-  };
+    },
+    [videos.length],
+  );
 
-  const pauseVideo = (index: number) => {
+  const pauseVideo = useCallback((index: number) => {
     try {
       const player = playersRef.current.get(index);
       if (player && typeof player.pause === "function") {
@@ -188,7 +187,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
         console.warn(`Failed to pause video ${index}:`, error);
       }
     }
-  };
+  }, []);
 
   const pauseAll = useCallback(() => {
     playersRef.current.forEach((player) => {
@@ -205,7 +204,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     currentPlayingRef.current = -1;
   }, []);
 
-  const muteAll = () => {
+  const muteAll = useCallback(() => {
     playersRef.current.forEach((player) => {
       if (player) {
         try {
@@ -217,15 +216,15 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
         }
       }
     });
-  };
+  }, []);
 
-  const unmuteAll = () => {
+  const unmuteAll = useCallback(() => {
     playersRef.current.forEach((player) => {
       if (player) {
         player.muted = false;
       }
     });
-  };
+  }, []);
 
   const stopAll = useCallback(() => {
     // More aggressive stop - pause and reset current playing

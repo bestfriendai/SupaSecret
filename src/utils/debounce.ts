@@ -136,6 +136,7 @@ export function useDebouncedSearch(searchFunction: (query: string) => Promise<vo
  */
 export function useDebouncedLikeToggle(likeFunction: (id: string) => Promise<void> | void, delay: number = 500) {
   const pendingLikes = useRef(new Set<string>());
+  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const debouncedToggleLike = useCallback(
     async (id: string) => {
@@ -154,14 +155,24 @@ export function useDebouncedLikeToggle(likeFunction: (id: string) => Promise<voi
         // Remove from pending after delay to prevent rapid clicking
         const timeoutId = setTimeout(() => {
           pendingLikes.current.delete(id);
+          timeoutRefs.current.delete(id);
         }, delay);
-
-        // Cleanup timeout on unmount
-        return () => clearTimeout(timeoutId);
+        
+        // Store timeout reference for cleanup
+        timeoutRefs.current.set(id, timeoutId);
       }
     },
     [likeFunction, delay],
   );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all pending timeouts on unmount
+      timeoutRefs.current.forEach((timeout) => clearTimeout(timeout));
+      timeoutRefs.current.clear();
+    };
+  }, []);
 
   return debouncedToggleLike;
 }
