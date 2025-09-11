@@ -2,13 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
-import type {
-  MembershipState,
-  MembershipTier,
-  UserMembership,
-  MembershipPlan,
-  MembershipFeatures,
-} from "../types/membership";
+import type { MembershipState, MembershipTier, UserMembership, MembershipFeatures } from "../types/membership";
 import { DEFAULT_PLANS, FREE_FEATURES, PLUS_FEATURES } from "../types/membership";
 
 export const useMembershipStore = create<MembershipState>()(

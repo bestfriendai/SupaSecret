@@ -1,9 +1,5 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-} from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -18,7 +14,6 @@ import { AuthStackParamList } from "../navigation/AppNavigator";
 import { useAuthStore } from "../state/authStore";
 import { validateEmail, validatePassword, getPasswordStrength } from "../utils/auth";
 import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
-import { getOptimizedTextInputProps } from "../utils/keyboardUtils";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
@@ -133,183 +128,183 @@ export default function SignUpScreen() {
           <View className="w-10" />
         </View>
 
-            {/* Content */}
-            <View className="flex-1 px-6 py-8">
-              {/* Welcome Text */}
-              <View className="mb-8">
-                <Text className="text-white text-28 font-bold mb-2">Join Toxic Confessions</Text>
-                <Text className="text-gray-400 text-16 leading-6">
-                  Create your account to start sharing anonymously and connect with others safely.
-                </Text>
-              </View>
+        {/* Content */}
+        <View className="flex-1 px-6 py-8">
+          {/* Welcome Text */}
+          <View className="mb-8">
+            <Text className="text-white text-28 font-bold mb-2">Join Toxic Confessions</Text>
+            <Text className="text-gray-400 text-16 leading-6">
+              Create your account to start sharing anonymously and connect with others safely.
+            </Text>
+          </View>
 
-              {/* Form */}
-              <View className="space-y-4 mb-6">
-                <AuthInput
-                  label="Email Address"
-                  value={formData.email}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, email: text });
-                    if (formErrors.email) {
-                      setFormErrors({ ...formErrors, email: "" });
-                    }
-                  }}
-                  placeholder="Enter your email"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  leftIcon="mail"
-                  error={formErrors.email}
-                />
+          {/* Form */}
+          <View className="space-y-4 mb-6">
+            <AuthInput
+              label="Email Address"
+              value={formData.email}
+              onChangeText={(text) => {
+                setFormData({ ...formData, email: text });
+                if (formErrors.email) {
+                  setFormErrors({ ...formErrors, email: "" });
+                }
+              }}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoComplete="email"
+              leftIcon="mail"
+              error={formErrors.email}
+            />
 
-                <AuthInput
-                  label="Username (Optional)"
-                  value={formData.username}
-                  onChangeText={(text) => setFormData({ ...formData, username: text })}
-                  placeholder="Choose a username"
-                  autoComplete="username"
-                  leftIcon="person"
-                />
+            <AuthInput
+              label="Username (Optional)"
+              value={formData.username}
+              onChangeText={(text) => setFormData({ ...formData, username: text })}
+              placeholder="Choose a username"
+              autoComplete="username"
+              leftIcon="person"
+            />
 
-                <View>
-                  <AuthInput
-                    label="Password"
-                    value={formData.password}
-                    onChangeText={(text) => {
-                      setFormData({ ...formData, password: text });
-                      if (formErrors.password) {
-                        setFormErrors({ ...formErrors, password: "" });
-                      }
-                    }}
-                    placeholder="Create a strong password"
-                    secureTextEntry
-                    autoComplete="password"
-                    leftIcon="lock-closed"
-                    error={formErrors.password}
-                  />
-
-                  {/* Password Strength Indicator */}
-                  {formData.password.length > 0 && (
-                    <View className="mt-2">
-                      <View className="flex-row items-center justify-between mb-2">
-                        <Text className="text-gray-400 text-13">Password Strength</Text>
-                        <Text className="text-13 font-medium" style={{ color: passwordStrength.color }}>
-                          {passwordStrength.label}
-                        </Text>
-                      </View>
-                      <View className="flex-row space-x-1">
-                        {[1, 2, 3].map((level) => (
-                          <View
-                            key={level}
-                            className="flex-1 h-2 rounded-full"
-                            style={{
-                              backgroundColor: level <= passwordStrength.strength ? passwordStrength.color : "#374151",
-                            }}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  )}
-                </View>
-
-                <AuthInput
-                  label="Confirm Password"
-                  value={formData.confirmPassword}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, confirmPassword: text });
-                    if (formErrors.confirmPassword) {
-                      setFormErrors({ ...formErrors, confirmPassword: "" });
-                    }
-                  }}
-                  placeholder="Confirm your password"
-                  secureTextEntry
-                  autoComplete="password"
-                  leftIcon="lock-closed"
-                  error={formErrors.confirmPassword}
-                />
-              </View>
-
-              {/* Terms Agreement */}
-              <Pressable className="flex-row items-start mb-6" onPress={() => setAgreedToTerms(!agreedToTerms)}>
-                <View
-                  className={`w-5 h-5 rounded border-2 items-center justify-center mr-3 mt-0.5 ${
-                    agreedToTerms ? "bg-blue-500 border-blue-500" : "border-gray-600"
-                  }`}
-                >
-                  {agreedToTerms && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
-                </View>
-                <View className="flex-1">
-                  <Text className="text-gray-400 text-14 leading-5">
-                    I agree to the{" "}
-                    <Text
-                      className="text-blue-400 underline"
-                      onPress={() => {
-                        const parentNav = (navigation as any)?.getParent?.();
-                        if (parentNav)
-                          parentNav.navigate("WebView", {
-                            url: getTermsOfServiceUrl(),
-                            title: "Terms of Service",
-                          });
-                        else
-                          (navigation as any).navigate("WebView", {
-                            url: getTermsOfServiceUrl(),
-                            title: "Terms of Service",
-                          });
-                      }}
-                    >
-                      Terms of Service
-                    </Text>{" "}
-                    and{" "}
-                    <Text
-                      className="text-blue-400 underline"
-                      onPress={() => {
-                        const parentNav = (navigation as any)?.getParent?.();
-                        if (parentNav)
-                          parentNav.navigate("WebView", {
-                            url: getPrivacyPolicyUrl(),
-                            title: "Privacy Policy",
-                          });
-                        else
-                          (navigation as any).navigate("WebView", {
-                            url: getPrivacyPolicyUrl(),
-                            title: "Privacy Policy",
-                          });
-                      }}
-                    >
-                      Privacy Policy
-                    </Text>
-                  </Text>
-                </View>
-              </Pressable>
-
-              {/* Sign Up Button */}
-              <AuthButton
-                title="Create Account"
-                onPress={handleSignUp}
-                loading={isLoading}
-                disabled={isLoading}
-                leftIcon="person-add"
+            <View>
+              <AuthInput
+                label="Password"
+                value={formData.password}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, password: text });
+                  if (formErrors.password) {
+                    setFormErrors({ ...formErrors, password: "" });
+                  }
+                }}
+                placeholder="Create a strong password"
+                secureTextEntry
+                autoComplete="password"
+                leftIcon="lock-closed"
+                error={formErrors.password}
               />
 
-              {/* Sign In Link */}
-              <View className="flex-row items-center justify-center mt-6">
-                <Text className="text-gray-400 text-15">Already have an account? </Text>
-                <Pressable onPress={handleSignIn}>
-                  <Text className="text-blue-400 text-15 font-semibold">Sign In</Text>
-                </Pressable>
-              </View>
-
-              {/* Privacy Notice */}
-              <View className="mt-8 p-4 bg-gray-900 rounded-2xl">
-                <View className="flex-row items-center mb-2">
-                  <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-                  <Text className="text-green-400 text-14 font-medium ml-2">Your Privacy is Protected</Text>
+              {/* Password Strength Indicator */}
+              {formData.password.length > 0 && (
+                <View className="mt-2">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-gray-400 text-13">Password Strength</Text>
+                    <Text className="text-13 font-medium" style={{ color: passwordStrength.color }}>
+                      {passwordStrength.label}
+                    </Text>
+                  </View>
+                  <View className="flex-row space-x-1">
+                    {[1, 2, 3].map((level) => (
+                      <View
+                        key={level}
+                        className="flex-1 h-2 rounded-full"
+                        style={{
+                          backgroundColor: level <= passwordStrength.strength ? passwordStrength.color : "#374151",
+                        }}
+                      />
+                    ))}
+                  </View>
                 </View>
-                <Text className="text-gray-400 text-13 leading-4">
-                  Your account is only used for app access. All confessions remain completely anonymous and are never
-                  linked to your profile.
-                </Text>
-              </View>
+              )}
             </View>
+
+            <AuthInput
+              label="Confirm Password"
+              value={formData.confirmPassword}
+              onChangeText={(text) => {
+                setFormData({ ...formData, confirmPassword: text });
+                if (formErrors.confirmPassword) {
+                  setFormErrors({ ...formErrors, confirmPassword: "" });
+                }
+              }}
+              placeholder="Confirm your password"
+              secureTextEntry
+              autoComplete="password"
+              leftIcon="lock-closed"
+              error={formErrors.confirmPassword}
+            />
+          </View>
+
+          {/* Terms Agreement */}
+          <Pressable className="flex-row items-start mb-6" onPress={() => setAgreedToTerms(!agreedToTerms)}>
+            <View
+              className={`w-5 h-5 rounded border-2 items-center justify-center mr-3 mt-0.5 ${
+                agreedToTerms ? "bg-blue-500 border-blue-500" : "border-gray-600"
+              }`}
+            >
+              {agreedToTerms && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+            </View>
+            <View className="flex-1">
+              <Text className="text-gray-400 text-14 leading-5">
+                I agree to the{" "}
+                <Text
+                  className="text-blue-400 underline"
+                  onPress={() => {
+                    const parentNav = (navigation as any)?.getParent?.();
+                    if (parentNav)
+                      parentNav.navigate("WebView", {
+                        url: getTermsOfServiceUrl(),
+                        title: "Terms of Service",
+                      });
+                    else
+                      (navigation as any).navigate("WebView", {
+                        url: getTermsOfServiceUrl(),
+                        title: "Terms of Service",
+                      });
+                  }}
+                >
+                  Terms of Service
+                </Text>{" "}
+                and{" "}
+                <Text
+                  className="text-blue-400 underline"
+                  onPress={() => {
+                    const parentNav = (navigation as any)?.getParent?.();
+                    if (parentNav)
+                      parentNav.navigate("WebView", {
+                        url: getPrivacyPolicyUrl(),
+                        title: "Privacy Policy",
+                      });
+                    else
+                      (navigation as any).navigate("WebView", {
+                        url: getPrivacyPolicyUrl(),
+                        title: "Privacy Policy",
+                      });
+                  }}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* Sign Up Button */}
+          <AuthButton
+            title="Create Account"
+            onPress={handleSignUp}
+            loading={isLoading}
+            disabled={isLoading}
+            leftIcon="person-add"
+          />
+
+          {/* Sign In Link */}
+          <View className="flex-row items-center justify-center mt-6">
+            <Text className="text-gray-400 text-15">Already have an account? </Text>
+            <Pressable onPress={handleSignIn}>
+              <Text className="text-blue-400 text-15 font-semibold">Sign In</Text>
+            </Pressable>
+          </View>
+
+          {/* Privacy Notice */}
+          <View className="mt-8 p-4 bg-gray-900 rounded-2xl">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+              <Text className="text-green-400 text-14 font-medium ml-2">Your Privacy is Protected</Text>
+            </View>
+            <Text className="text-gray-400 text-13 leading-4">
+              Your account is only used for app access. All confessions remain completely anonymous and are never linked
+              to your profile.
+            </Text>
+          </View>
+        </View>
         {/* Animated Modal */}
         <AlertModal
           visible={showModal}

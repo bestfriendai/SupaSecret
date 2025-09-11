@@ -67,6 +67,8 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 
       return () => clearTimeout(timer);
     }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const dismissToast = useCallback(() => {
@@ -84,6 +86,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     ]).start(() => {
       onDismiss(toast.id);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast.id, onDismiss]);
 
   const getToastStyles = () => {

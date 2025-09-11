@@ -24,6 +24,7 @@ export default function ConfessionSkeleton({ showVideo = false }: ConfessionSkel
       cancelAnimation(shimmer);
       shimmer.value = 0; // Reset to safe default
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const shimmerStyle = useAnimatedStyle(() => {

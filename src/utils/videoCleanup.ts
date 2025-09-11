@@ -1,6 +1,6 @@
 /**
  * Video Cleanup Utilities
- * 
+ *
  * Utilities for identifying and cleaning up orphaned video entries
  * where database records reference non-existent storage files.
  */
@@ -10,7 +10,7 @@ import { ensureSignedVideoUrl } from "./storage";
 
 export interface OrphanedVideoEntry {
   id: string;
-  video_uri: string;
+  video_uri: string | null;
   created_at: string;
   content: string;
 }
@@ -45,8 +45,8 @@ export async function scanForOrphanedVideos(): Promise<VideoCleanupReport> {
     if (videoConfessions && videoConfessions.length > 0) {
       // Check each video confession to see if the file exists
       for (const confession of videoConfessions) {
-        const signedUrl = await ensureSignedVideoUrl(confession.video_uri);
-        
+        const signedUrl = confession.video_uri ? await ensureSignedVideoUrl(confession.video_uri) : null;
+
         if (!signedUrl) {
           // File doesn't exist in storage
           orphanedEntries.push({
@@ -62,18 +62,18 @@ export async function scanForOrphanedVideos(): Promise<VideoCleanupReport> {
     }
 
     const cleanupRecommendations: string[] = [];
-    
+
     if (orphanedEntries.length > 0) {
       cleanupRecommendations.push(
-        `Found ${orphanedEntries.length} orphaned video entries that reference non-existent files.`
+        `Found ${orphanedEntries.length} orphaned video entries that reference non-existent files.`,
       );
       cleanupRecommendations.push(
-        "Consider running cleanupOrphanedVideos() to remove these entries from the database."
+        "Consider running cleanupOrphanedVideos() to remove these entries from the database.",
       );
-      
+
       if (orphanedEntries.length > totalVideoConfessions * 0.5) {
         cleanupRecommendations.push(
-          "⚠️ More than 50% of video entries are orphaned. This suggests a storage migration or cleanup issue."
+          "⚠️ More than 50% of video entries are orphaned. This suggests a storage migration or cleanup issue.",
         );
       }
     } else {
@@ -113,14 +113,14 @@ export async function cleanupOrphanedVideos(dryRun: boolean = true): Promise<{
       };
     }
 
-    const orphanedIds = orphanedEntries.map(entry => entry.id);
-    
+    const orphanedIds = orphanedEntries.map((entry) => entry.id);
+
     if (dryRun) {
       console.log("🔍 DRY RUN: Would delete the following orphaned video entries:");
-      orphanedEntries.forEach(entry => {
+      orphanedEntries.forEach((entry) => {
         console.log(`  - ID: ${entry.id}, Path: ${entry.video_uri}, Created: ${entry.created_at}`);
       });
-      
+
       return {
         deletedCount: 0,
         deletedIds: orphanedIds,
@@ -129,10 +129,7 @@ export async function cleanupOrphanedVideos(dryRun: boolean = true): Promise<{
     }
 
     // Actually delete the orphaned entries
-    const { error } = await supabase
-      .from("confessions")
-      .delete()
-      .in("id", orphanedIds);
+    const { error } = await supabase.from("confessions").delete().in("id", orphanedIds);
 
     if (error) {
       throw new Error(`Failed to delete orphaned entries: ${error.message}`);
@@ -167,12 +164,12 @@ export async function logVideoCleanupReport(): Promise<void> {
   try {
     console.log("🔍 Scanning for orphaned video entries...");
     const report = await scanForOrphanedVideos();
-    
+
     console.log("\n📊 Video Cleanup Report:");
     console.log(`  Total video confessions: ${report.totalVideoConfessions}`);
     console.log(`  Valid entries: ${report.validEntries}`);
     console.log(`  Orphaned entries: ${report.orphanedEntries.length}`);
-    
+
     if (report.orphanedEntries.length > 0) {
       console.log("\n🗑️ Orphaned entries:");
       report.orphanedEntries.forEach((entry, index) => {
@@ -183,10 +180,10 @@ export async function logVideoCleanupReport(): Promise<void> {
         console.log("");
       });
     }
-    
+
     console.log("\n💡 Recommendations:");
-    report.cleanupRecommendations.forEach(rec => console.log(`  ${rec}`));
-    
+    report.cleanupRecommendations.forEach((rec) => console.log(`  ${rec}`));
+
     if (report.orphanedEntries.length > 0) {
       console.log("\n🧹 To clean up orphaned entries:");
       console.log("  import { cleanupOrphanedVideos } from './src/utils/videoCleanup';");

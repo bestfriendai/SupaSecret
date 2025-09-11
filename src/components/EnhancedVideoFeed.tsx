@@ -174,7 +174,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await loadConfessions();            // <-- real fetch
+      await loadConfessions(); // <-- real fetch
     } finally {
       setIsRefreshing(false);
     }
@@ -383,258 +383,256 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   return (
     <View className="flex-1 bg-black">
       <StatusBar hidden />
-        <GestureDetector gesture={composedGestures}>
-          <Animated.View style={[{ flex: 1 }, containerStyle]}>
-            {/* Video Player */}
-            {currentPlayer ? (
-              <>
-                <VideoView player={currentPlayer} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
-                {/* Visual privacy overlay in Expo Go */}
-                <BlurView intensity={16} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
-              </>
-            ) : (
-              <View className="flex-1 items-center justify-center bg-black">
-                <Ionicons name="videocam-outline" size={48} color="#8B98A5" />
-                <Text className="text-gray-400 mt-2">Preparing video…</Text>
-              </View>
-            )}
+      <GestureDetector gesture={composedGestures}>
+        <Animated.View style={[{ flex: 1 }, containerStyle]}>
+          {/* Video Player */}
+          {currentPlayer ? (
+            <>
+              <VideoView player={currentPlayer} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
+              {/* Visual privacy overlay in Expo Go */}
+              <BlurView intensity={16} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
+            </>
+          ) : (
+            <View className="flex-1 items-center justify-center bg-black">
+              <Ionicons name="videocam-outline" size={48} color="#8B98A5" />
+              <Text className="text-gray-400 mt-2">Preparing video…</Text>
+            </View>
+          )}
 
-            {/* Video Loading Skeleton */}
-            <VideoSkeleton isVisible={isVideoLoading} />
+          {/* Video Loading Skeleton */}
+          <VideoSkeleton isVisible={isVideoLoading} />
 
-            {/* Video Controls */}
-            <VideoControls
-              isVisible={showControls}
-              onSpeedChange={handleSpeedChange}
-              onCaptionsToggle={handleCaptionsToggle}
-              captionsEnabled={captionsEnabled}
-              hasTranscription={!!currentVideo.transcription}
-            />
+          {/* Video Controls */}
+          <VideoControls
+            isVisible={showControls}
+            onSpeedChange={handleSpeedChange}
+            onCaptionsToggle={handleCaptionsToggle}
+            captionsEnabled={captionsEnabled}
+            hasTranscription={!!currentVideo.transcription}
+          />
 
-            {/* Pull to Refresh Indicator */}
-            <PullToRefreshOverlay
-              pullDistance={pullDistance}
-              isRefreshing={isRefreshing}
-              threshold={80}
-              context="videos"
-              onRefreshComplete={() => PreferenceAwareHaptics.impactAsync()}
-            />
+          {/* Pull to Refresh Indicator */}
+          <PullToRefreshOverlay
+            pullDistance={pullDistance}
+            isRefreshing={isRefreshing}
+            threshold={80}
+            context="videos"
+            onRefreshComplete={() => PreferenceAwareHaptics.impactAsync()}
+          />
 
-            {/* Heart Animation Overlay */}
-            <Animated.View
-              style={[
-                {
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  marginTop: -40,
-                  marginLeft: -40,
-                  zIndex: 100,
-                },
-                heartAnimationStyle,
-              ]}
-            >
-              <Ionicons name="heart" size={80} color="#FF3040" />
-            </Animated.View>
-
-            {/* Top Overlay */}
-            <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }, overlayStyle]}>
-              <SafeAreaView>
-                <View className="flex-row items-center justify-between px-4 py-2">
-                  <Pressable
-                    className="bg-black/50 rounded-full p-2 touch-target"
-                    onPress={onClose}
-                    accessibilityRole="button"
-                    accessibilityLabel="Go back"
-                  >
-                    <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-                  </Pressable>
-
-                  <View className="flex-row items-center space-x-2">
-                    <View className="bg-black/50 rounded-full px-3 py-1">
-                      <Text className="text-white text-13 font-medium">
-                        {currentIndex + 1}/{videoConfessions.length}
-                      </Text>
-                    </View>
-
-                    {/* CC Toggle */}
-                    {currentVideo.transcription && (
-                      <Pressable
-                        className={`rounded-full px-2 py-1 ${captionsEnabled ? "bg-blue-500" : "bg-black/50"}`}
-                        onPress={() => {
-                          setCaptionsEnabled(!captionsEnabled);
-                          PreferenceAwareHaptics.impactAsync();
-                        }}
-                      >
-                        <Text className={`text-11 font-medium ${captionsEnabled ? "text-white" : "text-gray-300"}`}>
-                          CC
-                        </Text>
-                      </Pressable>
-                    )}
-                  </View>
-
-                  <Pressable
-                    className="bg-black/50 rounded-full p-2 touch-target"
-                    accessibilityRole="button"
-                    accessibilityLabel="More options"
-                  >
-                    <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
-                  </Pressable>
-                </View>
-              </SafeAreaView>
-            </Animated.View>
-
-            {/* Right Side Actions */}
-            <Animated.View style={[{ position: "absolute", right: 16, bottom: 120, zIndex: 10 }, actionButtonsStyle]}>
-              <View className="items-center space-y-6">
-                <AnimatedActionButton
-                  icon={currentVideo.isLiked ? "heart" : "heart-outline"}
-                  label="Like"
-                  count={currentVideo.likes || 0}
-                  isActive={currentVideo.isLiked}
-                  onPress={() => {
-                    toggleLike(currentVideo.id);
-                    PreferenceAwareHaptics.impactAsync();
-                  }}
-                />
-
-                <AnimatedActionButton
-                  icon="chatbubble-outline"
-                  label="Reply"
-                  onPress={() => {
-                    const ref = commentSheetRef.current;
-                    if (ref && typeof ref.present === "function") ref.present();
-                    PreferenceAwareHaptics.impactAsync();
-                  }}
-                />
-
-                <AnimatedActionButton
-                  icon="share-outline"
-                  label="Share"
-                  onPress={() => {
-                    const ref = shareSheetRef.current;
-                    if (ref && typeof ref.present === "function") ref.present();
-                    PreferenceAwareHaptics.impactAsync();
-                  }}
-                />
-
-                <AnimatedActionButton
-                  icon={isSaved(currentVideo.id) ? "bookmark" : "bookmark-outline"}
-                  label="Save"
-                  isActive={isSaved(currentVideo.id)}
-                  onPress={() => {
-                    if (isSaved(currentVideo.id)) {
-                      unsaveConfession(currentVideo.id);
-                    } else {
-                      saveConfession(currentVideo.id);
-                    }
-                    PreferenceAwareHaptics.impactAsync();
-                  }}
-                />
-
-                <AnimatedActionButton
-                  icon="flag-outline"
-                  label="Report"
-                  onPress={() => {
-                    setReportModalVisible(true);
-                    PreferenceAwareHaptics.impactAsync();
-                  }}
-                />
-              </View>
-            </Animated.View>
-
-            {/* Bottom Overlay */}
-            <Animated.View style={[{ position: "absolute", bottom: 0, left: 0, right: 60, zIndex: 10 }, overlayStyle]}>
-              <SafeAreaView>
-                <View className="px-4 pb-4">
-                  {/* User Info */}
-                  <View className="flex-row items-center mb-3">
-                    <View className="w-10 h-10 bg-gray-700 rounded-full items-center justify-center mr-3">
-                      <Ionicons name="person" size={16} color="#8B98A5" />
-                    </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-center">
-                        <Text className="text-white font-bold text-15">Anonymous</Text>
-                        <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                        <Text className="text-gray-400 text-13">
-                          {format(new Date(currentVideo.timestamp), "MMM d")}
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center mt-1">
-                        <Ionicons name="eye-off" size={12} color="#10B981" />
-                        <Text className="text-green-500 text-11 ml-1">Face blurred</Text>
-                        <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                        <Ionicons name="volume-off" size={12} color="#10B981" />
-                        <Text className="text-green-500 text-11 ml-1">Voice changed</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* TikTok-style Captions */}
-                  {currentVideo.transcription && captionsEnabled && (
-                    <View className="bg-black/50 rounded-2xl px-3 py-2 mb-2">
-                      <TikTokCaptionsOverlay
-                        text={currentVideo.transcription}
-                        currentTime={currentPlayer?.currentTime || 0}
-                        duration={currentPlayer?.duration || 1}
-                      />
-                    </View>
-                  )}
-
-                  {/* Video Info */}
-                  <View className="flex-row items-center">
-                    <Ionicons name="videocam" size={14} color="#1D9BF0" />
-                    <Text className="text-blue-400 text-13 ml-1">Video confession</Text>
-                  </View>
-                </View>
-              </SafeAreaView>
-            </Animated.View>
-
-            {/* Video Progress Indicator */}
-            <VideoProgressIndicator
-              currentTime={currentPlayer?.currentTime || 0}
-              duration={currentPlayer?.duration || 0}
-              isVisible={true}
-            />
-
-            {/* Tap to Play/Pause */}
-            <Pressable
-              className="absolute inset-0 z-5"
-              onPress={() => {
-                if (currentPlayer?.playing) {
-                  videoPlayers.pauseVideo(currentIndex);
-                } else {
-                  videoPlayers.playVideo(currentIndex);
-                }
-                PreferenceAwareHaptics.impactAsync();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={currentPlayer?.playing ? "Pause video" : "Play video"}
-              accessibilityHint="Double tap to play or pause the video"
-            />
+          {/* Heart Animation Overlay */}
+          <Animated.View
+            style={[
+              {
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                marginTop: -40,
+                marginLeft: -40,
+                zIndex: 100,
+              },
+              heartAnimationStyle,
+            ]}
+          >
+            <Ionicons name="heart" size={80} color="#FF3040" />
           </Animated.View>
-        </GestureDetector>
 
-        {/* Comment Bottom Sheet */}
-        <EnhancedCommentBottomSheet bottomSheetModalRef={commentSheetRef} confessionId={currentVideo.id} />
+          {/* Top Overlay */}
+          <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }, overlayStyle]}>
+            <SafeAreaView>
+              <View className="flex-row items-center justify-between px-4 py-2">
+                <Pressable
+                  className="bg-black/50 rounded-full p-2 touch-target"
+                  onPress={onClose}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
+                >
+                  <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                </Pressable>
 
-        {/* Share Bottom Sheet */}
-        <EnhancedShareBottomSheet
-          bottomSheetModalRef={shareSheetRef}
-          confessionId={currentVideo.id}
-          confessionText={currentVideo.transcription || currentVideo.content}
-        />
+                <View className="flex-row items-center space-x-2">
+                  <View className="bg-black/50 rounded-full px-3 py-1">
+                    <Text className="text-white text-13 font-medium">
+                      {currentIndex + 1}/{videoConfessions.length}
+                    </Text>
+                  </View>
 
-        {/* Report Modal */}
-        <ReportModal
-          isVisible={reportModalVisible}
-          onClose={() => setReportModalVisible(false)}
-          confessionId={currentVideo.id}
-          contentType="confession"
-        />
+                  {/* CC Toggle */}
+                  {currentVideo.transcription && (
+                    <Pressable
+                      className={`rounded-full px-2 py-1 ${captionsEnabled ? "bg-blue-500" : "bg-black/50"}`}
+                      onPress={() => {
+                        setCaptionsEnabled(!captionsEnabled);
+                        PreferenceAwareHaptics.impactAsync();
+                      }}
+                    >
+                      <Text className={`text-11 font-medium ${captionsEnabled ? "text-white" : "text-gray-300"}`}>
+                        CC
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
 
-        {/* First-time User Guidance */}
-        <VideoGuidanceOverlay isVisible={showGuidance} onDismiss={() => setShowGuidance(false)} />
-      </View>
+                <Pressable
+                  className="bg-black/50 rounded-full p-2 touch-target"
+                  accessibilityRole="button"
+                  accessibilityLabel="More options"
+                >
+                  <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            </SafeAreaView>
+          </Animated.View>
+
+          {/* Right Side Actions */}
+          <Animated.View style={[{ position: "absolute", right: 16, bottom: 120, zIndex: 10 }, actionButtonsStyle]}>
+            <View className="items-center space-y-6">
+              <AnimatedActionButton
+                icon={currentVideo.isLiked ? "heart" : "heart-outline"}
+                label="Like"
+                count={currentVideo.likes || 0}
+                isActive={currentVideo.isLiked}
+                onPress={() => {
+                  toggleLike(currentVideo.id);
+                  PreferenceAwareHaptics.impactAsync();
+                }}
+              />
+
+              <AnimatedActionButton
+                icon="chatbubble-outline"
+                label="Reply"
+                onPress={() => {
+                  const ref = commentSheetRef.current;
+                  if (ref && typeof ref.present === "function") ref.present();
+                  PreferenceAwareHaptics.impactAsync();
+                }}
+              />
+
+              <AnimatedActionButton
+                icon="share-outline"
+                label="Share"
+                onPress={() => {
+                  const ref = shareSheetRef.current;
+                  if (ref && typeof ref.present === "function") ref.present();
+                  PreferenceAwareHaptics.impactAsync();
+                }}
+              />
+
+              <AnimatedActionButton
+                icon={isSaved(currentVideo.id) ? "bookmark" : "bookmark-outline"}
+                label="Save"
+                isActive={isSaved(currentVideo.id)}
+                onPress={() => {
+                  if (isSaved(currentVideo.id)) {
+                    unsaveConfession(currentVideo.id);
+                  } else {
+                    saveConfession(currentVideo.id);
+                  }
+                  PreferenceAwareHaptics.impactAsync();
+                }}
+              />
+
+              <AnimatedActionButton
+                icon="flag-outline"
+                label="Report"
+                onPress={() => {
+                  setReportModalVisible(true);
+                  PreferenceAwareHaptics.impactAsync();
+                }}
+              />
+            </View>
+          </Animated.View>
+
+          {/* Bottom Overlay */}
+          <Animated.View style={[{ position: "absolute", bottom: 0, left: 0, right: 60, zIndex: 10 }, overlayStyle]}>
+            <SafeAreaView>
+              <View className="px-4 pb-4">
+                {/* User Info */}
+                <View className="flex-row items-center mb-3">
+                  <View className="w-10 h-10 bg-gray-700 rounded-full items-center justify-center mr-3">
+                    <Ionicons name="person" size={16} color="#8B98A5" />
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center">
+                      <Text className="text-white font-bold text-15">Anonymous</Text>
+                      <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
+                      <Text className="text-gray-400 text-13">{format(new Date(currentVideo.timestamp), "MMM d")}</Text>
+                    </View>
+                    <View className="flex-row items-center mt-1">
+                      <Ionicons name="eye-off" size={12} color="#10B981" />
+                      <Text className="text-green-500 text-11 ml-1">Face blurred</Text>
+                      <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
+                      <Ionicons name="volume-off" size={12} color="#10B981" />
+                      <Text className="text-green-500 text-11 ml-1">Voice changed</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* TikTok-style Captions */}
+                {currentVideo.transcription && captionsEnabled && (
+                  <View className="bg-black/50 rounded-2xl px-3 py-2 mb-2">
+                    <TikTokCaptionsOverlay
+                      text={currentVideo.transcription}
+                      currentTime={currentPlayer?.currentTime || 0}
+                      duration={currentPlayer?.duration || 1}
+                    />
+                  </View>
+                )}
+
+                {/* Video Info */}
+                <View className="flex-row items-center">
+                  <Ionicons name="videocam" size={14} color="#1D9BF0" />
+                  <Text className="text-blue-400 text-13 ml-1">Video confession</Text>
+                </View>
+              </View>
+            </SafeAreaView>
+          </Animated.View>
+
+          {/* Video Progress Indicator */}
+          <VideoProgressIndicator
+            currentTime={currentPlayer?.currentTime || 0}
+            duration={currentPlayer?.duration || 0}
+            isVisible={true}
+          />
+
+          {/* Tap to Play/Pause */}
+          <Pressable
+            className="absolute inset-0 z-5"
+            onPress={() => {
+              if (currentPlayer?.playing) {
+                videoPlayers.pauseVideo(currentIndex);
+              } else {
+                videoPlayers.playVideo(currentIndex);
+              }
+              PreferenceAwareHaptics.impactAsync();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={currentPlayer?.playing ? "Pause video" : "Play video"}
+            accessibilityHint="Double tap to play or pause the video"
+          />
+        </Animated.View>
+      </GestureDetector>
+
+      {/* Comment Bottom Sheet */}
+      <EnhancedCommentBottomSheet bottomSheetModalRef={commentSheetRef} confessionId={currentVideo.id} />
+
+      {/* Share Bottom Sheet */}
+      <EnhancedShareBottomSheet
+        bottomSheetModalRef={shareSheetRef}
+        confessionId={currentVideo.id}
+        confessionText={currentVideo.transcription || currentVideo.content}
+      />
+
+      {/* Report Modal */}
+      <ReportModal
+        isVisible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        confessionId={currentVideo.id}
+        contentType="confession"
+      />
+
+      {/* First-time User Guidance */}
+      <VideoGuidanceOverlay isVisible={showGuidance} onDismiss={() => setShowGuidance(false)} />
+    </View>
   );
 }

@@ -108,7 +108,7 @@ export default function ReportModal({ isVisible, onClose, confessionId, replyId,
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert(t("reports.submitted"), t("reports.submittedMessage"), [{ text: t("common.ok"), onPress: onClose }]);
-    } catch (_error) {
+    } catch {
       // Error is handled by the store and useEffect above
     } finally {
       setIsSubmitting(false);

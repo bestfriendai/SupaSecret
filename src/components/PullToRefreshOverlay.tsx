@@ -239,9 +239,7 @@ export default function PullToRefreshOverlay({
             }}
           >
             <Ionicons name="trending-up" size={14} color="#FFFFFF" />
-            <Text style={{ color: "white", fontSize: 11, fontWeight: "500", marginLeft: 4 }}>
-              {trendingHintText}
-            </Text>
+            <Text style={{ color: "white", fontSize: 11, fontWeight: "500", marginLeft: 4 }}>{trendingHintText}</Text>
           </View>
         </Animated.View>
       )}

@@ -355,12 +355,7 @@ export default function HomeScreen() {
             ListFooterComponent={renderFooter}
             ListEmptyComponent={networkError ? <NetworkErrorState onRetry={onRefresh} /> : renderEmpty()}
             refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={["#1D9BF0"]}
-                tintColor="#1D9BF0"
-              />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#1D9BF0"]} tintColor="#1D9BF0" />
             }
             onViewableItemsChanged={({ viewableItems }) => {
               const visibleIds = viewableItems.map((item) => item.item.id);

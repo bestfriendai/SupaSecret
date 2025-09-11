@@ -17,7 +17,7 @@ export default function MySecretsScreen() {
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
 
-  const { userConfessions, loadUserConfessions, deleteUserConfession, clearAllUserConfessions, isLoading, error } =
+  const { userConfessions, loadUserConfessions, deleteUserConfession, clearAllUserConfessions, isLoading } =
     useConfessionStore();
 
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
@@ -81,7 +81,7 @@ export default function MySecretsScreen() {
             try {
               await deleteUserConfession(id);
               impactAsync();
-            } catch (error) {
+            } catch {
               Alert.alert("Error", "Failed to delete secret");
             }
           },
@@ -108,7 +108,7 @@ export default function MySecretsScreen() {
               setSelectedItems(new Set());
               setIsSelectionMode(false);
               impactAsync();
-            } catch (error) {
+            } catch {
               Alert.alert("Error", "Failed to delete some secrets");
             }
           },
@@ -132,7 +132,7 @@ export default function MySecretsScreen() {
             try {
               await clearAllUserConfessions();
               impactAsync();
-            } catch (error) {
+            } catch {
               Alert.alert("Error", "Failed to delete all secrets");
             }
           },
@@ -381,12 +381,7 @@ export default function MySecretsScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingTop: 0 }}
         ListEmptyComponent={renderEmpty}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#1D9BF0"
-            colors={["#1D9BF0"]}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D9BF0" colors={["#1D9BF0"]} />
         }
       />
     </View>

@@ -14,18 +14,13 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
   refreshing,
   children,
   colors = ["#1D9BF0"],
-  tintColor = "#1D9BF0"
+  tintColor = "#1D9BF0",
 }) => {
   return (
     <ScrollView
       contentContainerStyle={styles.container}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={colors}
-          tintColor={tintColor}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={colors} tintColor={tintColor} />
       }
     >
       {children}

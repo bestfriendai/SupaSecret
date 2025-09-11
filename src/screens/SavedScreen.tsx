@@ -21,15 +21,12 @@ export default function SavedScreen() {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const {
     savedConfessions,
-    savedConfessionIds: _savedConfessionIds,
     isLoading,
     isLoadingMore,
     hasMore,
-    error: _error,
     loadSavedConfessions,
     loadMoreSavedConfessions,
     unsaveConfession,
-    clearError: _clearError,
   } = useSavedStore();
   const { getRepliesForConfession } = useReplyStore();
   const insets = useSafeAreaInsets();

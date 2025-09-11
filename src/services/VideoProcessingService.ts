@@ -1,5 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
-import { setAudioModeAsync } from "expo-audio";
+
 // Demo mode - no native voice imports for Expo Go
 // import Voice from '@react-native-voice/voice';
 import * as VideoThumbnails from "expo-video-thumbnails";
@@ -21,14 +21,7 @@ export class VideoProcessingService implements IAnonymiser {
   async processVideo(videoUri: string, options: VideoProcessingOptions = {}): Promise<ProcessedVideo> {
     await this.initialize();
 
-    const {
-      enableFaceBlur = true,
-      enableVoiceChange = true,
-      enableTranscription = true,
-      quality = "medium",
-      voiceEffect = "deep",
-      onProgress,
-    } = options;
+    const { onProgress } = options;
 
     try {
       onProgress?.(5, "Initializing video processing...");

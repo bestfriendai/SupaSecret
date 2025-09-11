@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthState, User, AuthCredentials, SignUpData, AuthError } from "../types/auth";
 import { signUpUser, signInUser, signOutUser, getCurrentUser, updateUserData } from "../utils/auth";
 import { supabase } from "../lib/supabase";
-import { handleStoreError, clearStoreError, withErrorHandling, type StandardError } from "../utils/errorHandling";
+import { clearStoreError, withErrorHandling } from "../utils/errorHandling";
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -34,7 +34,7 @@ export const useAuthStore = create<AuthState>()(
         );
       },
 
-      signIn: async (credentials: AuthCredentials, persistSession: boolean = true) => {
+      signIn: async (credentials: AuthCredentials, _persistSession: boolean = true) => {
         await withErrorHandling(
           set,
           async () => {

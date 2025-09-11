@@ -59,7 +59,7 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
       } else {
         Alert.alert("Purchase Failed", error || "Unable to complete purchase. Please try again.");
       }
-    } catch (err) {
+    } catch {
       Alert.alert("Purchase Error", "An unexpected error occurred. Please try again.");
     }
   };
@@ -69,7 +69,7 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
     try {
       await restorePurchases();
       Alert.alert("Restore Complete", "Your purchases have been restored successfully.");
-    } catch (err) {
+    } catch {
       Alert.alert("Restore Failed", "Unable to restore purchases. Please try again.");
     }
   };

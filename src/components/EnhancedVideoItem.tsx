@@ -3,7 +3,7 @@ import { View, Text, Pressable, Dimensions, AppState, Alert } from "react-native
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
-import { setAudioModeAsync } from "expo-audio";
+import * as Audio from "expo-audio";
 import { format } from "date-fns";
 import { PreferenceAwareHaptics } from "../utils/haptics";
 import { useConfessionStore } from "../state/confessionStore";
@@ -71,6 +71,7 @@ function EnhancedVideoItem({
         unregisterVideoPlayer(confession.id);
       };
     }
+    return undefined;
   }, [player, confession.id, registerVideoPlayer, unregisterVideoPlayer]);
 
   // React to sound preference changes
@@ -101,7 +102,7 @@ function EnhancedVideoItem({
           }
           // Ensure audio session is active when video becomes active
           try {
-            await setAudioModeAsync({
+            await Audio.setAudioModeAsync({
               allowsRecording: false,
               shouldPlayInBackground: false,
               playsInSilentMode: true,

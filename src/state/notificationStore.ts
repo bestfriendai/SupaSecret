@@ -2,12 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
-import type {
-  NotificationState,
-  Notification,
-  NotificationPreferences,
-  GroupedNotification,
-} from "../types/notification";
+import type { NotificationState, Notification, GroupedNotification } from "../types/notification";
 
 // Helper function to group notifications
 const groupNotifications = (notifications: Notification[]): GroupedNotification[] => {

@@ -40,6 +40,7 @@ export default function AnimatedActionButton({
         withSpring(1, { damping: 10, stiffness: 200 }),
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, icon]);
 
   const handlePress = () => {

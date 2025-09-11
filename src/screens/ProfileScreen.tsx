@@ -35,36 +35,38 @@ const StatItem: React.FC<StatItemProps> = ({ icon, label, value, onPress, color 
     onPress={onPress}
     style={{
       flex: 1,
-      alignItems: 'center',
+      alignItems: "center",
       padding: 20,
-      backgroundColor: '#1F2937',
+      backgroundColor: "#1F2937",
       borderRadius: 16,
       marginHorizontal: 6,
       borderWidth: 1,
-      borderColor: '#374151',
-      shadowColor: '#000',
+      borderColor: "#374151",
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,
-      elevation: 3
+      elevation: 3,
     }}
     activeOpacity={0.7}
     accessibilityLabel={`${label}: ${value}`}
     accessibilityRole="button"
   >
-    <View style={{
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-      backgroundColor: `${color}20`
-    }}>
+    <View
+      style={{
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 12,
+        backgroundColor: `${color}20`,
+      }}
+    >
       <Ionicons name={icon} size={24} color={color} />
     </View>
-    <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 4 }}>{value}</Text>
-    <Text style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center' }}>{label}</Text>
+    <Text style={{ fontSize: 24, fontWeight: "bold", color: "white", marginBottom: 4 }}>{value}</Text>
+    <Text style={{ color: "#9CA3AF", fontSize: 12, textAlign: "center" }}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -136,7 +138,7 @@ const ProfileScreen = () => {
 
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { user, signOut, checkAuthState } = useAuthStore();
+  const { user, signOut } = useAuthStore();
 
   // Track navigation events
   useEffect(() => {
@@ -161,7 +163,7 @@ const ProfileScreen = () => {
     };
   }, [navigation, user]);
   const { userConfessions, clearAllUserConfessions, loadUserConfessions } = useConfessionStore();
-  const { membership, currentTier, loadMembership } = useMembershipStore();
+  const { currentTier, loadMembership } = useMembershipStore();
   const { isPremium, checkSubscriptionStatus } = useSubscriptionStore();
 
   // State management
@@ -365,49 +367,55 @@ const ProfileScreen = () => {
       >
         {/* User Info Section - Improved Layout */}
         <View style={{ paddingHorizontal: 24, paddingVertical: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-            <View style={{
-              width: 80,
-              height: 80,
-              backgroundColor: '#FF6B35',
-              borderRadius: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8
-            }}>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                backgroundColor: "#FF6B35",
+                borderRadius: 40,
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 16,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 8,
+              }}
+            >
               <Ionicons name="person" size={32} color="white" />
               {finalIsPremium && (
-                <View style={{
-                  position: 'absolute',
-                  top: -2,
-                  right: -2,
-                  width: 24,
-                  height: 24,
-                  backgroundColor: '#FFD700',
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 2,
-                  borderColor: '#000'
-                }}>
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -2,
+                    width: 24,
+                    height: 24,
+                    backgroundColor: "#FFD700",
+                    borderRadius: 12,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 2,
+                    borderColor: "#000",
+                  }}
+                >
                   <Ionicons name="star" size={12} color="black" />
                 </View>
               )}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: 'white', marginBottom: 4 }} numberOfLines={1}>
+              <Text style={{ fontSize: 18, fontWeight: "600", color: "white", marginBottom: 4 }} numberOfLines={1}>
                 {user?.email || "Anonymous User"}
               </Text>
-              <Text style={{ color: '#9CA3AF', fontSize: 14 }}>Member since {userStats.memberSince}</Text>
+              <Text style={{ color: "#9CA3AF", fontSize: 14 }}>Member since {userStats.memberSince}</Text>
               {finalIsPremium && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
                   <Ionicons name="star" size={14} color="#FFD700" />
-                  <Text style={{ color: '#FFD700', fontSize: 12, marginLeft: 4, fontWeight: '600' }}>Premium Member</Text>
+                  <Text style={{ color: "#FFD700", fontSize: 12, marginLeft: 4, fontWeight: "600" }}>
+                    Premium Member
+                  </Text>
                 </View>
               )}
             </View>
@@ -416,8 +424,10 @@ const ProfileScreen = () => {
 
         {/* Stats Section - Improved Layout */}
         <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: 'white', marginBottom: 16, paddingHorizontal: 8 }}>Your Stats</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={{ fontSize: 18, fontWeight: "600", color: "white", marginBottom: 16, paddingHorizontal: 8 }}>
+            Your Stats
+          </Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             <StatItem
               icon="document-text"
               label="Confessions"

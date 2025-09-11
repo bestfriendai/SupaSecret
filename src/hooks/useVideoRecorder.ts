@@ -7,7 +7,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Platform } from "react-native";
 import { CameraView, CameraType } from "expo-camera";
-import { setAudioModeAsync } from "expo-audio";
+import * as Audio from "expo-audio";
 import { env } from "../utils/env";
 import { useMediaPermissions } from "./useMediaPermissions";
 import { processVideoDualMode, ProcessingMode } from "../utils/videoProcessing";
@@ -103,7 +103,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   useEffect(() => {
     const initializeAudio = async () => {
       try {
-        await setAudioModeAsync({
+        await Audio.setAudioModeAsync({
           allowsRecording: true,
           playsInSilentMode: true,
           interruptionModeAndroid: "duckOthers",

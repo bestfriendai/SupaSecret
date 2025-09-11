@@ -13,7 +13,7 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "16.1"
           },
           "android": {
             "compileSdkVersion": 36,
@@ -30,7 +30,8 @@
       "expo-video",
       "expo-web-browser",
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      "expo-splash-screen"
     ],
     "ios": {
       "supportsTablet": true,
