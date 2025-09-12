@@ -13,7 +13,7 @@ const isDevFallbackEnabled =
 
 /**
  * Transcribe an audio file via server-side endpoint
- * @param localAudioUri - The local URI of the audio file to transcribe. Obtained via the expo-av library.
+ * @param localAudioUri - The local URI of the audio file to transcribe. Obtained via Expo's audio APIs (expo-audio).
  * @returns The text of the audio file
  * @throws Error if transcription fails and dev fallback is disabled
  */

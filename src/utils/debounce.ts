@@ -5,16 +5,18 @@
 
 import * as React from "react";
 import { useCallback, useRef, useEffect } from "react";
+import { logger } from "./logger";
 
 /**
  * Generic debounce function
  */
 export function debounce<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
-  let timeoutId: NodeJS.Timeout;
+  // Use ReturnType<typeof setTimeout> to be compatible across environments
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   return (...args: Parameters<T>) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay) as ReturnType<typeof setTimeout>;
   };
 }
 
@@ -29,10 +31,15 @@ export function useDebounce<T extends (...args: any[]) => any>(
   const callbackRef = useRef(callback);
   callbackRef.current = callback;
 
-  return useCallback(
-    debounce((...args: Parameters<T>) => callbackRef.current(...args), delay),
-    [delay, ...deps],
-  );
+  // Keep a stable debounced function in a ref so that callers can use a stable reference
+  const debouncedRef = useRef<(...args: Parameters<T>) => void>(() => {});
+
+  useEffect(() => {
+    debouncedRef.current = debounce((...args: Parameters<T>) => callbackRef.current(...args), delay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delay, ...deps]);
+
+  return useCallback((...args: Parameters<T>) => debouncedRef.current(...args), []);
 }
 
 /**
@@ -76,7 +83,7 @@ export function useDebouncedRefresh(refreshFunction: () => Promise<void> | void,
     try {
       await refreshFunction();
     } catch (error) {
-      console.error("Refresh failed:", error);
+      logger.error("Refresh failed:", error);
     } finally {
       setIsRefreshing(false);
     }
@@ -95,6 +102,7 @@ export function useDebouncedSearch(searchFunction: (query: string) => Promise<vo
   const [isSearching, setIsSearching] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  // Use the stable debounced hook to avoid recreating the debounced function
   const debouncedSearch = useDebounce(
     async (query: string) => {
       if (!query.trim()) {
@@ -106,7 +114,7 @@ export function useDebouncedSearch(searchFunction: (query: string) => Promise<vo
       try {
         await searchFunction(query);
       } catch (error) {
-        console.error("Search failed:", error);
+        logger.error("Search failed:", error);
       } finally {
         setIsSearching(false);
       }
@@ -132,11 +140,29 @@ export function useDebouncedSearch(searchFunction: (query: string) => Promise<vo
 }
 
 /**
+ * useDebouncedSearch
+ *
+ * A hook that manages a search input state with a debounced side-effect.
+ *
+ * Inputs:
+ * - searchFunction: async function to call with the query when typing stops
+ * - delay: debounce delay in ms
+ *
+ * Outputs:
+ * - searchQuery: current input string
+ * - isSearching: boolean showing whether the debounced search is executing
+ * - handleSearchChange: update function to call from onChangeText
+ * - setSearchQuery: immediate setter for cases where caller needs to set programmatically
+ *
+ * Error handling: errors from searchFunction are logged via the centralized logger.
+ */
+
+/**
  * Debounced like toggle to prevent rapid clicking
  */
 export function useDebouncedLikeToggle(likeFunction: (id: string) => Promise<void> | void, delay: number = 500) {
   const pendingLikes = useRef(new Set<string>());
-  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const debouncedToggleLike = useCallback(
     async (id: string) => {
@@ -156,7 +182,7 @@ export function useDebouncedLikeToggle(likeFunction: (id: string) => Promise<voi
         const timeoutId = setTimeout(() => {
           pendingLikes.current.delete(id);
           timeoutRefs.current.delete(id);
-        }, delay);
+        }, delay) as ReturnType<typeof setTimeout>;
 
         // Store timeout reference for cleanup
         timeoutRefs.current.set(id, timeoutId);
@@ -167,10 +193,12 @@ export function useDebouncedLikeToggle(likeFunction: (id: string) => Promise<voi
 
   // Cleanup on unmount
   useEffect(() => {
+    const refs = timeoutRefs.current;
     return () => {
-      // Clear all pending timeouts on unmount
-      timeoutRefs.current.forEach((timeout) => clearTimeout(timeout));
-      timeoutRefs.current.clear();
+      // Copy refs to avoid mutation issues during cleanup
+      const timeouts = Array.from(refs.values());
+      timeouts.forEach((timeout) => clearTimeout(timeout));
+      refs.clear();
     };
   }, []);
 
