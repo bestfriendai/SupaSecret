@@ -72,6 +72,7 @@ export default function OnboardingScreen() {
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
+      'worklet';
       scrollX.value = event.contentOffset.x;
       const index = Math.round(event.contentOffset.x / screenWidth);
       runOnJS(setCurrentIndex)(index);

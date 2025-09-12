@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { format } from "date-fns";
+import { format } from "date-fns/format";
 import { useConfessionStore } from "../state/confessionStore";
 import { useReplyStore } from "../state/replyStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";

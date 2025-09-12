@@ -1,21 +1,28 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, TextInput, RefreshControl } from "react-native";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { View, Text, FlatList, Pressable, TextInput, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTrendingStore } from "../state/trendingStore";
-import { getTimePeriodText, formatEngagementScore, HashtagData, TrendingSecret } from "../utils/trending";
-import { format } from "date-fns";
+import { getTimePeriodText } from "../utils/trending";
 import TrendingSkeleton from "../components/TrendingSkeleton";
 import { getButtonA11yProps, getCloseButtonA11yProps } from "../utils/accessibility";
 import { useDebouncedSearch } from "../utils/debounce";
 import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
 import { getOptimizedTextInputProps, dismissKeyboard } from "../utils/keyboardUtils";
+import { TimePeriodButton } from "../components/TimePeriodButton";
+import { ViewModeButton } from "../components/ViewModeButton";
+import { HashtagItem } from "../components/HashtagItem";
+import { SecretItem } from "../components/SecretItem";
+import { logger } from "../utils/logger";
+import { TIME_PERIOD_24H, TIME_PERIOD_7D, TIME_PERIOD_30D } from "../components/trendingConstants";
 
 type TimePeriod = 24 | 168 | 720; // 24h, 1w, 1m
 type ViewMode = "hashtags" | "secrets";
 
 export default function TrendingScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>("hashtags");
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>(24);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>(TIME_PERIOD_24H);
+  const [errorState, setErrorState] = useState<string | null>(null);
+  const searchInputRef = useRef<TextInput | null>(null);
 
   const {
     trendingHashtags,
@@ -32,132 +39,158 @@ export default function TrendingScreen() {
     clearError,
   } = useTrendingStore();
 
-  // Debounced search functionality
+  /**
+   * Debounced search functionality for hashtag search input
+   * - Prevents excessive API calls while user is typing
+   * - 300ms delay allows for natural typing pause before triggering search
+   * - Automatically clears search when input is empty
+   */
   const { searchQuery, isSearching, handleSearchChange, setSearchQuery } = useDebouncedSearch(
     async (query: string) => {
-      if (query.trim()) {
-        await searchByHashtag(query.trim());
-      } else {
-        clearSearch();
+      try {
+        if (query.trim()) {
+          await searchByHashtag(query.trim());
+        } else {
+          clearSearch();
+        }
+      } catch (err) {
+        logger.error("Debounced search failed:", err);
+        setErrorState("Search failed. Please try again.");
       }
     },
     300, // 300ms debounce delay
   );
 
-  // Load initial data
+  /**
+   * Immediate search for hashtag taps (non-debounced)
+   * - Used when user taps on a hashtag to search immediately
+   * - No debouncing needed since this is triggered by explicit user action
+   * - Shows user-visible error feedback if search fails
+   */
+  const immediateSearch = useCallback(
+    async (hashtag: string) => {
+      try {
+        if (hashtag.trim()) {
+          await searchByHashtag(hashtag.trim());
+        }
+      } catch (err) {
+        logger.error("Immediate search failed:", err);
+        setErrorState("Failed to search hashtag. Please try again.");
+      }
+    },
+    [searchByHashtag],
+  );
+
+  /**
+   * Load initial trending data when component mounts or time period changes
+   * - Dependencies: timePeriod ensures data refreshes when user changes time filter
+   * - loadTrendingHashtags and loadTrendingSecrets are stable functions from store
+   */
   useEffect(() => {
     loadTrendingHashtags(timePeriod);
     loadTrendingSecrets(timePeriod);
   }, [timePeriod, loadTrendingHashtags, loadTrendingSecrets]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     try {
       await refreshAll(timePeriod);
     } catch (error) {
-      console.error("Failed to refresh:", error);
+      logger.error("Failed to refresh:", error);
+      setErrorState("Failed to refresh content. Please try again.");
     }
-  };
+  }, [refreshAll, timePeriod]);
 
-  const handleClearSearch = () => {
+  const handleClearSearch = useCallback(() => {
     setSearchQuery("");
     clearSearch();
-  };
+    setErrorState(null); // Clear any search-related errors
+  }, [setSearchQuery, clearSearch]);
 
-  const TimePeriodButton = ({ period, label }: { period: TimePeriod; label: string }) => (
-    <Pressable
-      className={`px-4 py-2 rounded-full ${timePeriod === period ? "bg-blue-500" : "bg-gray-800"}`}
-      onPress={() => {
-        setTimePeriod(period);
-        // Clear error when changing time period
-        if (error) clearError();
-      }}
-    >
-      <Text className={`text-14 font-medium ${timePeriod === period ? "text-white" : "text-gray-400"}`}>{label}</Text>
-    </Pressable>
+  const focusSearchInput = useCallback(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
+  const handleTimePeriodChange = useCallback((period: TimePeriod) => {
+    setTimePeriod(period);
+    if (error) clearError();
+    setErrorState(null); // Clear any period-related errors
+  }, [error, clearError]);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    setErrorState(null); // Clear any view-related errors
+  }, []);
+
+  const handleErrorDismiss = useCallback(() => {
+    clearError();
+    setErrorState(null);
+  }, [clearError]);
+
+  const TIME_PERIODS = [
+    { period: TIME_PERIOD_24H, label: "24h" },
+    { period: TIME_PERIOD_7D, label: "7d" },
+    { period: TIME_PERIOD_30D, label: "30d" },
+  ];
+
+  const refreshControlElement = (
+    <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#1D9BF0" />
   );
 
-  const ViewModeButton = ({ mode, label }: { mode: ViewMode; label: string }) => (
-    <Pressable
-      className={`flex-1 py-3 ${viewMode === mode ? "border-b-2 border-blue-500" : ""}`}
-      onPress={() => setViewMode(mode)}
-    >
-      <Text className={`text-center text-16 font-medium ${viewMode === mode ? "text-white" : "text-gray-400"}`}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-
-  const HashtagItem = ({ item }: { item: HashtagData }) => (
-    <Pressable
-      className="flex-row items-center justify-between py-3 px-4 bg-gray-900 rounded-xl mb-2"
-      onPress={() => handleSearchChange(item.hashtag)}
-    >
-      <View className="flex-1">
-        <Text className="text-white text-16 font-medium">{item.hashtag}</Text>
-        <Text className="text-gray-400 text-13">
-          {item.count} {item.count === 1 ? "mention" : "mentions"}
-        </Text>
-      </View>
-      <View className="items-end">
-        <Text className="text-blue-400 text-14 font-bold">{item.percentage.toFixed(1)}%</Text>
-        <View className="w-16 h-2 bg-gray-700 rounded-full mt-1">
-          <View
-            className="h-full bg-blue-500 rounded-full"
-            style={{ width: `${Math.min(item.percentage * 2, 100)}%` }}
-          />
-        </View>
-      </View>
-    </Pressable>
-  );
-
-  const SecretItem = ({ item }: { item: TrendingSecret }) => (
-    <View className="bg-gray-900 rounded-xl p-4 mb-3">
-      <View className="flex-row items-start justify-between mb-2">
-        <View className="flex-1">
-          <Text className="text-white text-15 leading-5" numberOfLines={3}>
-            {item.confession.content}
-          </Text>
-        </View>
-        <View className="ml-3 items-end">
-          <Text className="text-blue-400 text-12 font-bold">Score: {formatEngagementScore(item.engagementScore)}</Text>
-        </View>
-      </View>
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <Ionicons name="heart" size={14} color="#EF4444" />
-          <Text className="text-gray-400 text-12 ml-1">{item.confession.likes || 0}</Text>
-          <Ionicons name="time" size={14} color="#8B98A5" className="ml-3" />
-          <Text className="text-gray-400 text-12 ml-1">{format(item.confession.timestamp, "MMM d, h:mm a")}</Text>
-        </View>
-        <View className="flex-row items-center">
-          <Ionicons name={item.confession.type === "video" ? "videocam" : "document-text"} size={14} color="#8B98A5" />
-          <Text className="text-gray-400 text-12 ml-1 capitalize">{item.confession.type}</Text>
-        </View>
-      </View>
-    </View>
-  );
+  // Inline components moved to separate files for modularity and memoization.
 
   return (
     <ScreenKeyboardWrapper className="flex-1 bg-black" scrollable={true} dismissOnTap={true}>
       {/* Search and Filters */}
-      <View className="px-4 py-3 border-b border-gray-800">
-        <View className="flex-row items-center justify-between mb-3">
-          <Pressable onPress={handleClearSearch}>
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: "#0F1724",
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <Pressable onPress={focusSearchInput} accessibilityLabel="Focus search" accessibilityRole="button">
             <Ionicons name="search" size={24} color="#8B98A5" />
           </Pressable>
         </View>
 
         {/* Search Bar */}
-        <View className="flex-row items-center bg-gray-900 rounded-full px-4 py-2 mb-3">
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: "#0F1724",
+            borderRadius: 999,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            marginBottom: 12,
+          }}
+        >
           <Ionicons name="search" size={16} color="#8B98A5" />
           <TextInput
-            {...getOptimizedTextInputProps("search")}
-            className="flex-1 text-white text-15 ml-2"
+            ref={(ref) => {
+              searchInputRef.current = ref;
+            }}
+            keyboardType="default"
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            returnKeyType="search"
+            blurOnSubmit={true}
+            enablesReturnKeyAutomatically={true}
+            keyboardAppearance="dark"
+            selectionColor="#1D9BF0"
+            underlineColorAndroid="transparent"
+            style={{ flex: 1, color: "#fff", fontSize: 15, marginLeft: 8 }}
             placeholder="Search hashtags..."
             placeholderTextColor="#8B98A5"
             value={searchQuery}
             onChangeText={handleSearchChange}
             onSubmitEditing={() => dismissKeyboard()}
+            accessibilityLabel="Search hashtags"
+            accessibilityHint="Type to search hashtags"
+            accessibilityRole="searchbox"
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={handleClearSearch} {...getCloseButtonA11yProps()}>
@@ -168,32 +201,69 @@ export default function TrendingScreen() {
 
         {/* Time Period Filters */}
         {!isSearching && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-            <View className="flex-row space-x-2">
-              <TimePeriodButton period={24} label="24h" />
-              <TimePeriodButton period={168} label="7d" />
-              <TimePeriodButton period={720} label="30d" />
-            </View>
-          </ScrollView>
+          <FlatList
+            horizontal
+            data={TIME_PERIODS}
+            keyExtractor={(it) => `${it.period}`}
+            showsHorizontalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <TimePeriodButton
+                period={item.period as number}
+                label={item.label}
+                active={timePeriod === item.period}
+                onPress={(p) => handleTimePeriodChange(p as TimePeriod)}
+                onClearError={() => {}}
+              />
+            )}
+            style={{ marginBottom: 12 }}
+          />
         )}
 
         {/* View Mode Tabs */}
         {!isSearching && (
-          <View className="flex-row border-b border-gray-800">
-            <ViewModeButton mode="hashtags" label="Hashtags" />
-            <ViewModeButton mode="secrets" label="Secrets" />
+          <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#0F1724" }}>
+            <ViewModeButton
+              mode="hashtags"
+              label="Hashtags"
+              active={viewMode === "hashtags"}
+              onPress={handleViewModeChange}
+              index={0}
+              total={2}
+            />
+            <ViewModeButton
+              mode="secrets"
+              label="Secrets"
+              active={viewMode === "secrets"}
+              onPress={handleViewModeChange}
+              index={1}
+              total={2}
+            />
           </View>
         )}
       </View>
 
-      {/* Error Message */}
-      {error && (
-        <View className="mx-4 mb-2 p-3 bg-red-900/20 border border-red-500/30 rounded-xl">
-          <View className="flex-row items-center">
+      {/* Error Messages */}
+      {(error || errorState) && (
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 8,
+            padding: 12,
+            backgroundColor: "rgba(139, 18, 18, 0.08)",
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: "rgba(239,68,68,0.2)",
+          }}
+          accessibilityRole="alert"
+          accessibilityLabel={`Error: ${error || errorState}`}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Ionicons name="warning" size={16} color="#EF4444" />
-            <Text className="text-red-400 text-14 ml-2 flex-1">{error}</Text>
+            <Text style={{ color: "#FCA5A5", fontSize: 14, marginLeft: 8, flex: 1 }}>
+              {error || errorState}
+            </Text>
             <Pressable
-              onPress={clearError}
+              onPress={handleErrorDismiss}
               {...getButtonA11yProps("Dismiss error", "Double tap to dismiss error message")}
             >
               <Ionicons name="close" size={16} color="#EF4444" />
@@ -203,67 +273,65 @@ export default function TrendingScreen() {
       )}
 
       {/* Content */}
-      <ScrollView
-        className="flex-1 px-4"
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#1D9BF0" />}
-      >
-        {isLoading && !isRefreshing && <TrendingSkeleton />}
+      {isLoading && !isRefreshing && <TrendingSkeleton />}
 
-        {!isLoading && isSearching ? (
-          /* Search Results */
-          <View className="py-4">
-            <Text className="text-gray-400 text-14 mb-3">
-              {searchResults.length} results for "{searchQuery}"
-            </Text>
-            {searchResults.map((confession) => (
-              <SecretItem key={confession.id} item={{ confession, engagementScore: 0 }} />
-            ))}
-            {searchResults.length === 0 && (
-              <View className="items-center py-8">
+      {!isLoading && isSearching ? (
+        <View style={{ padding: 16 }}>
+          <Text style={{ color: "#9CA3AF", marginBottom: 12 }}>
+            {searchResults.length} results for "{searchQuery}"
+          </Text>
+          <FlatList
+            data={searchResults}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <SecretItem item={{ confession: item, engagementScore: 0 }} />}
+            ListEmptyComponent={() => (
+              <View style={{ alignItems: "center", paddingVertical: 32 }}>
                 <Ionicons name="search" size={48} color="#4B5563" />
-                <Text className="text-gray-500 text-16 mt-2">No results found</Text>
+                <Text style={{ color: "#6B7280", fontSize: 16, marginTop: 8 }}>No results found</Text>
               </View>
             )}
-          </View>
-        ) : !isLoading ? (
-          /* Trending Content */
-          <View className="py-4">
-            <Text className="text-gray-400 text-14 mb-3">{getTimePeriodText(timePeriod)}</Text>
+            refreshControl={refreshControlElement}
+          />
+        </View>
+      ) : !isLoading ? (
+        <View style={{ padding: 16 }}>
+          <Text style={{ color: "#9CA3AF", marginBottom: 12 }}>{getTimePeriodText(timePeriod)}</Text>
 
-            {viewMode === "hashtags" ? (
-              <View>
-                {trendingHashtags.map((hashtag, index) => (
-                  <HashtagItem key={`${hashtag.hashtag}-${index}`} item={hashtag} />
-                ))}
-                {trendingHashtags.length === 0 && (
-                  <View className="items-center py-8">
-                    <Ionicons name="trending-up" size={48} color="#4B5563" />
-                    <Text className="text-gray-500 text-16 mt-2">No trending hashtags</Text>
-                    <Text className="text-gray-600 text-13 mt-1 text-center">
-                      Hashtags will appear when people use them in their secrets
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View>
-                {trendingSecrets.map((secret, index) => (
-                  <SecretItem key={`${secret.confession.id}-${index}`} item={secret} />
-                ))}
-                {trendingSecrets.length === 0 && (
-                  <View className="items-center py-8">
-                    <Ionicons name="flame" size={48} color="#4B5563" />
-                    <Text className="text-gray-500 text-16 mt-2">No trending secrets</Text>
-                    <Text className="text-gray-600 text-13 mt-1 text-center">
-                      Popular secrets will appear here based on engagement
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-        ) : null}
-      </ScrollView>
+          {viewMode === "hashtags" ? (
+            <FlatList
+              data={trendingHashtags}
+              keyExtractor={(item) => item.hashtag}
+              renderItem={({ item }) => <HashtagItem item={item} onPress={immediateSearch} />}
+              ListEmptyComponent={() => (
+                <View style={{ alignItems: "center", paddingVertical: 32 }}>
+                  <Ionicons name="trending-up" size={48} color="#4B5563" />
+                  <Text style={{ color: "#6B7280", fontSize: 16, marginTop: 8 }}>No trending hashtags</Text>
+                  <Text style={{ color: "#4B5563", fontSize: 13, marginTop: 6, textAlign: "center" }}>
+                    Hashtags will appear when people use them in their secrets
+                  </Text>
+                </View>
+              )}
+              refreshControl={refreshControlElement}
+            />
+          ) : (
+            <FlatList
+              data={trendingSecrets}
+              keyExtractor={(item) => item.confession.id}
+              renderItem={({ item }) => <SecretItem item={item} />}
+              ListEmptyComponent={() => (
+                <View style={{ alignItems: "center", paddingVertical: 32 }}>
+                  <Ionicons name="flame" size={48} color="#4B5563" />
+                  <Text style={{ color: "#6B7280", fontSize: 16, marginTop: 8 }}>No trending secrets</Text>
+                  <Text style={{ color: "#4B5563", fontSize: 13, marginTop: 6, textAlign: "center" }}>
+                    Popular secrets will appear here based on engagement
+                  </Text>
+                </View>
+              )}
+              refreshControl={refreshControlElement}
+            />
+          )}
+        </View>
+      ) : null}
     </ScreenKeyboardWrapper>
   );
 }
