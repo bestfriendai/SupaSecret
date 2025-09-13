@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, Pressable, RefreshControl } from "react-native";
+import { View, Text, Pressable, RefreshControl, type GestureResponderEvent } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import type { Confession } from "../types/confession";
 import { useConfessionStore } from "../state/confessionStore";
 import { useReplyStore } from "../state/replyStore";
 import { useSavedStore } from "../state/savedStore";
@@ -16,6 +17,7 @@ import { useOptimizedReplies } from "../hooks/useOptimizedReplies";
 import { NetworkErrorState } from "../components/ErrorState";
 import OptimizedAdBanner from "../components/OptimizedAdBanner";
 import { useScrollRestoration } from "../hooks/useScrollRestoration";
+import type { ScrollView } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import ReportModal from "../components/ReportModal";
 import FeedActionSheet from "../components/FeedActionSheet";
@@ -59,7 +61,7 @@ export default function HomeScreen() {
   const actionSheetRef = useRef<BottomSheetModal | null>(null);
 
   // FlashList ref for potential future scroll restoration
-  const flashListRef = useRef<any>(null);
+  const flashListRef = useRef<FlashList<Confession> | null>(null);
 
   // Check network connectivity and handle errors
   useEffect(() => {
@@ -159,7 +161,7 @@ export default function HomeScreen() {
   );
 
   const handleSecretPress = useCallback(
-    (confession: any) => {
+    (confession: Confession) => {
       impactAsync();
       if (confession.type === "video") {
         // Navigate to full-screen video player
@@ -173,7 +175,7 @@ export default function HomeScreen() {
   );
 
   const handleReportPress = useCallback(
-    (confessionId: string, event: any) => {
+    (confessionId: string, event: GestureResponderEvent) => {
       event.stopPropagation(); // Prevent navigation to detail screen
       setReportingConfessionId(confessionId);
       setReportModalVisible(true);
@@ -183,7 +185,7 @@ export default function HomeScreen() {
   );
 
   const handleActionSheetPress = useCallback(
-    (confessionId: string, confessionText: string, event: any) => {
+    (confessionId: string, confessionText: string, event: GestureResponderEvent) => {
       event.stopPropagation();
       setReportingConfessionId(confessionId);
       setSelectedConfessionText(confessionText);
@@ -200,7 +202,7 @@ export default function HomeScreen() {
   }, []);
 
   const renderItem = useCallback(
-    ({ item: confession, index }: { item: any; index: number }) => {
+    ({ item: confession, index }: { item: Confession; index: number }) => {
       const replies = getRepliesForConfession(confession.id);
 
       return (
@@ -258,7 +260,7 @@ export default function HomeScreen() {
                     <Pressable
                       className="flex-row items-center touch-target px-2 py-2 -mx-2 -my-2 rounded-lg"
                       onPress={() => handleToggleLike(confession.id)}
-                      {...getLikeButtonA11yProps(confession.isLiked, confession.likes || 0)}
+                      {...getLikeButtonA11yProps(Boolean(confession.isLiked), confession.likes || 0)}
                     >
                       <Ionicons
                         name={confession.isLiked ? "heart" : "heart-outline"}
@@ -343,11 +345,11 @@ export default function HomeScreen() {
           <FlashList
             ref={(ref) => {
               flashListRef.current = ref;
-              scrollViewRef.current = ref as any;
+              scrollViewRef.current = ref as unknown as ScrollView;
             }}
             data={confessions}
             renderItem={renderItem}
-            keyExtractor={(item: any) => item.id}
+            keyExtractor={(item: Confession) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
             onEndReached={onEndReached}
@@ -363,19 +365,8 @@ export default function HomeScreen() {
             }}
             viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
             extraData={{ refreshing, isLoadingMore, networkError }}
-            // Performance optimization props
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            removeClippedSubviews={true}
-            drawDistance={250}
-            estimatedItemSize={200}
-            getItemLayout={(_, index) => ({
-              length: 200,
-              offset: 200 * index,
-              index,
-            })}
-          />
+            // FlashList v2 performance props
+                      />
         </Animated.View>
       </View>
 

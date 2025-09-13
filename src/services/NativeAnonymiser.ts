@@ -65,7 +65,7 @@ const loadNativeModules = async () => {
   }
 };
 
-const tmp = FileSystem.documentDirectory!;
+const tmp = FileSystem.cacheDirectory!;
 
 class NativeAnonymiserImpl implements IAnonymiser {
   private isInitialized = false;

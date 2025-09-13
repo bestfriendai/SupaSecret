@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../lib/supabase";
 
@@ -56,6 +56,19 @@ export interface SignedUrlResult {
   expiresAt: Date;
 }
 
+// String type compatibility for legacy code
+export type SignedUrlString = string;
+
+
+/**
+ * Legacy function that returns just the signed URL string
+ * @deprecated Use ensureSignedVideoUrl which returns detailed SignedUrlResult
+ */
+export async function getSignedVideoUrl(pathOrUrl?: string, expiresInSeconds = 3600): Promise<SignedUrlString> {
+  const result = await ensureSignedVideoUrl(pathOrUrl, expiresInSeconds);
+  return result.signedUrl;
+}
+
 export const isHttpUrl = (value?: string): boolean => !!value && /^https?:\/\//i.test(value);
 export const isLocalUri = (value?: string): boolean => !!value && /^file:\/\//i.test(value);
 
@@ -87,9 +100,9 @@ export async function uploadVideoToSupabase(
     .join("/");
   const url = `${supabaseUrl}/storage/v1/object/${BUCKET}/${encodedPath}`;
 
-  const uploadOptions: FileSystem.FileSystemUploadOptions = {
+  const uploadOptions: any = {
     httpMethod: "POST",
-    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    uploadType: "BINARY_CONTENT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": contentType,
@@ -98,7 +111,7 @@ export async function uploadVideoToSupabase(
     },
   };
 
-  let result: FileSystem.FileSystemUploadResult | null | undefined;
+  let result: any;
   if (onProgress) {
     const task = FileSystem.createUploadTask(url, localFileUri, uploadOptions, (progress) => {
       if (progress.totalBytesExpectedToSend) {

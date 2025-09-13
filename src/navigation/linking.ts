@@ -9,36 +9,27 @@ export const linking: LinkingOptions<RootStackParamList> = {
   config: {
     screens: {
       MainTabs: {
+        path: "/",
         screens: {
           Home: {
-            path: "/",
-            screens: {
-              HomeScreen: "",
-            },
+            path: "",
+            initialRouteName: "HomeScreen",
           },
           Videos: {
-            path: "/videos",
-            screens: {
-              VideoFeedScreen: "",
-            },
+            path: "videos",
+            initialRouteName: "VideoFeedScreen",
           },
           Create: {
-            path: "/create",
-            screens: {
-              CreateConfessionScreen: "",
-            },
+            path: "create",
+            initialRouteName: "CreateConfessionScreen",
           },
           Trending: {
-            path: "/trending",
-            screens: {
-              TrendingScreen: "",
-            },
+            path: "trending",
+            initialRouteName: "TrendingScreen",
           },
           Profile: {
-            path: "/profile",
-            screens: {
-              ProfileScreen: "",
-            },
+            path: "profile",
+            initialRouteName: "ProfileScreen",
           },
         },
       },
@@ -54,8 +45,12 @@ export const linking: LinkingOptions<RootStackParamList> = {
           confessionId: (confessionId: string) => confessionId,
         },
       },
-      VideoRecord: "/record",
-      Saved: "/saved",
+      VideoRecord: {
+        path: "/record",
+      },
+      Saved: {
+        path: "/saved",
+      },
       Paywall: {
         path: "/paywall",
         parse: {
@@ -64,6 +59,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
         },
       },
       AuthStack: {
+        path: "/auth",
         screens: {
           Onboarding: "/onboarding",
           SignUp: "/signup",
@@ -73,18 +69,27 @@ export const linking: LinkingOptions<RootStackParamList> = {
     },
   },
   async getInitialURL() {
-    // Check if app was opened from a deep link
-    const url = await Linking.getInitialURL();
-    if (url != null) {
-      return url;
-    }
+    try {
+      // Check if app was opened from a deep link
+      const url = await Linking.getInitialURL();
+      if (url != null) {
+        console.log("🔗 Deep link opened:", url);
+        return url;
+      }
 
-    // Check if there's a pending notification
-    // This would integrate with your notification system
-    return null;
+      // Check if there's a pending notification
+      // This would integrate with your notification system
+      return null;
+    } catch (error) {
+      console.error("Failed to get initial URL:", error);
+      return null;
+    }
   },
   subscribe(listener) {
-    const onReceiveURL = ({ url }: { url: string }) => listener(url);
+    const onReceiveURL = ({ url }: { url: string }) => {
+      console.log("🔗 Deep link received:", url);
+      listener(url);
+    };
 
     // Listen to incoming links from deep linking
     const subscription = Linking.addEventListener("url", onReceiveURL);

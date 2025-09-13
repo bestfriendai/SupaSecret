@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from "react"
 import { View, Dimensions, Pressable, Text, Alert, ScrollView, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { type NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -36,7 +36,9 @@ import {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
-type NavigationProp = NativeStackNavigationProp<any>;
+import type { RootStackParamList } from "../navigation/AppNavigator";
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 // Remove custom type, use ScrollView directly
 
 export default function OnboardingScreen() {
@@ -476,14 +478,14 @@ export default function OnboardingScreen() {
   }, [isProcessing, isScrolling]);
 
   // Enhanced navigation safety
-  const safeNavigate = useCallback((screenName: string, params?: any) => {
+  const safeNavigate = useCallback((screenName: keyof RootStackParamList, params?: any) => {
     if (preventNavigation()) {
       console.warn('Navigation prevented: Processing or scrolling in progress');
       return;
     }
 
     try {
-      navigation.navigate(screenName as any, params);
+      navigation.navigate(screenName, params);
 
       trackOnboardingEvent('onboarding_navigation', {
         destination: screenName,
@@ -554,8 +556,7 @@ export default function OnboardingScreen() {
           scrollEventThrottle={16}
           bounces={false}
           decelerationRate="fast"
-          maxToRenderPerBatch={2}
-          windowSize={3}
+                    windowSize={3}
           removeClippedSubviews={false}
           initialScrollIndex={currentIndex}
           // Enhanced accessibility

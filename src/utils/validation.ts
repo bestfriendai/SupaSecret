@@ -171,6 +171,11 @@ export function validateField<T>(value: T, rules: ValidationRule<T>[]): Validati
   const warnings: string[] = [];
 
   for (const rule of rules) {
+    // Skip validation if value is null/undefined and rule doesn't handle it
+    if (value === null || value === undefined) {
+      continue;
+    }
+
     const result = rule.validate(value);
 
     if (!result.isValid && result.error) {
@@ -294,7 +299,7 @@ export function useFormValidation<T extends Record<string, unknown>>(initialData
       const fieldRules = rules[field];
       if (!fieldRules) return { isValid: true };
 
-      const result = validateField(value, fieldRules);
+      const result = validateField(value as NonNullable<T[keyof T]>, fieldRules);
 
       setErrors((prev) => ({
         ...prev,

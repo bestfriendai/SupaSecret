@@ -80,7 +80,10 @@ function AuthStackNavigator() {
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
-        animation: "slide_from_right",
+        animationTypeForReplace: 'push',
+        gestureDirection: 'horizontal',
+        // detachInactiveScreens removed - not supported in current version
+        // sceneContainerStyle removed - not supported in current version
       }}
     >
       <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -105,6 +108,10 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenListeners={{
+        tabPress: (e) => {
+          // Prevent default behavior if needed
+          // e.preventDefault();
+        },
         state: (e) => {
           handleTabChange(e.data.state);
         },
@@ -136,6 +143,14 @@ function MainTabs() {
           borderTopColor: "#2F3336",
           borderTopWidth: 0.5,
           height: 60,
+          paddingBottom: 8,
+        },
+        tabBarHideOnKeyboard: true,
+        tabBarActiveBackgroundColor: 'transparent',
+        tabBarInactiveBackgroundColor: 'transparent',
+        tabBarBadgeStyle: {
+          backgroundColor: '#F91880',
+          color: '#FFFFFF',
         },
         headerStyle: {
           backgroundColor: "#000000",
@@ -146,6 +161,9 @@ function MainTabs() {
         headerTitleStyle: {
           fontWeight: "600",
         },
+        // headerBackTitleVisible removed - not supported in current version
+        // detachInactiveScreens removed - not supported in current version
+        // sceneContainerStyle removed - not supported in current version
       })}
     >
       <Tab.Screen
@@ -280,6 +298,17 @@ export default function AppNavigator() {
           },
         },
       }}
+      fallback={<View style={{ flex: 1, backgroundColor: '#000000' }} />}
+      onReady={() => {
+        if (__DEV__) {
+          console.log("🧭 Navigation container ready");
+        }
+      }}
+      onStateChange={(state) => {
+        if (__DEV__) {
+          console.log("🧭 Navigation state changed:", state?.routes[state?.index]?.name);
+        }
+      }}
     >
       <StatusBar style="light" />
       <Stack.Navigator
@@ -293,6 +322,12 @@ export default function AppNavigator() {
             fontSize: 18,
           },
           headerShadowVisible: false,
+          // headerBackTitleVisible removed - not supported in current version
+          animationTypeForReplace: 'push',
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          // detachInactiveScreens removed - not supported in current version
+          // sceneContainerStyle removed - not supported in current version
         }}
       >
         {shouldShowAuth ? (
@@ -305,7 +340,10 @@ export default function AppNavigator() {
               component={VideoRecordScreen}
               options={{
                 title: "Record Video",
-                presentation: "modal",
+                headerShown: true,
+                animation: 'slide_from_bottom',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
               }}
             />
             <Stack.Screen
@@ -322,7 +360,9 @@ export default function AppNavigator() {
               options={{
                 title: "Video",
                 headerShown: false,
-                presentation: "fullScreenModal",
+                animation: 'fade',
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
               }}
             />
             <Stack.Screen
@@ -330,7 +370,9 @@ export default function AppNavigator() {
               component={SavedScreen}
               options={{
                 title: "Saved Secrets",
-                presentation: "modal",
+                animation: 'slide_from_bottom',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
               }}
             />
             <Stack.Screen
@@ -345,7 +387,9 @@ export default function AppNavigator() {
               component={SettingsScreen}
               options={{
                 title: "Settings",
-                presentation: "modal",
+                animation: 'slide_from_bottom',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
               }}
             />
             <Stack.Screen
@@ -361,7 +405,9 @@ export default function AppNavigator() {
               component={WebViewScreen}
               options={{
                 headerShown: false,
-                presentation: "modal",
+                animation: 'slide_from_bottom',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
               }}
             />
           </>

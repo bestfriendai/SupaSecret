@@ -1,7 +1,4 @@
 import * as FileSystem from "expo-file-system/legacy";
-
-// Demo mode - no native voice imports for Expo Go
-// import Voice from '@react-native-voice/voice';
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { IAnonymiser, ProcessedVideo, VideoProcessingOptions } from "./IAnonymiser";
 import { ensureSignedVideoUrl, uploadVideoToSupabase } from "../utils/storage";
@@ -30,6 +27,11 @@ export class VideoProcessingService implements IAnonymiser {
       const fileInfo = await FileSystem.getInfoAsync(videoUri);
       if (!fileInfo.exists) {
         throw new Error("Video file does not exist");
+      }
+
+      // Check file size (limit to 100MB for performance)
+      if (fileInfo.size && fileInfo.size > 100 * 1024 * 1024) {
+        throw new Error("Video file is too large (max 100MB)");
       }
 
       // If in Expo Go mode, use server-side processing via Edge Function
@@ -101,7 +103,7 @@ export class VideoProcessingService implements IAnonymiser {
       const signedUrl = await ensureSignedVideoUrl(storagePath);
 
       return {
-        uri: signedUrl || videoUri,
+        uri: signedUrl.signedUrl || videoUri,
         transcription: processData?.transcription || "Mock transcription for testing",
         duration: processData?.duration || 30,
         thumbnailUri: "",
@@ -128,7 +130,7 @@ export class VideoProcessingService implements IAnonymiser {
     } = options;
 
     // Create processing directory
-    const processingDir = `${FileSystem.documentDirectory}processing/`;
+    const processingDir = `${FileSystem.cacheDirectory}processing/`;
     await FileSystem.makeDirectoryAsync(processingDir, { intermediates: true });
 
     onProgress?.(15, "Applying face blur effect...");
@@ -244,9 +246,17 @@ export class VideoProcessingService implements IAnonymiser {
         time: 1000, // 1 second
         quality: 0.8,
       });
+
+      // Verify thumbnail was created successfully
+      const thumbnailInfo = await FileSystem.getInfoAsync(uri);
+      if (!thumbnailInfo.exists) {
+        throw new Error("Thumbnail was not created");
+      }
+
       return uri;
     } catch (error) {
       console.error("Thumbnail generation failed:", error);
+      // Return empty string instead of throwing to allow processing to continue
       return "";
     }
   }

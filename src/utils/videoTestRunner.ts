@@ -38,7 +38,7 @@ async function testVideoUriHandling(): Promise<TestResult> {
     const storagePath = "confessions/test-user/test-video.mp4";
     const signedUrl = await ensureSignedVideoUrl(storagePath);
 
-    if (!signedUrl || !signedUrl.startsWith("https://")) {
+    if (!signedUrl.signedUrl || !signedUrl.signedUrl.startsWith("https://")) {
       throw new Error("Invalid signed URL generated");
     }
 
@@ -46,7 +46,7 @@ async function testVideoUriHandling(): Promise<TestResult> {
     const httpUrl = "https://example.com/video.mp4";
     const passthroughUrl = await ensureSignedVideoUrl(httpUrl);
 
-    if (passthroughUrl !== httpUrl) {
+    if (passthroughUrl.signedUrl !== httpUrl) {
       throw new Error("HTTP URL passthrough failed");
     }
 
@@ -312,7 +312,7 @@ export async function quickVideoHealthCheck(): Promise<boolean> {
     const testPath = "confessions/health-check/test.mp4";
     const signedUrl = await ensureSignedVideoUrl(testPath);
 
-    if (!signedUrl || !signedUrl.startsWith("https://")) {
+    if (!signedUrl.signedUrl || !signedUrl.signedUrl.startsWith("https://")) {
       return false;
     }
 

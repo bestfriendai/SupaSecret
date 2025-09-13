@@ -30,9 +30,13 @@ const checkFFmpegAvailability = async (): Promise<boolean> => {
     ffmpegAvailable = !!(ff && ff.FFmpegKit);
     if (ffmpegAvailable) {
       (global as any).__ffmpegAvailable = true;
+      console.log("🎬 FFmpeg is available for local video processing");
+    } else {
+      console.log("🎬 FFmpeg not available, will use server processing");
     }
   } catch (_error) {
     ffmpegAvailable = false;
+    console.log("🎬 FFmpeg not available, will use server processing");
   }
 
   return ffmpegAvailable;
@@ -53,6 +57,11 @@ export const processVideoDualMode = async (
     const fileInfo = await FileSystem.getInfoAsync(videoUri);
     if (!fileInfo.exists) {
       throw new Error("Video file does not exist");
+    }
+
+    // Check file size (limit to 100MB)
+    if (fileInfo.size && fileInfo.size > 100 * 1024 * 1024) {
+      throw new Error("Video file is too large (max 100MB)");
     }
 
     onProgress?.(5, "Initializing video processing...");
@@ -116,7 +125,7 @@ const processVideoLocally = async (
     await cleanupTemporaryFiles();
 
     // Create processing directory
-    const processingDir = `${FileSystem.documentDirectory}processing_${Date.now()}/`;
+    const processingDir = `${FileSystem.cacheDirectory}processing_${Date.now()}/`;
     await FileSystem.makeDirectoryAsync(processingDir, { intermediates: true });
 
     onProgress?.(20, "Preparing video for processing...");
@@ -223,12 +232,12 @@ const processVideoServer = async (
     onProgress?.(80, "Processing complete!");
 
     const storagePath: string | undefined = processData.storagePath || undefined;
-    const signedUrl = await ensureSignedVideoUrl(storagePath);
+    const signedUrlResult = await ensureSignedVideoUrl(storagePath);
 
     onProgress?.(100, "Server processing complete!");
 
     return {
-      uri: signedUrl || videoUri,
+      uri: signedUrlResult.signedUrl || videoUri,
       transcription: processData.transcription || "Mock transcription for testing",
       duration: processData.duration || 30,
       thumbnailUri: processData.thumbnailUrl || "",
@@ -254,11 +263,13 @@ const applyFaceBlurLocally = async (
   const outPath = pathForFFmpeg(outputUri);
 
   // Apply gaussian blur to entire frame (simplified face blur)
+  // In production, this would use actual face detection with ML Kit
   const blurSigma = quality === "high" ? 15 : quality === "low" ? 25 : 20;
-  const cmd = `-y -i "${inPath}" -vf gblur=sigma=${blurSigma} -c:v libx264 -crf ${qualityToCrf(quality)} -preset veryfast -c:a copy "${outPath}"`;
+  const cmd = `-y -i "${inPath}" -vf "gblur=sigma=${blurSigma}" -c:v libx264 -crf ${qualityToCrf(quality)} -preset veryfast -c:a copy "${outPath}"`;
 
   const success = await runFfmpeg(cmd);
   if (!success) {
+    console.warn("Face blur FFmpeg command failed, using original video");
     // Fallback: copy original
     await FileSystem.copyAsync({ from: videoUri, to: outputUri });
   }
@@ -359,7 +370,7 @@ const extractAudioFromVideo = async (videoUri: string, outputDir: string): Promi
 
   if (!success) {
     // Create empty audio file for development
-    await FileSystem.writeAsStringAsync(audioUri, "", { encoding: FileSystem.EncodingType.Base64 });
+    await FileSystem.writeAsStringAsync(audioUri, "", { encoding: "base64" });
   }
 
   return audioUri;
@@ -384,7 +395,7 @@ const generateMockTranscription = (): string => {
  */
 export const cleanupTemporaryFiles = async (): Promise<void> => {
   try {
-    const documentDirectory = FileSystem.documentDirectory;
+    const documentDirectory = FileSystem.cacheDirectory;
     if (!documentDirectory) return;
 
     const files = await FileSystem.readDirectoryAsync(documentDirectory);

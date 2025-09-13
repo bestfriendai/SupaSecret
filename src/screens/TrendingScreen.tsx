@@ -190,7 +190,7 @@ export default function TrendingScreen() {
             onSubmitEditing={() => dismissKeyboard()}
             accessibilityLabel="Search hashtags"
             accessibilityHint="Type to search hashtags"
-            accessibilityRole="searchbox"
+            accessibilityRole="search"
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={handleClearSearch} {...getCloseButtonA11yProps()}>
@@ -217,11 +217,9 @@ export default function TrendingScreen() {
             )}
             style={{ marginBottom: 12 }}
             // Performance optimization props
-            initialNumToRender={TIME_PERIODS.length}
-            maxToRenderPerBatch={TIME_PERIODS.length}
-            windowSize={5}
+                        windowSize={5}
             removeClippedSubviews={true}
-            getItemLayout={(_, index) => ({
+            getItemLayout={(_: any, index: number) => ({
               length: 100,
               offset: 100 * index,
               index,
@@ -302,13 +300,10 @@ export default function TrendingScreen() {
             )}
             refreshControl={refreshControlElement}
             // Performance optimization props
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={10}
+                        windowSize={10}
             removeClippedSubviews={true}
-            drawDistance={250}
-            estimatedItemSize={150}
-            getItemLayout={(_, index) => ({
+                        estimatedItemSize={150}
+            getItemLayout={(_: any, index: number) => ({
               length: 150,
               offset: 150 * index,
               index,
@@ -335,13 +330,10 @@ export default function TrendingScreen() {
               )}
               refreshControl={refreshControlElement}
               // Performance optimization props
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              windowSize={10}
+                                          windowSize={10}
               removeClippedSubviews={true}
-              drawDistance={250}
-              estimatedItemSize={80}
-              getItemLayout={(_, index) => ({
+                            estimatedItemSize={80}
+              getItemLayout={(_: any, index: number) => ({
                 length: 80,
                 offset: 80 * index,
                 index,
@@ -363,13 +355,10 @@ export default function TrendingScreen() {
               )}
               refreshControl={refreshControlElement}
               // Performance optimization props
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              windowSize={10}
+                                          windowSize={10}
               removeClippedSubviews={true}
-              drawDistance={250}
-              estimatedItemSize={150}
-              getItemLayout={(_, index) => ({
+                            estimatedItemSize={150}
+              getItemLayout={(_: any, index: number) => ({
                 length: 150,
                 offset: 150 * index,
                 index,
