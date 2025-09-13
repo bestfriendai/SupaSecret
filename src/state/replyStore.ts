@@ -25,15 +25,39 @@ const debouncedOperation = async <T>(key: string, operation: () => Promise<T>): 
   return promise;
 };
 
+/**
+ * Reply interface for application state
+ */
 export interface Reply {
+  /** Unique identifier for the reply */
   id: string;
+  /** ID of the confession this reply belongs to */
   confessionId: string;
+  /** User ID of the reply author (undefined for anonymous replies) */
   userId?: string;
+  /** Content of the reply */
   content: string;
+  /** Whether the reply was posted anonymously */
   isAnonymous: boolean;
+  /** Number of likes the reply has received */
   likes: number;
+  /** Whether the current user has liked this reply */
   isLiked?: boolean;
+  /** Timestamp when the reply was created */
   timestamp: number;
+}
+
+/**
+ * Database reply record structure from Supabase
+ */
+interface DatabaseReplyRecord {
+  id: string;
+  confession_id: string;
+  user_id?: string;
+  content: string;
+  is_anonymous: boolean;
+  likes: number;
+  created_at: string;
 }
 
 export interface ReplyState {
@@ -212,7 +236,7 @@ export const useReplyStore = create<ReplyState>()(
 
           if (error) throw error;
 
-          const newReplies: Reply[] = (data || []).map((item: any) => ({
+          const newReplies: Reply[] = (data || []).map((item: DatabaseReplyRecord) => ({
             id: item.id,
             confessionId: item.confession_id,
             userId: item.user_id || undefined,

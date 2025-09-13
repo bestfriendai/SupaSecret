@@ -66,9 +66,7 @@ export class PushNotificationManager {
         process.env.EXPO_PUBLIC_PROJECT_ID ||
         process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID ||
         (Constants.expoConfig as any)?.extra?.eas?.projectId ||
-        (Constants.manifest as any)?.extra?.eas?.projectId ||
-        (Constants.expoConfig as any)?.projectId ||
-        (Constants.manifest as any)?.projectId;
+        (Constants.expoConfig as any)?.projectId;
 
       if (!projectId) {
         if (__DEV__) {
@@ -77,9 +75,7 @@ export class PushNotificationManager {
             env_project_id: !!process.env.EXPO_PUBLIC_PROJECT_ID,
             env_vibecode_project_id: !!process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID,
             expo_config_eas: !!(Constants.expoConfig as any)?.extra?.eas?.projectId,
-            manifest_eas: !!(Constants.manifest as any)?.extra?.eas?.projectId,
             expo_config_direct: !!(Constants.expoConfig as any)?.projectId,
-            manifest_direct: !!(Constants.manifest as any)?.projectId,
           });
         }
         return null;

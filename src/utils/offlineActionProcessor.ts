@@ -16,43 +16,70 @@ export async function processOfflineAction(action: OfflineAction): Promise<void>
 
   switch (action.type) {
     case OFFLINE_ACTIONS.LIKE_CONFESSION:
-      await processLikeConfession(action.payload);
+      await processLikeConfession(action.payload as {
+        confessionId: string;
+        isLiked: boolean;
+        likes: number;
+      });
       break;
 
     case OFFLINE_ACTIONS.UNLIKE_CONFESSION:
-      await processUnlikeConfession(action.payload);
+      await processUnlikeConfession(action.payload as {
+        confessionId: string;
+        isLiked: boolean;
+        likes: number;
+      });
       break;
 
     case OFFLINE_ACTIONS.SAVE_CONFESSION:
-      await processSaveConfession(action.payload);
+      await processSaveConfession(action.payload as {
+        confessionId: string;
+      });
       break;
 
     case OFFLINE_ACTIONS.UNSAVE_CONFESSION:
-      await processUnsaveConfession(action.payload);
+      await processUnsaveConfession(action.payload as {
+        confessionId: string;
+      });
       break;
 
     case OFFLINE_ACTIONS.DELETE_CONFESSION:
-      await processDeleteConfession(action.payload);
+      await processDeleteConfession(action.payload as {
+        confessionId: string;
+      });
       break;
 
     case OFFLINE_ACTIONS.CREATE_REPLY:
-      await processCreateReply(action.payload);
+      await processCreateReply(action.payload as {
+        confessionId: string;
+        content: string;
+      });
       break;
 
     case OFFLINE_ACTIONS.DELETE_REPLY:
-      await processDeleteReply(action.payload);
+      await processDeleteReply(action.payload as {
+        replyId: string;
+      });
       break;
 
     case OFFLINE_ACTIONS.LIKE_REPLY:
-      await processLikeReply(action.payload);
+      await processLikeReply(action.payload as {
+        replyId: string;
+        likes: number;
+      });
       break;
 
     case OFFLINE_ACTIONS.UNLIKE_REPLY:
-      await processUnlikeReply(action.payload);
+      await processUnlikeReply(action.payload as {
+        replyId: string;
+        likes: number;
+      });
       break;
 
     case OFFLINE_ACTIONS.MARK_NOTIFICATION_READ:
-      await processMarkNotificationRead(action.payload);
+      await processMarkNotificationRead(action.payload as {
+        notificationIds: string[];
+      });
       break;
 
     default:

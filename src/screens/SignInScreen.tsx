@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, Pressable, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { type NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import NetInfo from "@react-native-community/netinfo";
@@ -16,8 +16,9 @@ import { validateEmail, sendPasswordReset } from "../utils/auth";
 import { useToastHelpers } from "../contexts/ToastContext";
 
 import { safeGoBackFromAuth } from "../utils/navigation";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 
-type NavigationProp = NativeStackNavigationProp<any>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SignInScreen() {
   const navigation = useNavigation<NavigationProp>();

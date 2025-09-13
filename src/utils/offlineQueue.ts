@@ -22,20 +22,36 @@ const generateUniqueId = (): string => {
   return `${timestamp}-${randomPart1}-${randomPart2}-${counter}`;
 };
 
+/**
+ * Interface for offline action that needs to be queued
+ */
 export interface OfflineAction {
+  /** Unique identifier for the action */
   id: string;
+  /** Type of the action (e.g., 'create_confession', 'like_reply') */
   type: string;
-  payload: any;
+  /** Payload data for the action */
+  payload: Record<string, unknown>;
+  /** Timestamp when the action was created */
   timestamp: number;
+  /** Current retry count */
   retryCount: number;
+  /** Maximum number of retries allowed */
   maxRetries: number;
-  nextAttempt?: number; // Timestamp for next retry attempt
+  /** Timestamp for next retry attempt */
+  nextAttempt?: number;
 }
 
-export interface QueuedOperation {
-  action: () => Promise<any>;
-  onSuccess?: (result: any) => void;
-  onError?: (error: any) => void;
+/**
+ * Interface for queued operations with callbacks
+ */
+export interface QueuedOperation<T = unknown> {
+  /** The async operation to execute */
+  action: () => Promise<T>;
+  /** Callback for successful execution */
+  onSuccess?: (result: T) => void;
+  /** Callback for errors */
+  onError?: (error: Error) => void;
 }
 
 class OfflineQueueManager {

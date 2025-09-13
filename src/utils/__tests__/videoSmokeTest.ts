@@ -34,20 +34,20 @@ export async function testSignedUrlGeneration(): Promise<SmokeTestResult> {
     }
 
     // Verify URL format
-    const isValidUrl = signedUrl.startsWith("https://") && signedUrl.includes("supabase");
+    const isValidUrl = signedUrl.signedUrl.startsWith("https://") && signedUrl.signedUrl.includes("supabase");
     if (!isValidUrl) {
       return {
         success: false,
         step: "signed-url-generation",
         error: "Generated URL format is invalid",
-        details: { signedUrl },
+        details: { signedUrl: signedUrl.signedUrl },
       };
     }
 
     return {
       success: true,
       step: "signed-url-generation",
-      details: { signedUrl: signedUrl.substring(0, 50) + "..." },
+      details: { signedUrl: signedUrl.signedUrl.substring(0, 50) + "..." },
     };
   } catch (error) {
     return {

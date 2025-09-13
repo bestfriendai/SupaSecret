@@ -7,7 +7,7 @@ import "react-native-get-random-values";
 import { LogBox } from "react-native";
 LogBox.ignoreLogs([
   "Disconnected from Metro",
-  // Remove expo-av deprecation warning since we've migrated to expo-audio
+  // Remove deprecation warnings for migrated packages
 ]);
 
 import { registerRootComponent } from "expo";
