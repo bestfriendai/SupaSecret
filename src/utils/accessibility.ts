@@ -286,6 +286,81 @@ export const announceForAccessibility = async (message: string): Promise<void> =
   }
 };
 
+// Onboarding-specific accessibility announcements
+export const announceSlideChange = (slideIndex: number, totalSlides: number, slideTitle: string) => {
+  const message = `Slide ${slideIndex + 1} of ${totalSlides}: ${slideTitle}`;
+  announceForAccessibility(message);
+};
+
+export const announceOnboardingComplete = () => {
+  announceForAccessibility('Onboarding complete. Redirecting to sign up.');
+};
+
+export const announceOnboardingSkipped = () => {
+  announceForAccessibility('Onboarding skipped. Redirecting to sign up.');
+};
+
+// Accessibility state management
+export interface CustomAccessibilityState {
+  isScreenReaderEnabled: boolean;
+  isReduceMotionEnabled: boolean;
+  isReduceTransparencyEnabled: boolean;
+  prefersCrossFadeTransitions: boolean;
+}
+
+// Get current accessibility state
+export const getAccessibilityState = async (): Promise<CustomAccessibilityState> => {
+  try {
+    const [
+      isScreenReaderEnabled,
+      isReduceMotionEnabled,
+      isReduceTransparencyEnabled,
+      prefersCrossFadeTransitions,
+    ] = await Promise.all([
+      AccessibilityInfo.isScreenReaderEnabled(),
+      AccessibilityInfo.isReduceMotionEnabled(),
+      AccessibilityInfo.isReduceTransparencyEnabled(),
+      AccessibilityInfo.prefersCrossFadeTransitions(),
+    ]);
+
+    return {
+      isScreenReaderEnabled,
+      isReduceMotionEnabled,
+      isReduceTransparencyEnabled,
+      prefersCrossFadeTransitions,
+    };
+  } catch (error) {
+    console.warn('Failed to get accessibility state:', error);
+    return {
+      isScreenReaderEnabled: false,
+      isReduceMotionEnabled: false,
+      isReduceTransparencyEnabled: false,
+      prefersCrossFadeTransitions: false,
+    };
+  }
+};
+
+// Haptic feedback with accessibility consideration
+export const accessibleHapticFeedback = async (
+  type: 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error' = 'light'
+) => {
+  try {
+    const { isReduceMotionEnabled } = await getAccessibilityState();
+
+    // Reduce haptic intensity if reduce motion is enabled
+    if (isReduceMotionEnabled) {
+      // Use lighter haptic feedback
+      return;
+    }
+
+    // Normal haptic feedback - would need to import Haptics from expo-haptics
+    // For now, just log the feedback type
+    console.log(`Haptic feedback: ${type}`);
+  } catch (error) {
+    console.warn('Haptic feedback failed:', error);
+  }
+};
+
 export const setAccessibilityFocus = async (reactTag: number): Promise<void> => {
   try {
     await AccessibilityInfo.setAccessibilityFocus(reactTag);

@@ -1,8 +1,8 @@
-import React from "react";
 import { View, Text, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useAnimatedStyle, interpolate, SharedValue } from "react-native-reanimated";
+import Animated, { SharedValue } from "react-native-reanimated";
 import { OnboardingSlide as OnboardingSlideType } from "../types/auth";
+import { useSlideAnimation } from "../hooks/useOnboardingAnimation";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -10,49 +10,55 @@ interface OnboardingSlideProps {
   slide: OnboardingSlideType;
   index: number;
   scrollX: SharedValue<number>;
+  config?: {
+    iconSize: number;
+    iconContainerSize: number;
+    titleFontSize: number;
+    subtitleFontSize: number;
+    descriptionFontSize: number;
+    slideSpacing: number;
+  };
 }
 
-export default function OnboardingSlide({ slide, index, scrollX }: OnboardingSlideProps) {
-  const animatedStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
+export default function OnboardingSlide({ slide, index, scrollX, config }: OnboardingSlideProps) {
+  // Use config values or defaults
+  const {
+    iconSize = 48,
+    iconContainerSize = 120,
+    titleFontSize = 28,
+    subtitleFontSize = 18,
+    descriptionFontSize = 16,
+    slideSpacing = 20,
+  } = config || {};
 
-    const scale = interpolate(scrollX.value, inputRange, [0.8, 1, 0.8], "clamp");
-
-    const opacity = interpolate(scrollX.value, inputRange, [0.5, 1, 0.5], "clamp");
-
-    return {
-      transform: [{ scale }],
-      opacity,
-    };
-  });
-
-  const iconAnimatedStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
-
-    const translateY = interpolate(scrollX.value, inputRange, [50, 0, -50], "clamp");
-
-    const rotate = interpolate(scrollX.value, inputRange, [-10, 0, 10], "clamp");
-
-    return {
-      transform: [{ translateY }, { rotate: `${rotate}deg` }],
-    };
-  });
+  // Use modern animation hooks
+  const { slideStyle, iconStyle } = useSlideAnimation(index, scrollX);
 
   return (
-    <View className="flex-1 items-center justify-center px-8" style={{ width: screenWidth }}>
-      <Animated.View style={animatedStyle} className="items-center">
+    <View
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 32,
+        width: screenWidth,
+      }}
+      accessibilityRole="none"
+      accessibilityLabel={`Slide ${index + 1} of 4: ${slide.title}`}
+    >
+      <Animated.View style={[slideStyle, { alignItems: "center" }]}>
         {/* Icon */}
         <Animated.View
           style={[
-            iconAnimatedStyle,
+            iconStyle,
             {
-              width: 120,
-              height: 120,
-              borderRadius: 60,
+              width: iconContainerSize,
+              height: iconContainerSize,
+              borderRadius: iconContainerSize / 2,
               backgroundColor: slide.color,
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 40,
+              marginBottom: slideSpacing * 2,
               shadowColor: slide.color,
               shadowOffset: { width: 0, height: 10 },
               shadowOpacity: 0.3,
@@ -60,15 +66,51 @@ export default function OnboardingSlide({ slide, index, scrollX }: OnboardingSli
               elevation: 10,
             },
           ]}
+          accessibilityRole="image"
+          accessibilityLabel={`${slide.title} icon`}
         >
-          <Ionicons name={slide.icon as any} size={48} color="#FFFFFF" />
+          <Ionicons name={slide.icon as any} size={iconSize} color="#FFFFFF" />
         </Animated.View>
 
         {/* Content */}
-        <View className="items-center max-w-sm">
-          <Text className="text-white text-28 font-bold text-center mb-4 leading-8">{slide.title}</Text>
-          <Text className="text-blue-400 text-18 font-semibold text-center mb-6">{slide.subtitle}</Text>
-          <Text className="text-gray-400 text-16 text-center leading-6">{slide.description}</Text>
+        <View style={{ alignItems: "center", maxWidth: 384 }}>
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: titleFontSize,
+              fontWeight: "bold",
+              textAlign: "center",
+              marginBottom: 16,
+              lineHeight: titleFontSize * 1.2,
+            }}
+            accessibilityRole="header"
+          >
+            {slide.title}
+          </Text>
+          <Text
+            style={{
+              color: slide.color,
+              fontSize: subtitleFontSize,
+              fontWeight: "600",
+              textAlign: "center",
+              marginBottom: slideSpacing,
+            }}
+            accessibilityRole="text"
+          >
+            {slide.subtitle}
+          </Text>
+          <Text
+            style={{
+              color: "#9CA3AF",
+              fontSize: descriptionFontSize,
+              textAlign: "center",
+              lineHeight: descriptionFontSize * 1.4,
+              paddingHorizontal: 16,
+            }}
+            accessibilityRole="text"
+          >
+            {slide.description}
+          </Text>
         </View>
       </Animated.View>
     </View>

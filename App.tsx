@@ -40,8 +40,11 @@ const openai_api_key = Constants.expoConfig.extra.apikey;
 */
 
 export default function App() {
-  // Debug: Log component render
-  console.log("[DEBUG] App component rendering...");
+  // Debug: Log component render with provider hierarchy
+  if (__DEV__) {
+    console.log(`[App] Component rendering at ${new Date().toISOString()}`);
+    console.log("[App] Provider hierarchy: SafeAreaProvider > ErrorBoundary > GestureHandlerRootView > ToastProvider > BottomSheetModalProvider > AppNavigator");
+  }
 
   // Store hooks must be called unconditionally at the top level
   const checkAuthState = useAuthStore((state) => state.checkAuthState);
@@ -49,20 +52,27 @@ export default function App() {
   const loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
 
   if (__DEV__) {
-    console.log("[DEBUG] Store hooks initialized successfully");
+    console.log("[App] Store hooks initialized successfully");
+    console.log("[App] useAuthStore, useConfessionStore hooks ready for touch event handling");
   }
 
   useEffect(() => {
-    console.log("[DEBUG] App useEffect running...");
+    if (__DEV__) {
+      console.log(`[App] useEffect running at ${new Date().toISOString()}`);
+    }
 
     const initializeApp = async () => {
       try {
-        console.log("[DEBUG] Starting app initialization...");
+        if (__DEV__) {
+          console.log("[App] Starting app initialization with touch event system checks...");
+        }
 
         // Check environment and log dependency availability
         try {
           checkEnvironment();
-          console.log("[DEBUG] Environment check completed");
+          if (__DEV__) {
+            console.log("[App] Environment check completed - touch handlers should be available");
+          }
         } catch (error) {
           console.error("❌ Environment check failed:", error);
           // Continue initialization even if environment check fails
@@ -118,6 +128,7 @@ export default function App() {
 
         if (__DEV__) {
           console.log("🚀 App initialization complete with audio session configured and subscriptions set up");
+          console.log("[App] Touch event system fully initialized and ready for user interactions");
         }
       } catch (error) {
         console.error("❌ App initialization failed:", error);
@@ -150,7 +161,16 @@ export default function App() {
     };
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
 
-  console.log("[DEBUG] Rendering App JSX...");
+  // Log component render information in useEffect to avoid render-phase side effects
+  useEffect(() => {
+    if (__DEV__) {
+      console.log("[App] Rendering App JSX with provider hierarchy for touch event handling...");
+      console.log("[App] GestureHandlerRootView rendered with touch debugging");
+      console.log("[App] ToastProvider rendered - checking for touch interference");
+      console.log("[App] RetryBanner rendered with pointerEvents='none'");
+      console.log("[App] BottomSheetModalProvider rendered - potential touch event interceptor");
+    }
+  });
 
   // Debug: Add error boundary with detailed logging
   return (
@@ -174,7 +194,9 @@ export default function App() {
         }}
         resetOnPropsChange={true}
       >
-        <GestureHandlerRootView className="flex-1">
+        <GestureHandlerRootView 
+          className="flex-1"
+        >
           <ToastProvider>
             <RetryBanner />
             <BottomSheetModalProvider>

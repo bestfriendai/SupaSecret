@@ -1,6 +1,7 @@
 module.exports = function (api) {
   api.cache(true);
   return {
+    // Use Expo preset and enable NativeWind's JSX runtime
     presets: [["babel-preset-expo", { jsxImportSource: "nativewind" }], "nativewind/babel"],
     plugins: [
       // Module resolver for path aliases
@@ -13,8 +14,6 @@ module.exports = function (api) {
           },
         },
       ],
-      // React Native Worklets plugin MUST be last for v4 compatibility
-      "react-native-worklets/plugin",
     ],
   };
 };
