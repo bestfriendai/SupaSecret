@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useState } from "react";
 import { View, Text, Pressable, RefreshControl } from "react-native";
 import { FlashList } from "@shopify/flash-list";
+import type { Confession } from "../types/confession";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -72,7 +73,7 @@ export default function SavedScreen() {
     unsaveConfession(confessionId);
   };
 
-  const renderConfession = ({ item: confession }: { item: any }) => {
+  const renderConfession = ({ item: confession }: { item: Confession }) => {
     const replies = getRepliesForConfession(confession.id);
     const replyCount = replies.length;
 
@@ -232,19 +233,8 @@ export default function SavedScreen() {
               </View>
             ) : null
           }
-          // Performance optimization props
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          removeClippedSubviews={true}
-          drawDistance={250}
-          estimatedItemSize={200}
-          getItemLayout={(_, index) => ({
-            length: 200,
-            offset: 200 * index,
-            index,
-          })}
-        />
+          // FlashList v2 performance props
+                  />
       )}
     </View>
   );

@@ -245,19 +245,8 @@ export default function NotificationsScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D9BF0" colors={["#1D9BF0"]} />
         }
-        // Performance optimization props
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        removeClippedSubviews={true}
-        drawDistance={250}
-        estimatedItemSize={100}
-        getItemLayout={(_, index) => ({
-          length: 100,
-          offset: 100 * index,
-          index,
-        })}
-      />
+        // FlashList v2 performance props
+              />
     </View>
   );
 }

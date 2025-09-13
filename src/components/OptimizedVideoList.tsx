@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { View, Dimensions, StatusBar } from "react-native";
 import { FlashList } from "@shopify/flash-list";
+import type { Confession } from "../types/confession";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
@@ -69,9 +70,9 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   // FlashList doesn't need getItemLayout as it handles layout automatically
 
   // Handle viewability changes for video playback
-  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
-    const first = viewableItems.find((v: any) => v.isViewable) || viewableItems[0];
-    if (first && typeof first.index === "number") {
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: Array<{ item: Confession; isViewable: boolean; index: number | null }> }) => {
+    const first = viewableItems.find((v) => v.isViewable && v.index !== null) || viewableItems[0];
+    if (first && first.index !== null) {
       currentIndexRef.current = first.index;
       setCurrentIndex(first.index); // trigger re-render so isActive updates
     }
@@ -128,7 +129,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   }, []);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: any; index: number }) => (
+    ({ item, index }: { item: Confession; index: number }) => (
       <EnhancedVideoItem
         confession={item}
         isActive={index === currentIndex && isFocused}
@@ -144,7 +145,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
     [onClose, currentIndex, isFocused, handleCommentPress, handleSharePress, handleSavePress, handleReportPress],
   );
 
-  const keyExtractor = useCallback((item: any) => item.id, []);
+  const keyExtractor = useCallback((item: Confession) => item.id, []);
 
   return (
     <>
@@ -162,11 +163,9 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
           decelerationRate="fast"
           extraData={{ currentIndex, isFocused }}
           showsVerticalScrollIndicator={false}
-          removeClippedSubviews={true}
-          drawDistance={screenHeight * 2}
-          initialScrollIndex={initialIndex}
+                    initialScrollIndex={initialIndex}
           getItemType={() => "video"}
-          overrideItemLayout={(layout: { span?: number }) => {
+          overrideItemLayout={(layout) => {
             layout.span = 1;
           }}
           contentContainerStyle={{ backgroundColor: "black" }}
@@ -174,16 +173,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
           scrollEventThrottle={16}
           disableIntervalMomentum={true}
           snapToEnd={false}
-          // Additional performance optimization props
-          initialNumToRender={3}
-          maxToRenderPerBatch={3}
-          windowSize={3}
-          estimatedItemSize={screenHeight}
-          getItemLayout={(_, index) => ({
-            length: screenHeight,
-            offset: screenHeight * index,
-            index,
-          })}
+          // FlashList v2 performance props
         />
       </View>
 

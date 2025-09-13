@@ -237,13 +237,10 @@ const EnhancedCommentBottomSheet = React.memo(
               </View>
             )}
             // Performance optimization props
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
             windowSize={10}
             removeClippedSubviews={true}
-            drawDistance={250}
             estimatedItemSize={120}
-            getItemLayout={(_, index) => ({
+            getItemLayout={(_: any, index: number) => ({
               length: 120,
               offset: 120 * index,
               index,
