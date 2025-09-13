@@ -51,6 +51,8 @@ export default function VideoRecordScreen() {
   // Mount/recording guards to prevent camera-unmounted errors
   const isMountedRef = useRef(true);
   const isRecordingRef = useRef(false);
+  const cleanupRef = useRef<() => void>();
+
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
@@ -58,13 +60,20 @@ export default function VideoRecordScreen() {
   useEffect(() => {
     isMountedRef.current = true;
 
+    // Store cleanup function for use in navigation listener
+    cleanupRef.current = cleanup;
+
     const removeBeforeRemove = (navigation as any).addListener?.("beforeRemove", (e: any) => {
       // If recording, stop it before navigating away to avoid unmounted errors
       if (isRecordingRef.current) {
         e.preventDefault();
         try {
           cameraRef.current?.stopRecording();
-        } catch {}
+        } catch (error) {
+          if (__DEV__) {
+            console.warn("Error stopping recording during navigation:", error);
+          }
+        }
         // Allow navigation to proceed after a brief tick
         setTimeout(() => {
           (navigation as any).dispatch?.(e.data.action);
@@ -75,10 +84,12 @@ export default function VideoRecordScreen() {
     return () => {
       isMountedRef.current = false;
       try {
-        if (isRecordingRef.current) {
-          cameraRef.current?.stopRecording();
+        cleanupRef.current?.();
+      } catch (error) {
+        if (__DEV__) {
+          console.warn("Error during component unmount cleanup:", error);
         }
-      } catch {}
+      }
       removeBeforeRemove && removeBeforeRemove();
     };
   }, [navigation]);
@@ -109,16 +120,39 @@ export default function VideoRecordScreen() {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewTranscription, setPreviewTranscription] = useState<string>("");
   const previewPlayer = useVideoPlayer(previewUri, (player) => {
-    player.loop = true;
-    player.muted = true; // Expo Go: mute original and use TTS for masking
+    if (player) {
+      player.loop = true;
+      player.muted = true; // Expo Go: mute original and use TTS for masking
+    }
   });
+
+  // Preview player cleanup
+  useEffect(() => {
+    return () => {
+      try {
+        if (previewPlayer) {
+          previewPlayer.pause?.();
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.warn("Error cleaning up preview player:", error);
+        }
+      }
+    };
+  }, [previewPlayer]);
 
   // Start/stop preview playback + TTS voice masking for Expo Go
   useEffect(() => {
-    if (showPreview && previewUri) {
+    if (showPreview && previewUri && previewPlayer) {
       try {
+        // Reset player position before playing
+        previewPlayer.currentTime = 0;
         previewPlayer.play?.();
-      } catch {}
+      } catch (error) {
+        if (__DEV__) {
+          console.warn("Error starting preview playback:", error);
+        }
+      }
       if (previewTranscription) {
         // Simulate voice change using TTS (lower pitch / slower rate)
         Speech.stop();
@@ -130,10 +164,19 @@ export default function VideoRecordScreen() {
         });
       }
     } else {
-      Speech.stop();
+      try {
+        Speech.stop();
+        if (previewPlayer) {
+          previewPlayer.pause?.();
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.warn("Error stopping preview playback:", error);
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPreview, previewUri, previewTranscription]);
+  }, [showPreview, previewUri, previewTranscription, previewPlayer]);
 
   const showMessage = (
     message: string,
@@ -169,21 +212,43 @@ export default function VideoRecordScreen() {
   // Cleanup function to prevent memory leaks
   const cleanup = () => {
     try {
+      // Stop recording if in progress
       if (isRecordingRef.current) {
         cameraRef.current?.stopRecording();
       }
-    } catch {}
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    recordingPromiseRef.current = null;
-    if (isMountedRef.current) {
-      setIsRecording(false);
-      setRecordingTime(0);
-      setIsProcessing(false);
-      setProcessingProgress(0);
-      setProcessingStatus("");
+
+      // Stop TTS speech
+      Speech.stop();
+
+      // Pause preview player
+      if (previewPlayer) {
+        previewPlayer.pause?.();
+      }
+
+      // Clear timers
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+
+      // Clear recording promise
+      recordingPromiseRef.current = null;
+
+      // Reset state if component is still mounted
+      if (isMountedRef.current) {
+        setIsRecording(false);
+        setRecordingTime(0);
+        setIsProcessing(false);
+        setProcessingProgress(0);
+        setProcessingStatus("");
+        setShowPreview(false);
+        setPreviewUri(null);
+        setPreviewTranscription("");
+      }
+    } catch (error) {
+      if (__DEV__) {
+        console.warn("Error during cleanup:", error);
+      }
     }
   };
 
@@ -462,7 +527,24 @@ export default function VideoRecordScreen() {
   if (showPreview && previewUri) {
     return (
       <View className="flex-1 bg-black">
-        <VideoView player={previewPlayer} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
+        {previewPlayer ? (
+          <VideoView
+            player={previewPlayer}
+            style={{ flex: 1 }}
+            contentFit="cover"
+            nativeControls={false}
+            onError={(error) => {
+              if (__DEV__) {
+                console.error("VideoView error:", error);
+              }
+              showMessage("Failed to load video preview. Please try recording again.", "error");
+            }}
+          />
+        ) : (
+          <View style={{ flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" }}>
+            <Text style={{ color: "white" }}>Loading preview...</Text>
+          </View>
+        )}
         {/* Mild blur to maintain privacy even in preview */}
         <BlurView intensity={15} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
 
@@ -476,8 +558,8 @@ export default function VideoRecordScreen() {
           <View className="bg-black/60 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/20 shadow-lg">
             <TikTokCaptionsOverlay
               text={previewTranscription}
-              currentTime={previewPlayer.currentTime || 0}
-              duration={previewPlayer.duration || 1}
+              currentTime={previewPlayer?.currentTime || 0}
+              duration={previewPlayer?.duration || 1}
             />
             {/* Add a subtle glow effect */}
             <View className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/10 to-purple-500/10 blur-sm -z-10" />
@@ -489,7 +571,16 @@ export default function VideoRecordScreen() {
           <Pressable
             className="bg-black/70 rounded-full p-3"
             onPress={() => {
-              Speech.stop();
+              try {
+                Speech.stop();
+                if (previewPlayer) {
+                  previewPlayer.pause?.();
+                }
+              } catch (error) {
+                if (__DEV__) {
+                  console.warn("Error stopping preview during close:", error);
+                }
+              }
               setShowPreview(false);
               setPreviewUri(null);
               setPreviewTranscription("");
@@ -511,7 +602,16 @@ export default function VideoRecordScreen() {
             <Pressable
               className="bg-gray-800 rounded-full px-6 py-3 mr-3"
               onPress={() => {
-                Speech.stop();
+                try {
+                  Speech.stop();
+                  if (previewPlayer) {
+                    previewPlayer.pause?.();
+                  }
+                } catch (error) {
+                  if (__DEV__) {
+                    console.warn("Error stopping preview during retake:", error);
+                  }
+                }
                 setShowPreview(false);
                 setPreviewUri(null);
                 setPreviewTranscription("");
@@ -556,6 +656,19 @@ export default function VideoRecordScreen() {
                   console.error(err);
                   showMessage("Failed to upload video. Please try again.", "error");
                 } finally {
+                  try {
+                    Speech.stop();
+                    if (previewPlayer) {
+                      previewPlayer.pause?.();
+                    }
+                  } catch (error) {
+                    if (__DEV__) {
+                      console.warn("Error stopping preview after upload:", error);
+                    }
+                  }
+                  setShowPreview(false);
+                  setPreviewUri(null);
+                  setPreviewTranscription("");
                   setIsProcessing(false);
                   setProcessingProgress(0);
                   setProcessingStatus("");

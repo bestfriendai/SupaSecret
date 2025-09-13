@@ -13,11 +13,12 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "deploymentTarget": "16.1"
+            "deploymentTarget": "15.1"
           },
           "android": {
             "compileSdkVersion": 36,
-            "targetSdkVersion": 36
+            "targetSdkVersion": 36,
+            "minSdkVersion": 24
           }
         }
       ],
@@ -33,9 +34,6 @@
       "expo-localization",
       "expo-splash-screen"
     ],
-    "androidNavigationBar": {
-      "enforceContrast": true
-    },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {

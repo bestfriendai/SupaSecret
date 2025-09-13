@@ -4,9 +4,56 @@ import { supabase } from "../lib/supabase";
 
 const BUCKET = "confessions";
 
+/**
+ * Represents the result of a successful video upload to Supabase Storage
+ */
 export interface UploadResult {
+  /** The storage path of the uploaded file */
   path: string;
+  /** A short-lived signed URL for accessing the uploaded file */
   signedUrl: string;
+  /** The filename generated for the upload */
+  filename: string;
+  /** The user ID who owns the file */
+  userId: string;
+}
+
+/**
+ * Configuration options for video upload
+ */
+export interface UploadOptions {
+  /** Optional callback to track upload progress (0-100) */
+  onProgress?: (progressPercent: number) => void;
+  /** Optional content type override */
+  contentType?: string;
+  /** Whether to allow upserting existing files */
+  allowUpsert?: boolean;
+  /** Custom expiration time for signed URL in seconds (default: 3600) */
+  signedUrlExpiresIn?: number;
+}
+
+/**
+ * Represents an error that can occur during upload operations
+ */
+export interface UploadError {
+  /** The error message */
+  message: string;
+  /** HTTP status code if applicable */
+  status?: number;
+  /** The original error object */
+  originalError?: unknown;
+}
+
+/**
+ * Represents the result of a signed URL creation
+ */
+export interface SignedUrlResult {
+  /** The signed URL for accessing the file */
+  signedUrl: string;
+  /** The path in storage */
+  path: string;
+  /** The expiration timestamp */
+  expiresAt: Date;
 }
 
 export const isHttpUrl = (value?: string): boolean => !!value && /^https?:\/\//i.test(value);
@@ -19,7 +66,7 @@ export const isLocalUri = (value?: string): boolean => !!value && /^file:\/\//i.
 export async function uploadVideoToSupabase(
   localFileUri: string,
   userId: string,
-  onProgress?: (progressPercent: number) => void,
+  options?: UploadOptions,
 ): Promise<UploadResult> {
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
   if (!supabaseUrl) throw new Error("Missing Supabase URL");
@@ -28,6 +75,8 @@ export async function uploadVideoToSupabase(
   if (sessionError) throw sessionError;
   const accessToken = sessionData?.session?.access_token;
   if (!accessToken) throw new Error("Not authenticated");
+
+  const { onProgress, contentType = "video/mp4", allowUpsert = false, signedUrlExpiresIn = 3600 } = options || {};
 
   const filename = `${uuidv4()}.mp4`;
   const objectPath = `confessions/${userId}/${filename}`;
@@ -43,8 +92,8 @@ export async function uploadVideoToSupabase(
     uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "video/mp4",
-      "x-upsert": "false",
+      "Content-Type": contentType,
+      "x-upsert": allowUpsert.toString(),
       "cache-control": "public, max-age=31536000, immutable",
     },
   };
@@ -70,20 +119,31 @@ export async function uploadVideoToSupabase(
     throw new Error(`Upload failed: HTTP ${result.status} ${result.body ?? ""}`);
   }
 
-  const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(objectPath, 60 * 60);
+  const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(objectPath, signedUrlExpiresIn);
 
   return {
     path: objectPath,
     signedUrl: signed?.signedUrl || "",
+    filename,
+    userId,
   };
 }
 
 /**
  * Resolve a play‑ready URL from a storage path or passthrough if already an http(s) URL.
+ * Returns a detailed result with expiration information.
  */
-export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds = 3600): Promise<string> {
-  if (!pathOrUrl) return "";
-  if (isHttpUrl(pathOrUrl)) return pathOrUrl;
+export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds = 3600): Promise<SignedUrlResult> {
+  if (!pathOrUrl) {
+    return { signedUrl: "", path: "", expiresAt: new Date() };
+  }
+  if (isHttpUrl(pathOrUrl)) {
+    return {
+      signedUrl: pathOrUrl,
+      path: pathOrUrl,
+      expiresAt: new Date(Date.now() + expiresInSeconds * 1000)
+    };
+  }
 
   try {
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(pathOrUrl, expiresInSeconds);
@@ -98,10 +158,14 @@ export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds 
         }
       }
       // Return empty string as fallback - calling code should handle this gracefully
-      return "";
+      return { signedUrl: "", path: pathOrUrl, expiresAt: new Date() };
     }
 
-    return data?.signedUrl || "";
+    return {
+      signedUrl: data?.signedUrl || "",
+      path: pathOrUrl,
+      expiresAt: new Date(Date.now() + expiresInSeconds * 1000)
+    };
   } catch (error) {
     if (__DEV__) {
       // More specific error logging
@@ -112,6 +176,6 @@ export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds 
       }
     }
     // Return empty string as fallback
-    return "";
+    return { signedUrl: "", path: pathOrUrl, expiresAt: new Date() };
   }
 }
