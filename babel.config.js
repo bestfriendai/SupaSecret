@@ -14,6 +14,8 @@ module.exports = function (api) {
           },
         },
       ],
+      // Reanimated v4 plugin must be last
+      "react-native-reanimated/plugin",
     ],
   };
 };

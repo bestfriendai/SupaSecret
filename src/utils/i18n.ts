@@ -325,7 +325,13 @@ i18n.locale = SUPPORTED_LOCALES.includes(deviceLocale as SupportedLocale) ? devi
 // Export i18n instance and helper functions
 export { i18n };
 
-export const t = (key: string, options?: any): string => {
+/**
+ * Translation function with optional interpolation options
+ * @param key The translation key
+ * @param options Optional interpolation parameters
+ * @returns Translated string
+ */
+export const t = (key: string, options?: Record<string, string | number>): string => {
   return i18n.t(key, options);
 };
 

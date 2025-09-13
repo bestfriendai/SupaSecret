@@ -38,6 +38,13 @@ export class AdMobService {
   private static rewardedAd: any = null;
   private static AdMobModule: any = null;
 
+  // Type definitions for AdMob components
+  private static MobileAdsType: any = null;
+  private static InterstitialAdType: any = null;
+  private static RewardedAdType: any = null;
+  private static BannerAdSizeType: any = null;
+  private static TestIdsType: any = null;
+
   static async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
@@ -51,6 +58,13 @@ export class AdMobService {
       // Real AdMob initialization for development build
       this.AdMobModule = await import("react-native-google-mobile-ads");
       const { default: mobileAds, InterstitialAd, RewardedAd, BannerAdSize, TestIds } = this.AdMobModule;
+
+      // Store type references for later use
+      this.MobileAdsType = mobileAds;
+      this.InterstitialAdType = InterstitialAd;
+      this.RewardedAdType = RewardedAd;
+      this.BannerAdSizeType = BannerAdSize;
+      this.TestIdsType = TestIds;
 
       this.mobileAds = mobileAds;
 
@@ -129,7 +143,18 @@ export class AdMobService {
         return false;
       }
 
-      const { InterstitialAd } = this.AdMobModule || (await import("react-native-google-mobile-ads"));
+      // Use stored InterstitialAd type or try to import it with error handling
+      let InterstitialAd = this.InterstitialAdType;
+      if (!InterstitialAd) {
+        try {
+          const adModule = await import("react-native-google-mobile-ads");
+          InterstitialAd = adModule.InterstitialAd;
+          this.InterstitialAdType = InterstitialAd;
+        } catch (importError) {
+          console.error("Failed to import InterstitialAd:", importError);
+          return false;
+        }
+      }
 
       return new Promise((resolve) => {
         let unsubscribeLoaded: (() => void) | null = null;
@@ -137,9 +162,13 @@ export class AdMobService {
         let unsubscribeError: (() => void) | null = null;
 
         const cleanup = () => {
-          if (unsubscribeLoaded) unsubscribeLoaded();
-          if (unsubscribeClosed) unsubscribeClosed();
-          if (unsubscribeError) unsubscribeError();
+          try {
+            if (unsubscribeLoaded) unsubscribeLoaded();
+            if (unsubscribeClosed) unsubscribeClosed();
+            if (unsubscribeError) unsubscribeError();
+          } catch (cleanupError) {
+            console.warn("Error during cleanup:", cleanupError);
+          }
         };
 
         try {
@@ -152,9 +181,13 @@ export class AdMobService {
             console.log("✅ Interstitial ad closed");
             this.lastInterstitialTime = now;
 
-            // Pre-load next ad
-            this.interstitialAd = InterstitialAd.createForAdRequest(AD_UNIT_IDS.interstitial);
-            this.interstitialAd.load();
+            // Pre-load next ad with error handling
+            try {
+              this.interstitialAd = InterstitialAd.createForAdRequest(AD_UNIT_IDS.interstitial);
+              this.interstitialAd.load();
+            } catch (adCreateError) {
+              console.warn("Failed to create new interstitial ad:", adCreateError);
+            }
 
             cleanup();
             resolve(true);
@@ -171,6 +204,7 @@ export class AdMobService {
             this.interstitialAd.show();
           }
         } catch (error) {
+          console.error("Error setting up interstitial ad listeners:", error);
           cleanup();
           resolve(false);
         }

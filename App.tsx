@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -40,16 +40,21 @@ const openai_api_key = Constants.expoConfig.extra.apikey;
 */
 
 export default function App() {
+  // Use refs to prevent re-subscription on every render
+  const authStoreRef = useRef({
+    checkAuthState: useAuthStore((state) => state.checkAuthState),
+  });
+
+  const confessionStoreRef = useRef({
+    loadConfessions: useConfessionStore((state) => state.loadConfessions),
+    loadUserPreferences: useConfessionStore((state) => state.loadUserPreferences),
+  });
+
   // Debug: Log component render with provider hierarchy
   if (__DEV__) {
     console.log(`[App] Component rendering at ${new Date().toISOString()}`);
     console.log("[App] Provider hierarchy: SafeAreaProvider > ErrorBoundary > GestureHandlerRootView > ToastProvider > BottomSheetModalProvider > AppNavigator");
   }
-
-  // Store hooks must be called unconditionally at the top level
-  const checkAuthState = useAuthStore((state) => state.checkAuthState);
-  const loadConfessions = useConfessionStore((state) => state.loadConfessions);
-  const loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
 
   if (__DEV__) {
     console.log("[App] Store hooks initialized successfully");
@@ -114,11 +119,11 @@ export default function App() {
           console.warn("Service initialization warnings:", serviceResult.warnings);
         }
 
-        // Initialize auth state and load initial data
+        // Initialize auth state and load initial data using refs
         try {
-          await checkAuthState();
-          await loadConfessions();
-          await loadUserPreferences();
+          await authStoreRef.current.checkAuthState();
+          await confessionStoreRef.current.loadConfessions();
+          await confessionStoreRef.current.loadUserPreferences();
         } catch (error) {
           if (__DEV__) {
             console.warn("Failed to load initial data:", error);
@@ -159,7 +164,7 @@ export default function App() {
         console.log("🧹 App cleanup: All Supabase subscriptions and offline queue cleaned up");
       }
     };
-  }, [checkAuthState, loadConfessions, loadUserPreferences]);
+  }, []); // Empty dependency array prevents re-subscription on every render
 
   // Log component render information in useEffect to avoid render-phase side effects
   useEffect(() => {

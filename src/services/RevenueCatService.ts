@@ -2,6 +2,67 @@ import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
 import { getConfig } from "../config/production";
 
+// Type definitions for RevenueCat
+interface RevenueCatCustomerInfo {
+  activeSubscriptions: string[];
+  entitlements: {
+    active: Record<string, any>;
+  };
+  allPurchasedProductIdentifiers: string[];
+  latestExpirationDate: string | null;
+  originalAppUserId: string;
+  requestDate: string;
+}
+
+interface RevenueCatOfferings {
+  current: RevenueCatOffering | null;
+  all: Record<string, RevenueCatOffering>;
+}
+
+interface RevenueCatOffering {
+  identifier: string;
+  serverDescription: string;
+  metadata: Record<string, any>;
+  packages: RevenueCatPackage[];
+}
+
+interface RevenueCatPackage {
+  identifier: string;
+  packageType: string;
+  product: RevenueCatProduct;
+  offeringIdentifier: string;
+}
+
+interface RevenueCatProduct {
+  identifier: string;
+  description: string;
+  title: string;
+  price: number;
+  priceString: string;
+  currencyCode: string;
+  introPrice: RevenueCatProductPrice | null;
+}
+
+interface RevenueCatProductPrice {
+  price: number;
+  priceString: string;
+  currencyCode: string;
+  period: string;
+  periodUnit: string;
+  cycles: number;
+}
+
+type RevenueCatPurchaseResult = {
+  customerInfo: RevenueCatCustomerInfo;
+  productIdentifier: string;
+};
+
+type MockPurchaseResult = {
+  mockCustomerInfo: boolean;
+};
+
+type RevenueCatCustomerResult = RevenueCatCustomerInfo | MockPurchaseResult | null;
+
 // Check if running in Expo Go
 const IS_EXPO_GO = Constants.appOwnership === "expo";
 const config = getConfig();
@@ -10,10 +71,19 @@ const config = getConfig();
 const REVENUECAT_API_KEY = config.REVENUECAT.API_KEY;
 
 // Lazy load RevenueCat to prevent Expo Go crashes
-let Purchases: any = null;
-let _CustomerInfo: any = null;
-let _PurchasesOffering: any = null;
-let _PurchasesPackage: any = null;
+let Purchases: {
+  configure: (config: { apiKey: string; appUserID: string | null }) => Promise<void>;
+  setLogLevel: (level: string) => Promise<void>;
+  getOfferings: () => Promise<RevenueCatOfferings>;
+  purchasePackage: (pkg: RevenueCatPackage) => Promise<RevenueCatPurchaseResult>;
+  restorePurchases: () => Promise<RevenueCatCustomerInfo>;
+  logIn: (userID: string) => Promise<void>;
+  getCustomerInfo: () => Promise<RevenueCatCustomerInfo>;
+} | null = null;
+
+let _CustomerInfo: new (...args: any[]) => RevenueCatCustomerInfo | null = null;
+let _PurchasesOffering: new (...args: any[]) => RevenueCatOffering | null = null;
+let _PurchasesPackage: new (...args: any[]) => RevenueCatPackage | null = null;
 
 const loadRevenueCat = async () => {
   if (!Purchases && !IS_EXPO_GO) {
@@ -28,7 +98,7 @@ const loadRevenueCat = async () => {
       }
     } catch (error) {
       if (__DEV__) {
-        console.warn("RevenueCat not available, running in demo mode:", (error as any)?.message || String(error));
+        console.warn("RevenueCat not available, running in demo mode:", (error as Error)?.message || String(error));
         console.log("🎯 RevenueCat demo mode - react-native-purchases not installed");
       }
     }
@@ -92,7 +162,7 @@ export class RevenueCatService {
     }
   }
 
-  static async getOfferings(): Promise<any | null> {
+  static async getOfferings(): Promise<RevenueCatOfferings | null> {
     await this.initialize();
 
     if (IS_EXPO_GO) {
@@ -115,8 +185,8 @@ export class RevenueCatService {
   }
 
   static async purchasePackage(
-    packageToPurchase: any,
-  ): Promise<{ customerInfo: any; productIdentifier: string } | { mockCustomerInfo: boolean }> {
+    packageToPurchase: RevenueCatPackage,
+  ): Promise<RevenueCatPurchaseResult | MockPurchaseResult> {
     await this.initialize();
 
     if (IS_EXPO_GO) {
@@ -159,7 +229,7 @@ export class RevenueCatService {
     }
   }
 
-  static async restorePurchases(): Promise<{ customerInfo: any } | { mockCustomerInfo: boolean }> {
+  static async restorePurchases(): Promise<RevenueCatCustomerInfo | MockPurchaseResult> {
     await this.initialize();
 
     if (IS_EXPO_GO) {
@@ -193,7 +263,7 @@ export class RevenueCatService {
   }
 
   // Sync subscription status with Supabase
-  private static async syncSubscriptionStatus(customerInfo: any): Promise<void> {
+  private static async syncSubscriptionStatus(customerInfo: RevenueCatCustomerInfo): Promise<void> {
     try {
       const {
         data: { user },
@@ -204,7 +274,7 @@ export class RevenueCatService {
       const isPremium = activeSubscriptions.length > 0;
 
       // Update user subscription status in Supabase
-      const { error } = await supabase.from("user_subscriptions" as any).upsert({
+      const { error } = await supabase.from("user_subscriptions").upsert({
         user_id: user.id,
         is_premium: isPremium,
         subscription_ids: activeSubscriptions,
@@ -235,7 +305,7 @@ export class RevenueCatService {
   }
 
   // Get customer info
-  static async getCustomerInfo(): Promise<any | { mockCustomerInfo: boolean } | null> {
+  static async getCustomerInfo(): Promise<RevenueCatCustomerResult> {
     await this.initialize();
 
     if (IS_EXPO_GO) {
@@ -264,7 +334,7 @@ export class RevenueCatService {
 
     try {
       const customerInfo = await this.getCustomerInfo();
-      if (!customerInfo) {
+      if (!customerInfo || 'mockCustomerInfo' in customerInfo) {
         return false;
       }
 

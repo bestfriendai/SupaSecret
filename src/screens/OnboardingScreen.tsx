@@ -1,10 +1,12 @@
-import React, { useRef, useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { View, Dimensions, Pressable, Text, Alert, ScrollView, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Animated, {
   useSharedValue,
+  useAnimatedStyle,
+  runOnJS,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
@@ -32,7 +34,7 @@ import {
   getOnboardingConfig
 } from "../utils/onboardingHelpers";
 
-const { width: screenWidth } = Dimensions.get("window");
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 type NavigationProp = NativeStackNavigationProp<any>;
 // Remove custom type, use ScrollView directly
@@ -42,22 +44,66 @@ export default function OnboardingScreen() {
   const { user, setOnboarded, isAuthenticated } = useAuthStore();
   const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
   const scrollViewRef = useRef<ScrollView | null>(null);
-  const flatListRef = useRef<FlatList<any> | null>(null);
+  const flatListRef = useRef<FlatList<OnboardingSlideType> | null>(null);
 
+  // State management with better bounds
   const [currentIndex, setCurrentIndex] = useState(0);
-
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accessibilityState, setAccessibilityState] = useState({
     isScreenReaderEnabled: false,
     isReduceMotionEnabled: false,
   });
+  const [isScrolling, setIsScrolling] = useState(false);
   const scrollX = useSharedValue(0);
+  const lastScrollTimeRef = useRef<number>(0);
+  const scrollDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Get onboarding data and configuration
-  const onboardingSlides = useMemo(() => getOnboardingSlides(), []);
-  const config = useMemo(() => getOnboardingConfig(), []);
+  // Get onboarding data and configuration with error handling
+  const onboardingSlides = useMemo(() => {
+    try {
+      return getOnboardingSlides();
+    } catch (err) {
+      console.error('Failed to get onboarding slides:', err);
+      return [];
+    }
+  }, []);
+
+  const config = useMemo(() => {
+    try {
+      return getOnboardingConfig();
+    } catch (err) {
+      console.error('Failed to get onboarding config:', err);
+      return {};
+    }
+  }, []);
+
+  // Bounds checking helpers
+  const isValidIndex = useCallback((index: number): boolean => {
+    return index >= 0 && index < onboardingSlides.length && onboardingSlides.length > 0;
+  }, [onboardingSlides.length]);
+
+  const clampIndex = useCallback((index: number): number => {
+    if (onboardingSlides.length === 0) return 0;
+    return Math.max(0, Math.min(index, onboardingSlides.length - 1));
+  }, [onboardingSlides.length]);
+
+  // Additional safety checks
+  const canNavigateNext = useCallback(() => {
+    return isValidIndex(currentIndex + 1) && !isProcessing && !isScrolling;
+  }, [currentIndex, isValidIndex, isProcessing, isScrolling]);
+
+  const canNavigateBack = useCallback(() => {
+    return currentIndex > 0 && !isProcessing && !isScrolling;
+  }, [currentIndex, isProcessing, isScrolling]);
+
+  const isOnLastSlide = useCallback(() => {
+    return onboardingSlides.length > 0 && currentIndex === onboardingSlides.length - 1;
+  }, [currentIndex, onboardingSlides.length]);
+
+  const isFirstSlide = useCallback(() => {
+    return currentIndex === 0;
+  }, [currentIndex]);
 
   // Modern animation hooks
   const {
@@ -75,11 +121,22 @@ export default function OnboardingScreen() {
   // Initialize accessibility state and track onboarding start
   useEffect(() => {
     const initializeAccessibility = async () => {
-      const a11yState = await getAccessibilityState();
-      setAccessibilityState({
-        isScreenReaderEnabled: a11yState.isScreenReaderEnabled,
-        isReduceMotionEnabled: a11yState.isReduceMotionEnabled,
-      });
+      try {
+        const a11yState = await getAccessibilityState();
+        setAccessibilityState({
+          isScreenReaderEnabled: a11yState.isScreenReaderEnabled,
+          isReduceMotionEnabled: a11yState.isReduceMotionEnabled,
+        });
+
+        // Announce screen reader support
+        if (a11yState.isScreenReaderEnabled) {
+          setTimeout(() => {
+            announceForAccessibility(`Onboarding screen with ${onboardingSlides.length} slides. Use swipe gestures or navigation buttons to continue.`);
+          }, 500);
+        }
+      } catch (error) {
+        console.warn('Failed to initialize accessibility:', error);
+      }
     };
 
     initializeAccessibility();
@@ -87,125 +144,188 @@ export default function OnboardingScreen() {
     trackOnboardingEvent('onboarding_started', {
       userAuthenticated: isAuthenticated,
       hasUser: !!user,
+      totalSlides: onboardingSlides.length,
+      timestamp: new Date().toISOString(),
     });
+  }, [onboardingSlides.length, isAuthenticated, user]);
+
+  // Enhanced slide change announcements for screen readers
+  useEffect(() => {
+    if (accessibilityState.isScreenReaderEnabled && isValidIndex(currentIndex)) {
+      const currentSlide = onboardingSlides[currentIndex];
+      const progress = `${currentIndex + 1} of ${onboardingSlides.length}`;
+      const message = `${currentSlide.title}. ${currentSlide.subtitle}. ${progress}`;
+
+      announceSlideChange(currentIndex, onboardingSlides.length, currentSlide.title);
+
+      // Additional context for screen readers
+      setTimeout(() => {
+        if (isOnLastSlide()) {
+          announceForAccessibility('Last slide. Tap Get Started to complete onboarding.');
+        } else {
+          announceForAccessibility('Swipe left or tap Next to continue.');
+        }
+      }, 1000);
+    }
+  }, [currentIndex, accessibilityState.isScreenReaderEnabled, isValidIndex, onboardingSlides, isOnLastSlide]);
+
+  // Robust scroll handler with debouncing
+  const handleScroll = useCallback((event: any) => {
+    if (isScrolling) return;
+
+    const now = Date.now();
+    const offsetX = event.nativeEvent.contentOffset.x;
+
+    // Debounce scroll events to prevent performance issues
+    if (now - lastScrollTimeRef.current < 100) {
+      if (scrollDebounceTimerRef.current) {
+        clearTimeout(scrollDebounceTimerRef.current);
+      }
+      scrollDebounceTimerRef.current = setTimeout(() => {
+        scrollX.value = offsetX;
+        lastScrollTimeRef.current = now;
+      }, 100);
+      return;
+    }
+
+    scrollX.value = offsetX;
+    lastScrollTimeRef.current = now;
+  }, [isScrolling, scrollX]);
+
+  // Handle scroll begin
+  const handleScrollBegin = useCallback(() => {
+    setIsScrolling(true);
   }, []);
 
-  // Announce slide changes for screen readers
-  useEffect(() => {
-    if (accessibilityState.isScreenReaderEnabled) {
-      const currentSlide = onboardingSlides[currentIndex];
-      announceSlideChange(currentIndex, onboardingSlides.length, currentSlide.title);
-    }
-  }, [currentIndex, accessibilityState.isScreenReaderEnabled]);
+  // Handle scroll end
+  const handleScrollEnd = useCallback(() => {
+    setIsScrolling(false);
+  }, []);
 
-  // Regular scroll handler for ScrollView
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    scrollX.value = offsetX;
-    console.log('📜 Scroll event - offsetX:', offsetX, 'calculated index:', Math.round(offsetX / screenWidth));
-  };
-
-  const handleMomentumScrollEnd = (event: any) => {
+  // Improved momentum scroll end handler
+  const handleMomentumScrollEnd = useCallback((event: any) => {
+    setIsScrolling(false);
     const offsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(offsetX / screenWidth);
-    console.log('🛑 Momentum end - offsetX:', offsetX, 'calculated index:', index, 'current index:', currentIndex);
 
-    // Only update if it's different from current index (to avoid conflicts)
-    if (index !== currentIndex) {
-      console.log('🔄 Updating index from', currentIndex, 'to', index);
+    if (isValidIndex(index) && index !== currentIndex) {
       setCurrentIndex(index);
       animateSlideTransition();
       accessibleHapticFeedback('light');
-    } else {
-      console.log('⏸️ Index unchanged, staying at:', currentIndex);
+
+      // Track slide change
+      trackOnboardingEvent('onboarding_slide_changed', {
+        fromIndex: currentIndex,
+        toIndex: index,
+        scrollMethod: 'gesture',
+      });
     }
-  };
+  }, [currentIndex, isValidIndex, animateSlideTransition, accessibleHapticFeedback, trackOnboardingEvent]);
 
-  // Add effect to handle programmatic scrolling
-  useEffect(() => {
-    // Use robust helper so we don't depend on immediate ref availability
-    console.log('🎯 Effect: ensure index', currentIndex, 'is visible');
-    scrollToIndexSafely(currentIndex);
-  }, [currentIndex, screenWidth]);
+  // Optimized scrollToIndex with bounds checking and error handling
+  const scrollToIndexSafely = useCallback((index: number, animated: boolean = true) => {
+    const clampedIndex = clampIndex(index);
+    const targetX = clampedIndex * screenWidth;
 
-  // Robust helper to programmatically scroll, retrying briefly if ref isn't ready
-  const scrollToIndexSafely = (index: number) => {
+    if (clampedIndex !== index) {
+      console.warn(`Index ${index} out of bounds, clamped to ${clampedIndex}`);
+    }
+
     let attempts = 0;
-    const targetX = index * screenWidth;
+    const maxAttempts = 10;
+
     const tryScroll = () => {
-      const list: any = flatListRef.current as any;
-      if (list) {
+      const list = flatListRef.current;
+      if (list && isValidIndex(clampedIndex)) {
         try {
+          // Try scrollToOffset first (more reliable)
           if (typeof list.scrollToOffset === 'function') {
-            console.log('➡️ scrollToIndexSafely: FlatList.scrollToOffset ->', targetX);
-            list.scrollToOffset({ offset: targetX, animated: true });
+            list.scrollToOffset({ offset: targetX, animated });
             return;
           }
+          // Fallback to scrollToIndex
           if (typeof list.scrollToIndex === 'function') {
-            console.log('➡️ scrollToIndexSafely: FlatList.scrollToIndex ->', index);
-            list.scrollToIndex({ index, animated: true, viewPosition: 0 });
+            list.scrollToIndex({ index: clampedIndex, animated, viewPosition: 0 });
             return;
           }
-        } catch (e) {
-          // Will retry shortly
+        } catch (err) {
+          console.warn('Scroll attempt failed, retrying:', err);
         }
       }
-      const ref: any = scrollViewRef.current as any;
-      if (ref && typeof ref.scrollTo === 'function') {
-        console.log('➡️ scrollToIndexSafely: ScrollView.scrollTo -> x =', targetX);
-        ref.scrollTo({ x: targetX, y: 0, animated: true });
-        return;
+
+      // Fallback to ScrollView
+      const scrollView = scrollViewRef.current;
+      if (scrollView && typeof scrollView.scrollTo === 'function') {
+        try {
+          scrollView.scrollTo({ x: targetX, y: 0, animated });
+          return;
+        } catch (err) {
+          console.warn('ScrollView scroll failed:', err);
+        }
       }
-      if (attempts < 8) {
+
+      if (attempts < maxAttempts) {
         attempts += 1;
-        console.log('⏳ scrollToIndexSafely: ref not ready, retry', attempts);
         requestAnimationFrame(tryScroll);
       } else {
-        console.warn('⚠️ scrollToIndexSafely: failed to obtain list/scroll ref after retries');
+        console.error(`Failed to scroll to index ${clampedIndex} after ${maxAttempts} attempts`);
+        // Force update as last resort
+        setCurrentIndex(clampedIndex);
       }
     };
+
     tryScroll();
-  };
+  }, [clampIndex, isValidIndex, screenWidth]);
 
 
-  const handleNext = () => {
-    console.log('🔥 NEXT PRESSED - Current:', currentIndex, 'Total slides:', onboardingSlides.length);
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < onboardingSlides.length) {
-      console.log('✅ Going to slide:', nextIndex, 'ref present?', !!scrollViewRef.current);
-      // Programmatically scroll first for reliability (with retries), then update state
-      scrollToIndexSafely(nextIndex);
-      // Extra attempt next frame in case ref attaches after state update
-      requestAnimationFrame(() => scrollToIndexSafely(nextIndex));
-      setCurrentIndex(nextIndex);
-      // Track slide progression
-      trackOnboardingEvent('onboarding_slide_viewed', {
-        slideIndex: nextIndex,
-        slideTitle: onboardingSlides[nextIndex].title,
-      });
-      animateButtonPress();
-    } else {
-      console.log('🏁 Last slide - calling handleGetStarted');
-      handleGetStarted();
+  // Improved navigation with bounds checking
+  const handleNext = useCallback(() => {
+    if (!canNavigateNext()) {
+      // If we can't navigate forward and we're on the last slide, proceed to signup
+      if (isOnLastSlide()) {
+        handleGetStarted();
+      }
+      return;
     }
-  };
 
-  const handleSkip = () => {
+    const nextIndex = clampIndex(currentIndex + 1);
+    setIsScrolling(true);
+    setCurrentIndex(nextIndex);
+    scrollToIndexSafely(nextIndex);
+    animateButtonPress();
+
+    // Track slide progression
+    trackOnboardingEvent('onboarding_slide_viewed', {
+      slideIndex: nextIndex,
+      slideTitle: onboardingSlides[nextIndex]?.title || 'Unknown',
+      navigationMethod: 'button',
+    });
+
+    // Reset scrolling state after animation
+    setTimeout(() => setIsScrolling(false), 300);
+  }, [canNavigateNext, isOnLastSlide, currentIndex, clampIndex, scrollToIndexSafely, animateButtonPress, trackOnboardingEvent, onboardingSlides, handleGetStarted]);
+
+  // Improved skip handler
+  const handleSkip = useCallback(() => {
+    if (isProcessing || isScrolling) return;
+
     trackOnboardingEvent('onboarding_skipped', {
       currentSlide: currentIndex,
       totalSlides: onboardingSlides.length,
+      skipReason: 'user_initiated',
     });
 
     if (accessibilityState.isScreenReaderEnabled) {
       announceOnboardingSkipped();
     }
 
-    navigation.navigate("SignUp");
+    safeNavigate("SignUp");
     accessibleHapticFeedback('light');
-  };
+  }, [isProcessing, isScrolling, currentIndex, onboardingSlides.length, accessibilityState.isScreenReaderEnabled, announceOnboardingSkipped, safeNavigate, accessibleHapticFeedback, trackOnboardingEvent]);
 
-  const handleGetStarted = async () => {
-    if (isProcessing) return; // Prevent double-tap
+  // Enhanced error handling and navigation
+  const handleGetStarted = useCallback(async () => {
+    if (isProcessing || isScrolling) return;
 
     setIsProcessing(true);
     setError(null);
@@ -220,14 +340,17 @@ export default function OnboardingScreen() {
         userExists: !!user,
         isAuthenticated,
         validationReason: validation.reason,
+        currentSlide: currentIndex,
       });
 
       if (user && user.id) {
-        // User is authenticated but not onboarded - mark as onboarded
+        // User is authenticated but not onboarded
         await setOnboarded();
+
         trackOnboardingEvent('onboarding_completed', {
           userId: user.id,
           completionMethod: 'get_started',
+          totalSlides: onboardingSlides.length,
         });
 
         if (accessibilityState.isScreenReaderEnabled) {
@@ -237,31 +360,144 @@ export default function OnboardingScreen() {
         accessibleHapticFeedback('success');
         // Navigation will be handled automatically by auth state change
       } else {
-        // User needs to sign up first
-        navigation.navigate("SignUp");
+        // Navigate to SignUp
+        trackOnboardingEvent('onboarding_navigate_to_signup', {
+          reason: 'user_not_authenticated',
+          currentSlide: currentIndex,
+        });
+
+        if (accessibilityState.isScreenReaderEnabled) {
+          announceForAccessibility('Navigating to sign up screen');
+        }
+
+        safeNavigate("SignUp");
         accessibleHapticFeedback('light');
       }
     } catch (error) {
       const errorInfo = handleOnboardingError(error, 'get_started');
+      setError(errorInfo.message);
+
+      // Enhanced error feedback
+      console.error('Onboarding Get Started failed:', {
+        error,
+        context: 'get_started',
+        user: !!user,
+        isAuthenticated,
+        currentSlide: currentIndex,
+      });
+
       Alert.alert(
         errorInfo.title,
         errorInfo.message,
-        [{ text: "OK", onPress: () => setIsProcessing(false) }]
+        [
+          {
+            text: "Retry",
+            onPress: () => {
+              setIsProcessing(false);
+              handleGetStarted();
+            },
+          },
+          {
+            text: "Cancel",
+            onPress: () => setIsProcessing(false),
+            style: "cancel",
+          },
+        ]
       );
+      return;
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [isProcessing, isScrolling, user, isAuthenticated, animateButtonPress, validateOnboardingState, trackOnboardingEvent, onboardingSlides.length, setOnboarded, accessibilityState.isScreenReaderEnabled, announceOnboardingComplete, accessibleHapticFeedback, currentIndex, announceForAccessibility, navigation, handleOnboardingError]);
+
+  // Improved back navigation with bounds checking
+  const handleBack = useCallback(() => {
+    if (!canNavigateBack()) return;
+
+    const prevIndex = clampIndex(currentIndex - 1);
+    setIsScrolling(true);
+    setCurrentIndex(prevIndex);
+    scrollToIndexSafely(prevIndex);
+    impactAsync();
+
+    trackOnboardingEvent('onboarding_back_pressed', {
+      fromIndex: currentIndex,
+      toIndex: prevIndex,
+    });
+
+    setTimeout(() => setIsScrolling(false), 300);
+  }, [canNavigateBack, currentIndex, clampIndex, scrollToIndexSafely, impactAsync, trackOnboardingEvent]);
+
+  // Sign in handler
+  const handleSignIn = useCallback(() => {
+    if (isProcessing) return;
+
+    safeNavigate("SignIn");
+    impactAsync();
+  }, [isProcessing, safeNavigate, impactAsync]);
+
+  // Sync currentIndex with scroll position
+  useEffect(() => {
+    if (!isScrolling && isValidIndex(currentIndex)) {
+      scrollToIndexSafely(currentIndex, false);
+    }
+  }, [currentIndex, isValidIndex, scrollToIndexSafely, isScrolling]);
+
+  // Comprehensive cleanup function
+  useEffect(() => {
+    return () => {
+      // Clear all timers
+      if (scrollDebounceTimerRef.current) {
+        clearTimeout(scrollDebounceTimerRef.current);
+      }
+
+      // Cancel any pending animations
+      if (scrollX) {
+        scrollX.value = 0;
+      }
+
+      // Final cleanup event tracking
+      trackOnboardingEvent('onboarding_screen_unmounted', {
+        currentIndex,
+        totalSlides: onboardingSlides.length,
+        completionPercentage: Math.round((currentIndex + 1) / onboardingSlides.length * 100),
+      });
+
+      console.log('🧹 OnboardingScreen cleanup completed');
+    };
+  }, [currentIndex, onboardingSlides.length, scrollX, trackOnboardingEvent]);
+
+  // Prevent navigation if there are unsaved changes
+  const preventNavigation = useCallback(() => {
+    if (isProcessing || isScrolling) {
+      return true;
+    }
+    return false;
+  }, [isProcessing, isScrolling]);
+
+  // Enhanced navigation safety
+  const safeNavigate = useCallback((screenName: string, params?: any) => {
+    if (preventNavigation()) {
+      console.warn('Navigation prevented: Processing or scrolling in progress');
       return;
     }
 
-    setIsProcessing(false);
-  };
+    try {
+      navigation.navigate(screenName as any, params);
 
-  const handleSignIn = () => {
-    navigation.navigate("SignIn");
-    impactAsync();
-  };
+      trackOnboardingEvent('onboarding_navigation', {
+        destination: screenName,
+        currentIndex,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Navigation failed:', error);
+      setError('Failed to navigate. Please try again.');
+    }
+  }, [navigation, preventNavigation, trackOnboardingEvent, currentIndex]);
 
-  // Animation styles are now provided by useOnboardingAnimation hook
-
-  const isLastSlide = currentIndex === onboardingSlides.length - 1;
+  // Animation styles
+  const isLastSlide = isOnLastSlide();
 
 
 
@@ -277,7 +513,8 @@ export default function OnboardingScreen() {
           scrollX={scrollX}
           screenWidth={screenWidth}
           currentIndex={currentIndex}
-          accessibilityLabel={`Onboarding progress: slide ${currentIndex + 1} of ${onboardingSlides.length}`}
+          accessibilityLabel={`Onboarding progress: ${currentIndex + 1} of ${onboardingSlides.length} slides completed`}
+          accessibilityHint={`Slide ${currentIndex + 1} of ${onboardingSlides.length}. ${isOnLastSlide() ? 'Last slide' : 'Swipe to continue'}`}
         />
         <Animated.View style={skipButtonStyle}>
           <Pressable
@@ -304,12 +541,24 @@ export default function OnboardingScreen() {
           renderItem={({ item, index }) => (
             <OnboardingSlide slide={item} index={index} scrollX={scrollX} config={config} />
           )}
-          getItemLayout={(_, index) => ({ length: screenWidth, offset: screenWidth * index, index })}
+          // Enhanced getItemLayout for better performance
+          getItemLayout={(_, index) => ({
+            length: screenWidth,
+            offset: screenWidth * index,
+            index,
+          })}
           onScroll={handleScroll}
-          onMomentumScrollEnd={(e) => handleMomentumScrollEnd(e)}
+          onScrollBeginDrag={handleScrollBegin}
+          onScrollEndDrag={handleScrollEnd}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
           scrollEventThrottle={16}
           bounces={false}
           decelerationRate="fast"
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          removeClippedSubviews={false}
+          initialScrollIndex={currentIndex}
+          // Enhanced accessibility
           accessibilityRole="none"
           accessibilityLabel={`Onboarding slides, ${onboardingSlides.length} slides total`}
           accessibilityHint="Swipe left or right to navigate between slides"
@@ -326,7 +575,7 @@ export default function OnboardingScreen() {
                 break;
               case 'decrement':
                 if (currentIndex > 0) {
-                  scrollToIndexSafely(currentIndex - 1);
+                  handleBack();
                 }
                 break;
             }
@@ -334,7 +583,7 @@ export default function OnboardingScreen() {
         />
       </Animated.View>
 
-      {/* Error Display */}
+      {/* Enhanced Error Display */}
       {error && (
         <View
           style={{
@@ -348,17 +597,49 @@ export default function OnboardingScreen() {
           }}
           accessibilityRole="alert"
           accessibilityLabel={`Error: ${error}`}
+          accessibilityHint="Tap to dismiss this error message"
         >
-          <Text
-            style={{
-              color: '#EF4444',
-              fontSize: 14,
-              fontWeight: '500',
-              textAlign: 'center',
-            }}
-          >
-            {error}
-          </Text>
+          <View className="flex-row items-start">
+            <Ionicons name="warning" size={20} color="#EF4444" style={{ marginRight: 12, marginTop: 2 }} />
+            <View className="flex-1">
+              <Text
+                style={{
+                  color: '#EF4444',
+                  fontSize: 14,
+                  fontWeight: '600',
+                  marginBottom: 4,
+                }}
+              >
+                Something went wrong
+              </Text>
+              <Text
+                style={{
+                  color: '#EF4444',
+                  fontSize: 13,
+                  lineHeight: 18,
+                }}
+              >
+                {error}
+              </Text>
+              <Pressable
+                onPress={() => setError(null)}
+                className="mt-2"
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss error"
+              >
+                <Text
+                  style={{
+                    color: '#EF4444',
+                    fontSize: 12,
+                    fontWeight: '500',
+                    textDecorationLine: 'underline',
+                  }}
+                >
+                  Dismiss
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
       )}
 
@@ -377,9 +658,9 @@ export default function OnboardingScreen() {
               leftIcon="rocket"
               variant="primary"
               loading={isProcessing}
-              disabled={isProcessing}
+              disabled={isProcessing || isScrolling}
               accessibilityLabel="Get started with Toxic Confessions"
-              accessibilityHint="Create your account or complete onboarding"
+              accessibilityHint="Complete onboarding and create your account"
             />
             <View className="flex-row items-center justify-center">
               <Text className="text-gray-400 text-15">Already have an account? </Text>
@@ -388,9 +669,12 @@ export default function OnboardingScreen() {
                 className="px-2 py-1 rounded"
                 accessibilityRole="button"
                 accessibilityLabel="Sign in to existing account"
-                disabled={isProcessing}
+                accessibilityHint="Already have an account? Sign in here"
+                disabled={isProcessing || isScrolling}
               >
-                <Text className={`text-15 font-semibold ${isProcessing ? 'text-gray-600' : 'text-blue-400'}`}>
+                <Text className={`text-15 font-semibold ${
+                  isProcessing || isScrolling ? 'text-gray-600' : 'text-blue-400'
+                }`}>
                   Sign In
                 </Text>
               </Pressable>
@@ -399,22 +683,24 @@ export default function OnboardingScreen() {
         ) : (
           <View className="flex-row items-center justify-between">
             <Pressable
-              onPress={() => {
-                if (currentIndex > 0) {
-                  const prevIndex = currentIndex - 1;
-                  scrollToIndexSafely(prevIndex);
-                  setCurrentIndex(prevIndex);
-                  impactAsync();
-                }
-              }}
+              onPress={handleBack}
               className="flex-row items-center px-4 py-3 rounded-full"
-              disabled={currentIndex === 0}
+              disabled={!canNavigateBack()}
               accessibilityRole="button"
-              accessibilityLabel="Go to previous slide"
-              accessibilityState={{ disabled: currentIndex === 0 }}
+              accessibilityLabel={isFirstSlide() ? "Cannot go back, already on first slide" : "Go to previous slide"}
+              accessibilityHint={isFirstSlide() ? "You are on the first slide" : "Swipe right or tap to go to previous slide"}
+              accessibilityState={{
+                disabled: !canNavigateBack()
+              }}
             >
-              <Ionicons name="chevron-back" size={20} color={currentIndex === 0 ? "#4B5563" : "#8B98A5"} />
-              <Text className={`ml-2 text-16 font-medium ${currentIndex === 0 ? "text-gray-600" : "text-gray-400"}`}>
+              <Ionicons
+                name="chevron-back"
+                size={20}
+                color={!canNavigateBack() ? "#4B5563" : "#8B98A5"}
+              />
+              <Text className={`ml-2 text-16 font-medium ${
+                !canNavigateBack() ? "text-gray-600" : "text-gray-400"
+              }`}>
                 Back
               </Text>
             </Pressable>
@@ -422,13 +708,23 @@ export default function OnboardingScreen() {
             <Animated.View style={buttonAnimatedStyle}>
               <Pressable
                 onPress={handleNext}
-                className="rounded-full flex-row items-center justify-center px-6 py-3 bg-blue-500 active:bg-blue-600"
+                className="rounded-full flex-row items-center justify-center px-6 py-3 bg-blue-500 active:bg-blue-600 disabled:bg-blue-300"
+                disabled={isProcessing || isScrolling}
                 accessibilityRole="button"
-                accessibilityLabel="Go to next slide"
+                accessibilityLabel={isLastSlide ? "Get started with Toxic Confessions" : "Go to next slide"}
+                accessibilityHint={isLastSlide ? "Complete onboarding and create account" : "Swipe left or tap to go to next slide"}
+                accessibilityState={{ disabled: isProcessing || isScrolling }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text className="text-white text-16 font-semibold">Next</Text>
-                <Ionicons name="chevron-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                <Text className="text-white text-16 font-semibold">
+                  {isLastSlide ? "Get Started" : "Next"}
+                </Text>
+                <Ionicons
+                  name={isLastSlide ? "rocket" : "chevron-forward"}
+                  size={18}
+                  color="#FFFFFF"
+                  style={{ marginLeft: 8 }}
+                />
               </Pressable>
             </Animated.View>
           </View>

@@ -94,6 +94,8 @@ function EnhancedVideoItem({
 
   // Control playback based on visibility and ensure audio is properly set
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const handleVideoActivation = async () => {
       try {
         if (isActive && screenFocused) {
@@ -124,7 +126,7 @@ function EnhancedVideoItem({
             }
 
             // Additional check after a short delay to ensure audio is working
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
               if (player && (forceUnmuted || soundEnabled)) {
                 player.muted = false;
                 if (__DEV__) {
@@ -155,6 +157,13 @@ function EnhancedVideoItem({
     };
 
     handleVideoActivation();
+
+    // Cleanup timeout on unmount or dependency change
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [isActive, screenFocused, player, soundEnabled, confession.id, forceUnmuted, updatePlayerState]);
 
   // Handle app state changes to pause videos when app goes to background

@@ -383,6 +383,18 @@ export default function MySecretsScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D9BF0" colors={["#1D9BF0"]} />
         }
+        // Performance optimization props
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
+        drawDistance={250}
+        estimatedItemSize={180}
+        getItemLayout={(_, index) => ({
+          length: 180,
+          offset: 180 * index,
+          index,
+        })}
       />
     </View>
   );

@@ -6,6 +6,52 @@ import { signUpUser, signInUser, signOutUser, getCurrentUser, updateUserData } f
 import { supabase } from "../lib/supabase";
 import { clearStoreError, withErrorHandling } from "../utils/errorHandling";
 
+/**
+ * Interface for Supabase session object
+ */
+interface SupabaseSession {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  token_type: string;
+  user: {
+    id: string;
+    email?: string;
+    email_confirmed_at?: string;
+    phone?: string;
+    phone_confirmed_at?: string;
+    last_sign_in_at?: string;
+    created_at?: string;
+    updated_at?: string;
+    app_metadata?: Record<string, unknown>;
+    user_metadata?: Record<string, unknown>;
+    identities?: Array<{
+      identity_id: string;
+      provider: string;
+      identity_data?: Record<string, unknown>;
+      last_sign_in_at?: string;
+      created_at?: string;
+      updated_at?: string;
+    }>;
+  };
+}
+
+/**
+ * Validates if a Supabase session is still active
+ * @param session The Supabase session object
+ * @returns True if session is valid, false otherwise
+ */
+const isSessionValid = (session: SupabaseSession | null): boolean => {
+  if (!session || !session.expires_at) return false;
+
+  // Add a 5-minute buffer to account for potential time discrepancies
+  const expiresAt = new Date(session.expires_at * 1000);
+  const now = new Date();
+  const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+  return now < new Date(expiresAt.getTime() - bufferTime);
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -72,6 +118,10 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      clearError: () => {
+        clearStoreError(set);
+      },
+
       updateUser: async (updates: Partial<User>) => {
         const { user } = get();
         if (!user) {
@@ -111,10 +161,6 @@ export const useAuthStore = create<AuthState>()(
         await updateUser({ isOnboarded: true });
       },
 
-      clearError: () => {
-        clearStoreError(set);
-      },
-
       checkAuthState: async () => {
         console.log("[AuthStore] checkAuthState called - SETTING isLoading: true");
         console.log("[AuthStore] Current state before check:", {
@@ -129,6 +175,24 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           console.log("[AuthStore] Calling getCurrentUser()");
+
+          // Check session validity first
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (!isSessionValid(session)) {
+            console.log("[AuthStore] Session expired or invalid");
+            await signOutUser();
+            set({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+            return;
+          }
+
           const user = await getCurrentUser();
 
           console.log("[AuthStore] getCurrentUser() completed:", {
@@ -167,13 +231,22 @@ export const useAuthStore = create<AuthState>()(
       name: "auth-storage",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        user: state.user,
+        // Exclude PII (email) from persistence for security
+        // Only store non-sensitive user data and authentication status
+        user: state.user ? {
+          id: state.user.id,
+          username: state.user.username,
+          avatar_url: state.user.avatar_url,
+          createdAt: state.user.createdAt,
+          isOnboarded: state.user.isOnboarded,
+          lastLoginAt: state.user.lastLoginAt,
+        } : null,
         isAuthenticated: state.isAuthenticated,
       }),
       // Add version for migration support
       version: 1,
       // Add migrate function to handle version changes
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState: Partial<AuthState>, version: number) => {
         if (version === 0) {
           // Migration from version 0 to 1 - no changes needed
           return persistedState;
@@ -205,7 +278,7 @@ const cleanupAuthListener = () => {
   }
 };
 
-// Function to set up auth state listener
+// Function to set up auth state listener with proper state management
 const setupAuthListener = () => {
   if (authListener) return; // Already set up
 
@@ -216,11 +289,33 @@ const setupAuthListener = () => {
         console.log("🔍 Supabase auth event:", event, session ? "with session" : "no session");
       }
 
-      const { checkAuthState } = useAuthStore.getState();
-
+      // Use store actions directly to avoid circular dependency
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         // User signed in or token refreshed - update our auth state
-        await checkAuthState();
+        try {
+          // Check session validity
+          if (!isSessionValid(session)) {
+            console.log("[AuthStore] Session expired during event:", event);
+            await signOutUser();
+            useAuthStore.setState({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+            return;
+          }
+
+          await useAuthStore.getState().checkAuthState();
+        } catch (error) {
+          console.error("[AuthStore] Error in auth event handler:", error);
+          useAuthStore.setState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
+          });
+        }
       } else if (event === "SIGNED_OUT") {
         // User signed out - clear our auth state
         useAuthStore.setState({
@@ -232,7 +327,19 @@ const setupAuthListener = () => {
       } else if (event === "INITIAL_SESSION") {
         // Initial session check - this happens on app startup
         if (session) {
-          await checkAuthState();
+          // Check session validity
+          if (!isSessionValid(session)) {
+            console.log("[AuthStore] Initial session expired, signing out");
+            await signOutUser();
+            useAuthStore.setState({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+            return;
+          }
+          await useAuthStore.getState().checkAuthState();
         } else {
           // No session found, user is not authenticated
           useAuthStore.setState({

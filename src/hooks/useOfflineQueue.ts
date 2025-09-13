@@ -6,14 +6,21 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { offlineQueue, OfflineActionType } from "../utils/offlineQueue";
 
+/**
+ * Return type for useOfflineQueue hook
+ */
 export interface UseOfflineQueueReturn {
+  /** Whether the device is currently online */
   isOnline: boolean;
+  /** Current number of items in the offline queue */
   queueSize: number;
-  enqueueAction: (type: OfflineActionType, payload: any, maxRetries?: number) => Promise<string>;
+  /** Enqueue an action for offline execution */
+  enqueueAction: (type: OfflineActionType, payload: Record<string, unknown>, maxRetries?: number) => Promise<string>;
+  /** Execute an action or queue it if offline */
   executeOrQueue: <T>(
     action: () => Promise<T>,
     fallbackType: OfflineActionType,
-    fallbackPayload: any,
+    fallbackPayload: Record<string, unknown>,
     maxRetries?: number,
   ) => Promise<T | string>;
 }

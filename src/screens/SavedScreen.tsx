@@ -232,6 +232,18 @@ export default function SavedScreen() {
               </View>
             ) : null
           }
+          // Performance optimization props
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          removeClippedSubviews={true}
+          drawDistance={250}
+          estimatedItemSize={200}
+          getItemLayout={(_, index) => ({
+            length: 200,
+            offset: 200 * index,
+            index,
+          })}
         />
       )}
     </View>

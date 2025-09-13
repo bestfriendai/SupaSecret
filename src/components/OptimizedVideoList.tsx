@@ -174,6 +174,16 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
           scrollEventThrottle={16}
           disableIntervalMomentum={true}
           snapToEnd={false}
+          // Additional performance optimization props
+          initialNumToRender={3}
+          maxToRenderPerBatch={3}
+          windowSize={3}
+          estimatedItemSize={screenHeight}
+          getItemLayout={(_, index) => ({
+            length: screenHeight,
+            offset: screenHeight * index,
+            index,
+          })}
         />
       </View>
 

@@ -11,8 +11,14 @@ export interface ValidationResult {
   warnings?: string[];
 }
 
-export interface ValidationRule<T = any> {
+/**
+ * Interface for a validation rule
+ * @template T - The type of value being validated
+ */
+export interface ValidationRule<T = unknown> {
+  /** Function to validate the value */
   validate: (value: T) => ValidationResult;
+  /** Optional error message */
   message?: string;
 }
 
@@ -188,7 +194,7 @@ export function validateField<T>(value: T, rules: ValidationRule<T>[]): Validati
  */
 type FieldRules<T> = { [K in keyof T]?: ValidationRule<NonNullable<T[K]>>[] };
 
-export function validateObject<T extends Record<string, any>>(
+export function validateObject<T extends Record<string, unknown>>(
   data: T,
   rules: FieldRules<T>,
 ): Record<keyof T, ValidationResult> & { isValid: boolean } {
@@ -277,7 +283,7 @@ export const reportValidation = {
 /**
  * Real-time validation hook for forms
  */
-export function useFormValidation<T extends Record<string, any>>(initialData: T, rules: FieldRules<T>) {
+export function useFormValidation<T extends Record<string, unknown>>(initialData: T, rules: FieldRules<T>) {
   const [data, setData] = React.useState(initialData);
   const [errors, setErrors] = React.useState<Partial<Record<keyof T, string>>>({});
   const [warnings, setWarnings] = React.useState<Partial<Record<keyof T, string[]>>>({});
