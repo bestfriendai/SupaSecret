@@ -236,6 +236,15 @@ const EnhancedCommentBottomSheet = React.memo(
                 ) : null}
               </View>
             )}
+            // Performance optimization props
+            windowSize={10}
+            removeClippedSubviews={true}
+            estimatedItemSize={120}
+            getItemLayout={(_: any, index: number) => ({
+              length: 120,
+              offset: 120 * index,
+              index,
+            })}
           />
 
           {/* Enhanced Comment Input */}

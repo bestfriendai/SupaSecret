@@ -216,6 +216,14 @@ export default function TrendingScreen() {
               />
             )}
             style={{ marginBottom: 12 }}
+            // Performance optimization props
+                        windowSize={5}
+            removeClippedSubviews={true}
+            getItemLayout={(_: any, index: number) => ({
+              length: 100,
+              offset: 100 * index,
+              index,
+            })}
           />
         )}
 
@@ -291,6 +299,15 @@ export default function TrendingScreen() {
               </View>
             )}
             refreshControl={refreshControlElement}
+            // Performance optimization props
+                        windowSize={10}
+            removeClippedSubviews={true}
+                        estimatedItemSize={150}
+            getItemLayout={(_: any, index: number) => ({
+              length: 150,
+              offset: 150 * index,
+              index,
+            })}
           />
         </View>
       ) : !isLoading ? (
@@ -312,6 +329,15 @@ export default function TrendingScreen() {
                 </View>
               )}
               refreshControl={refreshControlElement}
+              // Performance optimization props
+                                          windowSize={10}
+              removeClippedSubviews={true}
+                            estimatedItemSize={80}
+              getItemLayout={(_: any, index: number) => ({
+                length: 80,
+                offset: 80 * index,
+                index,
+              })}
             />
           ) : (
             <FlatList
@@ -328,6 +354,15 @@ export default function TrendingScreen() {
                 </View>
               )}
               refreshControl={refreshControlElement}
+              // Performance optimization props
+                                          windowSize={10}
+              removeClippedSubviews={true}
+                            estimatedItemSize={150}
+              getItemLayout={(_: any, index: number) => ({
+                length: 150,
+                offset: 150 * index,
+                index,
+              })}
             />
           )}
         </View>

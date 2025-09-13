@@ -137,6 +137,26 @@ export const NavigationHelpers = {
   goToPaywall: (navigation: NavigationProp<any>, feature?: string, source?: string) => {
     navigation.navigate("Paywall", { feature, source });
   },
+
+  // Navigate to settings
+  goToSettings: (navigation: NavigationProp<any>) => {
+    navigation.navigate("Settings");
+  },
+
+  // Navigate to my secrets
+  goToMySecrets: (navigation: NavigationProp<any>) => {
+    navigation.navigate("MySecrets");
+  },
+
+  // Navigate to auth stack
+  goToAuth: (navigation: NavigationProp<any>) => {
+    navigation.navigate("AuthStack");
+  },
+
+  // Navigate to web view
+  goToWebView: (navigation: NavigationProp<any>, url: string, title: string) => {
+    navigation.navigate("WebView", { url, title });
+  },
 };
 
 /**

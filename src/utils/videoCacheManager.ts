@@ -27,7 +27,7 @@ class VideoCacheManager {
     cleanupThreshold: 0.9, // Start cleanup at 90% capacity
   };
   private currentCacheSize = 0;
-  private cacheDir = `${FileSystem.documentDirectory}video_cache/`;
+  private cacheDir = `${FileSystem.cacheDirectory}video_cache/`;
   private isCleaningUp = false;
 
   constructor(config?: Partial<CacheConfig>) {

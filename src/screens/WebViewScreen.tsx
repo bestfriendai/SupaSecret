@@ -7,18 +7,12 @@ import { View, Text, Pressable, ActivityIndicator, Alert, Linking, Platform } fr
 import { WebView } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { StackNavigationProp } from "@react-navigation/stack";
-
-type RootStackParamList = {
-  WebView: {
-    url: string;
-    title: string;
-  };
-};
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { type RouteProp, type NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 
 type WebViewScreenRouteProp = RouteProp<RootStackParamList, "WebView">;
-type WebViewScreenNavigationProp = StackNavigationProp<RootStackParamList, "WebView">;
+type WebViewScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, "WebView">;
 
 // URL allowlist for security - only allow these domains and schemes
 const ALLOWED_SCHEMES = ["http", "https"];

@@ -62,9 +62,9 @@ export const uploadVideoAnonymously = async (videoUri: string, options: UploadOp
       throw new Error("You must be signed in to upload video");
     }
 
-    const upload = await uploadVideoToSupabase(videoUri, userData.user.id, (p) =>
-      onProgress?.(20 + (p * 0.2) / 100, "Uploading video..."),
-    );
+    const upload = await uploadVideoToSupabase(videoUri, userData.user.id, {
+      onProgress: (p: number) => onProgress?.(20 + (p * 0.2) / 100, "Uploading video..."),
+    });
 
     onProgress?.(40, "Initiating processing...");
 
@@ -198,12 +198,12 @@ export const downloadProcessedVideo = async (
     onProgress?.(50, "Saving video locally...");
 
     // Save to local filesystem
-    const localUri = `${FileSystem.documentDirectory}processed_${Date.now()}.mp4`;
+    const localUri = `${FileSystem.cacheDirectory}processed_${Date.now()}.mp4`;
     const arrayBuffer = await videoData.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
     await FileSystem.writeAsStringAsync(localUri, base64, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: "base64",
     });
 
     onProgress?.(100, "Download complete");

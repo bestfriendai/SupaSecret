@@ -190,7 +190,8 @@ export const useConfessionStore = create<ConfessionState>()(
               if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
                 // Handle both video_uri and video_url fields for compatibility
                 const videoPath = item.video_uri || (item as any).video_url;
-                base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
+                const signedResult = await ensureSignedVideoUrl(videoPath);
+                base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
               } else if (base.type === "video" && !item.video_uri && !item.video_url) {
                 // Ensure we never render a blank player in dev/demo data
                 base.videoUri = FALLBACK_VIDEO;
@@ -271,7 +272,8 @@ export const useConfessionStore = create<ConfessionState>()(
               if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
                 // Handle both video_uri and video_url fields for compatibility
                 const videoPath = item.video_uri || (item as any).video_url;
-                base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
+                const signedResult = await ensureSignedVideoUrl(videoPath);
+                base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
               } else if (base.type === "video" && !item.video_uri && !item.video_url) {
                 base.videoUri = FALLBACK_VIDEO;
               }
@@ -328,7 +330,8 @@ export const useConfessionStore = create<ConfessionState>()(
               if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
                 // Handle both video_uri and video_url fields for compatibility
                 const videoPath = item.video_uri || (item as any).video_url;
-                base.videoUri = (await ensureSignedVideoUrl(videoPath)) || FALLBACK_VIDEO;
+                const signedResult = await ensureSignedVideoUrl(videoPath);
+                base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
               } else if (base.type === "video" && !item.video_uri && !(item as any).video_url) {
                 base.videoUri = FALLBACK_VIDEO;
               }
@@ -417,7 +420,7 @@ export const useConfessionStore = create<ConfessionState>()(
             content: data.content,
             videoUri:
               signedVideoUrl ||
-              (await ensureSignedVideoUrl(data.video_uri || undefined)) ||
+              (await ensureSignedVideoUrl(data.video_uri || undefined))?.signedUrl ||
               (data.type === "video"
                 ? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
                 : undefined),

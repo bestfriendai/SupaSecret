@@ -12,7 +12,8 @@ import {
   StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, type NavigationProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuthStore } from "../state/authStore";
@@ -20,6 +21,7 @@ import { useConfessionStore } from "../state/confessionStore";
 import { useMembershipStore } from "../state/membershipStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { cn } from "../utils/cn";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 
 // Enhanced interface for stat items with better UX
 interface StatItemProps {
@@ -136,7 +138,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
 const ProfileScreen = () => {
   console.log("[ProfileScreen] Component rendering/re-rendering");
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuthStore();
 
@@ -294,19 +296,19 @@ const ProfileScreen = () => {
   }, []);
 
   const handleUpgradeToPremium = useCallback(() => {
-    navigation.navigate("Paywall" as never);
+    navigation.navigate("Paywall");
   }, [navigation]);
 
   const handleSettingsPress = useCallback(() => {
-    navigation.navigate("Settings" as never);
+    navigation.navigate("Settings");
   }, [navigation]);
 
   const handleMySecretsPress = useCallback(() => {
-    navigation.navigate("MySecrets" as never);
+    navigation.navigate("MySecrets");
   }, [navigation]);
 
   const handleSavedPress = useCallback(() => {
-    navigation.navigate("Saved" as never);
+    navigation.navigate("Saved");
   }, [navigation]);
 
   // Initialize data on mount
