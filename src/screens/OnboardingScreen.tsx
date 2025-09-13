@@ -41,8 +41,7 @@ export default function OnboardingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, setOnboarded, isAuthenticated } = useAuthStore();
   const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
-  const scrollViewRef = useRef<ScrollView | null>(null);
-  const flatListRef = useRef<FlatList<any> | null>(null);
+  const flatListRef = useRef<FlatList<OnboardingSlideType> | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -110,8 +109,8 @@ export default function OnboardingScreen() {
     const index = Math.round(offsetX / screenWidth);
     console.log('🛑 Momentum end - offsetX:', offsetX, 'calculated index:', index, 'current index:', currentIndex);
 
-    // Only update if it's different from current index (to avoid conflicts)
-    if (index !== currentIndex) {
+    // Only update if it's different from current index and within valid range
+    if (index !== currentIndex && index >= 0 && index < onboardingSlides.length) {
       console.log('🔄 Updating index from', currentIndex, 'to', index);
       setCurrentIndex(index);
       animateSlideTransition();
@@ -121,69 +120,62 @@ export default function OnboardingScreen() {
     }
   };
 
-  // Add effect to handle programmatic scrolling
-  useEffect(() => {
-    // Use robust helper so we don't depend on immediate ref availability
-    console.log('🎯 Effect: ensure index', currentIndex, 'is visible');
-    scrollToIndexSafely(currentIndex);
-  }, [currentIndex, screenWidth]);
+  // Add effect to handle programmatic scrolling - disabled to prevent conflicts
+  // useEffect(() => {
+  //   // Ensure the current index is visible when it changes
+  //   console.log('🎯 Effect: ensure index', currentIndex, 'is visible');
+  //   if (flatListRef.current && !isScrollingProgrammatically.current) {
+  //     scrollToIndex(currentIndex);
+  //   }
+  // }, [currentIndex, screenWidth]);
 
-  // Robust helper to programmatically scroll, retrying briefly if ref isn't ready
-  const scrollToIndexSafely = (index: number) => {
-    let attempts = 0;
-    const targetX = index * screenWidth;
-    const tryScroll = () => {
-      const list: any = flatListRef.current as any;
-      if (list) {
-        try {
-          if (typeof list.scrollToOffset === 'function') {
-            console.log('➡️ scrollToIndexSafely: FlatList.scrollToOffset ->', targetX);
-            list.scrollToOffset({ offset: targetX, animated: true });
-            return;
-          }
-          if (typeof list.scrollToIndex === 'function') {
-            console.log('➡️ scrollToIndexSafely: FlatList.scrollToIndex ->', index);
-            list.scrollToIndex({ index, animated: true, viewPosition: 0 });
-            return;
-          }
-        } catch (e) {
-          // Will retry shortly
-        }
-      }
-      const ref: any = scrollViewRef.current as any;
-      if (ref && typeof ref.scrollTo === 'function') {
-        console.log('➡️ scrollToIndexSafely: ScrollView.scrollTo -> x =', targetX);
-        ref.scrollTo({ x: targetX, y: 0, animated: true });
-        return;
-      }
-      if (attempts < 8) {
-        attempts += 1;
-        console.log('⏳ scrollToIndexSafely: ref not ready, retry', attempts);
-        requestAnimationFrame(tryScroll);
-      } else {
-        console.warn('⚠️ scrollToIndexSafely: failed to obtain list/scroll ref after retries');
-      }
-    };
-    tryScroll();
-  };
+
 
 
   const handleNext = () => {
     console.log('🔥 NEXT PRESSED - Current:', currentIndex, 'Total slides:', onboardingSlides.length);
     const nextIndex = currentIndex + 1;
+
     if (nextIndex < onboardingSlides.length) {
-      console.log('✅ Going to slide:', nextIndex, 'ref present?', !!scrollViewRef.current);
-      // Programmatically scroll first for reliability (with retries), then update state
-      scrollToIndexSafely(nextIndex);
-      // Extra attempt next frame in case ref attaches after state update
-      requestAnimationFrame(() => scrollToIndexSafely(nextIndex));
-      setCurrentIndex(nextIndex);
-      // Track slide progression
-      trackOnboardingEvent('onboarding_slide_viewed', {
-        slideIndex: nextIndex,
-        slideTitle: onboardingSlides[nextIndex].title,
-      });
-      animateButtonPress();
+      console.log('✅ Going to slide:', nextIndex, 'FlatList ref present?', !!flatListRef.current);
+
+      if (!flatListRef.current) {
+        console.error('❌ FlatList ref is null, cannot scroll');
+        return;
+      }
+
+      // Calculate target position
+      const targetX = nextIndex * screenWidth;
+      console.log('📐 Target scroll position:', targetX, 'for index:', nextIndex);
+
+      try {
+        // Direct scroll without delays or flags - keep it simple
+        flatListRef.current.scrollToOffset({
+          offset: targetX,
+          animated: true
+        });
+
+        console.log('✅ Scroll command sent successfully');
+
+        // Update state after scroll command
+        setCurrentIndex(nextIndex);
+
+        // Track slide progression
+        trackOnboardingEvent('onboarding_slide_viewed', {
+          slideIndex: nextIndex,
+          slideTitle: onboardingSlides[nextIndex].title,
+        });
+
+        // Animate button press
+        animateButtonPress();
+
+        // Haptic feedback
+        impactAsync();
+
+      } catch (error) {
+        console.error('❌ Scroll failed:', error);
+      }
+
     } else {
       console.log('🏁 Last slide - calling handleGetStarted');
       handleGetStarted();
@@ -295,7 +287,7 @@ export default function OnboardingScreen() {
       {/* Slides */}
       <Animated.View style={[{ flex: 1 }, slideContainerStyle]}>
         <FlatList
-          ref={flatListRef as any}
+          ref={flatListRef}
           data={onboardingSlides}
           keyExtractor={(item) => item.id}
           horizontal
@@ -306,10 +298,11 @@ export default function OnboardingScreen() {
           )}
           getItemLayout={(_, index) => ({ length: screenWidth, offset: screenWidth * index, index })}
           onScroll={handleScroll}
-          onMomentumScrollEnd={(e) => handleMomentumScrollEnd(e)}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
           scrollEventThrottle={16}
           bounces={false}
           decelerationRate="fast"
+          initialScrollIndex={0}
           accessibilityRole="none"
           accessibilityLabel={`Onboarding slides, ${onboardingSlides.length} slides total`}
           accessibilityHint="Swipe left or right to navigate between slides"
@@ -325,8 +318,19 @@ export default function OnboardingScreen() {
                 }
                 break;
               case 'decrement':
-                if (currentIndex > 0) {
-                  scrollToIndexSafely(currentIndex - 1);
+                if (currentIndex > 0 && flatListRef.current) {
+                  const prevIndex = currentIndex - 1;
+                  const targetX = prevIndex * screenWidth;
+
+                  try {
+                    flatListRef.current.scrollToOffset({
+                      offset: targetX,
+                      animated: true
+                    });
+                    setCurrentIndex(prevIndex);
+                  } catch (error) {
+                    console.error('❌ Accessibility decrement scroll failed:', error);
+                  }
                 }
                 break;
             }
@@ -400,11 +404,20 @@ export default function OnboardingScreen() {
           <View className="flex-row items-center justify-between">
             <Pressable
               onPress={() => {
-                if (currentIndex > 0) {
+                if (currentIndex > 0 && flatListRef.current) {
                   const prevIndex = currentIndex - 1;
-                  scrollToIndexSafely(prevIndex);
-                  setCurrentIndex(prevIndex);
-                  impactAsync();
+                  const targetX = prevIndex * screenWidth;
+
+                  try {
+                    flatListRef.current.scrollToOffset({
+                      offset: targetX,
+                      animated: true
+                    });
+                    setCurrentIndex(prevIndex);
+                    impactAsync();
+                  } catch (error) {
+                    console.error('❌ Back button scroll failed:', error);
+                  }
                 }
               }}
               className="flex-row items-center px-4 py-3 rounded-full"
