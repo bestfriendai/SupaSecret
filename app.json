@@ -34,7 +34,7 @@
       "expo-splash-screen"
     ],
     "androidNavigationBar": {
-      "enforceContrast": true
+      "visible": "sticky-immersive"
     },
     "ios": {
       "supportsTablet": true,

@@ -190,7 +190,7 @@ export default function TrendingScreen() {
             onSubmitEditing={() => dismissKeyboard()}
             accessibilityLabel="Search hashtags"
             accessibilityHint="Type to search hashtags"
-            accessibilityRole="searchbox"
+            accessibilityRole="search"
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={handleClearSearch} {...getCloseButtonA11yProps()}>
