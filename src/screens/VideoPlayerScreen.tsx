@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
 import OptimizedVideoList from "../components/OptimizedVideoList";
@@ -40,8 +41,8 @@ export default function VideoPlayerScreen() {
   }, [confessions, confessionId]);
 
   return (
-    <View className="flex-1 bg-black">
+    <SafeAreaView className="flex-1 bg-black" edges={[]}>
       <OptimizedVideoList onClose={() => navigation.goBack()} initialIndex={initialIndex} />
-    </View>
+    </SafeAreaView>
   );
 }

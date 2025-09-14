@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import type { Confession } from "../types/confession";
 import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 
 interface SavedState {
   savedConfessionIds: string[];
@@ -17,6 +18,8 @@ interface SavedState {
   // Actions
   saveConfession: (confessionId: string) => Promise<void>;
   unsaveConfession: (confessionId: string) => Promise<void>;
+  batchSaveConfessions: (confessionIds: string[]) => Promise<void>;
+  batchUnsaveConfessions: (confessionIds: string[]) => Promise<void>;
   isSaved: (confessionId: string) => boolean;
   loadSavedConfessions: (refresh?: boolean) => Promise<void>;
   loadMoreSavedConfessions: () => Promise<void>;
@@ -125,6 +128,69 @@ export const useSavedStore = create<SavedState>()(
               error: error instanceof Error ? error.message : "Failed to unsave confession",
             }));
           }
+        }
+      },
+
+      batchSaveConfessions: async (confessionIds: string[]) => {
+        if (!confessionIds.length) return;
+        try {
+          const state = get();
+          const toSave = confessionIds.filter((id) => !state.savedConfessionIds.includes(id));
+          if (toSave.length === 0) return;
+          set({ savedConfessionIds: [...state.savedConfessionIds, ...toSave] });
+          if (!offlineQueue.getNetworkStatus()) {
+            await Promise.all(
+              toSave.map((id) => offlineQueue.enqueue(OFFLINE_ACTIONS.SAVE_CONFESSION, { confessionId: id })),
+            );
+            return;
+          }
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user) {
+            const rows = toSave.map((id) => ({ user_id: user.id, confession_id: id }));
+            const { error } = await supabase.from("user_saved_confessions" as any).insert(rows as any);
+            if (error) throw error;
+          }
+        } catch (err) {
+          set((state) => ({
+            savedConfessionIds: state.savedConfessionIds.filter((id) => !confessionIds.includes(id)),
+            error: err instanceof Error ? err.message : "Failed to save confessions",
+          }));
+        }
+      },
+
+      batchUnsaveConfessions: async (confessionIds: string[]) => {
+        if (!confessionIds.length) return;
+        try {
+          const state = get();
+          set({
+            savedConfessionIds: state.savedConfessionIds.filter((id) => !confessionIds.includes(id)),
+            savedConfessions: state.savedConfessions.filter((c) => !confessionIds.includes(c.id)),
+          });
+          if (!offlineQueue.getNetworkStatus()) {
+            await Promise.all(
+              confessionIds.map((id) => offlineQueue.enqueue(OFFLINE_ACTIONS.UNSAVE_CONFESSION, { confessionId: id })),
+            );
+            return;
+          }
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user) {
+            const { error } = await supabase
+              .from("user_saved_confessions" as any)
+              .delete()
+              .eq("user_id", user.id)
+              .in("confession_id", confessionIds);
+            if (error) throw error;
+          }
+        } catch (err) {
+          // revert
+          set((state) => ({
+            savedConfessionIds: [...new Set([...state.savedConfessionIds, ...confessionIds])],
+            error: err instanceof Error ? err.message : "Failed to unsave confessions",
+          }));
         }
       },
 

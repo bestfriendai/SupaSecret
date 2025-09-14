@@ -1,4 +1,8 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { registerStoreCleanup } from "../utils/storeCleanup";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 
 interface VideoPlayerRef {
   id: string;
@@ -8,6 +12,7 @@ interface VideoPlayerRef {
 
 interface GlobalVideoState {
   videoPlayers: Map<string, VideoPlayerRef>;
+  playersMeta: Record<string, { isPlaying: boolean }>;
   currentTab: string;
 
   // Actions
@@ -19,142 +24,152 @@ interface GlobalVideoState {
   updatePlayerState: (id: string, isPlaying: boolean) => void;
 }
 
-export const useGlobalVideoStore = create<GlobalVideoState>((set, get) => ({
-  videoPlayers: new Map(),
-  currentTab: "Home",
+export const useGlobalVideoStore = create<GlobalVideoState>()(
+  persist(
+    (set, get) => ({
+      videoPlayers: new Map(),
+      playersMeta: {},
+      currentTab: "Home",
 
-  registerVideoPlayer: (id: string, player: any) => {
-    const { videoPlayers } = get();
-    const newPlayers = new Map(videoPlayers);
+      registerVideoPlayer: (id: string, player: any) => {
+        const t0 = Date.now();
+        const { videoPlayers, playersMeta } = get();
+        const newPlayers = new Map(videoPlayers);
 
-    // Clean up existing player if it exists
-    const existingPlayer = videoPlayers.get(id);
-    if (existingPlayer?.player) {
-      try {
-        // Pause and cleanup existing player
-        if (typeof existingPlayer.player.pause === "function") {
-          existingPlayer.player.pause();
-        }
-        if (typeof existingPlayer.player.stop === "function") {
-          existingPlayer.player.stop();
-        }
-        if (typeof existingPlayer.player.dispose === "function") {
-          existingPlayer.player.dispose();
-        }
-        if (typeof existingPlayer.player.destroy === "function") {
-          existingPlayer.player.destroy();
-        }
-        // Remove event listeners if removeAllListeners exists
-        if (typeof existingPlayer.player.removeAllListeners === "function") {
-          existingPlayer.player.removeAllListeners();
-        }
-      } catch (error) {
-        console.warn(`🎥 Failed to cleanup existing player ${id}:`, error);
-      }
-    }
-
-    newPlayers.set(id, { id, player, isPlaying: false });
-    set({ videoPlayers: newPlayers });
-    console.log(`🎥 Registered video player: ${id}`);
-  },
-
-  unregisterVideoPlayer: (id: string) => {
-    const { videoPlayers } = get();
-    const newPlayers = new Map(videoPlayers);
-    newPlayers.delete(id);
-    set({ videoPlayers: newPlayers });
-    console.log(`🎥 Unregistered video player: ${id}`);
-  },
-
-  pauseAllVideos: () => {
-    const { videoPlayers } = get();
-    console.log(`🎥 Pausing all videos (${videoPlayers.size} players)`);
-
-    videoPlayers.forEach((playerRef, id) => {
-      try {
-        if (playerRef.player) {
-          // Pause the video
-          if (typeof playerRef.player.pause === "function") {
-            playerRef.player.pause();
+        // Clean up existing player if it exists
+        const existingPlayer = videoPlayers.get(id);
+        if (existingPlayer?.player) {
+          try {
+            disposePlayer(existingPlayer.player);
+          } catch (error) {
+            if (__DEV__) console.warn(`🎥 Failed to cleanup existing player ${id}:`, error);
           }
-
-          // Mute the video using proper API
-          if (typeof playerRef.player.setMuted === "function") {
-            playerRef.player.setMuted(true);
-          } else if (typeof playerRef.player.mute === "function") {
-            playerRef.player.mute();
-          } else if ("muted" in playerRef.player) {
-            playerRef.player.muted = true;
-          }
-
-          console.log(`🎥 Paused video: ${id}`);
         }
-      } catch (error) {
-        console.warn(`🎥 Failed to pause video ${id}:`, error);
-      }
-    });
-  },
 
-  resumeVideosForTab: (tabName: string) => {
-    const { videoPlayers, currentTab } = get();
+        newPlayers.set(id, { id, player, isPlaying: playersMeta[id]?.isPlaying ?? false });
+        set({ videoPlayers: newPlayers, playersMeta: { ...playersMeta, [id]: { isPlaying: false } } });
+        trackStoreOperation("globalVideoStore", "registerVideoPlayer", Date.now() - t0);
+      },
 
-    if (tabName === "Videos" && currentTab === "Videos") {
-      console.log(`🎥 Resuming videos for Videos tab`);
+      unregisterVideoPlayer: (id: string) => {
+        const t0 = Date.now();
+        const { videoPlayers, playersMeta } = get();
+        const existing = videoPlayers.get(id);
+        if (existing?.player) {
+          try {
+            disposePlayer(existing.player);
+          } catch (e) {
+            if (__DEV__) console.warn("🎥 Error disposing player during unregister", e);
+          }
+        }
+        const newPlayers = new Map(videoPlayers);
+        newPlayers.delete(id);
+        const { [id]: _removed, ...restMeta } = playersMeta;
+        set({ videoPlayers: newPlayers, playersMeta: restMeta });
+        trackStoreOperation("globalVideoStore", "unregisterVideoPlayer", Date.now() - t0);
+      },
 
-      videoPlayers.forEach((playerRef, id) => {
-        try {
-          if (playerRef.player) {
-            // Unmute the video using proper API
-            if (typeof playerRef.player.setMuted === "function") {
-              playerRef.player.setMuted(false);
-            } else if ("muted" in playerRef.player) {
-              playerRef.player.muted = false;
+      pauseAllVideos: () => {
+        const t0 = Date.now();
+        const { videoPlayers, playersMeta } = get();
+        videoPlayers.forEach((playerRef, id) => {
+          try {
+            if (playerRef.player) {
+              if (typeof playerRef.player.pause === "function") playerRef.player.pause();
+              if (typeof playerRef.player.setMuted === "function") playerRef.player.setMuted(true);
+              else if (typeof playerRef.player.mute === "function") playerRef.player.mute();
+              else if ("muted" in playerRef.player) (playerRef.player as any).muted = true;
             }
-
-            // Only resume if it was playing before
-            if (playerRef.isPlaying && typeof playerRef.player.play === "function") {
-              playerRef.player.play();
-              console.log(`🎥 Resumed video: ${id}`);
-            }
+          } catch (error) {
+            if (__DEV__) console.warn(`🎥 Failed to pause video ${id}:`, error);
           }
-        } catch (error) {
-          console.warn(`🎥 Failed to resume video ${id}:`, error);
-        }
-      });
-    }
-  },
-
-  setCurrentTab: (tabName: string) => {
-    const { currentTab } = get();
-
-    if (currentTab !== tabName) {
-      console.log(`🎥 Tab changed from ${currentTab} to ${tabName}`);
-
-      if (tabName !== "Videos") {
-        // Leaving Videos tab - pause all videos
-        get().pauseAllVideos();
-      }
-
-      set({ currentTab: tabName });
-
-      // Resume videos after tab state is updated
-      if (tabName === "Videos") {
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-          get().resumeVideosForTab(tabName);
         });
-      }
-    }
-  },
+        // persist current playing state as paused
+        const nextMeta: Record<string, { isPlaying: boolean }> = {};
+        Object.keys(playersMeta).forEach((k) => (nextMeta[k] = { isPlaying: false }));
+        set({ playersMeta: nextMeta });
+        trackStoreOperation("globalVideoStore", "pauseAllVideos", Date.now() - t0);
+      },
 
-  updatePlayerState: (id: string, isPlaying: boolean) => {
-    const { videoPlayers } = get();
-    const playerRef = videoPlayers.get(id);
+      resumeVideosForTab: (tabName: string) => {
+        const t0 = Date.now();
+        const { videoPlayers, currentTab, playersMeta } = get();
+        if (tabName === "Videos" && currentTab === "Videos") {
+          videoPlayers.forEach((playerRef, id) => {
+            try {
+              if (playerRef.player) {
+                if (typeof playerRef.player.setMuted === "function") playerRef.player.setMuted(false);
+                else if ("muted" in playerRef.player) (playerRef.player as any).muted = false;
+                if (
+                  (playersMeta[id]?.isPlaying ?? playerRef.isPlaying) &&
+                  typeof playerRef.player.play === "function"
+                ) {
+                  playerRef.player.play();
+                }
+              }
+            } catch (error) {
+              if (__DEV__) console.warn(`🎥 Failed to resume video ${id}:`, error);
+            }
+          });
+          trackStoreOperation("globalVideoStore", "resumeVideosForTab", Date.now() - t0);
+        }
+      },
 
-    if (playerRef) {
-      const newPlayers = new Map(videoPlayers);
-      newPlayers.set(id, { ...playerRef, isPlaying });
-      set({ videoPlayers: newPlayers });
-    }
-  },
-}));
+      setCurrentTab: (tabName: string) => {
+        const { currentTab } = get();
+        if (currentTab !== tabName) {
+          if (tabName !== "Videos") {
+            get().pauseAllVideos();
+          }
+          set({ currentTab: tabName });
+          if (tabName === "Videos") {
+            requestAnimationFrame(() => get().resumeVideosForTab(tabName));
+          }
+        }
+      },
+
+      updatePlayerState: (id: string, isPlaying: boolean) => {
+        const { videoPlayers, playersMeta } = get();
+        const playerRef = videoPlayers.get(id);
+        if (playerRef) {
+          const newPlayers = new Map(videoPlayers);
+          newPlayers.set(id, { ...playerRef, isPlaying });
+          set({ videoPlayers: newPlayers, playersMeta: { ...playersMeta, [id]: { isPlaying } } });
+        } else {
+          set({ playersMeta: { ...playersMeta, [id]: { isPlaying } } });
+        }
+      },
+    }),
+    {
+      name: "global-video-store",
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        currentTab: state.currentTab,
+        playersMeta: state.playersMeta,
+      }),
+      version: 1,
+    },
+  ),
+);
+
+// Local helper to defensively dispose any kind of player
+function disposePlayer(player: any) {
+  try {
+    if (typeof player.pause === "function") player.pause();
+    if (typeof player.stop === "function") player.stop();
+    if (typeof player.dispose === "function") player.dispose();
+    if (typeof player.destroy === "function") player.destroy();
+    if (typeof player.removeAllListeners === "function") player.removeAllListeners();
+  } catch {}
+}
+
+// Centralized cleanup registration
+registerStoreCleanup("globalVideoStore", () => {
+  const { videoPlayers } = useGlobalVideoStore.getState();
+  videoPlayers.forEach((ref) => {
+    try {
+      disposePlayer(ref.player);
+    } catch {}
+  });
+  useGlobalVideoStore.setState({ videoPlayers: new Map() });
+});

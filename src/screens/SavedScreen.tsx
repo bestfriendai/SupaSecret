@@ -234,7 +234,7 @@ export default function SavedScreen() {
             ) : null
           }
           // FlashList v2 performance props
-                  />
+        />
       )}
     </View>
   );

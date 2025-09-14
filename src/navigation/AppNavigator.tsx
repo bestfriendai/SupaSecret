@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,6 +58,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
+// Create navigation ref for v7
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 function AuthStackNavigator() {
   const { isAuthenticated, user } = useAuthStore();
 
@@ -80,8 +83,8 @@ function AuthStackNavigator() {
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
-        animationTypeForReplace: 'push',
-        gestureDirection: 'horizontal',
+        animationTypeForReplace: "push",
+        gestureDirection: "horizontal",
         // detachInactiveScreens removed - not supported in current version
         // sceneContainerStyle removed - not supported in current version
       }}
@@ -146,11 +149,11 @@ function MainTabs() {
           paddingBottom: 8,
         },
         tabBarHideOnKeyboard: true,
-        tabBarActiveBackgroundColor: 'transparent',
-        tabBarInactiveBackgroundColor: 'transparent',
+        tabBarActiveBackgroundColor: "transparent",
+        tabBarInactiveBackgroundColor: "transparent",
         tabBarBadgeStyle: {
-          backgroundColor: '#F91880',
-          color: '#FFFFFF',
+          backgroundColor: "#F91880",
+          color: "#FFFFFF",
         },
         headerStyle: {
           backgroundColor: "#000000",
@@ -268,6 +271,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer
+      ref={navigationRef}
       linking={linking}
       theme={{
         dark: true,
@@ -298,7 +302,7 @@ export default function AppNavigator() {
           },
         },
       }}
-      fallback={<View style={{ flex: 1, backgroundColor: '#000000' }} />}
+      fallback={<View style={{ flex: 1, backgroundColor: "#000000" }} />}
       onReady={() => {
         if (__DEV__) {
           console.log("🧭 Navigation container ready");
@@ -323,9 +327,9 @@ export default function AppNavigator() {
           },
           headerShadowVisible: false,
           // headerBackTitleVisible removed - not supported in current version
-          animationTypeForReplace: 'push',
+          animationTypeForReplace: "push",
           gestureEnabled: true,
-          gestureDirection: 'horizontal',
+          gestureDirection: "horizontal",
           // detachInactiveScreens removed - not supported in current version
           // sceneContainerStyle removed - not supported in current version
         }}
@@ -341,9 +345,9 @@ export default function AppNavigator() {
               options={{
                 title: "Record Video",
                 headerShown: true,
-                animation: 'slide_from_bottom',
+                animation: "slide_from_bottom",
                 gestureEnabled: true,
-                gestureDirection: 'vertical',
+                gestureDirection: "vertical",
               }}
             />
             <Stack.Screen
@@ -360,9 +364,9 @@ export default function AppNavigator() {
               options={{
                 title: "Video",
                 headerShown: false,
-                animation: 'fade',
+                animation: "fade",
                 gestureEnabled: true,
-                gestureDirection: 'horizontal',
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -370,9 +374,9 @@ export default function AppNavigator() {
               component={SavedScreen}
               options={{
                 title: "Saved Secrets",
-                animation: 'slide_from_bottom',
+                animation: "slide_from_bottom",
                 gestureEnabled: true,
-                gestureDirection: 'vertical',
+                gestureDirection: "vertical",
               }}
             />
             <Stack.Screen
@@ -387,9 +391,9 @@ export default function AppNavigator() {
               component={SettingsScreen}
               options={{
                 title: "Settings",
-                animation: 'slide_from_bottom',
+                animation: "slide_from_bottom",
                 gestureEnabled: true,
-                gestureDirection: 'vertical',
+                gestureDirection: "vertical",
               }}
             />
             <Stack.Screen
@@ -405,9 +409,9 @@ export default function AppNavigator() {
               component={WebViewScreen}
               options={{
                 headerShown: false,
-                animation: 'slide_from_bottom',
+                animation: "slide_from_bottom",
                 gestureEnabled: true,
-                gestureDirection: 'vertical',
+                gestureDirection: "vertical",
               }}
             />
           </>

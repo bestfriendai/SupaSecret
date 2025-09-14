@@ -38,7 +38,9 @@ function SecretItemComponent({ item }: Props) {
           </Text>
         </View>
         <View style={{ marginLeft: 12, alignItems: "flex-end" }}>
-          <Text style={{ color: "#60A5FA", fontSize: 12, fontWeight: "700" }}>Score: {formatEngagementScore(item.engagementScore)}</Text>
+          <Text style={{ color: "#60A5FA", fontSize: 12, fontWeight: "700" }}>
+            Score: {formatEngagementScore(item.engagementScore)}
+          </Text>
         </View>
       </View>
 

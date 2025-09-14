@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabase";
 import { wrapWithRetry } from "../utils/supabaseWithRetry";
 import { invalidateCache } from "../utils/cacheInvalidation";
 import { isValidForDatabase } from "../utils/uuid";
+import { registerStoreCleanup } from "../utils/storeCleanup";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();
@@ -53,7 +55,7 @@ export interface Reply {
 interface DatabaseReplyRecord {
   id: string;
   confession_id: string;
-  user_id?: string;
+  user_id: string | null;
   content: string;
   is_anonymous: boolean;
   likes: number;
@@ -72,6 +74,8 @@ export interface ReplyState {
   addReply: (confessionId: string, content: string, isAnonymous?: boolean) => Promise<void>;
   deleteReply: (replyId: string, confessionId: string) => Promise<void>;
   toggleReplyLike: (replyId: string, confessionId: string) => Promise<void>;
+  bulkDeleteReplies: (replyIds: string[], confessionId: string) => Promise<void>;
+  bulkToggleReplyLikes: (replyIds: string[], confessionId: string, like: boolean) => Promise<void>;
   clearError: () => void;
   getRepliesForConfession: (confessionId: string) => Reply[];
 }
@@ -436,6 +440,66 @@ export const useReplyStore = create<ReplyState>()(
         });
       },
 
+      bulkDeleteReplies: async (replyIds: string[], confessionId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("User not authenticated");
+          const { error } = await supabase.from("replies").delete().in("id", replyIds).eq("user_id", user.id);
+          if (error) throw error;
+          set((state) => ({
+            replies: {
+              ...state.replies,
+              [confessionId]: (state.replies[confessionId] || []).filter((r) => !replyIds.includes(r.id)),
+            },
+            isLoading: false,
+          }));
+        } catch (err) {
+          set({ error: err instanceof Error ? err.message : "Failed to delete replies", isLoading: false });
+          throw err;
+        }
+      },
+
+      bulkToggleReplyLikes: async (replyIds: string[], confessionId: string, like: boolean) => {
+        const state = get();
+        const replies = state.replies[confessionId] || [];
+        // Optimistic batch update
+        set({
+          replies: {
+            ...state.replies,
+            [confessionId]: replies.map((r) =>
+              replyIds.includes(r.id)
+                ? { ...r, likes: like ? r.likes + 1 : Math.max(0, r.likes - 1), isLiked: like }
+                : r,
+            ),
+          },
+        });
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+          if (like) {
+            const rows = replyIds.map((id) => ({ user_id: user.id, reply_id: id }));
+            const { error } = await supabase.from("user_likes").insert(rows as any);
+            if (error) throw error;
+          } else {
+            const { error } = await supabase
+              .from("user_likes")
+              .delete()
+              .eq("user_id", user.id)
+              .in("reply_id", replyIds);
+            if (error) throw error;
+          }
+        } catch (err) {
+          // Revert on error
+          set({ replies: { ...state.replies, [confessionId]: replies } });
+          set({ error: err instanceof Error ? err.message : "Failed to update likes" });
+        }
+      },
+
       clearError: () => {
         set({ error: null });
       },
@@ -454,3 +518,87 @@ export const useReplyStore = create<ReplyState>()(
     },
   ),
 );
+
+// Real-time replies subscription management
+let repliesChannel: any = null;
+let repliesReconnectTimer: any = null;
+let repliesReconnectAttempts = 0;
+
+const cleanupRepliesSubscriptions = () => {
+  if (repliesChannel) {
+    repliesChannel.unsubscribe();
+    repliesChannel = null;
+  }
+  if (repliesReconnectTimer) {
+    clearTimeout(repliesReconnectTimer);
+    repliesReconnectTimer = null;
+  }
+  repliesReconnectAttempts = 0;
+};
+
+const setupRepliesSubscriptions = () => {
+  if (repliesChannel) return;
+  const connect = () => {
+    repliesChannel = supabase
+      .channel("replies")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "replies" }, (payload) => {
+        const r = payload.new as DatabaseReplyRecord;
+        const reply: Reply = {
+          id: r.id,
+          confessionId: r.confession_id,
+          userId: r.user_id || undefined,
+          content: r.content,
+          isAnonymous: r.is_anonymous,
+          likes: r.likes || 0,
+          isLiked: false,
+          timestamp: new Date(r.created_at).getTime(),
+        };
+        // Only add if this confession's replies are loaded in state
+        const replies = useReplyStore.getState().replies[reply.confessionId];
+        if (replies) {
+          useReplyStore.setState((state) => ({
+            replies: { ...state.replies, [reply.confessionId]: [reply, ...replies].slice(0, 200) },
+          }));
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "replies" }, (payload) => {
+        const r = payload.new as DatabaseReplyRecord;
+        const confessionId = r.confession_id;
+        const replies = useReplyStore.getState().replies[confessionId];
+        if (replies) {
+          useReplyStore.setState((state) => ({
+            replies: {
+              ...state.replies,
+              [confessionId]: replies.map((x) => (x.id === r.id ? { ...x, likes: r.likes || x.likes } : x)),
+            },
+          }));
+        }
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          repliesReconnectAttempts = 0;
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          const delay = Math.min(30000, 1000 * Math.pow(2, repliesReconnectAttempts++));
+          if (repliesReconnectTimer) clearTimeout(repliesReconnectTimer);
+          repliesReconnectTimer = setTimeout(() => {
+            cleanupRepliesSubscriptions();
+            connect();
+          }, delay);
+        }
+      });
+  };
+  connect();
+};
+
+// Initialize subscriptions lazily when first loading replies
+const originalLoadReplies = useReplyStore.getState().loadReplies;
+useReplyStore.setState({
+  loadReplies: async (confessionId: string) => {
+    setupRepliesSubscriptions();
+    return originalLoadReplies(confessionId);
+  },
+});
+
+// Register cleanup with centralized manager
+registerStoreCleanup("replyStore", cleanupRepliesSubscriptions);

@@ -333,8 +333,7 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
   }
 
   // Properly construct redirect URL using Expo Constants
-  const appUrl =
-    (Constants.expoConfig as any)?.extra?.appUrl || "toxicconfessions://";
+  const appUrl = (Constants.expoConfig as any)?.extra?.appUrl || "toxicconfessions://";
   const baseUrl = appUrl.replace(/\/+$/, "");
   const redirectTo = `${baseUrl}/reset-password`;
 

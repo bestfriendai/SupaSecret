@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { View, Text, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { PreferenceAwareHaptics } from "../utils/haptics";
@@ -53,6 +54,9 @@ AnonymousAvatar.displayName = "AnonymousAvatar";
 const EnhancedCommentBottomSheet = React.memo(
   function EnhancedCommentBottomSheet(props: EnhancedCommentBottomSheetProps) {
     const { bottomSheetModalRef, confessionId } = props ?? ({} as any);
+
+    // Get safe area insets
+    const insets = useSafeAreaInsets();
 
     // All hooks must be called before any early returns
     const [newComment, setNewComment] = useState("");
@@ -239,7 +243,8 @@ const EnhancedCommentBottomSheet = React.memo(
             // Performance optimization props
             windowSize={10}
             removeClippedSubviews={true}
-            estimatedItemSize={120}
+            maxToRenderPerBatch={10}
+            initialNumToRender={8}
             getItemLayout={(_: any, index: number) => ({
               length: 120,
               offset: 120 * index,

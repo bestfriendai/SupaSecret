@@ -70,13 +70,16 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
   // FlashList doesn't need getItemLayout as it handles layout automatically
 
   // Handle viewability changes for video playback
-  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: Array<{ item: Confession; isViewable: boolean; index: number | null }> }) => {
-    const first = viewableItems.find((v) => v.isViewable && v.index !== null) || viewableItems[0];
-    if (first && first.index !== null) {
-      currentIndexRef.current = first.index;
-      setCurrentIndex(first.index); // trigger re-render so isActive updates
-    }
-  }, []);
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: Array<{ item: Confession; isViewable: boolean; index: number | null }> }) => {
+      const first = viewableItems.find((v) => v.isViewable && v.index !== null) || viewableItems[0];
+      if (first && first.index !== null) {
+        currentIndexRef.current = first.index;
+        setCurrentIndex(first.index); // trigger re-render so isActive updates
+      }
+    },
+    [],
+  );
 
   const viewabilityConfig = useMemo(
     () => ({
@@ -163,7 +166,7 @@ export default function OptimizedVideoList({ onClose, initialIndex = 0 }: Optimi
           decelerationRate="fast"
           extraData={{ currentIndex, isFocused }}
           showsVerticalScrollIndicator={false}
-                    initialScrollIndex={initialIndex}
+          initialScrollIndex={initialIndex}
           getItemType={() => "video"}
           overrideItemLayout={(layout) => {
             layout.span = 1;

@@ -1,6 +1,8 @@
 import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
 import { getConfig } from "../config/production";
+import { withSupabaseConfig } from "../lib/supabase";
+import { withSupabaseRetry } from "../lib/supabase";
 
 // Type definitions for RevenueCat
 interface RevenueCatCustomerInfo {
@@ -81,14 +83,14 @@ let Purchases: {
   getCustomerInfo: () => Promise<RevenueCatCustomerInfo>;
 } | null = null;
 
-let _CustomerInfo: new (...args: any[]) => RevenueCatCustomerInfo | null = null;
-let _PurchasesOffering: new (...args: any[]) => RevenueCatOffering | null = null;
-let _PurchasesPackage: new (...args: any[]) => RevenueCatPackage | null = null;
+let _CustomerInfo: any = null;
+let _PurchasesOffering: any = null;
+let _PurchasesPackage: any = null;
 
 const loadRevenueCat = async () => {
   if (!Purchases && !IS_EXPO_GO) {
     try {
-      const RevenueCatModule = require("react-native-purchases");
+      const RevenueCatModule = await import("react-native-purchases");
       Purchases = RevenueCatModule.default;
       _CustomerInfo = RevenueCatModule.CustomerInfo;
       _PurchasesOffering = RevenueCatModule.PurchasesOffering;
@@ -116,6 +118,30 @@ export interface SubscriptionTier {
 export class RevenueCatService {
   private static isInitialized = false;
 
+  private static sleep(ms: number) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  // Retry wrapper for purchases to handle transient failures
+  private static async purchaseWithRetry(
+    pkg: RevenueCatPackage,
+    attempts = 3,
+    baseDelay = 500,
+  ): Promise<RevenueCatPurchaseResult | undefined> {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await Purchases!.purchasePackage(pkg);
+      } catch (e: any) {
+        const msg = (e?.message || "").toLowerCase();
+        const userCanceled = msg.includes("cancel");
+        const retryable = !userCanceled && (msg.includes("network") || msg.includes("timeout") || e?.code === 503);
+        if (!retryable || i === attempts - 1) throw e;
+        await RevenueCatService.sleep(baseDelay * Math.pow(2, i));
+      }
+    }
+    return undefined;
+  }
+
   static async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
@@ -126,6 +152,12 @@ export class RevenueCatService {
     }
 
     try {
+      // Runtime guard for API key to prevent null-key initialization
+      if (!REVENUECAT_API_KEY) {
+        console.warn("RevenueCat API key missing/invalid; skipping Purchases.configure (demo mode)");
+        this.isInitialized = true;
+        return;
+      }
       await loadRevenueCat();
 
       if (!Purchases) {
@@ -211,16 +243,20 @@ export class RevenueCatService {
       if (__DEV__) {
         console.log("🚀 Purchasing package:", packageToPurchase);
       }
-      const { customerInfo, productIdentifier } = await Purchases.purchasePackage(packageToPurchase);
+      const result = await this.purchaseWithRetry(packageToPurchase);
+      const customerInfo = result?.customerInfo;
+      const productIdentifier = result?.productIdentifier;
 
       if (__DEV__) {
         console.log("✅ Purchase completed successfully!", { customerInfo, productIdentifier });
       }
 
       // Update subscription status in Supabase
-      await this.syncSubscriptionStatus(customerInfo);
+      if (customerInfo) {
+        await this.syncSubscriptionStatus(customerInfo);
+      }
 
-      return { customerInfo, productIdentifier };
+      return { customerInfo: customerInfo || ({} as RevenueCatCustomerInfo), productIdentifier: productIdentifier || "" };
     } catch (error) {
       if (__DEV__) {
         console.error("Purchase failed:", error);
@@ -273,19 +309,48 @@ export class RevenueCatService {
       const activeSubscriptions = customerInfo.activeSubscriptions || [];
       const isPremium = activeSubscriptions.length > 0;
 
-      // Update user subscription status in Supabase
-      const { error } = await supabase.from("user_subscriptions").upsert({
-        user_id: user.id,
-        is_premium: isPremium,
-        subscription_ids: activeSubscriptions,
-        customer_info: customerInfo,
-        updated_at: new Date().toISOString(),
-      });
+      // Update user subscription status in Supabase with offline queue support
+      const { enqueue, isOnline } = await import("../lib/offlineQueue");
+      const doUpsert = async () => {
+        const { error } = await withSupabaseRetry(async () =>
+          supabase.from("user_subscriptions").upsert({
+            user_id: user.id,
+            is_premium: isPremium,
+            subscription_ids: activeSubscriptions,
+            customer_info: customerInfo as any,
+            updated_at: new Date().toISOString(),
+          }),
+        );
+        if (error) throw error;
+      };
 
-      if (error) {
-        console.error("Failed to sync subscription status:", error);
-      } else {
+      if (!isOnline()) {
+        enqueue("subscription.sync", {
+          userId: user.id,
+          isPremium,
+          activeSubscriptions,
+          customerInfo,
+        });
+        console.log("📦 Queued subscription sync (offline)");
+        return;
+      }
+
+      try {
+        await withSupabaseConfig(doUpsert);
         console.log("✅ Subscription status synced with Supabase");
+      } catch (e: any) {
+        const msg = (e?.message || "").toLowerCase();
+        if (/network|timeout|fetch|503|429/.test(msg)) {
+          enqueue("subscription.sync", {
+            userId: user.id,
+            isPremium,
+            activeSubscriptions,
+            customerInfo,
+          });
+          console.log("📦 Queued subscription sync after network error");
+        } else {
+          throw e;
+        }
       }
     } catch (error) {
       console.error("Failed to sync subscription status:", error);
@@ -334,7 +399,7 @@ export class RevenueCatService {
 
     try {
       const customerInfo = await this.getCustomerInfo();
-      if (!customerInfo || 'mockCustomerInfo' in customerInfo) {
+      if (!customerInfo || "mockCustomerInfo" in customerInfo) {
         return false;
       }
 
@@ -370,5 +435,27 @@ export class RevenueCatService {
         isPopular: true,
       },
     ];
+  }
+
+  // Unified access for subscription tiers in all envs
+  static async getSubscriptionTiers(): Promise<SubscriptionTier[] | null> {
+    if (IS_EXPO_GO) {
+      return this.getMockOfferings();
+    }
+    try {
+      const offerings = await this.getOfferings();
+      if (!offerings || !offerings.current) return null;
+      const pkgs = offerings.current.packages || [];
+      const tiers: SubscriptionTier[] = pkgs.map((p) => ({
+        id: p.identifier,
+        name: p.product?.title || p.identifier,
+        price: p.product?.priceString || "",
+        features: [],
+      }));
+      return tiers.length ? tiers : null;
+    } catch (e) {
+      if (__DEV__) console.warn("getSubscriptionTiers failed:", e);
+      return null;
+    }
   }
 }

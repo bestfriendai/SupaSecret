@@ -4,9 +4,26 @@ import { IAnonymiser, ProcessedVideo, VideoProcessingOptions } from "./IAnonymis
 import { ensureSignedVideoUrl, uploadVideoToSupabase } from "../utils/storage";
 import { supabase } from "../lib/supabase";
 import { env } from "../utils/env";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
+import { videoCacheManager } from "../utils/videoCacheManager";
+
+type JobId = string;
+interface ProcessingJob {
+  id: JobId;
+  uri: string;
+  options: VideoProcessingOptions;
+  cancelled: boolean;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const yieldToMain = () => sleep(0);
 
 export class VideoProcessingService implements IAnonymiser {
   private isInitialized = false;
+  private queue: ProcessingJob[] = [];
+  private activeJob: ProcessingJob | null = null;
+  private cache = new Map<string, { result: ProcessedVideo; ts: number }>();
+  private CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
@@ -21,6 +38,20 @@ export class VideoProcessingService implements IAnonymiser {
     const { onProgress } = options;
 
     try {
+      // Cache check (avoid reprocessing same uri + options signature)
+      const cacheKey = `${videoUri}:${JSON.stringify({
+        enableFaceBlur: options.enableFaceBlur,
+        enableVoiceChange: options.enableVoiceChange,
+        enableTranscription: options.enableTranscription,
+        quality: options.quality,
+        voiceEffect: options.voiceEffect,
+      })}`;
+      const cached = this.cache.get(cacheKey);
+      if (cached && Date.now() - cached.ts < this.CACHE_TTL_MS) {
+        onProgress?.(100, "Using cached processing result");
+        return cached.result;
+      }
+
       onProgress?.(5, "Initializing video processing...");
 
       // Validate input file
@@ -36,14 +67,58 @@ export class VideoProcessingService implements IAnonymiser {
 
       // If in Expo Go mode, use server-side processing via Edge Function
       if (env.expoGo) {
-        return await this.processVideoServerSide(videoUri, options, onProgress);
+        const start = Date.now();
+        const res = await this.processVideoServerSide(videoUri, options, onProgress);
+        trackStoreOperation("VideoProcessingService", "serverProcess", Date.now() - start);
+        this.cache.set(cacheKey, { result: res, ts: Date.now() });
+        return res;
       }
 
       // Otherwise, use local processing (for development builds)
-      return await this.processVideoLocally(videoUri, options, onProgress);
+      const start = Date.now();
+      const res = await this.enqueueAndProcess(videoUri, options, onProgress);
+      trackStoreOperation("VideoProcessingService", "localProcess", Date.now() - start);
+      this.cache.set(cacheKey, { result: res, ts: Date.now() });
+      return res;
     } catch (error) {
       console.error("Video processing failed:", error);
       throw new Error(`Video processing failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  /**
+   * Adds a job to a single-consumer queue and processes in background yielding to UI.
+   */
+  private async enqueueAndProcess(
+    videoUri: string,
+    options: VideoProcessingOptions,
+    onProgress?: (progress: number, message: string) => void,
+  ): Promise<ProcessedVideo> {
+    const job: ProcessingJob = { id: `${Date.now()}-${Math.random()}`, uri: videoUri, options, cancelled: false };
+    this.queue.push(job);
+
+    // Process sequentially
+    while (this.activeJob && this.activeJob !== job) {
+      await sleep(50);
+    }
+    this.activeJob = job;
+    try {
+      // Background-friendly staged progress
+      onProgress?.(12, "Queued for processing...");
+      await yieldToMain();
+
+      // Pre-warm cache (downloads to local if remote)
+      try {
+        onProgress?.(18, "Preparing files...");
+        await videoCacheManager.cacheVideo(videoUri, "high");
+      } catch {}
+
+      const result = await this.processVideoLocally(videoUri, options, (p, m) => onProgress?.(p, m));
+      return result;
+    } finally {
+      // Dequeue and release
+      this.queue = this.queue.filter((q) => q.id !== job.id);
+      this.activeJob = null;
     }
   }
 
@@ -66,11 +141,12 @@ export class VideoProcessingService implements IAnonymiser {
       }
 
       // Upload video to Supabase storage using streaming helper
-      const upload = await uploadVideoToSupabase(videoUri, user.id, (p) =>
-        onProgress?.(10 + (p * 0.2) / 100, "Uploading video..."),
-      );
+      const upload = await uploadVideoToSupabase(videoUri, user.id, {
+        onProgress: (p: number) => onProgress?.(10 + (p * 0.2) / 100, "Uploading video..."),
+      });
 
       onProgress?.(30, "Processing video on server...");
+      await yieldToMain();
 
       // Call Edge Function for processing using storage path (private bucket)
       const { data: processData, error: processError } = await supabase.functions.invoke("process-video", {
@@ -134,6 +210,7 @@ export class VideoProcessingService implements IAnonymiser {
     await FileSystem.makeDirectoryAsync(processingDir, { intermediates: true });
 
     onProgress?.(15, "Applying face blur effect...");
+    await yieldToMain();
 
     // Simulate face blur processing (in development build, this would use real ML Kit)
     let processedVideoUri = videoUri;
@@ -142,6 +219,7 @@ export class VideoProcessingService implements IAnonymiser {
     }
 
     onProgress?.(35, "Processing audio with voice effects...");
+    await yieldToMain();
 
     // Simulate voice change processing
     let voiceChangeApplied = false;
@@ -150,6 +228,7 @@ export class VideoProcessingService implements IAnonymiser {
     }
 
     onProgress?.(55, "Generating transcription...");
+    await yieldToMain();
 
     // Generate transcription
     let transcription = "";
@@ -158,6 +237,7 @@ export class VideoProcessingService implements IAnonymiser {
     }
 
     onProgress?.(75, "Generating thumbnail...");
+    await yieldToMain();
 
     // Generate thumbnail
     const thumbnailUri = await this.generateThumbnail(processedVideoUri);
@@ -275,6 +355,15 @@ export class VideoProcessingService implements IAnonymiser {
       await FileSystem.deleteAsync(processingDir, { idempotent: true });
     } catch (error) {
       console.error("Cleanup failed:", error);
+    }
+  }
+
+  /**
+   * Basic cancellation support for the active job (best-effort).
+   */
+  cancelActiveJob(): void {
+    if (this.activeJob) {
+      this.activeJob.cancelled = true;
     }
   }
 

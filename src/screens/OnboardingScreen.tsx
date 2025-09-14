@@ -3,9 +3,7 @@ import { View, Dimensions, Pressable, Text, Alert, ScrollView, FlatList } from "
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import Animated, {
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { useSharedValue } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
@@ -15,7 +13,7 @@ import {
   announceOnboardingSkipped,
   announceForAccessibility,
   getAccessibilityState,
-  accessibleHapticFeedback
+  accessibleHapticFeedback,
 } from "../utils/accessibility";
 
 import OnboardingSlide from "../components/OnboardingSlide";
@@ -29,7 +27,7 @@ import {
   trackOnboardingEvent,
   validateOnboardingState,
   handleOnboardingError,
-  getOnboardingConfig
+  getOnboardingConfig,
 } from "../utils/onboardingHelpers";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -45,7 +43,6 @@ export default function OnboardingScreen() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accessibilityState, setAccessibilityState] = useState({
@@ -59,17 +56,12 @@ export default function OnboardingScreen() {
   const config = useMemo(() => getOnboardingConfig(), []);
 
   // Modern animation hooks
-  const {
-    skipButtonStyle,
-    slideContainerStyle,
-    buttonAnimatedStyle,
-    animateButtonPress,
-    animateSlideTransition,
-  } = useOnboardingAnimation({
-    totalSlides: onboardingSlides.length,
-    currentIndex,
-    scrollX,
-  });
+  const { skipButtonStyle, slideContainerStyle, buttonAnimatedStyle, animateButtonPress, animateSlideTransition } =
+    useOnboardingAnimation({
+      totalSlides: onboardingSlides.length,
+      currentIndex,
+      scrollX,
+    });
 
   // Initialize accessibility state and track onboarding start
   useEffect(() => {
@@ -83,7 +75,7 @@ export default function OnboardingScreen() {
 
     initializeAccessibility();
 
-    trackOnboardingEvent('onboarding_started', {
+    trackOnboardingEvent("onboarding_started", {
       userAuthenticated: isAuthenticated,
       hasUser: !!user,
     });
@@ -101,22 +93,22 @@ export default function OnboardingScreen() {
   const handleScroll = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     scrollX.value = offsetX;
-    console.log('📜 Scroll event - offsetX:', offsetX, 'calculated index:', Math.round(offsetX / screenWidth));
+    console.log("📜 Scroll event - offsetX:", offsetX, "calculated index:", Math.round(offsetX / screenWidth));
   };
 
   const handleMomentumScrollEnd = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(offsetX / screenWidth);
-    console.log('🛑 Momentum end - offsetX:', offsetX, 'calculated index:', index, 'current index:', currentIndex);
+    console.log("🛑 Momentum end - offsetX:", offsetX, "calculated index:", index, "current index:", currentIndex);
 
     // Only update if it's different from current index and within valid range
     if (index !== currentIndex && index >= 0 && index < onboardingSlides.length) {
-      console.log('🔄 Updating index from', currentIndex, 'to', index);
+      console.log("🔄 Updating index from", currentIndex, "to", index);
       setCurrentIndex(index);
       animateSlideTransition();
-      accessibleHapticFeedback('light');
+      accessibleHapticFeedback("light");
     } else {
-      console.log('⏸️ Index unchanged, staying at:', currentIndex);
+      console.log("⏸️ Index unchanged, staying at:", currentIndex);
     }
   };
 
@@ -129,39 +121,36 @@ export default function OnboardingScreen() {
   //   }
   // }, [currentIndex, screenWidth]);
 
-
-
-
   const handleNext = () => {
-    console.log('🔥 NEXT PRESSED - Current:', currentIndex, 'Total slides:', onboardingSlides.length);
+    console.log("🔥 NEXT PRESSED - Current:", currentIndex, "Total slides:", onboardingSlides.length);
     const nextIndex = currentIndex + 1;
 
     if (nextIndex < onboardingSlides.length) {
-      console.log('✅ Going to slide:', nextIndex, 'FlatList ref present?', !!flatListRef.current);
+      console.log("✅ Going to slide:", nextIndex, "FlatList ref present?", !!flatListRef.current);
 
       if (!flatListRef.current) {
-        console.error('❌ FlatList ref is null, cannot scroll');
+        console.error("❌ FlatList ref is null, cannot scroll");
         return;
       }
 
       // Calculate target position
       const targetX = nextIndex * screenWidth;
-      console.log('📐 Target scroll position:', targetX, 'for index:', nextIndex);
+      console.log("📐 Target scroll position:", targetX, "for index:", nextIndex);
 
       try {
         // Direct scroll without delays or flags - keep it simple
         flatListRef.current.scrollToOffset({
           offset: targetX,
-          animated: true
+          animated: true,
         });
 
-        console.log('✅ Scroll command sent successfully');
+        console.log("✅ Scroll command sent successfully");
 
         // Update state after scroll command
         setCurrentIndex(nextIndex);
 
         // Track slide progression
-        trackOnboardingEvent('onboarding_slide_viewed', {
+        trackOnboardingEvent("onboarding_slide_viewed", {
           slideIndex: nextIndex,
           slideTitle: onboardingSlides[nextIndex].title,
         });
@@ -171,19 +160,17 @@ export default function OnboardingScreen() {
 
         // Haptic feedback
         impactAsync();
-
       } catch (error) {
-        console.error('❌ Scroll failed:', error);
+        console.error("❌ Scroll failed:", error);
       }
-
     } else {
-      console.log('🏁 Last slide - calling handleGetStarted');
+      console.log("🏁 Last slide - calling handleGetStarted");
       handleGetStarted();
     }
   };
 
   const handleSkip = () => {
-    trackOnboardingEvent('onboarding_skipped', {
+    trackOnboardingEvent("onboarding_skipped", {
       currentSlide: currentIndex,
       totalSlides: onboardingSlides.length,
     });
@@ -193,7 +180,7 @@ export default function OnboardingScreen() {
     }
 
     navigation.navigate("SignUp");
-    accessibleHapticFeedback('light');
+    accessibleHapticFeedback("light");
   };
 
   const handleGetStarted = async () => {
@@ -208,7 +195,7 @@ export default function OnboardingScreen() {
       // Validate onboarding state
       const validation = validateOnboardingState(user, isAuthenticated);
 
-      trackOnboardingEvent('onboarding_get_started_pressed', {
+      trackOnboardingEvent("onboarding_get_started_pressed", {
         userExists: !!user,
         isAuthenticated,
         validationReason: validation.reason,
@@ -217,29 +204,25 @@ export default function OnboardingScreen() {
       if (user && user.id) {
         // User is authenticated but not onboarded - mark as onboarded
         await setOnboarded();
-        trackOnboardingEvent('onboarding_completed', {
+        trackOnboardingEvent("onboarding_completed", {
           userId: user.id,
-          completionMethod: 'get_started',
+          completionMethod: "get_started",
         });
 
         if (accessibilityState.isScreenReaderEnabled) {
           announceOnboardingComplete();
         }
 
-        accessibleHapticFeedback('success');
+        accessibleHapticFeedback("success");
         // Navigation will be handled automatically by auth state change
       } else {
         // User needs to sign up first
         navigation.navigate("SignUp");
-        accessibleHapticFeedback('light');
+        accessibleHapticFeedback("light");
       }
     } catch (error) {
-      const errorInfo = handleOnboardingError(error, 'get_started');
-      Alert.alert(
-        errorInfo.title,
-        errorInfo.message,
-        [{ text: "OK", onPress: () => setIsProcessing(false) }]
-      );
+      const errorInfo = handleOnboardingError(error, "get_started");
+      Alert.alert(errorInfo.title, errorInfo.message, [{ text: "OK", onPress: () => setIsProcessing(false) }]);
       return;
     }
 
@@ -254,8 +237,6 @@ export default function OnboardingScreen() {
   // Animation styles are now provided by useOnboardingAnimation hook
 
   const isLastSlide = currentIndex === onboardingSlides.length - 1;
-
-
 
   return (
     <SafeAreaView className="flex-1 bg-black">
@@ -307,17 +288,17 @@ export default function OnboardingScreen() {
           accessibilityLabel={`Onboarding slides, ${onboardingSlides.length} slides total`}
           accessibilityHint="Swipe left or right to navigate between slides"
           accessibilityActions={[
-            { name: 'increment', label: 'Next slide' },
-            { name: 'decrement', label: 'Previous slide' },
+            { name: "increment", label: "Next slide" },
+            { name: "decrement", label: "Previous slide" },
           ]}
           onAccessibilityAction={(event) => {
             switch (event.nativeEvent.actionName) {
-              case 'increment':
+              case "increment":
                 if (currentIndex < onboardingSlides.length - 1) {
                   handleNext();
                 }
                 break;
-              case 'decrement':
+              case "decrement":
                 if (currentIndex > 0 && flatListRef.current) {
                   const prevIndex = currentIndex - 1;
                   const targetX = prevIndex * screenWidth;
@@ -325,11 +306,11 @@ export default function OnboardingScreen() {
                   try {
                     flatListRef.current.scrollToOffset({
                       offset: targetX,
-                      animated: true
+                      animated: true,
                     });
                     setCurrentIndex(prevIndex);
                   } catch (error) {
-                    console.error('❌ Accessibility decrement scroll failed:', error);
+                    console.error("❌ Accessibility decrement scroll failed:", error);
                   }
                 }
                 break;
@@ -345,20 +326,20 @@ export default function OnboardingScreen() {
             marginHorizontal: 24,
             marginBottom: 16,
             padding: 16,
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
             borderRadius: 12,
             borderWidth: 1,
-            borderColor: 'rgba(239, 68, 68, 0.3)',
+            borderColor: "rgba(239, 68, 68, 0.3)",
           }}
           accessibilityRole="alert"
           accessibilityLabel={`Error: ${error}`}
         >
           <Text
             style={{
-              color: '#EF4444',
+              color: "#EF4444",
               fontSize: 14,
-              fontWeight: '500',
-              textAlign: 'center',
+              fontWeight: "500",
+              textAlign: "center",
             }}
           >
             {error}
@@ -394,7 +375,7 @@ export default function OnboardingScreen() {
                 accessibilityLabel="Sign in to existing account"
                 disabled={isProcessing}
               >
-                <Text className={`text-15 font-semibold ${isProcessing ? 'text-gray-600' : 'text-blue-400'}`}>
+                <Text className={`text-15 font-semibold ${isProcessing ? "text-gray-600" : "text-blue-400"}`}>
                   Sign In
                 </Text>
               </Pressable>
@@ -411,12 +392,12 @@ export default function OnboardingScreen() {
                   try {
                     flatListRef.current.scrollToOffset({
                       offset: targetX,
-                      animated: true
+                      animated: true,
                     });
                     setCurrentIndex(prevIndex);
                     impactAsync();
                   } catch (error) {
-                    console.error('❌ Back button scroll failed:', error);
+                    console.error("❌ Back button scroll failed:", error);
                   }
                 }
               }}

@@ -61,7 +61,7 @@ export default function HomeScreen() {
   const actionSheetRef = useRef<BottomSheetModal | null>(null);
 
   // FlashList ref for potential future scroll restoration
-  const flashListRef = useRef<FlashList<Confession> | null>(null);
+  const flashListRef = useRef<any | null>(null);
 
   // Check network connectivity and handle errors
   useEffect(() => {
@@ -366,7 +366,7 @@ export default function HomeScreen() {
             viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
             extraData={{ refreshing, isLoadingMore, networkError }}
             // FlashList v2 performance props
-                      />
+          />
         </Animated.View>
       </View>
 

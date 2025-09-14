@@ -20,7 +20,6 @@ function ProgressDot({
   scrollX: SharedValue<number>;
   screenWidth: number;
 }) {
-
   const { dotStyle } = useProgressDotAnimation(index, scrollX);
 
   return (
@@ -44,7 +43,7 @@ export default function ProgressIndicator({
   scrollX,
   screenWidth,
   currentIndex = 0,
-  accessibilityLabel = "Onboarding progress"
+  accessibilityLabel = "Onboarding progress",
 }: ProgressIndicatorProps) {
   const progress = Math.round(((currentIndex + 1) / totalSlides) * 100);
 
@@ -53,7 +52,7 @@ export default function ProgressIndicator({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
       }}
       accessibilityRole="progressbar"
       accessibilityLabel={accessibilityLabel}
@@ -66,11 +65,7 @@ export default function ProgressIndicator({
     >
       {Array.from({ length: totalSlides }).map((_, index) => (
         <View key={index} style={{ marginLeft: index > 0 ? 8 : 0 }}>
-          <ProgressDot
-            index={index}
-            scrollX={scrollX}
-            screenWidth={screenWidth}
-          />
+          <ProgressDot index={index} scrollX={scrollX} screenWidth={screenWidth} />
         </View>
       ))}
     </View>

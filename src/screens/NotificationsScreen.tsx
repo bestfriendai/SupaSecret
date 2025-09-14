@@ -246,7 +246,7 @@ export default function NotificationsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1D9BF0" colors={["#1D9BF0"]} />
         }
         // FlashList v2 performance props
-              />
+      />
     </View>
   );
 }

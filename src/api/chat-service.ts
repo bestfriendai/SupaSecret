@@ -45,7 +45,7 @@ export const getAnthropicTextResponse = async (
 
     return await executeApiRequest(
       async () => {
-        const client = getAnthropicClient();
+        const client = await getAnthropicClient();
         if (!client) {
           throw new Error("Failed to initialize Anthropic client");
         }
@@ -149,7 +149,7 @@ export const getOpenAITextResponse = async (messages: AIMessage[], options?: AIR
 
     return await executeApiRequest(
       async () => {
-        const client = getOpenAIClient();
+        const client = await getOpenAIClient();
         if (!client) {
           throw new Error("Failed to initialize OpenAI client");
         }
@@ -238,7 +238,7 @@ export const getGrokTextResponse = async (messages: AIMessage[], options?: AIReq
 
     return await executeApiRequest(
       async () => {
-        const client = getGrokClient();
+        const client = await getGrokClient();
         if (!client) {
           throw new Error("Failed to initialize Grok client");
         }

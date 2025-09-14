@@ -1,7 +1,8 @@
-import { useRef, useEffect, useMemo, useCallback } from "react";
+import { useRef, useEffect, useMemo, useCallback, useState } from "react";
 import { AppState } from "react-native";
 import { useVideoPlayer, VideoPlayer } from "expo-video";
 import { useConfessionStore } from "../state/confessionStore";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 
 interface VideoItem {
   id: string;
@@ -18,78 +19,62 @@ interface VideoPlayerManager {
   unmuteAll: () => void;
   updateMuteState: (forceUnmuted?: boolean) => void;
   cleanup: () => void;
-  stopAll: () => void; // New method to completely stop all videos
+  stopAll: () => void;
 }
 
 export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
-  const playersRef = useRef<Map<number, VideoPlayer>>(new Map());
-  const currentPlayingRef = useRef<number>(-1);
+  // Pool of 3 players: prev/current/next
+  const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   const userPreferences = useConfessionStore((state) => state.userPreferences);
 
-  // Fallback sample video to avoid blank players when a videoUri is missing
-  const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+  // Track which index is considered "current"
+  const currentIndexRef = useRef<number>(0);
+  const currentPlayingRef = useRef<number>(-1);
 
-  // Create video players using individual hooks (following Rules of Hooks)
-  const player0 = useVideoPlayer(videos.length > 0 ? videos[0]?.videoUri || FALLBACK_VIDEO : null, (player) => {
-    player.loop = true;
-    player.muted = !userPreferences.sound_enabled;
-  });
+  // A monotonically increasing key to force re-binding sources without changing API
+  const [poolKey, setPoolKey] = useState(0);
 
-  const player1 = useVideoPlayer(videos.length > 1 ? videos[1]?.videoUri || FALLBACK_VIDEO : null, (player) => {
-    player.loop = true;
-    player.muted = !userPreferences.sound_enabled;
-  });
-
-  const player2 = useVideoPlayer(videos.length > 2 ? videos[2]?.videoUri || FALLBACK_VIDEO : null, (player) => {
-    player.loop = true;
-    player.muted = !userPreferences.sound_enabled;
-  });
-
-  const player3 = useVideoPlayer(videos.length > 3 ? videos[3]?.videoUri || FALLBACK_VIDEO : null, (player) => {
-    player.loop = true;
-    player.muted = !userPreferences.sound_enabled;
-  });
-
-  const player4 = useVideoPlayer(videos.length > 4 ? videos[4]?.videoUri || FALLBACK_VIDEO : null, (player) => {
-    player.loop = true;
-    player.muted = !userPreferences.sound_enabled;
-  });
-
-  const player5 = useVideoPlayer(videos.length > 5 ? videos[5]?.videoUri || FALLBACK_VIDEO : null, (player) => {
-    player.loop = true;
-    player.muted = !userPreferences.sound_enabled;
-  });
-
-  const player6 = useVideoPlayer(videos.length > 6 ? videos[6]?.videoUri || FALLBACK_VIDEO : null, (player) => {
-    player.loop = true;
-    player.muted = !userPreferences.sound_enabled;
-  });
-
-  const player7 = useVideoPlayer(videos.length > 7 ? videos[7]?.videoUri || FALLBACK_VIDEO : null, (player) => {
-    player.loop = true;
-    player.muted = !userPreferences.sound_enabled;
-  });
-
-  // Store players in a stable array
-  const players = useMemo(
-    () => [player0, player1, player2, player3, player4, player5, player6, player7],
-    [player0, player1, player2, player3, player4, player5, player6, player7],
+  const resolveSrc = useCallback(
+    (offset: -1 | 0 | 1) => {
+      const idx = currentIndexRef.current + offset;
+      const uri = idx >= 0 && idx < videos.length ? videos[idx]?.videoUri : null;
+      return uri || FALLBACK_VIDEO;
+    },
+    [videos, FALLBACK_VIDEO],
   );
 
-  // Initialize players map
+  // Create exactly three players; sources update when poolKey changes
+  const playerPrev = useVideoPlayer(resolveSrc(-1), (player) => {
+    player.loop = true;
+    player.muted = !userPreferences.sound_enabled;
+  });
+  const playerCurrent = useVideoPlayer(resolveSrc(0), (player) => {
+    player.loop = true;
+    player.muted = !userPreferences.sound_enabled;
+  });
+  const playerNext = useVideoPlayer(resolveSrc(1), (player) => {
+    player.loop = true;
+    player.muted = !userPreferences.sound_enabled;
+  });
+
+  // Keep a mapping for quick access
+  const playersRef = useRef<{ prev: VideoPlayer | null; curr: VideoPlayer | null; next: VideoPlayer | null }>({
+    prev: null,
+    curr: null,
+    next: null,
+  });
+
   useEffect(() => {
-    playersRef.current.clear();
-    players.forEach((player, index) => {
-      if (player && index < videos.length) {
-        playersRef.current.set(index, player);
-      }
-    });
-  }, [players, videos.length]);
+    playersRef.current.prev = playerPrev ?? null;
+    playersRef.current.curr = playerCurrent ?? null;
+    playersRef.current.next = playerNext ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerPrev, playerCurrent, playerNext, poolKey]);
 
   // Define updateMuteState before using it in useEffect
   const updateMuteState = useCallback(
     (forceUnmuted?: boolean) => {
-      playersRef.current.forEach((player) => {
+      Object.values(playersRef.current).forEach((player) => {
         if (player) {
           if (forceUnmuted) {
             player.muted = false;
@@ -108,17 +93,21 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   }, [userPreferences.sound_enabled, updateMuteState]);
 
   const getPlayer = (index: number): VideoPlayer | null => {
-    return playersRef.current.get(index) || null;
+    // Map the requested index to one of prev/curr/next around the currentIndexRef
+    if (index === currentIndexRef.current) return playersRef.current.curr;
+    if (index === currentIndexRef.current - 1) return playersRef.current.prev;
+    if (index === currentIndexRef.current + 1) return playersRef.current.next;
+    return null; // out of pool window
   };
 
   const playVideo = useCallback(
     (index: number) => {
       try {
-        const player = playersRef.current.get(index);
+        const player = getPlayer(index);
         if (player) {
           // Pause currently playing video
           if (currentPlayingRef.current !== -1 && currentPlayingRef.current !== index) {
-            const currentPlayer = playersRef.current.get(currentPlayingRef.current);
+            const currentPlayer = getPlayer(currentPlayingRef.current);
             try {
               if (currentPlayer && typeof currentPlayer.pause === "function") {
                 currentPlayer.pause();
@@ -133,10 +122,16 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
           player.play();
           currentPlayingRef.current = index;
 
+          // Recenter pool around the new index (prev/current/next)
+          const start = Date.now();
+          currentIndexRef.current = index;
+          setPoolKey((k) => k + 1); // force sources rebinding
+          trackStoreOperation("useVideoPlayers", "recenterPool", Date.now() - start);
+
           // Preload neighboring videos for smoother experience
           // Preload previous video
           if (index > 0) {
-            const prevPlayer = playersRef.current.get(index - 1);
+            const prevPlayer = getPlayer(index - 1);
             if (prevPlayer) {
               try {
                 // Load the video without playing
@@ -151,7 +146,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
 
           // Preload next video
           if (index < videos.length - 1) {
-            const nextPlayer = playersRef.current.get(index + 1);
+            const nextPlayer = getPlayer(index + 1);
             if (nextPlayer) {
               try {
                 // Load the video without playing
@@ -175,7 +170,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
 
   const pauseVideo = useCallback((index: number) => {
     try {
-      const player = playersRef.current.get(index);
+      const player = getPlayer(index);
       if (player && typeof player.pause === "function") {
         player.pause();
         if (currentPlayingRef.current === index) {
@@ -190,7 +185,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   }, []);
 
   const pauseAll = useCallback(() => {
-    playersRef.current.forEach((player) => {
+    [playersRef.current.prev, playersRef.current.curr, playersRef.current.next].forEach((player) => {
       try {
         if (player && typeof player.pause === "function") {
           player.pause();
@@ -205,7 +200,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   }, []);
 
   const muteAll = useCallback(() => {
-    playersRef.current.forEach((player) => {
+    [playersRef.current.prev, playersRef.current.curr, playersRef.current.next].forEach((player) => {
       if (player) {
         try {
           player.muted = true;
@@ -219,7 +214,7 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
   }, []);
 
   const unmuteAll = useCallback(() => {
-    playersRef.current.forEach((player) => {
+    [playersRef.current.prev, playersRef.current.curr, playersRef.current.next].forEach((player) => {
       if (player) {
         player.muted = false;
       }
@@ -234,7 +229,9 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
 
   const cleanup = useCallback(() => {
     stopAll();
-    playersRef.current.clear();
+    playersRef.current.prev = null;
+    playersRef.current.curr = null;
+    playersRef.current.next = null;
   }, [stopAll]);
 
   // Handle app state changes to pause all videos when app goes to background
@@ -249,6 +246,18 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
     const subscription = AppState.addEventListener("change", handleAppStateChange);
     return () => subscription?.remove();
   }, [pauseAll]);
+
+  // Timeout-based cleanup for long-unused players
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // If nothing playing, ensure players are paused and muted to reduce load
+      if (currentPlayingRef.current === -1) {
+        muteAll();
+        pauseAll();
+      }
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [muteAll, pauseAll]);
 
   // Cleanup on unmount
   useEffect(() => {

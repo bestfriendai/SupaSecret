@@ -51,7 +51,7 @@ export default function VideoRecordScreen() {
   // Mount/recording guards to prevent camera-unmounted errors
   const isMountedRef = useRef(true);
   const isRecordingRef = useRef(false);
-  const cleanupRef = useRef<() => void>();
+  const cleanupRef = useRef<(() => void) | undefined>(() => {});
 
   useEffect(() => {
     isRecordingRef.current = isRecording;
@@ -274,7 +274,6 @@ export default function VideoRecordScreen() {
 
     // TikTok-like animation: scale down record button and fade controls
 
-
     setBlurIntensity(35);
 
     // Start timer
@@ -331,7 +330,6 @@ export default function VideoRecordScreen() {
       impactAsync();
 
       // TikTok-like animation: restore record button and controls
-
 
       setBlurIntensity(25);
 
@@ -528,18 +526,7 @@ export default function VideoRecordScreen() {
     return (
       <View className="flex-1 bg-black">
         {previewPlayer ? (
-          <VideoView
-            player={previewPlayer}
-            style={{ flex: 1 }}
-            contentFit="cover"
-            nativeControls={false}
-            onError={(error) => {
-              if (__DEV__) {
-                console.error("VideoView error:", error);
-              }
-              showMessage("Failed to load video preview. Please try recording again.", "error");
-            }}
-          />
+          <VideoView player={previewPlayer} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
         ) : (
           <View style={{ flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" }}>
             <Text style={{ color: "white" }}>Loading preview...</Text>
@@ -690,17 +677,40 @@ export default function VideoRecordScreen() {
         {/* Overlay UI */}
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}>
           {/* Top Controls */}
-          <SafeAreaView style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8 }}>
-            <Pressable style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, padding: 12 }} onPress={() => navigation.goBack()}>
+          <SafeAreaView
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+            }}
+          >
+            <Pressable
+              style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, padding: 12 }}
+              onPress={() => navigation.goBack()}
+            >
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </Pressable>
 
-            <View style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 8, flexDirection: "row", alignItems: "center" }}>
+            <View
+              style={{
+                backgroundColor: "rgba(0,0,0,0.7)",
+                borderRadius: 9999,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
               <View style={{ width: 8, height: 8, backgroundColor: "#10B981", borderRadius: 9999, marginRight: 8 }} />
               <Text style={{ color: "white", fontSize: 14, fontWeight: "500" }}>Protected Mode</Text>
             </View>
 
-            <Pressable style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, padding: 12 }} onPress={toggleCameraFacing}>
+            <Pressable
+              style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, padding: 12 }}
+              onPress={toggleCameraFacing}
+            >
               <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />
             </Pressable>
           </SafeAreaView>
@@ -708,10 +718,21 @@ export default function VideoRecordScreen() {
           {/* Bottom Controls */}
           <View style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
             <SafeAreaView style={{ alignItems: "center", paddingBottom: 32 }}>
-              <View style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 16, marginHorizontal: 16 }}>
+              <View
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.7)",
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  marginBottom: 16,
+                  marginHorizontal: 16,
+                }}
+              >
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
                   <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-                  <Text style={{ color: "#10B981", fontSize: 14, fontWeight: "600", marginLeft: 8 }}>Privacy Protection Active</Text>
+                  <Text style={{ color: "#10B981", fontSize: 14, fontWeight: "600", marginLeft: 8 }}>
+                    Privacy Protection Active
+                  </Text>
                 </View>
                 <Text style={{ color: "white", fontSize: 14, textAlign: "center", lineHeight: 20 }}>
                   Face blur and voice change will be applied automatically
@@ -734,12 +755,23 @@ export default function VideoRecordScreen() {
                     shadowRadius: 8,
                   }}
                 >
-                  <View style={{ width: 12, height: 12, backgroundColor: "white", borderRadius: 9999, marginRight: 12 }} />
+                  <View
+                    style={{ width: 12, height: 12, backgroundColor: "white", borderRadius: 9999, marginRight: 12 }}
+                  />
                   <Text style={{ color: "white", fontSize: 16, fontWeight: "bold", letterSpacing: 1 }}>
                     REC {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")}
                   </Text>
                   {/* Progress indicator */}
-                  <View style={{ marginLeft: 12, width: 64, height: 4, backgroundColor: "#F87171", borderRadius: 9999, overflow: "hidden" }}>
+                  <View
+                    style={{
+                      marginLeft: 12,
+                      width: 64,
+                      height: 4,
+                      backgroundColor: "#F87171",
+                      borderRadius: 9999,
+                      overflow: "hidden",
+                    }}
+                  >
                     <View
                       style={{
                         height: "100%",
@@ -812,7 +844,9 @@ export default function VideoRecordScreen() {
 
               {!isRecording && (
                 <View style={{ alignItems: "center", marginTop: 16 }}>
-                  <Text style={{ color: "white", fontSize: 16, fontWeight: "600", marginBottom: 4 }}>Tap to start recording</Text>
+                  <Text style={{ color: "white", fontSize: 16, fontWeight: "600", marginBottom: 4 }}>
+                    Tap to start recording
+                  </Text>
                   <Text style={{ color: "#9CA3AF", fontSize: 14 }}>Max duration: 60 seconds</Text>
                 </View>
               )}
@@ -830,7 +864,14 @@ export default function VideoRecordScreen() {
         {/* Live captions overlay for recording preview */}
         {isRecording && (
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 140, paddingHorizontal: 16 }}>
-            <View style={{ backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 }}>
+            <View
+              style={{
+                backgroundColor: "rgba(0,0,0,0.6)",
+                borderRadius: 16,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+              }}
+            >
               <Text style={{ color: "white", fontSize: 14, fontWeight: "500", textAlign: "center" }}>
                 Recording with live privacy protection...
               </Text>
@@ -841,7 +882,15 @@ export default function VideoRecordScreen() {
 
       {/* Custom Modal */}
       <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 24,
+          }}
+        >
           <View style={{ backgroundColor: "#111827", borderRadius: 16, padding: 24, width: "100%", maxWidth: 384 }}>
             <View style={{ alignItems: "center", marginBottom: 16 }}>
               <Ionicons
@@ -850,7 +899,9 @@ export default function VideoRecordScreen() {
                 color={modalType === "success" ? "#10B981" : "#EF4444"}
               />
             </View>
-            <Text style={{ color: "white", fontSize: 16, textAlign: "center", marginBottom: 24, lineHeight: 20 }}>{modalMessage}</Text>
+            <Text style={{ color: "white", fontSize: 16, textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
+              {modalMessage}
+            </Text>
             <View style={{ flexDirection: "row", gap: 12 }}>
               {modalButtons.map((button, index) => (
                 <Pressable

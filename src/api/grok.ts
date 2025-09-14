@@ -8,30 +8,51 @@ grok-3-latest
 grok-3-fast-latest
 grok-3-mini-latest
 */
-import OpenAI from "openai";
 import { handleApiError } from "../utils/apiUtils";
 import { createApiError, API_ERROR_CODES } from "../types/apiError";
 
-export const getGrokClient = () => {
+// Stub implementation for Expo Go compatibility
+const createStubClient = () => ({
+  chat: {
+    completions: {
+      create: async () => {
+        throw new Error(
+          "AI features require development build. This is a stub implementation for Expo Go compatibility.",
+        );
+      },
+    },
+  },
+});
+
+export const getGrokClient = async () => {
   try {
     const apiKey = process.env.EXPO_PUBLIC_VIBECODE_GROK_API_KEY || process.env.EXPO_PUBLIC_GROK_API_KEY;
     if (!apiKey) {
-      const error = createApiError(
-        "grok",
-        "Grok API key not found in environment variables. Please set EXPO_PUBLIC_VIBECODE_GROK_API_KEY or EXPO_PUBLIC_GROK_API_KEY",
-        API_ERROR_CODES.API_KEY_NOT_FOUND,
-      );
-      handleApiError(error, "grok", "getGrokClient");
-      return null; // Return null instead of throwing to prevent app crashes
+      console.warn("Grok API key not found - using stub client for Expo Go compatibility");
+      return createStubClient();
     }
 
-    return new OpenAI({
-      apiKey: apiKey,
-      baseURL: "https://api.x.ai/v1",
-    });
+    // In Expo Go, always return stub client to prevent require() errors
+    if (process.env.EXPO_PUBLIC_ENV === "development") {
+      console.warn("Using Grok stub client for Expo Go compatibility");
+      return createStubClient();
+    }
+
+    // For development builds, try to load the real SDK
+    try {
+      const module = await import("openai");
+      const OpenAISDK = module.default || module;
+      return new OpenAISDK({
+        apiKey: apiKey,
+        baseURL: "https://api.x.ai/v1",
+      });
+    } catch (error) {
+      console.warn("OpenAI SDK not available for Grok, using stub client:", error);
+      return createStubClient();
+    }
   } catch (error) {
     handleApiError(error, "grok", "getGrokClient");
-    return null; // Return null on error to prevent app crashes
+    return createStubClient(); // Return stub client on error
   }
 };
 
