@@ -59,7 +59,6 @@ export interface SignedUrlResult {
 // String type compatibility for legacy code
 export type SignedUrlString = string;
 
-
 /**
  * Legacy function that returns just the signed URL string
  * @deprecated Use ensureSignedVideoUrl which returns detailed SignedUrlResult
@@ -154,7 +153,7 @@ export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds 
     return {
       signedUrl: pathOrUrl,
       path: pathOrUrl,
-      expiresAt: new Date(Date.now() + expiresInSeconds * 1000)
+      expiresAt: new Date(Date.now() + expiresInSeconds * 1000),
     };
   }
 
@@ -177,7 +176,7 @@ export async function ensureSignedVideoUrl(pathOrUrl?: string, expiresInSeconds 
     return {
       signedUrl: data?.signedUrl || "",
       path: pathOrUrl,
-      expiresAt: new Date(Date.now() + expiresInSeconds * 1000)
+      expiresAt: new Date(Date.now() + expiresInSeconds * 1000),
     };
   } catch (error) {
     if (__DEV__) {

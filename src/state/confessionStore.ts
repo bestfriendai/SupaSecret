@@ -8,6 +8,8 @@ import { rpcWithRetry, wrapWithRetry } from "../utils/supabaseWithRetry";
 import { invalidateCache } from "../utils/cacheInvalidation";
 import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 import { trackPositiveInteraction, showReviewPrompt } from "../utils/reviewPrompt";
+import { registerStoreCleanup } from "../utils/storeCleanup";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();
@@ -121,6 +123,9 @@ const sampleConfessions: Confession[] = [
   },
 ];
 
+let loadConfessionsInFlight: Promise<void> | null = null;
+let loadMoreInFlight: Promise<void> | null = null;
+
 export const useConfessionStore = create<ConfessionState>()(
   persist(
     (set, get) => ({
@@ -143,94 +148,68 @@ export const useConfessionStore = create<ConfessionState>()(
       error: null,
 
       loadConfessions: async () => {
-        if (__DEV__) {
-          console.log("📥 Loading confessions...");
-        }
+        if (loadConfessionsInFlight) return loadConfessionsInFlight;
+        const start = Date.now();
         set({ isLoading: true, error: null, hasMore: true });
-        try {
-          const INITIAL_LIMIT = 20;
+        loadConfessionsInFlight = (async () => {
+          try {
+            const INITIAL_LIMIT = 20;
+            const { data: finalData, error } = await wrapWithRetry(async () => {
+              return await supabase
+                .from("confessions")
+                .select("*")
+                .order("created_at", { ascending: false })
+                .limit(INITIAL_LIMIT);
+            })();
+            if (error) throw error;
 
-          const { data: finalData, error } = await wrapWithRetry(async () => {
-            return await supabase
-              .from("confessions")
-              .select("*")
-              .order("created_at", { ascending: false })
-              .limit(INITIAL_LIMIT);
-          })();
+            const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
-          if (error) throw error;
+            const confessions: Confession[] = await Promise.all(
+              ((finalData as any[]) || []).map(async (item: any) => {
+                const base: Confession = {
+                  id: item.id,
+                  type: item.type as "text" | "video",
+                  content: item.content,
+                  videoUri: undefined,
+                  transcription: item.transcription || undefined,
+                  timestamp: new Date(item.created_at).getTime(),
+                  isAnonymous: item.is_anonymous,
+                  likes: item.likes,
+                  isLiked: false,
+                };
 
-          if (__DEV__) {
-            console.log("📥 Loaded", finalData?.length || 0, "confessions from database");
-            if (finalData && finalData.length > 0) {
-              console.log("📥 Latest confession from DB:", {
-                id: finalData[0].id,
-                content: finalData[0].content.substring(0, 50) + "...",
-                created_at: finalData[0].created_at,
-              });
-            }
+                if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
+                  const videoPath = item.video_uri || (item as any).video_url;
+                  const signedResult = await ensureSignedVideoUrl(videoPath);
+                  base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
+                } else if (base.type === "video" && !item.video_uri && !item.video_url) {
+                  base.videoUri = FALLBACK_VIDEO;
+                }
+                return base;
+              }),
+            );
+
+            const combinedConfessions = __DEV__ ? [...confessions, ...sampleConfessions] : [...confessions];
+            const finalConfessions = combinedConfessions.sort((a, b) => b.timestamp - a.timestamp).slice(0, 200); // limit to reduce memory pressure
+
+            set({
+              confessions: finalConfessions,
+              isLoading: false,
+              hasMore: (finalData?.length || 0) >= INITIAL_LIMIT,
+            });
+          } catch (error) {
+            set({
+              confessions: sampleConfessions,
+              isLoading: false,
+              error: error instanceof Error ? error.message : "Failed to load confessions",
+            });
+          } finally {
+            trackStoreOperation("confessionStore", "loadConfessions", Date.now() - start);
+            loadConfessionsInFlight = null;
           }
-
-          const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-
-          const confessions: Confession[] = await Promise.all(
-            ((finalData as any[]) || []).map(async (item: any) => {
-              const base: Confession = {
-                id: item.id,
-                type: item.type as "text" | "video",
-                content: item.content,
-                videoUri: undefined,
-                transcription: item.transcription || undefined,
-                timestamp: new Date(item.created_at).getTime(),
-                isAnonymous: item.is_anonymous,
-                likes: item.likes,
-                isLiked: false,
-              };
-
-              if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
-                // Handle both video_uri and video_url fields for compatibility
-                const videoPath = item.video_uri || (item as any).video_url;
-                const signedResult = await ensureSignedVideoUrl(videoPath);
-                base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
-              } else if (base.type === "video" && !item.video_uri && !item.video_url) {
-                // Ensure we never render a blank player in dev/demo data
-                base.videoUri = FALLBACK_VIDEO;
-              }
-
-              return base;
-            }),
-          );
-
-          console.log("📥 Processed", confessions.length, "real confessions");
-
-          // Combine real and sample confessions, then sort by timestamp (newest first)
-          const combinedConfessions = __DEV__ ? [...confessions, ...sampleConfessions] : [...confessions];
-          const finalConfessions = combinedConfessions.sort((a, b) => b.timestamp - a.timestamp);
-
-          console.log(
-            "📥 Final confessions count:",
-            finalConfessions.length,
-            "(",
-            confessions.length,
-            "real +",
-            sampleConfessions.length,
-            "sample) - sorted chronologically",
-          );
-
-          set({
-            confessions: finalConfessions,
-            isLoading: false,
-            hasMore: (finalData?.length || 0) >= INITIAL_LIMIT,
-          });
-        } catch (error) {
-          console.error("❌ Failed to load confessions:", error);
-          // On error, fall back to sample data
-          set({
-            confessions: sampleConfessions,
-            isLoading: false,
-            error: error instanceof Error ? error.message : "Failed to load confessions",
-          });
-        }
+        })();
+        return loadConfessionsInFlight;
       },
 
       loadMoreConfessions: async () => {
@@ -238,61 +217,69 @@ export const useConfessionStore = create<ConfessionState>()(
         if (isLoadingMore || !hasMore) return;
 
         set({ isLoadingMore: true, error: null });
-        try {
-          const LOAD_MORE_LIMIT = 10;
-          const lastConfession = confessions[confessions.length - 1];
+        if (loadMoreInFlight) return loadMoreInFlight;
+        const start = Date.now();
+        loadMoreInFlight = (async () => {
+          try {
+            const LOAD_MORE_LIMIT = 10;
+            const lastConfession = confessions[confessions.length - 1];
 
-          const { data, error } = await wrapWithRetry(async () => {
-            return await supabase
-              .from("confessions")
-              .select("*")
-              .order("created_at", { ascending: false })
-              .lt("created_at", new Date(lastConfession.timestamp).toISOString())
-              .limit(LOAD_MORE_LIMIT);
-          })();
+            const { data, error } = await wrapWithRetry(async () => {
+              return await supabase
+                .from("confessions")
+                .select("*")
+                .order("created_at", { ascending: false })
+                .lt("created_at", new Date(lastConfession.timestamp).toISOString())
+                .limit(LOAD_MORE_LIMIT);
+            })();
 
-          if (error) throw error;
+            if (error) throw error;
 
-          const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+            const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
-          const newConfessions: Confession[] = await Promise.all(
-            ((data as any[]) || []).map(async (item: any) => {
-              const base: Confession = {
-                id: item.id,
-                type: item.type as "text" | "video",
-                content: item.content,
-                videoUri: undefined,
-                transcription: item.transcription || undefined,
-                timestamp: new Date(item.created_at).getTime(),
-                isAnonymous: item.is_anonymous,
-                likes: item.likes,
-                isLiked: false,
-              };
+            const newConfessions: Confession[] = await Promise.all(
+              ((data as any[]) || []).map(async (item: any) => {
+                const base: Confession = {
+                  id: item.id,
+                  type: item.type as "text" | "video",
+                  content: item.content,
+                  videoUri: undefined,
+                  transcription: item.transcription || undefined,
+                  timestamp: new Date(item.created_at).getTime(),
+                  isAnonymous: item.is_anonymous,
+                  likes: item.likes,
+                  isLiked: false,
+                };
 
-              if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
-                // Handle both video_uri and video_url fields for compatibility
-                const videoPath = item.video_uri || (item as any).video_url;
-                const signedResult = await ensureSignedVideoUrl(videoPath);
-                base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
-              } else if (base.type === "video" && !item.video_uri && !item.video_url) {
-                base.videoUri = FALLBACK_VIDEO;
-              }
+                if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
+                  // Handle both video_uri and video_url fields for compatibility
+                  const videoPath = item.video_uri || (item as any).video_url;
+                  const signedResult = await ensureSignedVideoUrl(videoPath);
+                  base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
+                } else if (base.type === "video" && !item.video_uri && !item.video_url) {
+                  base.videoUri = FALLBACK_VIDEO;
+                }
 
-              return base;
-            }),
-          );
+                return base;
+              }),
+            );
 
-          set({
-            confessions: [...confessions, ...newConfessions],
-            isLoadingMore: false,
-            hasMore: (data?.length || 0) >= LOAD_MORE_LIMIT,
-          });
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : "Failed to load more confessions",
-            isLoadingMore: false,
-          });
-        }
+            set({
+              confessions: [...confessions, ...newConfessions].slice(-400),
+              isLoadingMore: false,
+              hasMore: (data?.length || 0) >= LOAD_MORE_LIMIT,
+            });
+          } catch (error) {
+            set({
+              error: error instanceof Error ? error.message : "Failed to load more confessions",
+              isLoadingMore: false,
+            });
+          } finally {
+            trackStoreOperation("confessionStore", "loadMoreConfessions", Date.now() - start);
+            loadMoreInFlight = null;
+          }
+        })();
+        return loadMoreInFlight;
       },
 
       loadUserConfessions: async () => {
@@ -373,7 +360,9 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (confession.type === "video" && confession.videoUri) {
             if (isLocalUri(confession.videoUri)) {
-              const result = await uploadVideoToSupabase(confession.videoUri, user.id, opts?.onUploadProgress);
+              const result = await uploadVideoToSupabase(confession.videoUri, user.id, {
+                onProgress: opts?.onUploadProgress,
+              });
               videoStoragePath = result.path; // store path in DB
               signedVideoUrl = result.signedUrl; // use for immediate playback
             } else {
@@ -838,6 +827,8 @@ export const useConfessionStore = create<ConfessionState>()(
 
 // Confession subscription management
 let confessionChannel: any = null;
+let confessionReconnectTimer: any = null;
+let confessionReconnectAttempts = 0;
 
 // Cleanup function for confession subscriptions
 const cleanupConfessionSubscriptions = () => {
@@ -845,77 +836,83 @@ const cleanupConfessionSubscriptions = () => {
     confessionChannel.unsubscribe();
     confessionChannel = null;
   }
+  if (confessionReconnectTimer) {
+    clearTimeout(confessionReconnectTimer);
+    confessionReconnectTimer = null;
+  }
+  confessionReconnectAttempts = 0;
 };
 
 // Function to set up real-time subscriptions for confessions
 const setupConfessionSubscriptions = () => {
   if (confessionChannel) {
-    console.log("🔄 Real-time: Subscription already exists, skipping setup");
-    return; // Already set up
+    if (__DEV__) console.log("🔄 Real-time: Confession channel already exists");
+    return;
   }
 
-  console.log("🔄 Real-time: Setting up confession subscriptions...");
+  const connect = () => {
+    confessionChannel = supabase
+      .channel("confessions")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "confessions" }, async (payload) => {
+        const item: any = payload.new;
+        const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+        const base: Confession = {
+          id: item.id,
+          type: item.type as "text" | "video",
+          content: item.content,
+          videoUri: undefined,
+          transcription: item.transcription || undefined,
+          timestamp: new Date(item.created_at).getTime(),
+          isAnonymous: item.is_anonymous,
+          likes: item.likes,
+          isLiked: false,
+        };
+        if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
+          try {
+            const signed = await ensureSignedVideoUrl(item.video_uri || (item as any).video_url);
+            base.videoUri = signed.signedUrl || FALLBACK_VIDEO;
+          } catch {
+            base.videoUri = FALLBACK_VIDEO;
+          }
+        } else if (base.type === "video") {
+          base.videoUri = FALLBACK_VIDEO;
+        }
 
-  confessionChannel = supabase
-    .channel("confessions")
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "confessions" }, async (payload) => {
-      console.log("🔄 Real-time: New confession inserted", payload.new);
-
-      // Don't reload all confessions, just add the new one if it's not already in the list
-      const { confessions } = useConfessionStore.getState();
-      const newConfessionId = payload.new.id;
-
-      // Check if this confession is already in our local state (from optimistic update)
-      const existingConfession = confessions.find((c) => c.id === newConfessionId);
-      if (existingConfession) {
-        console.log("🔄 Real-time: Confession already exists in local state, skipping");
-        return;
-      }
-
-      // Only reload if this is a confession from another user
-      const { loadConfessions } = useConfessionStore.getState();
-      console.log("🔄 Real-time: Loading confessions to include new confession from another user");
-      await loadConfessions();
-    })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "confessions" }, (payload) => {
-      console.log("🔄 Real-time: Confession updated", payload.new);
-      const { confessions, userConfessions } = useConfessionStore.getState();
-      const updatedConfession = payload.new;
-
-      useConfessionStore.setState({
-        confessions: confessions.map((confession) =>
-          confession.id === updatedConfession.id
-            ? {
-                ...confession,
-                likes: updatedConfession.likes,
-              }
-            : confession,
-        ),
-        userConfessions: userConfessions.map((confession) =>
-          confession.id === updatedConfession.id
-            ? {
-                ...confession,
-                likes: updatedConfession.likes,
-              }
-            : confession,
-        ),
+        const { confessions } = useConfessionStore.getState();
+        if (!confessions.find((c) => c.id === base.id)) {
+          useConfessionStore.setState({ confessions: [base, ...confessions].slice(0, 200) });
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "confessions" }, (payload) => {
+        const updated = payload.new as any;
+        const { confessions, userConfessions } = useConfessionStore.getState();
+        useConfessionStore.setState({
+          confessions: confessions.map((c) => (c.id === updated.id ? { ...c, likes: updated.likes } : c)),
+          userConfessions: userConfessions.map((c) => (c.id === updated.id ? { ...c, likes: updated.likes } : c)),
+        });
+      })
+      .subscribe((status) => {
+        if (__DEV__) console.log("🔄 Real-time: Confession status:", status);
+        if (status === "SUBSCRIBED") {
+          confessionReconnectAttempts = 0;
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          // Attempt reconnect with exponential backoff
+          const delay = Math.min(30000, 1000 * Math.pow(2, confessionReconnectAttempts++));
+          if (confessionReconnectTimer) clearTimeout(confessionReconnectTimer);
+          confessionReconnectTimer = setTimeout(() => {
+            cleanupConfessionSubscriptions();
+            connect();
+          }, delay);
+        }
       });
-    })
-    .subscribe((status) => {
-      console.log("🔄 Real-time: Subscription status:", status);
-      if (status === "SUBSCRIBED") {
-        console.log("✅ Real-time: Successfully subscribed to confession changes");
-      } else if (status === "CHANNEL_ERROR") {
-        console.error("❌ Real-time: Subscription error");
-      } else if (status === "TIMED_OUT") {
-        console.error("❌ Real-time: Subscription timed out");
-      } else if (status === "CLOSED") {
-        console.log("🔄 Real-time: Subscription closed");
-      }
-    });
+  };
 
-  console.log("🔄 Real-time: Confession subscription setup complete");
+  connect();
 };
 
 // Export functions for app-level management
 export { cleanupConfessionSubscriptions, setupConfessionSubscriptions };
+
+// Register centralized cleanup
+registerStoreCleanup("confessionStore", cleanupConfessionSubscriptions);

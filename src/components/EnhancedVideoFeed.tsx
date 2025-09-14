@@ -16,6 +16,7 @@ import Animated, {
   withTiming,
   runOnJS,
   interpolate,
+  Extrapolation,
   withSequence,
   withDelay,
 } from "react-native-reanimated";
@@ -277,11 +278,17 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
       }
 
       // Scale effect based on swipe distance - optimized with worklet
-      const scaleValue = interpolate(Math.abs(event.translationY), [0, screenHeight / 2], [1, 0.9], "clamp");
+      const scaleValue = interpolate(Math.abs(event.translationY), [0, screenHeight / 2], [1, 0.9], {
+        extrapolateLeft: Extrapolation.CLAMP,
+        extrapolateRight: Extrapolation.CLAMP,
+      });
       scale.value = scaleValue;
 
       // Action buttons slide effect - optimized with worklet
-      actionButtonsTranslateX.value = interpolate(event.translationX, [-100, 0, 100], [20, 0, -20], "clamp");
+      actionButtonsTranslateX.value = interpolate(event.translationX, [-100, 0, 100], [20, 0, -20], {
+        extrapolateLeft: Extrapolation.CLAMP,
+        extrapolateRight: Extrapolation.CLAMP,
+      });
     })
     .onEnd((event) => {
       "worklet";

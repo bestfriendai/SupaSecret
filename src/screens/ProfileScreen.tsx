@@ -296,7 +296,7 @@ const ProfileScreen = () => {
   }, []);
 
   const handleUpgradeToPremium = useCallback(() => {
-    navigation.navigate("Paywall");
+    navigation.navigate("Paywall", {});
   }, [navigation]);
 
   const handleSettingsPress = useCallback(() => {

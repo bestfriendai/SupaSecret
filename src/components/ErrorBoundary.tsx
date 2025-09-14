@@ -1,9 +1,8 @@
 import React, { Component, ReactNode } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Props {
   children: ReactNode;
@@ -196,7 +195,12 @@ interface DefaultErrorFallbackProps {
 }
 
 function DefaultErrorFallback({ error, errorInfo, onRetry, onReload, errorId }: DefaultErrorFallbackProps) {
-  const insets = useSafeAreaInsets();
+  // Use platform-specific default safe area insets
+  const insets = Platform.select({
+    ios: { top: 44, bottom: 34, left: 0, right: 0 },
+    android: { top: 24, bottom: 0, left: 0, right: 0 },
+    default: { top: 0, bottom: 0, left: 0, right: 0 },
+  })!;
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>

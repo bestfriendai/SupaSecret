@@ -19,7 +19,13 @@ function ViewModeButtonComponent({ mode, label, active, onPress, index = 0, tota
       {...getTabA11yProps(label, active, index, total)}
       onPress={handlePress}
       accessibilityRole="tab"
-      style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderBottomWidth: active ? 2 : 0, borderBottomColor: "#1D9BF0" }}
+      style={{
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: "center",
+        borderBottomWidth: active ? 2 : 0,
+        borderBottomColor: "#1D9BF0",
+      }}
     >
       <Text style={{ color: active ? "#fff" : "#9CA3AF", fontSize: 16, fontWeight: "600" }}>{label}</Text>
     </Pressable>

@@ -7,7 +7,7 @@ import TrendingSkeleton from "../components/TrendingSkeleton";
 import { getButtonA11yProps, getCloseButtonA11yProps } from "../utils/accessibility";
 import { useDebouncedSearch } from "../utils/debounce";
 import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
-import { getOptimizedTextInputProps, dismissKeyboard } from "../utils/keyboardUtils";
+import { dismissKeyboard } from "../utils/keyboardUtils";
 import { TimePeriodButton } from "../components/TimePeriodButton";
 import { ViewModeButton } from "../components/ViewModeButton";
 import { HashtagItem } from "../components/HashtagItem";
@@ -110,11 +110,14 @@ export default function TrendingScreen() {
     searchInputRef.current?.focus();
   }, []);
 
-  const handleTimePeriodChange = useCallback((period: TimePeriod) => {
-    setTimePeriod(period);
-    if (error) clearError();
-    setErrorState(null); // Clear any period-related errors
-  }, [error, clearError]);
+  const handleTimePeriodChange = useCallback(
+    (period: TimePeriod) => {
+      setTimePeriod(period);
+      if (error) clearError();
+      setErrorState(null); // Clear any period-related errors
+    },
+    [error, clearError],
+  );
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
@@ -177,7 +180,7 @@ export default function TrendingScreen() {
             autoCorrect={false}
             spellCheck={false}
             returnKeyType="search"
-            blurOnSubmit={true}
+            submitBehavior="blurAndSubmit"
             enablesReturnKeyAutomatically={true}
             keyboardAppearance="dark"
             selectionColor="#1D9BF0"
@@ -217,7 +220,7 @@ export default function TrendingScreen() {
             )}
             style={{ marginBottom: 12 }}
             // Performance optimization props
-                        windowSize={5}
+            windowSize={5}
             removeClippedSubviews={true}
             getItemLayout={(_: any, index: number) => ({
               length: 100,
@@ -267,9 +270,7 @@ export default function TrendingScreen() {
         >
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Ionicons name="warning" size={16} color="#EF4444" />
-            <Text style={{ color: "#FCA5A5", fontSize: 14, marginLeft: 8, flex: 1 }}>
-              {error || errorState}
-            </Text>
+            <Text style={{ color: "#FCA5A5", fontSize: 14, marginLeft: 8, flex: 1 }}>{error || errorState}</Text>
             <Pressable
               onPress={handleErrorDismiss}
               {...getButtonA11yProps("Dismiss error", "Double tap to dismiss error message")}
@@ -300,9 +301,10 @@ export default function TrendingScreen() {
             )}
             refreshControl={refreshControlElement}
             // Performance optimization props
-                        windowSize={10}
+            windowSize={10}
             removeClippedSubviews={true}
-                        estimatedItemSize={150}
+            maxToRenderPerBatch={10}
+            initialNumToRender={10}
             getItemLayout={(_: any, index: number) => ({
               length: 150,
               offset: 150 * index,
@@ -330,9 +332,10 @@ export default function TrendingScreen() {
               )}
               refreshControl={refreshControlElement}
               // Performance optimization props
-                                          windowSize={10}
+              windowSize={10}
               removeClippedSubviews={true}
-                            estimatedItemSize={80}
+              maxToRenderPerBatch={10}
+              initialNumToRender={10}
               getItemLayout={(_: any, index: number) => ({
                 length: 80,
                 offset: 80 * index,
@@ -355,9 +358,10 @@ export default function TrendingScreen() {
               )}
               refreshControl={refreshControlElement}
               // Performance optimization props
-                                          windowSize={10}
+              windowSize={10}
               removeClippedSubviews={true}
-                            estimatedItemSize={150}
+              maxToRenderPerBatch={10}
+              initialNumToRender={10}
               getItemLayout={(_: any, index: number) => ({
                 length: 150,
                 offset: 150 * index,

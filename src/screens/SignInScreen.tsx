@@ -16,9 +16,9 @@ import { validateEmail, sendPasswordReset } from "../utils/auth";
 import { useToastHelpers } from "../contexts/ToastContext";
 
 import { safeGoBackFromAuth } from "../utils/navigation";
-import type { RootStackParamList } from "../navigation/AppNavigator";
+import type { AuthStackParamList } from "../navigation/AppNavigator";
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type NavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
 export default function SignInScreen() {
   const navigation = useNavigation<NavigationProp>();

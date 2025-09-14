@@ -1,8 +1,16 @@
-import { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolate } from 'react-native-reanimated';
-import { Dimensions } from 'react-native';
-import { usePreferenceAwareHaptics } from '../utils/haptics';
+import {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  interpolate,
+  Extrapolation,
+  runOnJS,
+} from "react-native-reanimated";
+import { Dimensions } from "react-native";
+import { usePreferenceAwareHaptics } from "../utils/haptics";
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get("window");
 
 export interface OnboardingAnimationConfig {
   totalSlides: number;
@@ -12,7 +20,7 @@ export interface OnboardingAnimationConfig {
 
 export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: OnboardingAnimationConfig) => {
   const { impactAsync } = usePreferenceAwareHaptics();
-  
+
   // Animation values
   const slideOpacity = useSharedValue(1);
   const buttonScale = useSharedValue(1);
@@ -20,17 +28,18 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
 
   // Skip button animation - fades out on last slide
   const skipButtonStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollX.value, 
-      [0, (totalSlides - 1) * screenWidth], 
-      [1, 0], 
-      'clamp'
-    );
-    const scale = interpolate(opacity, [0, 1], [0.8, 1], 'clamp');
-    
-    return { 
+    const opacity = interpolate(scrollX.value, [0, (totalSlides - 1) * screenWidth], [1, 0], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+    const scale = interpolate(opacity, [0, 1], [0.8, 1], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+
+    return {
       opacity,
-      transform: [{ scale }]
+      transform: [{ scale }],
     };
   });
 
@@ -57,21 +66,33 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
 
   // Animation functions
   const animateButtonPress = () => {
-    buttonScale.value = withSpring(0.95, { duration: 100 }, () => {
-      buttonScale.value = withSpring(1, { duration: 100 });
+    "worklet";
+    buttonScale.value = withSpring(0.95, { duration: 100 }, (finished) => {
+      "worklet";
+      if (finished) {
+        buttonScale.value = withSpring(1, { duration: 100 });
+      }
     });
-    impactAsync();
+    runOnJS(impactAsync)();
   };
 
   const animateSlideTransition = () => {
-    slideOpacity.value = withTiming(0.9, { duration: 150 }, () => {
-      slideOpacity.value = withTiming(1, { duration: 150 });
+    "worklet";
+    slideOpacity.value = withTiming(0.9, { duration: 150 }, (finished) => {
+      "worklet";
+      if (finished) {
+        slideOpacity.value = withTiming(1, { duration: 150 });
+      }
     });
   };
 
   const animateProgressUpdate = () => {
-    progressScale.value = withSpring(1.1, { duration: 200 }, () => {
-      progressScale.value = withSpring(1, { duration: 200 });
+    "worklet";
+    progressScale.value = withSpring(1.1, { duration: 200 }, (finished) => {
+      "worklet";
+      if (finished) {
+        progressScale.value = withSpring(1, { duration: 200 });
+      }
     });
   };
 
@@ -81,12 +102,12 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
     slideContainerStyle,
     buttonAnimatedStyle,
     progressContainerStyle,
-    
+
     // Animation functions
     animateButtonPress,
     animateSlideTransition,
     animateProgressUpdate,
-    
+
     // Values for external use
     slideOpacity,
     buttonScale,
@@ -97,11 +118,20 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
 // Individual slide animation hook
 export const useSlideAnimation = (index: number, scrollX: any) => {
   const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
-  
+
   const slideStyle = useAnimatedStyle(() => {
-    const scale = interpolate(scrollX.value, inputRange, [0.85, 1, 0.85], 'clamp');
-    const opacity = interpolate(scrollX.value, inputRange, [0.6, 1, 0.6], 'clamp');
-    const translateY = interpolate(scrollX.value, inputRange, [20, 0, 20], 'clamp');
+    const scale = interpolate(scrollX.value, inputRange, [0.85, 1, 0.85], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+    const opacity = interpolate(scrollX.value, inputRange, [0.6, 1, 0.6], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+    const translateY = interpolate(scrollX.value, inputRange, [20, 0, 20], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
 
     return {
       transform: [{ scale }, { translateY }],
@@ -110,8 +140,14 @@ export const useSlideAnimation = (index: number, scrollX: any) => {
   });
 
   const iconStyle = useAnimatedStyle(() => {
-    const rotate = interpolate(scrollX.value, inputRange, [-8, 0, 8], 'clamp');
-    const scale = interpolate(scrollX.value, inputRange, [0.9, 1, 0.9], 'clamp');
+    const rotate = interpolate(scrollX.value, inputRange, [-8, 0, 8], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+    const scale = interpolate(scrollX.value, inputRange, [0.9, 1, 0.9], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
 
     return {
       transform: [{ rotate: `${rotate}deg` }, { scale }],
@@ -127,16 +163,25 @@ export const useSlideAnimation = (index: number, scrollX: any) => {
 // Progress dot animation hook
 export const useProgressDotAnimation = (index: number, scrollX: any) => {
   const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
-  
+
   const dotStyle = useAnimatedStyle(() => {
-    const width = interpolate(scrollX.value, inputRange, [8, 28, 8], 'clamp');
-    const opacity = interpolate(scrollX.value, inputRange, [0.4, 1, 0.4], 'clamp');
-    const scale = interpolate(scrollX.value, inputRange, [0.8, 1, 0.8], 'clamp');
-    
-    return { 
-      width, 
+    const width = interpolate(scrollX.value, inputRange, [8, 28, 8], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+    const opacity = interpolate(scrollX.value, inputRange, [0.4, 1, 0.4], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+    const scale = interpolate(scrollX.value, inputRange, [0.8, 1, 0.8], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+
+    return {
+      width,
       opacity,
-      transform: [{ scale }]
+      transform: [{ scale }],
     };
   });
 

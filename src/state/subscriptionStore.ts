@@ -55,7 +55,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           // Simulate purchase process
           await new Promise((resolve) => setTimeout(resolve, 2000));
 
-          const customerInfo = await RevenueCatService.purchasePackage({ id: packageId });
+          const customerInfo = await RevenueCatService.purchasePackage({ identifier: packageId } as any);
           const isPremium = await RevenueCatService.isUserPremium();
 
           set({

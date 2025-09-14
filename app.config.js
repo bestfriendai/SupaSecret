@@ -1,0 +1,91 @@
+require("dotenv").config();
+
+export default {
+  expo: {
+    name: "Toxic Confessions",
+    slug: "toxic-confessions",
+    scheme: "toxicconfessions",
+    version: "1.0.0",
+    runtimeVersion: "1.0.0",
+    orientation: "portrait",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
+    updates: {
+      enabled: true,
+      url: "https://u.expo.dev/YOUR-EXPO-PROJECT-ID",
+    },
+    plugins: [
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            deploymentTarget: "16.1",
+          },
+          android: {
+            compileSdkVersion: 34,
+            targetSdkVersion: 34,
+          },
+        },
+      ],
+      "expo-audio",
+      "expo-camera",
+      "expo-asset",
+      "expo-mail-composer",
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-video",
+      "expo-web-browser",
+      "expo-font",
+      "expo-localization",
+      "expo-splash-screen",
+    ],
+    androidNavigationBar: {
+      visible: "sticky-immersive",
+    },
+    ios: {
+      supportsTablet: true,
+      buildNumber: "1",
+      infoPlist: {
+        NSCameraUsageDescription:
+          "Camera access is required to record anonymous videos. Faces are blurred and voices modulated for privacy—no data is stored without processing.",
+        NSMicrophoneUsageDescription:
+          "Microphone access enables voice recording with automatic pitch shifting for anonymity. Audio is processed on-device and never sent unmodulated.",
+        NSSpeechRecognitionUsageDescription:
+          "Speech recognition generates live captions for anonymous video confessions. All processing happens on-device to protect your privacy.",
+        NSPhotoLibraryUsageDescription:
+          "Photo library access is used to save processed anonymous videos with metadata stripped for complete privacy protection.",
+        NSUserNotificationsUsageDescription:
+          "Notifications are used to inform you about app updates and important privacy-related information.",
+      },
+      bundleIdentifier: "com.toxic.confessions",
+    },
+    android: {
+      versionCode: 1,
+      edgeToEdgeEnabled: true,
+      predictiveBackGestureEnabled: false,
+      permissions: [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+      ],
+      package: "com.toxic.confessions",
+    },
+    extra: {
+      env: process.env.EXPO_PUBLIC_ENV,
+      projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+      privacyPolicyUrl: "https://toxicconfessions.app/privacy",
+      termsOfServiceUrl: "https://toxicconfessions.app/terms",
+      supportUrl: "https://toxicconfessions.app/help",
+      nonSensitive: {
+        supabaseUrl: process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL,
+        supabaseAnonKey: process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_ANON_KEY,
+      },
+    },
+  },
+};

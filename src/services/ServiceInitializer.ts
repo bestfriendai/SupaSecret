@@ -5,6 +5,7 @@
 
 import Constants from "expo-constants";
 import { getConfig, validateProductionConfig, isFeatureEnabled } from "../config/production";
+import { validateAdMobConfig, validateRevenueCatConfig } from "../utils/environmentValidation";
 import { AdMobService } from "./AdMobService";
 import { RevenueCatService } from "./RevenueCatService";
 import { getAnonymiser } from "./Anonymiser";
@@ -53,6 +54,30 @@ export class ServiceInitializer {
       result.warnings.push(`Development mode: Missing production keys: ${configValidation.missingKeys.join(", ")}`);
     }
 
+    // Additional runtime validations for AdMob and RevenueCat
+    let adMobRes: ReturnType<typeof validateAdMobConfig> | null = null;
+    let revCatRes: ReturnType<typeof validateRevenueCatConfig> | null = null;
+    try {
+      adMobRes = validateAdMobConfig();
+      revCatRes = validateRevenueCatConfig();
+      const pushIssues = (prefix: string, res: ReturnType<typeof validateAdMobConfig>) => {
+        for (const issue of res.issues) {
+          const msg = `${prefix}: [${issue.severity}] ${issue.key} - ${issue.message}`;
+          if (!__DEV__ || strictConfigValidation) {
+            // Treat high/critical as errors in production/strict mode
+            if (issue.severity === "critical" || issue.severity === "high") result.errors.push(msg);
+            else result.warnings.push(msg);
+          } else {
+            result.warnings.push(msg);
+          }
+        }
+      };
+      pushIssues("AdMob config", adMobRes);
+      pushIssues("RevenueCat config", revCatRes);
+    } catch (e) {
+      if (__DEV__) console.warn("Validation checks failed:", e);
+    }
+
     // Initialize consent system first
     try {
       await initializeConsent();
@@ -64,40 +89,61 @@ export class ServiceInitializer {
       console.error("❌", errorMsg);
     }
 
-    // Initialize AdMob
-    if (isFeatureEnabled("ENABLE_ANALYTICS")) {
+    // Initialize AdMob (gated behind ENABLE_ADS) and skip on critical validation errors
+    if (isFeatureEnabled("ENABLE_ADS")) {
+      const adMobHasCritical = adMobRes?.issues?.some((i) => i.severity === "critical");
+      if (adMobHasCritical) {
+        const msg = "AdMob initialization skipped due to critical configuration errors";
+        result.warnings.push(msg);
+        console.warn(`⚠️ ${msg}`);
+      } else {
+        try {
+          await AdMobService.initialize();
+          result.initializedServices.push("AdMob");
+          if (__DEV__) {
+            console.log("✅ AdMob initialized");
+          }
+        } catch (error) {
+          const errorMsg = `AdMob initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`;
+          if (IS_EXPO_GO) {
+            result.warnings.push(errorMsg);
+          } else {
+            result.errors.push(errorMsg);
+          }
+          if (__DEV__) {
+            console.error("❌", errorMsg);
+          }
+        }
+      }
+    }
+
+    // Initialize RevenueCat (skip on critical validation errors)
+    const revHasCritical = revCatRes?.issues?.some((i) => i.severity === "critical");
+    if (revHasCritical) {
+      const msg = "RevenueCat initialization skipped due to critical configuration errors";
+      result.warnings.push(msg);
+      console.warn(`⚠️ ${msg}`);
+    } else {
       try {
-        await AdMobService.initialize();
-        result.initializedServices.push("AdMob");
-        if (__DEV__) {
-          console.log("✅ AdMob initialized");
+        await RevenueCatService.initialize();
+        result.initializedServices.push("RevenueCat");
+        console.log("✅ RevenueCat initialized");
+        // Restore purchases on launch (no-op in Expo Go per service implementation)
+        try {
+          await RevenueCatService.restorePurchases();
+          console.log("✅ RevenueCat purchases restored on launch");
+        } catch (e) {
+          console.warn("RevenueCat restore on launch failed:", e);
         }
       } catch (error) {
-        const errorMsg = `AdMob initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`;
+        const errorMsg = `RevenueCat initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`;
         if (IS_EXPO_GO) {
           result.warnings.push(errorMsg);
         } else {
           result.errors.push(errorMsg);
         }
-        if (__DEV__) {
-          console.error("❌", errorMsg);
-        }
+        console.error("❌", errorMsg);
       }
-    }
-
-    // Initialize RevenueCat
-    try {
-      await RevenueCatService.initialize();
-      result.initializedServices.push("RevenueCat");
-      console.log("✅ RevenueCat initialized");
-    } catch (error) {
-      const errorMsg = `RevenueCat initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`;
-      if (IS_EXPO_GO) {
-        result.warnings.push(errorMsg);
-      } else {
-        result.errors.push(errorMsg);
-      }
-      console.error("❌", errorMsg);
     }
 
     // Initialize Video Processing

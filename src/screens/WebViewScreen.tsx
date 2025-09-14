@@ -7,8 +7,8 @@ import { View, Text, Pressable, ActivityIndicator, Alert, Linking, Platform } fr
 import { WebView } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { type RouteProp, type NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import { type NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 
 type WebViewScreenRouteProp = RouteProp<RootStackParamList, "WebView">;

@@ -8,6 +8,7 @@ import Animated, {
   withRepeat,
   withTiming,
   interpolate,
+  Extrapolation,
   Easing,
   withDelay,
   withSequence,
@@ -104,8 +105,14 @@ export default function PullToRefreshOverlay({
   };
 
   const containerStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(pullDistance, [0, threshold], [0, 1], "clamp");
-    const translateY = interpolate(pullDistance, [0, threshold], [-20, 0], "clamp");
+    const opacity = interpolate(pullDistance, [0, threshold], [0, 1], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
+    const translateY = interpolate(pullDistance, [0, threshold], [-20, 0], {
+      extrapolateLeft: Extrapolation.CLAMP,
+      extrapolateRight: Extrapolation.CLAMP,
+    });
 
     return {
       opacity,

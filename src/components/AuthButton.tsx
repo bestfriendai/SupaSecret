@@ -30,7 +30,6 @@ export default function AuthButton({
   accessibilityLabel,
   accessibilityHint,
 }: AuthButtonProps) {
-
   const getButtonStyles = () => {
     const baseStyles = "rounded-full flex-row items-center justify-center";
     const widthStyles = fullWidth ? "w-full" : "";
@@ -98,16 +97,11 @@ export default function AuthButton({
   const a11yProps = getButtonA11yProps(
     accessibilityLabel || title,
     accessibilityHint || (loading ? "Loading, please wait" : undefined),
-    disabled || loading
+    disabled || loading,
   );
 
   return (
-    <Pressable
-      className={getButtonStyles()}
-      onPress={onPress}
-      disabled={disabled || loading}
-      {...a11yProps}
-    >
+    <Pressable className={getButtonStyles()} onPress={onPress} disabled={disabled || loading} {...a11yProps}>
       {loading ? (
         <ActivityIndicator size="small" color={getIconColor()} />
       ) : (

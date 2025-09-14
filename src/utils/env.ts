@@ -10,7 +10,7 @@ export const env = {
   /** Whether the app is running in a development build */
   devClient: Constants.appOwnership === null,
   /** Whether the app is running as a standalone build */
-  standalone: Constants.appOwnership === "standalone",
+  standalone: Constants.appOwnership === ("standalone" as any),
   /** Whether FFmpeg is available in the environment */
   get ffmpegReady(): boolean {
     return !!(global as any).__ffmpegAvailable;

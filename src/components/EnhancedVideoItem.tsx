@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo, useCallback } from "react";
 import { View, Text, Pressable, Dimensions, AppState, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView } from "expo-video";
 import * as Audio from "expo-audio";
 import { format } from "date-fns";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 import { PreferenceAwareHaptics } from "../utils/haptics";
 import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
@@ -47,9 +48,16 @@ function EnhancedVideoItem({
 
   const soundEnabled = useConfessionStore((state) => state.userPreferences.sound_enabled);
 
+  // Memoize formatted date and static values to avoid repeated work
+  const formattedDate = useMemo(() => format(new Date(confession.timestamp), "MMM d"), [confession.timestamp]);
+  const confessionText = useMemo(
+    () => confession.transcription || confession.content || "",
+    [confession.transcription, confession.content],
+  );
+
   // Debug log for sound preferences
   if (__DEV__) {
-    console.log(`EnhancedVideoItem: soundEnabled=${soundEnabled}, isActive=${isActive}`);
+    // keep lightweight
   }
 
   const player = useVideoPlayer(sourceUri, (p) => {
@@ -94,6 +102,7 @@ function EnhancedVideoItem({
 
   // Control playback based on visibility and ensure audio is properly set
   useEffect(() => {
+    const start = Date.now();
     let timeoutId: NodeJS.Timeout | null = null;
 
     const handleVideoActivation = async () => {
@@ -164,6 +173,7 @@ function EnhancedVideoItem({
         clearTimeout(timeoutId);
       }
     };
+    trackStoreOperation("EnhancedVideoItem", "handleActivation", Date.now() - start);
   }, [isActive, screenFocused, player, soundEnabled, confession.id, forceUnmuted, updatePlayerState]);
 
   // Handle app state changes to pause videos when app goes to background
@@ -190,6 +200,50 @@ function EnhancedVideoItem({
     const subscription = AppState.addEventListener("change", handleAppStateChange);
     return () => subscription?.remove();
   }, [player, isActive]);
+
+  // Stable callbacks for actions
+  const onPressTogglePlay = useCallback(() => {
+    try {
+      if (player && player.playing && typeof player.pause === "function") {
+        player.pause();
+      } else if (player && typeof player.play === "function") {
+        player.play();
+      }
+    } catch (e) {
+      if (__DEV__) console.warn("Toggle play failed:", e);
+    }
+    PreferenceAwareHaptics.impactAsync();
+  }, [player]);
+
+  const onPressToggleAudio = useCallback(() => {
+    try {
+      if (player) {
+        const newMutedState = !player.muted;
+        player.muted = newMutedState;
+        PreferenceAwareHaptics.impactAsync();
+        if (__DEV__) {
+          console.log(`Manual audio toggle for ${confession.id}: muted=${newMutedState}`);
+        }
+      }
+    } catch (e) {
+      if (__DEV__) console.warn("Failed to toggle audio:", e);
+    }
+  }, [player, confession.id]);
+
+  const onPressComment = useCallback(() => {
+    onCommentPress?.(confession.id);
+    PreferenceAwareHaptics.impactAsync();
+  }, [onCommentPress, confession.id]);
+
+  const onPressShare = useCallback(() => {
+    onSharePress?.(confession.id, confessionText);
+    PreferenceAwareHaptics.impactAsync();
+  }, [onSharePress, confession.id, confessionText]);
+
+  const onPressReport = useCallback(() => {
+    onReportPress?.(confession.id, confessionText);
+    PreferenceAwareHaptics.impactAsync();
+  }, [onReportPress, confession.id, confessionText]);
 
   return (
     <View
@@ -231,23 +285,7 @@ function EnhancedVideoItem({
 
             <View className="flex-row items-center space-x-2">
               {/* Audio Toggle Button */}
-              <Pressable
-                className="bg-black/50 rounded-full p-2"
-                onPress={() => {
-                  try {
-                    if (player) {
-                      const newMutedState = !player.muted;
-                      player.muted = newMutedState;
-                      PreferenceAwareHaptics.impactAsync();
-                      if (__DEV__) {
-                        console.log(`Manual audio toggle for ${confession.id}: muted=${newMutedState}`);
-                      }
-                    }
-                  } catch (e) {
-                    if (__DEV__) console.warn("Failed to toggle audio:", e);
-                  }
-                }}
-              >
+              <Pressable className="bg-black/50 rounded-full p-2" onPress={onPressToggleAudio}>
                 <Ionicons
                   name={player?.muted ? "volume-mute" : "volume-high"}
                   size={20}
@@ -277,23 +315,9 @@ function EnhancedVideoItem({
             }}
           />
 
-          <AnimatedActionButton
-            icon="chatbubble-outline"
-            label="Reply"
-            onPress={() => {
-              onCommentPress?.(confession.id);
-              PreferenceAwareHaptics.impactAsync();
-            }}
-          />
+          <AnimatedActionButton icon="chatbubble-outline" label="Reply" onPress={onPressComment} />
 
-          <AnimatedActionButton
-            icon="share-outline"
-            label="Share"
-            onPress={() => {
-              onSharePress?.(confession.id, confession.transcription || confession.content || "");
-              PreferenceAwareHaptics.impactAsync();
-            }}
-          />
+          <AnimatedActionButton icon="share-outline" label="Share" onPress={onPressShare} />
 
           <AnimatedActionButton
             icon={isSaved(confession.id) ? "bookmark" : "bookmark-outline"}
@@ -322,14 +346,7 @@ function EnhancedVideoItem({
             }}
           />
 
-          <AnimatedActionButton
-            icon="flag-outline"
-            label="Report"
-            onPress={() => {
-              onReportPress?.(confession.id, confession.transcription || confession.content || "");
-              PreferenceAwareHaptics.impactAsync();
-            }}
-          />
+          <AnimatedActionButton icon="flag-outline" label="Report" onPress={onPressReport} />
         </View>
       </View>
 
@@ -346,7 +363,7 @@ function EnhancedVideoItem({
                 <View className="flex-row items-center">
                   <Text className="text-white font-bold text-15">Anonymous</Text>
                   <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                  <Text className="text-gray-400 text-13">{format(new Date(confession.timestamp), "MMM d")}</Text>
+                  <Text className="text-gray-400 text-13">{formattedDate}</Text>
                 </View>
                 <View className="flex-row items-center mt-1">
                   <Ionicons name="eye-off" size={12} color="#10B981" />
@@ -373,21 +390,7 @@ function EnhancedVideoItem({
       </View>
 
       {/* Tap to Play/Pause */}
-      <Pressable
-        className="absolute inset-0 z-5"
-        onPress={() => {
-          try {
-            if (player && player.playing && typeof player.pause === "function") {
-              player.pause();
-            } else if (player && typeof player.play === "function") {
-              player.play();
-            }
-          } catch (e) {
-            if (__DEV__) console.warn("Toggle play failed:", e);
-          }
-          PreferenceAwareHaptics.impactAsync();
-        }}
-      />
+      <Pressable className="absolute inset-0 z-5" onPress={onPressTogglePlay} />
 
       {/* Bottom Sheets */}
     </View>
@@ -395,10 +398,12 @@ function EnhancedVideoItem({
 }
 
 export default React.memo(EnhancedVideoItem, (prev, next) => {
-  return (
-    prev.confession?.id === next.confession?.id &&
-    prev.isActive === next.isActive &&
-    prev.screenFocused === next.screenFocused &&
-    prev.forceUnmuted === next.forceUnmuted
-  );
+  // Selective property comparison to minimize re-renders
+  const sameId = prev.confession?.id === next.confession?.id;
+  const sameActivity = prev.isActive === next.isActive && prev.screenFocused === next.screenFocused;
+  const sameAudioOverride = prev.forceUnmuted === next.forceUnmuted;
+  const sameCounts = (prev.confession?.likes || 0) === (next.confession?.likes || 0);
+  const sameLiked = !!prev.confession?.isLiked === !!next.confession?.isLiked;
+  const sameUri = prev.confession?.videoUri === next.confession?.videoUri;
+  return sameId && sameActivity && sameAudioOverride && sameCounts && sameLiked && sameUri;
 });

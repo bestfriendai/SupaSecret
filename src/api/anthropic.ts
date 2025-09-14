@@ -2,34 +2,53 @@
 IMPORTANT NOTICE: DO NOT REMOVE
 This is a custom client for the Anthropic API. You may update this service, but you should not need to.
 
-Valid model names: 
+Valid model names:
 claude-sonnet-4-20250514
 claude-3-7-sonnet-latest
 claude-3-5-haiku-latest
 */
-import Anthropic from "@anthropic-ai/sdk";
 import { handleApiError } from "../utils/apiUtils";
 import { createApiError, API_ERROR_CODES } from "../types/apiError";
 
-export const getAnthropicClient = () => {
+// Stub implementation for Expo Go compatibility
+const createStubClient = () => ({
+  messages: {
+    create: async () => {
+      throw new Error(
+        "AI features require development build. This is a stub implementation for Expo Go compatibility.",
+      );
+    },
+  },
+});
+
+export const getAnthropicClient = async () => {
   try {
     const apiKey = process.env.EXPO_PUBLIC_VIBECODE_ANTHROPIC_API_KEY || process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
     if (!apiKey) {
-      const error = createApiError(
-        "anthropic",
-        "Anthropic API key not found in environment variables. Please set EXPO_PUBLIC_VIBECODE_ANTHROPIC_API_KEY or EXPO_PUBLIC_ANTHROPIC_API_KEY",
-        API_ERROR_CODES.API_KEY_NOT_FOUND,
-      );
-      handleApiError(error, "anthropic", "getAnthropicClient");
-      return null; // Return null instead of throwing to prevent app crashes
+      console.warn("Anthropic API key not found - using stub client for Expo Go compatibility");
+      return createStubClient();
     }
 
-    return new Anthropic({
-      apiKey: apiKey,
-    });
+    // In Expo Go, always return stub client to prevent require() errors
+    if (process.env.EXPO_PUBLIC_ENV === "development") {
+      console.warn("Using Anthropic stub client for Expo Go compatibility");
+      return createStubClient();
+    }
+
+    // For development builds, try to load the real SDK
+    try {
+      const module = await import("@anthropic-ai/sdk");
+      const AnthropicSDK = module.default || module;
+      return new AnthropicSDK({
+        apiKey: apiKey,
+      });
+    } catch (error) {
+      console.warn("Anthropic SDK not available, using stub client:", error);
+      return createStubClient();
+    }
   } catch (error) {
     handleApiError(error, "anthropic", "getAnthropicClient");
-    return null; // Return null on error to prevent app crashes
+    return createStubClient(); // Return stub client on error
   }
 };
 

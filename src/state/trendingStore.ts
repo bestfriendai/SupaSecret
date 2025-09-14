@@ -4,6 +4,31 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import { Confession } from "../types/confession";
 import { HashtagData, TrendingSecret } from "../utils/trending";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
+
+// Memoized hashtag extraction
+const hashtagRegex = /#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi;
+const hashtagMemo = new Map<string, string[]>();
+const extractHashtags = (text: string): string[] => {
+  if (!text) return [];
+  const key = text.length > 200 ? text.slice(0, 200) : text; // cheap memo key
+  const cached = hashtagMemo.get(key);
+  if (cached) return cached;
+  const matches = text.match(hashtagRegex);
+  const lower = matches ? matches.map((t) => t.toLowerCase()) : [];
+  hashtagMemo.set(key, lower);
+  return lower;
+};
+
+async function rpcWithRetry<T>(fn: () => Promise<{ data: T | null; error: any }>, attempts = 2) {
+  let lastErr: any;
+  for (let i = 0; i < attempts; i++) {
+    const { data, error } = await fn();
+    if (!error) return { data, error };
+    lastErr = error;
+  }
+  return { data: null as T | null, error: lastErr };
+}
 
 interface TrendingState {
   // Data
@@ -44,6 +69,7 @@ export const useTrendingStore = create<TrendingState>()(
 
       loadTrendingHashtags: async (hours = 24, limit = 10) => {
         const state = get();
+        const t0 = Date.now();
 
         // Check cache validity
         if (
@@ -58,10 +84,13 @@ export const useTrendingStore = create<TrendingState>()(
 
         try {
           // Try to use database function first
-          const { data: functionData, error: functionError } = await supabase.rpc("get_trending_hashtags", {
-            hours_back: hours,
-            limit_count: limit,
-          });
+          const { data: functionData, error: functionError } = await rpcWithRetry(
+            async () =>
+              await supabase.rpc("get_trending_hashtags", {
+                hours_back: hours,
+                limit_count: limit,
+              }),
+          );
 
           if (!functionError && functionData) {
             const hashtags: HashtagData[] = (functionData as any[]).map((item: any) => ({
@@ -96,15 +125,8 @@ export const useTrendingStore = create<TrendingState>()(
           const hashtagCounts: Record<string, number> = {};
 
           confessions?.forEach((confession) => {
-            const extractHashtags = (text: string): string[] => {
-              const hashtagRegex = /#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi;
-              const matches = text.match(hashtagRegex);
-              return matches ? matches.map((tag) => tag.toLowerCase()) : [];
-            };
-
             const contentHashtags = extractHashtags(confession.content || "");
             const transcriptionHashtags = confession.transcription ? extractHashtags(confession.transcription) : [];
-
             [...contentHashtags, ...transcriptionHashtags].forEach((hashtag) => {
               hashtagCounts[hashtag] = (hashtagCounts[hashtag] || 0) + 1;
             });
@@ -125,6 +147,7 @@ export const useTrendingStore = create<TrendingState>()(
             isLoading: false,
             lastUpdated: Date.now(),
           });
+          trackStoreOperation("trendingStore", "loadTrendingHashtags", Date.now() - t0);
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Failed to load trending hashtags",
@@ -135,6 +158,7 @@ export const useTrendingStore = create<TrendingState>()(
 
       loadTrendingSecrets: async (hours = 24, limit = 10) => {
         const state = get();
+        const t0 = Date.now();
 
         // Check cache validity
         if (
@@ -149,10 +173,13 @@ export const useTrendingStore = create<TrendingState>()(
 
         try {
           // Try to use database function first
-          const { data: functionData, error: functionError } = await supabase.rpc("get_trending_secrets", {
-            hours_back: hours,
-            limit_count: limit,
-          });
+          const { data: functionData, error: functionError } = await rpcWithRetry(
+            async () =>
+              await supabase.rpc("get_trending_secrets", {
+                hours_back: hours,
+                limit_count: limit,
+              }),
+          );
 
           if (!functionError && functionData) {
             const secrets: TrendingSecret[] = (functionData as any[]).map((item: any) => ({
@@ -223,6 +250,7 @@ export const useTrendingStore = create<TrendingState>()(
             isLoading: false,
             lastUpdated: Date.now(),
           });
+          trackStoreOperation("trendingStore", "loadTrendingSecrets", Date.now() - t0);
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Failed to load trending secrets",
@@ -233,6 +261,7 @@ export const useTrendingStore = create<TrendingState>()(
 
       searchByHashtag: async (hashtag: string) => {
         set({ isLoading: true, error: null });
+        const t0 = Date.now();
 
         try {
           // Try to use database function first
@@ -275,12 +304,6 @@ export const useTrendingStore = create<TrendingState>()(
 
           if (error) throw error;
 
-          const extractHashtags = (text: string): string[] => {
-            const hashtagRegex = /#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi;
-            const matches = text.match(hashtagRegex);
-            return matches ? matches.map((tag) => tag.toLowerCase()) : [];
-          };
-
           const results: Confession[] = (confessions || [])
             .filter((confession) => {
               const contentHashtags = extractHashtags(confession.content || "");
@@ -305,6 +328,7 @@ export const useTrendingStore = create<TrendingState>()(
             searchResults: results,
             isLoading: false,
           });
+          trackStoreOperation("trendingStore", "searchByHashtag", Date.now() - t0);
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Failed to search hashtag",

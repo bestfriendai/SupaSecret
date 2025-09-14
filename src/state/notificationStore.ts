@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
+import { registerStoreCleanup } from "../utils/storeCleanup";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 import type { NotificationState, Notification, GroupedNotification } from "../types/notification";
 
 // Helper function to group notifications
@@ -53,9 +55,10 @@ export const useNotificationStore = create<NotificationState>()(
       error: null,
 
       loadNotifications: async () => {
+        const start = Date.now();
         set({ isLoading: true, error: null });
 
-        // Set up real-time subscriptions if not already done
+        // Ensure real-time subscriptions are up with current user context
         setupNotificationSubscriptions();
 
         try {
@@ -83,6 +86,7 @@ export const useNotificationStore = create<NotificationState>()(
             unreadCount,
             isLoading: false,
           });
+          trackStoreOperation("notificationStore", "loadNotifications", Date.now() - start);
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : "Failed to load notifications",
@@ -304,6 +308,8 @@ export const useNotificationStore = create<NotificationState>()(
 
 // Notification subscription management
 let notificationChannel: any = null;
+let notificationReconnectTimer: any = null;
+let notificationReconnectAttempts = 0;
 
 // Cleanup function for notification subscriptions
 const cleanupNotificationSubscriptions = () => {
@@ -311,24 +317,85 @@ const cleanupNotificationSubscriptions = () => {
     notificationChannel.unsubscribe();
     notificationChannel = null;
   }
+  if (notificationReconnectTimer) {
+    clearTimeout(notificationReconnectTimer);
+    notificationReconnectTimer = null;
+  }
+  notificationReconnectAttempts = 0;
 };
 
 // Function to set up real-time subscriptions for notifications
 const setupNotificationSubscriptions = () => {
   if (notificationChannel) return; // Already set up
 
-  notificationChannel = supabase
-    .channel("notifications")
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
-      const { loadNotifications } = useNotificationStore.getState();
-      loadNotifications(); // Reload notifications when new ones are added
-    })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, (payload) => {
-      const { loadNotifications } = useNotificationStore.getState();
-      loadNotifications(); // Reload notifications when they're updated
-    })
-    .subscribe();
+  const connect = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const userId = user?.id;
+
+    notificationChannel = supabase
+      .channel("notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: userId ? `user_id=eq.${userId}` : undefined,
+        },
+        (payload) => {
+          const notif = payload.new as Notification;
+          useNotificationStore.setState((state) => {
+            const notifications = [notif, ...state.notifications].slice(0, 200);
+            return {
+              notifications,
+              groupedNotifications: groupNotifications(notifications),
+              unreadCount: (state.unreadCount || 0) + (notif.read_at ? 0 : 1),
+            };
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: userId ? `user_id=eq.${userId}` : undefined,
+        },
+        (payload) => {
+          const updated = payload.new as Notification;
+          useNotificationStore.setState((state) => {
+            const notifications = state.notifications.map((n) => (n.id === updated.id ? (updated as any) : n));
+            return {
+              notifications,
+              groupedNotifications: groupNotifications(notifications),
+              unreadCount: notifications.filter((n) => !n.read_at).length,
+            };
+          });
+        },
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          notificationReconnectAttempts = 0;
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          const delay = Math.min(30000, 1000 * Math.pow(2, notificationReconnectAttempts++));
+          if (notificationReconnectTimer) clearTimeout(notificationReconnectTimer);
+          notificationReconnectTimer = setTimeout(() => {
+            cleanupNotificationSubscriptions();
+            connect();
+          }, delay);
+        }
+      });
+  };
+
+  connect();
 };
 
 // Export functions for app-level management
 export { cleanupNotificationSubscriptions, setupNotificationSubscriptions };
+
+// Register cleanup for centralized manager
+registerStoreCleanup("notificationStore", cleanupNotificationSubscriptions);

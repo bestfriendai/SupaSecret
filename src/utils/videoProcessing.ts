@@ -25,8 +25,12 @@ const checkFFmpegAvailability = async (): Promise<boolean> => {
   }
 
   try {
+    if (env.expoGo) {
+      ffmpegAvailable = false;
+      return false;
+    }
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const ff = require("ffmpeg-kit-react-native");
+    const ff = await import("ffmpeg-kit-react-native");
     ffmpegAvailable = !!(ff && ff.FFmpegKit);
     if (ffmpegAvailable) {
       (global as any).__ffmpegAvailable = true;
@@ -440,8 +444,7 @@ const runFfmpeg = async (command: string): Promise<boolean> => {
     const isAvailable = await checkFFmpegAvailability();
     if (!isAvailable) return false;
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const ff = require("ffmpeg-kit-react-native");
+    const ff = await import("ffmpeg-kit-react-native");
     if (!ff || !ff.FFmpegKit) return false;
 
     const session = await ff.FFmpegKit.execute(command);

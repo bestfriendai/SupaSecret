@@ -5,6 +5,9 @@ import { AuthState, User, AuthCredentials, SignUpData, AuthError } from "../type
 import { signUpUser, signInUser, signOutUser, getCurrentUser, updateUserData } from "../utils/auth";
 import { supabase } from "../lib/supabase";
 import { clearStoreError, withErrorHandling } from "../utils/errorHandling";
+import { registerStoreCleanup, setupAutomaticCleanup } from "../utils/storeCleanup";
+import { trackStoreOperation } from "../utils/storePerformanceMonitor";
+import { AppState } from "react-native";
 
 /**
  * Interface for Supabase session object
@@ -162,69 +165,52 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuthState: async () => {
-        console.log("[AuthStore] checkAuthState called - SETTING isLoading: true");
-        console.log("[AuthStore] Current state before check:", {
-          isAuthenticated: get().isAuthenticated,
-          hasUser: !!get().user,
-          isLoading: get().isLoading,
-        });
+        const start = Date.now();
+        // Debounce/dedup in-flight checks
+        if (authCheckInFlight) return authCheckInFlight;
 
-        // THIS LINE CAUSES AppNavigator TO SHOW LOADING SCREEN
         set({ isLoading: true });
-        console.log("[AuthStore] isLoading set to TRUE - AppNavigator will now show loading screen");
 
-        try {
-          console.log("[AuthStore] Calling getCurrentUser()");
-
-          // Check session validity first
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-
-          if (!isSessionValid(session)) {
-            console.log("[AuthStore] Session expired or invalid");
-            await signOutUser();
-            set({
-              user: null,
-              isAuthenticated: false,
-              isLoading: false,
-              error: null,
+        const withTimeout = <T>(p: Promise<T>, ms = 10000): Promise<T> => {
+          return new Promise<T>((resolve, reject) => {
+            const t = setTimeout(() => reject(new Error("Auth check timeout")), ms);
+            p.then((v) => {
+              clearTimeout(t);
+              resolve(v);
+            }).catch((e) => {
+              clearTimeout(t);
+              reject(e);
             });
-            return;
-          }
-
-          const user = await getCurrentUser();
-
-          console.log("[AuthStore] getCurrentUser() completed:", {
-            hasUser: !!user,
-            isOnboarded: user?.isOnboarded || false,
-            isAuthenticated: !!user,
           });
+        };
 
-          console.log("[AuthStore] Setting final auth state with isLoading: false");
-          set({
-            user,
-            isAuthenticated: !!user,
-            isLoading: false,
-            error: null,
-          });
-          console.log("[AuthStore] Auth state set - AppNavigator will re-evaluate navigation");
-        } catch (error) {
-          console.error("[AuthStore] Auth state check failed:", error);
-          console.log("[AuthStore] Setting unauthenticated state due to error");
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-          });
-        }
+        authCheckInFlight = withTimeout(
+          (async () => {
+            try {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
 
-        console.log("[AuthStore] checkAuthState completed, final state:", {
-          isAuthenticated: get().isAuthenticated,
-          hasUser: !!get().user,
-          isLoading: get().isLoading,
-        });
+              if (!isSessionValid(session as SupabaseSession | null)) {
+                await signOutUser();
+                set({ user: null, isAuthenticated: false, isLoading: false, error: null });
+                return;
+              }
+
+              scheduleSessionRefresh(session as SupabaseSession | null);
+
+              const user = await getCurrentUser();
+              set({ user, isAuthenticated: !!user, isLoading: false, error: null });
+            } catch (_err) {
+              set({ user: null, isAuthenticated: false, isLoading: false, error: null });
+            } finally {
+              trackStoreOperation("authStore", "checkAuthState", Date.now() - start);
+              authCheckInFlight = null;
+            }
+          })(),
+        );
+
+        return authCheckInFlight;
       },
     }),
     {
@@ -233,25 +219,28 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         // Exclude PII (email) from persistence for security
         // Only store non-sensitive user data and authentication status
-        user: state.user ? {
-          id: state.user.id,
-          username: state.user.username,
-          avatar_url: state.user.avatar_url,
-          createdAt: state.user.createdAt,
-          isOnboarded: state.user.isOnboarded,
-          lastLoginAt: state.user.lastLoginAt,
-        } : null,
+        user: state.user
+          ? {
+              id: state.user.id,
+              username: state.user.username,
+              avatar_url: state.user.avatar_url,
+              createdAt: state.user.createdAt,
+              isOnboarded: state.user.isOnboarded,
+              lastLoginAt: state.user.lastLoginAt,
+            }
+          : null,
         isAuthenticated: state.isAuthenticated,
       }),
       // Add version for migration support
       version: 1,
       // Add migrate function to handle version changes
-      migrate: (persistedState: Partial<AuthState>, version: number) => {
+      migrate: (persistedState: unknown, version: number): unknown => {
+        const state = persistedState as Partial<AuthState>;
         if (version === 0) {
           // Migration from version 0 to 1 - no changes needed
-          return persistedState;
+          return state;
         }
-        return persistedState;
+        return state;
       },
       // Rehydrate the state properly
       onRehydrateStorage: () => (state) => {
@@ -269,12 +258,18 @@ export const useAuthStore = create<AuthState>()(
 
 // Auth listener management
 let authListener: { data: { subscription: any } } | null = null;
+let sessionRefreshTimer: any = null;
+let authCheckInFlight: Promise<void> | null = null;
 
 // Cleanup function for auth listener
 const cleanupAuthListener = () => {
   if (authListener) {
     authListener.data.subscription.unsubscribe();
     authListener = null;
+  }
+  if (sessionRefreshTimer) {
+    clearTimeout(sessionRefreshTimer);
+    sessionRefreshTimer = null;
   }
 };
 
@@ -294,7 +289,7 @@ const setupAuthListener = () => {
         // User signed in or token refreshed - update our auth state
         try {
           // Check session validity
-          if (!isSessionValid(session)) {
+          if (!isSessionValid(session as SupabaseSession | null)) {
             console.log("[AuthStore] Session expired during event:", event);
             await signOutUser();
             useAuthStore.setState({
@@ -328,7 +323,7 @@ const setupAuthListener = () => {
         // Initial session check - this happens on app startup
         if (session) {
           // Check session validity
-          if (!isSessionValid(session)) {
+          if (!isSessionValid(session as SupabaseSession | null)) {
             console.log("[AuthStore] Initial session expired, signing out");
             await signOutUser();
             useAuthStore.setState({
@@ -359,3 +354,36 @@ const setupAuthListener = () => {
 
 // Export functions for app-level management
 export { cleanupAuthListener, setupAuthListener };
+
+// Schedule a token/session refresh shortly before expiry
+const scheduleSessionRefresh = (session: SupabaseSession | null) => {
+  if (!session?.expires_at) return;
+  if (sessionRefreshTimer) clearTimeout(sessionRefreshTimer);
+  const nowMs = Date.now();
+  const expMs = session.expires_at * 1000;
+  const buffer = 60 * 1000; // 60s buffer
+  const delay = Math.max(0, expMs - nowMs - buffer);
+  sessionRefreshTimer = setTimeout(async () => {
+    try {
+      await supabase.auth.refreshSession();
+    } catch (e) {
+      if (__DEV__) console.warn("[AuthStore] Session refresh failed", e);
+    }
+  }, delay);
+};
+
+// Register cleanup and setup app lifecycle handling
+registerStoreCleanup("authStore", cleanupAuthListener);
+setupAutomaticCleanup();
+
+try {
+  AppState.addEventListener("change", (st) => {
+    if (st === "background") {
+      // Proactively clear session refresh timer to avoid wake locks
+      if (sessionRefreshTimer) {
+        clearTimeout(sessionRefreshTimer);
+        sessionRefreshTimer = null;
+      }
+    }
+  });
+} catch {}

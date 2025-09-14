@@ -1,5 +1,15 @@
 import { useState, useCallback, useMemo } from "react";
-import DOMPurify from "isomorphic-dompurify";
+
+// Simple sanitizer for React Native environments
+const sanitizeHTML = (input: string): string => {
+  // Basic sanitization for React Native
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+\s*=/gi, "")
+    .trim();
+};
 
 export interface ValidationRule {
   required?: boolean;
@@ -55,14 +65,8 @@ export const useFormValidation = (config: FormConfig, initialValues: Record<stri
         return fieldConfig.sanitize(value);
       }
 
-      // Proper XSS sanitization using DOMPurify with no allowed tags
-      const sanitized = DOMPurify.sanitize(value, {
-        ALLOWED_TAGS: [],
-        ALLOWED_ATTR: [],
-        KEEP_CONTENT: true,
-      });
-
-      return sanitized.trim();
+      // Basic XSS sanitization for React Native
+      return sanitizeHTML(value);
     },
     [config],
   );

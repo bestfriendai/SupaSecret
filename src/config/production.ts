@@ -31,8 +31,8 @@ export const PRODUCTION_CONFIG = {
   // RevenueCat Configuration
   REVENUECAT: {
     API_KEY: Platform.select({
-      ios: "appl_YOUR_IOS_API_KEY",
-      android: "goog_YOUR_ANDROID_API_KEY",
+      ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || null,
+      android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || null,
     }),
     ENTITLEMENTS: {
       PREMIUM: "premium",
@@ -46,7 +46,7 @@ export const PRODUCTION_CONFIG = {
   // Analytics Configuration
   ANALYTICS: {
     // Google Analytics
-    GOOGLE_ANALYTICS_ID: "G-YOUR_MEASUREMENT_ID",
+    GOOGLE_ANALYTICS_ID: "G-YOUR_GOOGLE_ANALYTICS_ID",
 
     // Firebase Analytics (optional - only if environment variables are provided)
     FIREBASE_CONFIG: process.env.EXPO_PUBLIC_FIREBASE_API_KEY
@@ -66,7 +66,7 @@ export const PRODUCTION_CONFIG = {
 
   // Sentry Configuration
   SENTRY: {
-    DSN: "https://your-dsn@sentry.io/project-id",
+    DSN: "https://YOUR_SENTRY_DSN@sentry.io/YOUR_PROJECT_ID",
     ENVIRONMENT: __DEV__ ? "development" : "production",
     DEBUG: __DEV__,
   },
@@ -74,43 +74,43 @@ export const PRODUCTION_CONFIG = {
   // Push Notifications
   PUSH_NOTIFICATIONS: {
     // OneSignal
-    ONESIGNAL_APP_ID: "your-onesignal-app-id",
+    ONESIGNAL_APP_ID: "YOUR_ONESIGNAL_APP_ID",
 
     // Firebase Cloud Messaging
-    FCM_SENDER_ID: "123456789",
+    FCM_SENDER_ID: "YOUR_FCM_SENDER_ID",
   },
 
   // External APIs
   EXTERNAL_APIS: {
     // Content moderation
-    CONTENT_MODERATION_API_KEY: "your-content-moderation-api-key",
+    CONTENT_MODERATION_API_KEY: "YOUR_CONTENT_MODERATION_API_KEY",
 
     // Speech-to-Text (if using cloud service)
-    SPEECH_TO_TEXT_API_KEY: "your-speech-api-key",
+    SPEECH_TO_TEXT_API_KEY: "YOUR_SPEECH_API_KEY",
 
     // Translation service (if needed)
-    TRANSLATION_API_KEY: "your-translation-api-key",
+    TRANSLATION_API_KEY: "YOUR_TRANSLATION_API_KEY",
   },
 
   // App Store Configuration
   APP_STORE: {
-    IOS_APP_ID: "123456789",
+    IOS_APP_ID: "YOUR_IOS_APP_ID",
     ANDROID_PACKAGE_NAME: "com.toxic.confessions",
 
     // App Store Connect API (for analytics)
-    APP_STORE_CONNECT_KEY_ID: "your-key-id",
-    APP_STORE_CONNECT_ISSUER_ID: "your-issuer-id",
+    APP_STORE_CONNECT_KEY_ID: "YOUR_APP_STORE_CONNECT_KEY_ID",
+    APP_STORE_CONNECT_ISSUER_ID: "YOUR_APP_STORE_CONNECT_ISSUER_ID",
   },
 
   // Social Media Integration
   SOCIAL: {
     // Twitter API (if sharing features)
-    TWITTER_API_KEY: "your-twitter-api-key",
-    TWITTER_API_SECRET: "your-twitter-api-secret",
+    TWITTER_API_KEY: "YOUR_TWITTER_API_KEY",
+    TWITTER_API_SECRET: "YOUR_TWITTER_API_SECRET",
 
     // Instagram Basic Display (if needed)
-    INSTAGRAM_APP_ID: "your-instagram-app-id",
-    INSTAGRAM_APP_SECRET: "your-instagram-app-secret",
+    INSTAGRAM_APP_ID: "YOUR_INSTAGRAM_APP_ID",
+    INSTAGRAM_APP_SECRET: "YOUR_INSTAGRAM_APP_SECRET",
   },
 
   // Legal URLs
@@ -124,6 +124,7 @@ export const PRODUCTION_CONFIG = {
   // Feature Flags
   FEATURES: {
     ENABLE_ANALYTICS: true,
+    ENABLE_ADS: true,
     ENABLE_CRASH_REPORTING: true,
     ENABLE_PUSH_NOTIFICATIONS: true,
     ENABLE_SOCIAL_SHARING: false,
@@ -186,7 +187,14 @@ export const validateProductionConfig = (): { isValid: boolean; missingKeys: str
   const missingKeys: string[] = [];
 
   // Check critical keys that must be set for production
-  const criticalKeys = ["ADMOB.AD_UNITS.interstitial", "REVENUECAT.API_KEY", "SENTRY.DSN"];
+  const criticalKeys = [
+    "ADMOB.APP_ID",
+    "ADMOB.AD_UNITS.banner",
+    "ADMOB.AD_UNITS.interstitial",
+    "ADMOB.AD_UNITS.rewarded",
+    "REVENUECAT.API_KEY",
+    "SENTRY.DSN",
+  ];
 
   criticalKeys.forEach((keyPath) => {
     const keys = keyPath.split(".");

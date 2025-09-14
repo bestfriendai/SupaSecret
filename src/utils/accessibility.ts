@@ -293,11 +293,11 @@ export const announceSlideChange = (slideIndex: number, totalSlides: number, sli
 };
 
 export const announceOnboardingComplete = () => {
-  announceForAccessibility('Onboarding complete. Redirecting to sign up.');
+  announceForAccessibility("Onboarding complete. Redirecting to sign up.");
 };
 
 export const announceOnboardingSkipped = () => {
-  announceForAccessibility('Onboarding skipped. Redirecting to sign up.');
+  announceForAccessibility("Onboarding skipped. Redirecting to sign up.");
 };
 
 // Accessibility state management
@@ -311,17 +311,13 @@ export interface CustomAccessibilityState {
 // Get current accessibility state
 export const getAccessibilityState = async (): Promise<CustomAccessibilityState> => {
   try {
-    const [
-      isScreenReaderEnabled,
-      isReduceMotionEnabled,
-      isReduceTransparencyEnabled,
-      prefersCrossFadeTransitions,
-    ] = await Promise.all([
-      AccessibilityInfo.isScreenReaderEnabled(),
-      AccessibilityInfo.isReduceMotionEnabled(),
-      AccessibilityInfo.isReduceTransparencyEnabled(),
-      AccessibilityInfo.prefersCrossFadeTransitions(),
-    ]);
+    const [isScreenReaderEnabled, isReduceMotionEnabled, isReduceTransparencyEnabled, prefersCrossFadeTransitions] =
+      await Promise.all([
+        AccessibilityInfo.isScreenReaderEnabled(),
+        AccessibilityInfo.isReduceMotionEnabled(),
+        AccessibilityInfo.isReduceTransparencyEnabled(),
+        AccessibilityInfo.prefersCrossFadeTransitions(),
+      ]);
 
     return {
       isScreenReaderEnabled,
@@ -330,7 +326,7 @@ export const getAccessibilityState = async (): Promise<CustomAccessibilityState>
       prefersCrossFadeTransitions,
     };
   } catch (error) {
-    console.warn('Failed to get accessibility state:', error);
+    console.warn("Failed to get accessibility state:", error);
     return {
       isScreenReaderEnabled: false,
       isReduceMotionEnabled: false,
@@ -342,7 +338,7 @@ export const getAccessibilityState = async (): Promise<CustomAccessibilityState>
 
 // Haptic feedback with accessibility consideration
 export const accessibleHapticFeedback = async (
-  type: 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error' = 'light'
+  type: "light" | "medium" | "heavy" | "success" | "warning" | "error" = "light",
 ) => {
   try {
     const { isReduceMotionEnabled } = await getAccessibilityState();
@@ -357,7 +353,7 @@ export const accessibleHapticFeedback = async (
     // For now, just log the feedback type
     console.log(`Haptic feedback: ${type}`);
   } catch (error) {
-    console.warn('Haptic feedback failed:', error);
+    console.warn("Haptic feedback failed:", error);
   }
 };
 

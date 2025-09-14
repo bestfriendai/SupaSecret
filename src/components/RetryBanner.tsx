@@ -13,19 +13,25 @@ export default function RetryBanner() {
 
   // Debug logging for component lifecycle
   if (__DEV__) {
-    console.log(`[RetryBanner] Component rendered - visible: ${visible}, message: "${message}" at ${new Date().toISOString()}`);
+    console.log(
+      `[RetryBanner] Component rendered - visible: ${visible}, message: "${message}" at ${new Date().toISOString()}`,
+    );
   }
 
   useEffect(() => {
     const unsubscribe = subscribeRetryEvents((e: RetryEvent) => {
       const source = e.source === "supabase" ? "Database" : e.source === "api" ? "Network" : "Network";
       setMessage(`${source}: retrying (attempt ${e.attempt})…`);
-      
+
       if (__DEV__) {
-        console.log(`[RetryBanner] Retry event received - source: ${e.source}, attempt: ${e.attempt} at ${new Date().toISOString()}`);
-        console.log(`[RetryBanner] Banner becoming visible with message: "${source}: retrying (attempt ${e.attempt})…"`);
+        console.log(
+          `[RetryBanner] Retry event received - source: ${e.source}, attempt: ${e.attempt} at ${new Date().toISOString()}`,
+        );
+        console.log(
+          `[RetryBanner] Banner becoming visible with message: "${source}: retrying (attempt ${e.attempt})…"`,
+        );
       }
-      
+
       setVisible(true);
 
       // Fade in quickly
@@ -74,16 +80,16 @@ export default function RetryBanner() {
   }
 
   return (
-    <SafeAreaView 
-      pointerEvents="none" 
-      style={{ 
-        position: "absolute", 
-        top: 0, 
-        left: 0, 
-        right: 0, 
+    <SafeAreaView
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
         zIndex: 9998,
         // Add visual debugging border in development
-        ...(__DEV__ ? { borderWidth: 1, borderColor: "red", borderStyle: "dashed" } : {})
+        ...(__DEV__ ? { borderWidth: 1, borderColor: "red", borderStyle: "dashed" } : {}),
       }}
     >
       <Animated.View
@@ -93,7 +99,7 @@ export default function RetryBanner() {
           borderRadius: 10,
           overflow: "hidden",
           // Add visual debugging background in development
-          ...(__DEV__ ? { backgroundColor: "rgba(255, 0, 0, 0.1)" } : {})
+          ...(__DEV__ ? { backgroundColor: "rgba(255, 0, 0, 0.1)" } : {}),
         }}
         pointerEvents="none"
       >
