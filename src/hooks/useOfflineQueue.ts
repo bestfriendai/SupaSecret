@@ -54,7 +54,7 @@ export const useOfflineQueue = (): UseOfflineQueueReturn => {
 
   const enqueueAction = useCallback(
     async (type: OfflineActionType, payload: any, maxRetries: number = 3): Promise<string> => {
-      return await offlineQueue.enqueue(type, payload, maxRetries);
+      return await offlineQueue.enqueue(type, payload, { maxRetries });
     },
     [],
   );

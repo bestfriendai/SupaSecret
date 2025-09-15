@@ -14,7 +14,9 @@ import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { checkConfessionStoreState } from "../utils/debugConfessions";
 import { useOptimizedReplies } from "../hooks/useOptimizedReplies";
-import { NetworkErrorState } from "../components/ErrorState";
+import { useScreenStatus } from "../hooks/useScreenStatus";
+import { NetworkErrorState, ErrorState } from "../components/ErrorState";
+import { withErrorBoundary } from "../components/ErrorBoundary";
 import OptimizedAdBanner from "../components/OptimizedAdBanner";
 import { useScrollRestoration } from "../hooks/useScrollRestoration";
 import type { ScrollView } from "react-native";
@@ -26,11 +28,12 @@ import HashtagText from "../components/HashtagText";
 
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11yProps } from "../utils/accessibility";
-import { useDebouncedLikeToggle } from "../utils/debounce";
+import { useDebouncedLikeToggle } from "../utils/consolidatedUtils";
 import { withRefreshErrorHandling } from "../utils/refreshErrorHandler";
 import Animated from "react-native-reanimated";
+import { createScreenValidator } from "../utils/screenValidation";
 
-export default function HomeScreen() {
+function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const confessions = useConfessionStore((state) => state.confessions);
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
@@ -38,6 +41,9 @@ export default function HomeScreen() {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const isLoading = useConfessionStore((state) => state.isLoading);
   const isLoadingMore = useConfessionStore((state) => state.isLoadingMore);
+
+  // Initialize screen validator
+  const validator = createScreenValidator('HomeScreen');
 
   // Debug: Log confessions count when it changes
   useEffect(() => {
@@ -53,6 +59,7 @@ export default function HomeScreen() {
   const { scrollViewRef } = useScrollRestoration({ key: "home-feed" });
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
+  const screenStatus = useScreenStatus({ screenName: 'HomeScreen', loadingTimeout: 20000 });
   const [refreshing, setRefreshing] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportingConfessionId, setReportingConfessionId] = useState<string | null>(null);
@@ -63,32 +70,40 @@ export default function HomeScreen() {
   // FlashList ref for potential future scroll restoration
   const flashListRef = useRef<any | null>(null);
 
-  // Check network connectivity and handle errors
+  // Initialize data loading on component mount
   useEffect(() => {
-    const checkNetworkAndLoadData = async () => {
+    const initializeScreen = async () => {
+      validator.log('Screen mounted, initializing...');
+
       try {
+        // Check network connectivity first
         const netInfo = await NetInfo.fetch();
         if (!netInfo.isConnected) {
+          validator.warn('No network connection detected');
           setNetworkError(true);
           return;
         }
         setNetworkError(false);
-      } catch (error) {
-        if (__DEV__) {
-          console.error("Network check failed:", error);
+
+        // Load initial confessions if none exist
+        if (confessions.length === 0 && !isLoading) {
+          validator.log('Loading initial confessions...');
+          await loadConfessions();
         }
+      } catch (error) {
+        validator.error('Failed to initialize screen:', error);
         setNetworkError(true);
       }
     };
 
-    checkNetworkAndLoadData();
+    initializeScreen();
   }, []);
 
   const onRefresh = useCallback(async () => {
     console.log("🔄 HomeScreen: Pull to refresh started");
     setRefreshing(true);
 
-    const result = await withRefreshErrorHandling(
+    const result = await screenStatus.executeWithLoading(
       async () => {
         // Debug: Check store state before refresh
         if (__DEV__) {
@@ -124,8 +139,16 @@ export default function HomeScreen() {
 
         return true;
       },
-      "home-screen-refresh",
-      false, // Don't show alert, we handle it with setNetworkError
+      {
+        errorContext: 'Refreshing home feed',
+        onError: (error) => {
+          console.error('[HomeScreen] Refresh failed:', error);
+          setNetworkError(true);
+        },
+        onSuccess: () => {
+          setNetworkError(false);
+        },
+      }
     );
 
     if (!result) {
@@ -134,7 +157,7 @@ export default function HomeScreen() {
 
     console.log("🔄 HomeScreen: Pull to refresh completed");
     setRefreshing(false);
-  }, [loadConfessions, clearLoadedReplies]);
+  }, [loadConfessions, clearLoadedReplies, screenStatus]);
 
   // Note: Removed useAnimatedScrollHandler to fix FlashList "_c.call is not a function" error
   // FlashList has its own internal scroll handling that conflicts with Reanimated's scroll handler
@@ -154,24 +177,53 @@ export default function HomeScreen() {
 
   const handleToggleLike = useCallback(
     async (confessionId: string) => {
-      await debouncedToggleLike(confessionId);
-      impactAsync();
+      try {
+        validator.log('Toggle like:', { confessionId });
+        if (!confessionId) {
+          validator.error('Invalid confession ID for like toggle');
+          return;
+        }
+        await debouncedToggleLike(confessionId);
+        impactAsync();
+      } catch (error) {
+        validator.error('Like toggle failed:', error);
+      }
     },
-    [debouncedToggleLike, impactAsync],
+    [debouncedToggleLike, impactAsync, validator],
   );
 
   const handleSecretPress = useCallback(
     (confession: Confession) => {
-      impactAsync();
-      if (confession.type === "video") {
-        // Navigate to full-screen video player
-        navigation.navigate("VideoPlayer", { confessionId: confession.id });
-      } else {
-        // Navigate to text confession detail
-        navigation.navigate("SecretDetail", { confessionId: confession.id });
+      try {
+        validator.log('Secret press:', { id: confession.id, type: confession.type });
+        impactAsync();
+
+        // Validate confession data before navigation
+        if (!confession || !confession.id) {
+          validator.error('Invalid confession data for navigation');
+          return;
+        }
+
+        if (confession.type === "video") {
+          // Navigate to full-screen video player with validation
+          validator.log('Navigating to VideoPlayer');
+          (navigation as any).navigate("VideoPlayer", { confessionId: confession.id });
+        } else {
+          // Navigate to text confession detail with validation
+          validator.log('Navigating to SecretDetail');
+          (navigation as any).navigate("SecretDetail", { confessionId: confession.id });
+        }
+      } catch (error) {
+        validator.error('Navigation failed:', error);
+        // Fallback: Try navigation without validation
+        if (confession.type === "video") {
+          (navigation as any).navigate("VideoPlayer", { confessionId: confession.id });
+        } else {
+          (navigation as any).navigate("SecretDetail", { confessionId: confession.id });
+        }
       }
     },
-    [impactAsync, navigation],
+    [impactAsync, navigation, validator],
   );
 
   const handleReportPress = useCallback(
@@ -355,9 +407,27 @@ export default function HomeScreen() {
             onEndReached={onEndReached}
             onEndReachedThreshold={0.5}
             ListFooterComponent={renderFooter}
-            ListEmptyComponent={networkError ? <NetworkErrorState onRetry={onRefresh} /> : renderEmpty()}
+            ListEmptyComponent={
+              screenStatus.error ? (
+                <ErrorState
+                  message={screenStatus.error}
+                  onRetry={() => {
+                    screenStatus.clearError();
+                    screenStatus.retry();
+                  }}
+                  type="network"
+                />
+              ) : (
+                renderEmpty()
+              )
+            }
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#1D9BF0"]} tintColor="#1D9BF0" />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#1D9BF0"]}
+                tintColor="#1D9BF0"
+              />
             }
             onViewableItemsChanged={({ viewableItems }) => {
               const visibleIds = viewableItems.map((item) => item.item.id);
@@ -389,3 +459,5 @@ export default function HomeScreen() {
     </View>
   );
 }
+
+export default withErrorBoundary(HomeScreen);

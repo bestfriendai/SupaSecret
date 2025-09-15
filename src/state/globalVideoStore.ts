@@ -46,8 +46,10 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
           }
         }
 
-        newPlayers.set(id, { id, player, isPlaying: playersMeta[id]?.isPlaying ?? false });
-        set({ videoPlayers: newPlayers, playersMeta: { ...playersMeta, [id]: { isPlaying: false } } });
+        // Preserve existing isPlaying state
+        const isPlaying = playersMeta[id]?.isPlaying ?? false;
+        newPlayers.set(id, { id, player, isPlaying });
+        set({ videoPlayers: newPlayers, playersMeta: { ...playersMeta, [id]: { isPlaying } } });
         trackStoreOperation("globalVideoStore", "registerVideoPlayer", Date.now() - t0);
       },
 
@@ -104,7 +106,12 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
                   (playersMeta[id]?.isPlaying ?? playerRef.isPlaying) &&
                   typeof playerRef.player.play === "function"
                 ) {
-                  playerRef.player.play();
+                  const playPromise = playerRef.player.play();
+                  if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch((error: any) => {
+                      if (__DEV__) console.warn(`🎥 Failed to resume video ${id}:`, error);
+                    });
+                  }
                 }
               }
             } catch (error) {
@@ -155,12 +162,25 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
 // Local helper to defensively dispose any kind of player
 function disposePlayer(player: any) {
   try {
+    // First pause playback to avoid issues
     if (typeof player.pause === "function") player.pause();
+
+    // expo-video specific cleanup using release() method
+    if (typeof player.release === "function") {
+      player.release();
+      return; // expo-video player disposed successfully
+    }
+
+    // Fallback for other player types
     if (typeof player.stop === "function") player.stop();
     if (typeof player.dispose === "function") player.dispose();
     if (typeof player.destroy === "function") player.destroy();
     if (typeof player.removeAllListeners === "function") player.removeAllListeners();
-  } catch {}
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("Error during player disposal:", error);
+    }
+  }
 }
 
 // Centralized cleanup registration

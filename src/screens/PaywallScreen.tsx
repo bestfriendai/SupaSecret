@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, Pressable, ScrollView, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,6 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useMembershipStore } from "../state/membershipStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import type { MembershipPlan } from "../types/membership";
+import { createScreenValidator } from "../utils/screenValidation";
 
 interface PaywallScreenProps {
   route?: {
@@ -20,6 +21,7 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
+  const validator = createScreenValidator('PaywallScreen');
 
   const { availablePlans, isLoading, error, loadAvailablePlans, purchaseSubscription, restorePurchases } =
     useMembershipStore();
@@ -27,8 +29,11 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAvailablePlans();
-  }, [loadAvailablePlans]);
+    validator.log('Loading available plans...');
+    loadAvailablePlans().catch(error => {
+      validator.error('Failed to load plans:', error);
+    });
+  }, [loadAvailablePlans, validator]);
 
   // Auto-select the popular plan when plans are loaded
   useEffect(() => {
@@ -42,37 +47,55 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
     }
   }, [availablePlans]);
 
-  const handlePurchase = async () => {
-    if (!selectedPlan) return;
+  const handlePurchase = useCallback(async () => {
+    if (!selectedPlan) {
+      validator.warn('No plan selected for purchase');
+      return;
+    }
 
+    validator.log('Starting purchase for plan:', selectedPlan);
     impactAsync();
+
     try {
       const success = await purchaseSubscription(selectedPlan);
 
       if (success) {
+        validator.log('Purchase successful');
         Alert.alert("Welcome to Plus!", "Your subscription is now active. Enjoy all premium features!", [
           {
             text: "Continue",
-            onPress: () => navigation.goBack(),
+            onPress: () => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                (navigation as any).navigate('Home');
+              }
+            },
           },
         ]);
       } else {
+        validator.warn('Purchase failed:', error);
         Alert.alert("Purchase Failed", error || "Unable to complete purchase. Please try again.");
       }
-    } catch {
+    } catch (err) {
+      validator.error('Purchase error:', err);
       Alert.alert("Purchase Error", "An unexpected error occurred. Please try again.");
     }
-  };
+  }, [selectedPlan, purchaseSubscription, error, navigation, impactAsync, validator]);
 
-  const handleRestore = async () => {
+  const handleRestore = useCallback(async () => {
+    validator.log('Starting purchase restoration');
     impactAsync();
+
     try {
       await restorePurchases();
+      validator.log('Restore successful');
       Alert.alert("Restore Complete", "Your purchases have been restored successfully.");
-    } catch {
+    } catch (err) {
+      validator.error('Restore failed:', err);
       Alert.alert("Restore Failed", "Unable to restore purchases. Please try again.");
     }
-  };
+  }, [restorePurchases, impactAsync, validator]);
 
   const formatPrice = (plan: MembershipPlan) => {
     const price = (plan.price / 100).toFixed(2);
@@ -117,7 +140,17 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
             paddingBottom: 20,
           }}
         >
-          <Pressable onPress={() => navigation.goBack()} className="w-8 h-8 items-center justify-center mb-6">
+          <Pressable
+            onPress={() => {
+              validator.log('Closing paywall');
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                (navigation as any).navigate('Home');
+              }
+            }}
+            className="w-8 h-8 items-center justify-center mb-6"
+          >
             <Ionicons name="close" size={24} color="#FFFFFF" />
           </Pressable>
 

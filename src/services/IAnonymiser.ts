@@ -1,19 +1,27 @@
 export interface ProcessedVideo {
   uri: string;
-  transcription: string;
+  transcription?: string;
   duration: number;
-  thumbnailUri: string;
+  thumbnailUri?: string;
   audioUri?: string;
-  faceBlurApplied: boolean;
-  voiceChangeApplied: boolean;
+  faceBlurApplied?: boolean;
+  voiceChangeApplied?: boolean;
+  metadata?: {
+    width: number;
+    height: number;
+    duration: number;
+    size: number;
+  };
 }
 
 export interface VideoProcessingOptions {
   enableFaceBlur?: boolean;
   enableVoiceChange?: boolean;
   enableTranscription?: boolean;
-  quality?: "high" | "medium" | "low";
+  quality?: "high" | "medium" | "low" | "highest";
   voiceEffect?: "deep" | "light";
+  maxDuration?: number;
+  muteAudio?: boolean;
   onProgress?: (progress: number, status: string) => void;
 }
 

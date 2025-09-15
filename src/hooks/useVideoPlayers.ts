@@ -119,7 +119,14 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
             }
           }
 
-          player.play();
+          const playPromise = player.play();
+          if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch((error: any) => {
+              if (__DEV__) {
+                console.warn(`Failed to play video at index ${index}:`, error);
+              }
+            });
+          }
           currentPlayingRef.current = index;
 
           // Recenter pool around the new index (prev/current/next)

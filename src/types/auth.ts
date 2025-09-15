@@ -1,3 +1,5 @@
+import { StandardError } from "../utils/errorHandling";
+
 export interface User {
   id: string;
   email: string;
@@ -44,12 +46,7 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: {
-    message: string;
-    code?: string;
-    details?: string;
-    timestamp?: number;
-  } | null;
+  error: StandardError | null;
 
   // Actions
   signUp: (data: SignUpData) => Promise<void>;

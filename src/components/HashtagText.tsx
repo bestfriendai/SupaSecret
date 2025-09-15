@@ -6,7 +6,7 @@ import type { TabParamList } from "../navigation/AppNavigator";
 import { useTrendingStore } from "../state/trendingStore";
 import { extractHashtags } from "../utils/trending";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { sanitizeText } from "../utils/sanitize";
+import { sanitizeText } from "../utils/consolidatedUtils";
 
 interface HashtagTextProps {
   text: string;

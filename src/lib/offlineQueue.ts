@@ -83,11 +83,11 @@ registerProcessor(
   async (payload: { userId: string; isPremium: boolean; activeSubscriptions: string[]; customerInfo: any }) => {
     if (!checkSupabaseConfig()) return;
     await withSupabaseRetry(async () => {
-      const { error } = await supabase.from("user_subscriptions").upsert({
+      // Use user_memberships table to store subscription status
+      const { error } = await supabase.from("user_memberships").upsert({
         user_id: payload.userId,
-        is_premium: payload.isPremium,
-        subscription_ids: payload.activeSubscriptions,
-        customer_info: payload.customerInfo,
+        tier: payload.isPremium ? "plus" : "free",
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;

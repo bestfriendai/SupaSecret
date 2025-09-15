@@ -10,6 +10,12 @@ import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 import { trackPositiveInteraction, showReviewPrompt } from "../utils/reviewPrompt";
 import { registerStoreCleanup } from "../utils/storeCleanup";
 import { trackStoreOperation } from "../utils/storePerformanceMonitor";
+import { normalizeConfession, normalizeConfessions } from "../utils/confessionNormalizer";
+import {
+  confessionValidation,
+  videoValidation
+} from "../utils/validation";
+import * as FileSystem from "expo-file-system/legacy";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();
@@ -146,6 +152,7 @@ export const useConfessionStore = create<ConfessionState>()(
       isLoadingMore: false,
       hasMore: true,
       error: null,
+      isStoreInitialized: false,
 
       loadConfessions: async () => {
         if (loadConfessionsInFlight) return loadConfessionsInFlight;
@@ -156,42 +163,19 @@ export const useConfessionStore = create<ConfessionState>()(
             const INITIAL_LIMIT = 20;
             const { data: finalData, error } = await wrapWithRetry(async () => {
               return await supabase
-                .from("confessions")
+                .from("public_confessions")
                 .select("*")
                 .order("created_at", { ascending: false })
                 .limit(INITIAL_LIMIT);
             })();
             if (error) throw error;
 
-            const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-
-            const confessions: Confession[] = await Promise.all(
-              ((finalData as any[]) || []).map(async (item: any) => {
-                const base: Confession = {
-                  id: item.id,
-                  type: item.type as "text" | "video",
-                  content: item.content,
-                  videoUri: undefined,
-                  transcription: item.transcription || undefined,
-                  timestamp: new Date(item.created_at).getTime(),
-                  isAnonymous: item.is_anonymous,
-                  likes: item.likes,
-                  isLiked: false,
-                };
-
-                if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
-                  const videoPath = item.video_uri || (item as any).video_url;
-                  const signedResult = await ensureSignedVideoUrl(videoPath);
-                  base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
-                } else if (base.type === "video" && !item.video_uri && !item.video_url) {
-                  base.videoUri = FALLBACK_VIDEO;
-                }
-                return base;
-              }),
-            );
+            const confessions: Confession[] = await normalizeConfessions((finalData as any[]) || []);
 
             const combinedConfessions = __DEV__ ? [...confessions, ...sampleConfessions] : [...confessions];
-            const finalConfessions = combinedConfessions.sort((a, b) => b.timestamp - a.timestamp).slice(0, 200); // limit to reduce memory pressure
+            // Remove duplicates by ID
+            const uniqueConfessions = Array.from(new Map(combinedConfessions.map((c) => [c.id, c])).values());
+            const finalConfessions = uniqueConfessions.sort((a, b) => b.timestamp - a.timestamp).slice(0, 200); // limit to reduce memory pressure
 
             set({
               confessions: finalConfessions,
@@ -226,7 +210,7 @@ export const useConfessionStore = create<ConfessionState>()(
 
             const { data, error } = await wrapWithRetry(async () => {
               return await supabase
-                .from("confessions")
+                .from("public_confessions")
                 .select("*")
                 .order("created_at", { ascending: false })
                 .lt("created_at", new Date(lastConfession.timestamp).toISOString())
@@ -235,37 +219,14 @@ export const useConfessionStore = create<ConfessionState>()(
 
             if (error) throw error;
 
-            const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+            const newConfessions: Confession[] = await normalizeConfessions((data as any[]) || []);
 
-            const newConfessions: Confession[] = await Promise.all(
-              ((data as any[]) || []).map(async (item: any) => {
-                const base: Confession = {
-                  id: item.id,
-                  type: item.type as "text" | "video",
-                  content: item.content,
-                  videoUri: undefined,
-                  transcription: item.transcription || undefined,
-                  timestamp: new Date(item.created_at).getTime(),
-                  isAnonymous: item.is_anonymous,
-                  likes: item.likes,
-                  isLiked: false,
-                };
-
-                if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
-                  // Handle both video_uri and video_url fields for compatibility
-                  const videoPath = item.video_uri || (item as any).video_url;
-                  const signedResult = await ensureSignedVideoUrl(videoPath);
-                  base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
-                } else if (base.type === "video" && !item.video_uri && !item.video_url) {
-                  base.videoUri = FALLBACK_VIDEO;
-                }
-
-                return base;
-              }),
-            );
+            // Filter out duplicates by ID
+            const existingIds = new Set(confessions.map((c) => c.id));
+            const uniqueNewConfessions = newConfessions.filter((c) => !existingIds.has(c.id));
 
             set({
-              confessions: [...confessions, ...newConfessions].slice(-400),
+              confessions: [...confessions, ...uniqueNewConfessions].slice(-400),
               isLoadingMore: false,
               hasMore: (data?.length || 0) >= LOAD_MORE_LIMIT,
             });
@@ -298,34 +259,7 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (error) throw error;
 
-          const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-
-          const userConfessions: Confession[] = await Promise.all(
-            (data || []).map(async (item) => {
-              const base: Confession = {
-                id: item.id,
-                type: item.type as "text" | "video",
-                content: item.content,
-                videoUri: undefined,
-                transcription: item.transcription || undefined,
-                timestamp: new Date(item.created_at).getTime(),
-                isAnonymous: item.is_anonymous,
-                likes: item.likes,
-                isLiked: false,
-              };
-
-              if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
-                // Handle both video_uri and video_url fields for compatibility
-                const videoPath = item.video_uri || (item as any).video_url;
-                const signedResult = await ensureSignedVideoUrl(videoPath);
-                base.videoUri = signedResult.signedUrl || FALLBACK_VIDEO;
-              } else if (base.type === "video" && !item.video_uri && !(item as any).video_url) {
-                base.videoUri = FALLBACK_VIDEO;
-              }
-
-              return base;
-            }),
-          );
+          const userConfessions: Confession[] = await normalizeConfessions(data || []);
 
           set({
             userConfessions,
@@ -342,7 +276,80 @@ export const useConfessionStore = create<ConfessionState>()(
       addConfession: async (confession, opts) => {
         console.log("📝 Adding new confession:", confession);
         set({ isLoading: true, error: null });
+
         try {
+          // Comprehensive validation before processing
+          const validationResult = confessionValidation.complete({
+            content: confession.content,
+            type: confession.type,
+            video: confession.type === 'video' && confession.videoUri ? {
+              file: { uri: confession.videoUri },
+              // Duration and size would need to be extracted from video file
+              // For now, we'll skip these specific validations
+            } : undefined,
+          });
+
+          if (!validationResult.isValid && validationResult.error) {
+            throw new Error(validationResult.error);
+          }
+
+          // Log validation warnings
+          if (validationResult.warnings && __DEV__) {
+            console.warn('Confession validation warnings:', validationResult.warnings);
+          }
+
+          // Check if user is online for immediate processing vs offline queue
+          if (!offlineQueue.getNetworkStatus()) {
+            // User is offline - queue the confession creation
+            const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+            const tempConfession: Confession = {
+              id: tempId,
+              type: confession.type,
+              content: confession.content,
+              videoUri: confession.videoUri,
+              transcription: confession.transcription,
+              timestamp: Date.now(),
+              isAnonymous: confession.isAnonymous,
+              likes: 0,
+              isLiked: false,
+            };
+
+            // Add to local state optimistically
+            set((state) => ({
+              confessions: [tempConfession, ...state.confessions],
+              isLoading: false,
+            }));
+
+            // Queue for later processing
+            await offlineQueue.enqueue(
+              OFFLINE_ACTIONS.CREATE_CONFESSION,
+              {
+                tempId,
+                confession: {
+                  type: confession.type,
+                  content: confession.content,
+                  videoUri: confession.videoUri,
+                  transcription: confession.transcription,
+                  isAnonymous: confession.isAnonymous,
+                },
+              },
+              {
+                priority: 10, // High priority for confession creation
+                reconciliation: {
+                  tempId,
+                  targetStore: 'confessionStore',
+                  metadata: { type: confession.type }
+                }
+              }
+            );
+
+            if (__DEV__) {
+              console.log('✅ Confession queued for offline processing with temp ID:', tempId);
+            }
+            return;
+          }
+
+          // User is online - proceed with immediate processing
           const {
             data: { user },
           } = await supabase.auth.getUser();
@@ -358,13 +365,91 @@ export const useConfessionStore = create<ConfessionState>()(
           let videoStoragePath: string | undefined;
           let signedVideoUrl: string | undefined;
 
+          // Enhanced video processing with validation
           if (confession.type === "video" && confession.videoUri) {
             if (isLocalUri(confession.videoUri)) {
-              const result = await uploadVideoToSupabase(confession.videoUri, user.id, {
-                onProgress: opts?.onUploadProgress,
-              });
-              videoStoragePath = result.path; // store path in DB
-              signedVideoUrl = result.signedUrl; // use for immediate playback
+              // Additional validation for local video files before upload
+              try {
+                const videoFileValidation = videoValidation.videoFile({ uri: confession.videoUri });
+                if (!videoFileValidation.isValid && videoFileValidation.error) {
+                  throw new Error(`Video validation failed: ${videoFileValidation.error}`);
+                }
+
+                if (videoFileValidation.warnings && __DEV__) {
+                  console.warn('Video file warnings:', videoFileValidation.warnings);
+                }
+
+                // Get file info for size and duration validation
+                const fileInfo = await FileSystem.getInfoAsync(confession.videoUri);
+                if (fileInfo.exists && (fileInfo as any).size) {
+                  const sizeValidation = videoValidation.videoSize((fileInfo as any).size);
+                  if (!sizeValidation.isValid && sizeValidation.error) {
+                    throw new Error(sizeValidation.error);
+                  }
+
+                  if (sizeValidation.warnings && __DEV__) {
+                    console.warn('Video size warnings:', sizeValidation.warnings);
+                  }
+                }
+
+                // TODO: Add duration validation when duration info is available
+                // This would require video metadata extraction which is complex
+
+                const result = await uploadVideoToSupabase(confession.videoUri, user.id, {
+                  onProgress: opts?.onUploadProgress,
+                });
+                videoStoragePath = result.path; // store path in DB
+                signedVideoUrl = result.signedUrl; // use for immediate playback
+              } catch (uploadError) {
+                if (__DEV__) {
+                  console.error('Video upload failed:', uploadError);
+                }
+                // If upload fails, queue for retry
+                const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                const tempConfession: Confession = {
+                  id: tempId,
+                  type: confession.type,
+                  content: confession.content,
+                  videoUri: confession.videoUri,
+                  transcription: confession.transcription,
+                  timestamp: Date.now(),
+                  isAnonymous: confession.isAnonymous,
+                  likes: 0,
+                  isLiked: false,
+                };
+
+                set((state) => ({
+                  confessions: [tempConfession, ...state.confessions],
+                  isLoading: false,
+                }));
+
+                await offlineQueue.enqueue(
+                  OFFLINE_ACTIONS.CREATE_CONFESSION,
+                  {
+                    tempId,
+                    confession: {
+                      type: confession.type,
+                      content: confession.content,
+                      videoUri: confession.videoUri,
+                      transcription: confession.transcription,
+                      isAnonymous: confession.isAnonymous,
+                    },
+                  },
+                  {
+                    priority: 10, // High priority for confession creation
+                    reconciliation: {
+                      tempId,
+                      targetStore: 'confessionStore',
+                      metadata: { type: confession.type, uploadFailed: true }
+                    }
+                  }
+                );
+
+                if (__DEV__) {
+                  console.log('✅ Confession queued due to upload failure with temp ID:', tempId);
+                }
+                return;
+              }
             } else {
               // Already a remote URL (likely a signed URL) – do not persist path to DB
               signedVideoUrl = confession.videoUri;
@@ -409,9 +494,9 @@ export const useConfessionStore = create<ConfessionState>()(
             content: data.content,
             videoUri:
               signedVideoUrl ||
-              (await ensureSignedVideoUrl(data.video_uri || undefined))?.signedUrl ||
-              (data.type === "video"
-                ? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+              (data.type === "video" && data.video_uri
+                ? (await ensureSignedVideoUrl(data.video_uri))?.signedUrl ||
+                  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
                 : undefined),
             transcription: data.transcription || undefined,
             timestamp: new Date(data.created_at).getTime(),
@@ -442,8 +527,33 @@ export const useConfessionStore = create<ConfessionState>()(
 
           console.log("✅ Confession added successfully to timeline");
         } catch (error) {
+          if (__DEV__) {
+            console.error('Failed to add confession:', error);
+          }
+
+          let errorMessage = "Failed to add confession";
+
+          // Provide user-friendly error messages based on validation failures
+          if (error instanceof Error) {
+            if (error.message.includes('Video validation failed:') ||
+                error.message.includes('Please enter your confession') ||
+                error.message.includes('too short') ||
+                error.message.includes('too long') ||
+                error.message.includes('Video file is required') ||
+                error.message.includes('Unsupported video format')) {
+              // These are validation errors - show the original message
+              errorMessage = error.message;
+            } else if (error.message.includes('User not authenticated')) {
+              errorMessage = "Please sign in to share your confession";
+            } else if (error.message.includes('upload')) {
+              errorMessage = "Failed to upload video. Please check your connection and try again.";
+            } else {
+              errorMessage = error.message;
+            }
+          }
+
           set({
-            error: error instanceof Error ? error.message : "Failed to add confession",
+            error: errorMessage,
             isLoading: false,
           });
           throw error;
@@ -594,16 +704,22 @@ export const useConfessionStore = create<ConfessionState>()(
               return;
             }
 
+            // Check authentication first - the function requires it
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+              throw new Error('Please sign in to like confessions');
+            }
+
             // Try RPC first for server-verified toggle
             const { data: rpcData, error: rpcError } = await wrapWithRetry(async () => {
-              return await rpcWithRetry("toggle_like", {
-                confession_id: id,
-                user_id: (await supabase.auth.getUser()).data.user?.id,
+              return await rpcWithRetry("toggle_confession_like", {
+                confession_uuid: id,
+                // Note: user_id parameter removed - function gets it from auth.uid() internally
               });
             })();
 
-            if (!rpcError && rpcData && rpcData.new_likes !== undefined) {
-              const serverCount = rpcData.new_likes as number;
+            if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+              const serverCount = rpcData[0].likes_count as number;
               set((state) => ({
                 confessions: state.confessions.map((c) => (c.id === id ? { ...c, likes: serverCount } : c)),
               }));
@@ -727,8 +843,8 @@ export const useConfessionStore = create<ConfessionState>()(
 
           if (data) {
             const preferences: UserPreferences = {
-              autoplay: data.autoplay,
-              sound_enabled: data.sound_enabled,
+              autoplay: data.autoplay ?? true,
+              sound_enabled: data.sound_enabled ?? true,
               quality_preference: data.quality_preference as "auto" | "high" | "medium" | "low",
               data_usage_mode: data.data_usage_mode as "unlimited" | "wifi-only" | "minimal",
               captions_default: data.captions_default ?? true,
@@ -736,9 +852,9 @@ export const useConfessionStore = create<ConfessionState>()(
               reduced_motion: data.reduced_motion ?? false,
               playback_speed: (data as any).playback_speed ?? 1.0,
             };
-            set({ userPreferences: preferences, isLoading: false });
+            set({ userPreferences: preferences, isLoading: false, isStoreInitialized: true });
           } else {
-            set({ isLoading: false });
+            set({ isLoading: false, isStoreInitialized: true });
           }
         } catch (error) {
           set({
@@ -855,40 +971,29 @@ const setupConfessionSubscriptions = () => {
       .channel("confessions")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "confessions" }, async (payload) => {
         const item: any = payload.new;
-        const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-        const base: Confession = {
-          id: item.id,
-          type: item.type as "text" | "video",
-          content: item.content,
-          videoUri: undefined,
-          transcription: item.transcription || undefined,
-          timestamp: new Date(item.created_at).getTime(),
-          isAnonymous: item.is_anonymous,
-          likes: item.likes,
-          isLiked: false,
-        };
-        if (base.type === "video" && (item.video_uri || (item as any).video_url)) {
-          try {
-            const signed = await ensureSignedVideoUrl(item.video_uri || (item as any).video_url);
-            base.videoUri = signed.signedUrl || FALLBACK_VIDEO;
-          } catch {
-            base.videoUri = FALLBACK_VIDEO;
-          }
-        } else if (base.type === "video") {
-          base.videoUri = FALLBACK_VIDEO;
-        }
+        const base: Confession = await normalizeConfession(item);
 
         const { confessions } = useConfessionStore.getState();
         if (!confessions.find((c) => c.id === base.id)) {
           useConfessionStore.setState({ confessions: [base, ...confessions].slice(0, 200) });
         }
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "confessions" }, (payload) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "confessions" }, async (payload) => {
         const updated = payload.new as any;
         const { confessions, userConfessions } = useConfessionStore.getState();
+
+        // Check if video_uri changed and needs to be refreshed
+        let updatedConfession: Partial<Confession> = { likes: updated.likes };
+
+        if (updated.type === "video" && (updated.video_uri || updated.video_url)) {
+          // Video URI changed, normalize it to get the signed URL
+          const normalized = await normalizeConfession(updated);
+          updatedConfession.videoUri = normalized.videoUri;
+        }
+
         useConfessionStore.setState({
-          confessions: confessions.map((c) => (c.id === updated.id ? { ...c, likes: updated.likes } : c)),
-          userConfessions: userConfessions.map((c) => (c.id === updated.id ? { ...c, likes: updated.likes } : c)),
+          confessions: confessions.map((c) => (c.id === updated.id ? { ...c, ...updatedConfession } : c)),
+          userConfessions: userConfessions.map((c) => (c.id === updated.id ? { ...c, ...updatedConfession } : c)),
         });
       })
       .subscribe((status) => {

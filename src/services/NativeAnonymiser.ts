@@ -259,7 +259,7 @@ class NativeAnonymiserImpl implements IAnonymiser {
     blurFilter: string,
     enableVoiceChange: boolean,
     voiceEffect: "deep" | "light",
-    quality: "high" | "medium" | "low",
+    quality: "high" | "medium" | "low" | "highest",
     transcription?: string,
   ): Promise<string> {
     const outputUri = `${tmp}processed_${Date.now()}.mp4`;

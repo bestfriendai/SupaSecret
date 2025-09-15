@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { View, Text, Pressable, Dimensions, AppState, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,11 +12,12 @@ import { useSavedStore } from "../state/savedStore";
 import { useGlobalVideoStore } from "../state/globalVideoStore";
 import AnimatedActionButton from "./AnimatedActionButton";
 import { useVideoPlayer } from "expo-video";
+import type { Confession } from "../types/confession";
 
 const { height: screenHeight } = Dimensions.get("window");
 
 interface EnhancedVideoItemProps {
-  confession: any;
+  confession: Confession;
   isActive: boolean;
   onClose: () => void;
   onCommentPress?: (confessionId: string) => void;
@@ -47,6 +48,7 @@ function EnhancedVideoItem({
     confession.videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
   const soundEnabled = useConfessionStore((state) => state.userPreferences.sound_enabled);
+  const previousSourceUriRef = useRef<string | null>(null);
 
   // Memoize formatted date and static values to avoid repeated work
   const formattedDate = useMemo(() => format(new Date(confession.timestamp), "MMM d"), [confession.timestamp]);
@@ -54,6 +56,18 @@ function EnhancedVideoItem({
     () => confession.transcription || confession.content || "",
     [confession.transcription, confession.content],
   );
+
+  // Memoize expensive calculations
+  const anonymizerInfo = useMemo(() => ({
+    hasFaceBlur: confession.faceBlurApplied || false,
+    hasVoiceChange: confession.voiceChangeApplied || false,
+  }), [confession.faceBlurApplied, confession.voiceChangeApplied]);
+
+  const videoStats = useMemo(() => ({
+    duration: confession.duration || 0,
+    viewCount: confession.views || 0,
+    isProcessed: confession.processed || false,
+  }), [confession.duration, confession.views, confession.processed]);
 
   // Debug log for sound preferences
   if (__DEV__) {
@@ -64,23 +78,107 @@ function EnhancedVideoItem({
     p.loop = true;
     // Use forceUnmuted for video tab, otherwise respect user preference
     p.muted = forceUnmuted ? false : !soundEnabled;
+    // Enable autoplay for active videos
+    if (isActive && screenFocused) {
+      // Handle play promise properly
+      const playPromise = p.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((error: any) => {
+          if (__DEV__) {
+            console.warn(`Initial autoplay failed for ${confession.id}:`, error);
+          }
+        });
+      }
+    }
     if (__DEV__) {
       console.log(
-        `Video player created for ${confession.id}: soundEnabled=${soundEnabled}, forceUnmuted=${forceUnmuted}, muted=${p.muted}`,
+        `Video player created for ${confession.id}: soundEnabled=${soundEnabled}, forceUnmuted=${forceUnmuted}, muted=${p.muted}, isActive=${isActive}`,
       );
     }
   });
 
-  // Register video player with global store
+  // Player cleanup on unmount or sourceUri change
+  useEffect(() => {
+    // Cleanup function
+    return () => {
+      try {
+        if (player) {
+          // Check if player is still valid before calling methods
+          if (player.playing !== undefined && typeof player.pause === 'function') {
+            try {
+              player.pause();
+            } catch (pauseError) {
+              // Silently ignore pause errors during cleanup
+              // This can happen if the player is already disposed
+            }
+          }
+        }
+      } catch (error) {
+        // Silently ignore disposal errors
+        // These often occur when navigating away quickly
+      }
+    };
+  }, [player]);
+
+  // Clean up old player when sourceUri changes
+  useEffect(() => {
+    const previousUri = previousSourceUriRef.current;
+
+    if (previousUri && previousUri !== sourceUri) {
+      // Source URI changed, need to clean up the old player
+      unregisterVideoPlayer(confession.id);
+      if (__DEV__) {
+        console.log(`Cleaning up old player for ${confession.id} due to sourceUri change`);
+      }
+    }
+
+    previousSourceUriRef.current = sourceUri;
+  }, [sourceUri, confession.id, unregisterVideoPlayer]);
+
+  // Register video player with global store and ensure autoplay
   useEffect(() => {
     if (player) {
       registerVideoPlayer(confession.id, player);
+
+      // Ensure video starts playing when it's the active item
+      if (isActive && screenFocused) {
+        // Small delay to ensure player is ready
+        const playTimer = setTimeout(() => {
+          if (player && typeof player.play === "function") {
+            const playPromise = player.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+              playPromise.catch((error: any) => {
+                if (__DEV__) {
+                  console.warn(`Failed to autoplay video ${confession.id}:`, error);
+                }
+                // Retry play after a short delay
+                setTimeout(() => {
+                  if (player && typeof player.play === "function") {
+                    const retryPromise = player.play();
+                    if (retryPromise && typeof retryPromise.catch === 'function') {
+                      retryPromise.catch(() => {
+                        // Silently ignore retry failures
+                      });
+                    }
+                  }
+                }, 100);
+              });
+            }
+          }
+        }, 100);
+
+        return () => {
+          clearTimeout(playTimer);
+          unregisterVideoPlayer(confession.id);
+        };
+      }
+
       return () => {
         unregisterVideoPlayer(confession.id);
       };
     }
     return undefined;
-  }, [player, confession.id, registerVideoPlayer, unregisterVideoPlayer]);
+  }, [player, confession.id, registerVideoPlayer, unregisterVideoPlayer, isActive, screenFocused]);
 
   // React to sound preference changes
   useEffect(() => {
@@ -103,7 +201,7 @@ function EnhancedVideoItem({
   // Control playback based on visibility and ensure audio is properly set
   useEffect(() => {
     const start = Date.now();
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const handleVideoActivation = async () => {
       try {
@@ -129,9 +227,30 @@ function EnhancedVideoItem({
             player.muted = forceUnmuted ? false : !soundEnabled;
 
             if (typeof player.play === "function") {
-              player.play();
-              wasPlayingRef.current = true;
-              updatePlayerState(confession.id, true);
+              // Add a small delay to ensure the player is ready
+              setTimeout(() => {
+                if (player && typeof player.play === "function") {
+                  const playPromise = player.play();
+                  if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise
+                      .then(() => {
+                        wasPlayingRef.current = true;
+                        updatePlayerState(confession.id, true);
+                        if (__DEV__) {
+                          console.log(`Video ${confession.id}: Started playing`);
+                        }
+                      })
+                      .catch((error: any) => {
+                        if (__DEV__) {
+                          console.warn(`Failed to play video ${confession.id}:`, error);
+                        }
+                      });
+                  } else {
+                    wasPlayingRef.current = true;
+                    updatePlayerState(confession.id, true);
+                  }
+                }
+              }, 50);
             }
 
             // Additional check after a short delay to ensure audio is working
@@ -162,6 +281,8 @@ function EnhancedVideoItem({
         }
       } catch (e) {
         if (__DEV__) console.warn("VideoItem play/pause failed:", e);
+      } finally {
+        trackStoreOperation("EnhancedVideoItem", "handleActivation", Date.now() - start);
       }
     };
 
@@ -173,7 +294,6 @@ function EnhancedVideoItem({
         clearTimeout(timeoutId);
       }
     };
-    trackStoreOperation("EnhancedVideoItem", "handleActivation", Date.now() - start);
   }, [isActive, screenFocused, player, soundEnabled, confession.id, forceUnmuted, updatePlayerState]);
 
   // Handle app state changes to pause videos when app goes to background
@@ -189,7 +309,12 @@ function EnhancedVideoItem({
             }
           } else if (nextAppState === "active" && wasPlayingRef.current && isActive) {
             // App is coming back to foreground, resume if it was playing and is active
-            player.play();
+            const playPromise = player.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+              playPromise.catch(() => {
+                // Silently ignore play errors when resuming from background
+              });
+            }
           }
         } catch (e) {
           if (__DEV__) console.warn("VideoItem app state change failed:", e);
@@ -201,13 +326,18 @@ function EnhancedVideoItem({
     return () => subscription?.remove();
   }, [player, isActive]);
 
-  // Stable callbacks for actions
+  // Stable callbacks for actions with optimized dependencies
   const onPressTogglePlay = useCallback(() => {
     try {
       if (player && player.playing && typeof player.pause === "function") {
         player.pause();
       } else if (player && typeof player.play === "function") {
-        player.play();
+        const playPromise = player.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch((error: any) => {
+            if (__DEV__) console.warn("Toggle play failed:", error);
+          });
+        }
       }
     } catch (e) {
       if (__DEV__) console.warn("Toggle play failed:", e);
@@ -245,6 +375,30 @@ function EnhancedVideoItem({
     PreferenceAwareHaptics.impactAsync();
   }, [onReportPress, confession.id, confessionText]);
 
+  const onPressLike = useCallback(() => {
+    toggleLike(confession.id);
+    PreferenceAwareHaptics.impactAsync();
+  }, [toggleLike, confession.id]);
+
+  const onPressSave = useCallback(async () => {
+    if (onSavePress) {
+      onSavePress(confession.id);
+      PreferenceAwareHaptics.impactAsync();
+    } else {
+      try {
+        if (isSaved(confession.id)) {
+          await unsaveConfession(confession.id);
+        } else {
+          await saveConfession(confession.id);
+        }
+      } catch {
+        Alert.alert("Save Failed", "Unable to save this confession. Please try again.", [{ text: "OK" }]);
+      } finally {
+        PreferenceAwareHaptics.impactAsync();
+      }
+    }
+  }, [onSavePress, confession.id, isSaved, saveConfession, unsaveConfession]);
+
   return (
     <View
       style={{
@@ -269,6 +423,8 @@ function EnhancedVideoItem({
         }}
         contentFit="cover"
         nativeControls={false}
+        allowsExternalPlayback={false}
+        allowsPictureInPicture={false}
       />
 
       {/* Top Overlay */}
@@ -308,11 +464,8 @@ function EnhancedVideoItem({
             icon={confession.isLiked ? "heart" : "heart-outline"}
             label="Like"
             count={confession.likes || 0}
-            isActive={confession.isLiked}
-            onPress={() => {
-              toggleLike(confession.id);
-              PreferenceAwareHaptics.impactAsync();
-            }}
+            isActive={confession.isLiked || false}
+            onPress={onPressLike}
           />
 
           <AnimatedActionButton icon="chatbubble-outline" label="Reply" onPress={onPressComment} />
@@ -323,27 +476,7 @@ function EnhancedVideoItem({
             icon={isSaved(confession.id) ? "bookmark" : "bookmark-outline"}
             label="Save"
             isActive={isSaved(confession.id)}
-            onPress={async () => {
-              if (onSavePress) {
-                onSavePress(confession.id);
-              } else {
-                try {
-                  if (isSaved(confession.id)) {
-                    await unsaveConfession(confession.id);
-                  } else {
-                    await saveConfession(confession.id);
-                  }
-                } catch {
-                  // Show user-facing error feedback instead of console.error
-                  Alert.alert("Save Failed", "Unable to save this confession. Please try again.", [{ text: "OK" }]);
-                } finally {
-                  // Always run haptic feedback regardless of success or failure
-                  PreferenceAwareHaptics.impactAsync();
-                }
-                return; // Skip the duplicate impactAsync call below
-              }
-              PreferenceAwareHaptics.impactAsync();
-            }}
+            onPress={onPressSave}
           />
 
           <AnimatedActionButton icon="flag-outline" label="Report" onPress={onPressReport} />
@@ -366,11 +499,21 @@ function EnhancedVideoItem({
                   <Text className="text-gray-400 text-13">{formattedDate}</Text>
                 </View>
                 <View className="flex-row items-center mt-1">
-                  <Ionicons name="eye-off" size={12} color="#10B981" />
-                  <Text className="text-green-500 text-11 ml-1">Face blurred</Text>
-                  <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                  <Ionicons name="volume-off" size={12} color="#10B981" />
-                  <Text className="text-green-500 text-11 ml-1">Voice changed</Text>
+                  {anonymizerInfo.hasFaceBlur && (
+                    <>
+                      <Ionicons name="eye-off" size={12} color="#10B981" />
+                      <Text className="text-green-500 text-11 ml-1">Face blurred</Text>
+                    </>
+                  )}
+                  {anonymizerInfo.hasFaceBlur && anonymizerInfo.hasVoiceChange && (
+                    <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
+                  )}
+                  {anonymizerInfo.hasVoiceChange && (
+                    <>
+                      <Ionicons name="volume-off" size={12} color="#10B981" />
+                      <Text className="text-green-500 text-11 ml-1">Voice changed</Text>
+                    </>
+                  )}
                 </View>
               </View>
             </View>
@@ -397,13 +540,24 @@ function EnhancedVideoItem({
   );
 }
 
-export default React.memo(EnhancedVideoItem, (prev, next) => {
-  // Selective property comparison to minimize re-renders
+// Enhanced memo comparison with granular prop checking
+const areEqual = (prev: EnhancedVideoItemProps, next: EnhancedVideoItemProps) => {
+  // Quick identity check
+  if (prev.confession === next.confession) return true;
+
+  // Granular property comparison to minimize re-renders
   const sameId = prev.confession?.id === next.confession?.id;
   const sameActivity = prev.isActive === next.isActive && prev.screenFocused === next.screenFocused;
   const sameAudioOverride = prev.forceUnmuted === next.forceUnmuted;
   const sameCounts = (prev.confession?.likes || 0) === (next.confession?.likes || 0);
   const sameLiked = !!prev.confession?.isLiked === !!next.confession?.isLiked;
   const sameUri = prev.confession?.videoUri === next.confession?.videoUri;
-  return sameId && sameActivity && sameAudioOverride && sameCounts && sameLiked && sameUri;
-});
+  const sameTranscription = prev.confession?.transcription === next.confession?.transcription;
+  const sameProcessingState = prev.confession?.processed === next.confession?.processed;
+
+  // Only re-render if essential props changed
+  return sameId && sameActivity && sameAudioOverride && sameCounts &&
+         sameLiked && sameUri && sameTranscription && sameProcessingState;
+};
+
+export default memo(EnhancedVideoItem, areEqual);

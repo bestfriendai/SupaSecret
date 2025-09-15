@@ -8,6 +8,13 @@ export interface Confession {
   isAnonymous: boolean;
   likes?: number | null;
   isLiked?: boolean | null;
+  // Video processing fields
+  faceBlurApplied?: boolean;
+  voiceChangeApplied?: boolean;
+  processed?: boolean;
+  // Video metadata
+  duration?: number;
+  views?: number;
 }
 
 // Database schema representation (snake_case)
@@ -53,6 +60,7 @@ export interface ConfessionState {
   isLoadingMore: boolean;
   hasMore: boolean;
   error: string | null;
+  isStoreInitialized: boolean;
 
   // Async methods for Supabase operations
   loadConfessions: () => Promise<void>;

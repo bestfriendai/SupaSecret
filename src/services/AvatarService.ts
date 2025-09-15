@@ -8,7 +8,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { supabase } from "../lib/supabase";
 import { storageWithRetry } from "../utils/supabaseWithRetry";
 
-const AVATAR_BUCKET = "avatars";
+const AVATAR_BUCKET = "images";
 const MAX_AVATAR_SIZE = 1024; // 1024x1024 pixels
 const AVATAR_QUALITY = 0.8;
 const MAX_FILE_SIZE_MB = 5;

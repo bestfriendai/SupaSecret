@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { Confession } from "../types/confession";
 import { HashtagData, TrendingSecret } from "../utils/trending";
 import { trackStoreOperation } from "../utils/storePerformanceMonitor";
+import { normalizeConfessions, normalizeConfession } from "../utils/confessionNormalizer";
 
 // Memoized hashtag extraction
 const hashtagRegex = /#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi;
@@ -182,20 +183,37 @@ export const useTrendingStore = create<TrendingState>()(
           );
 
           if (!functionError && functionData) {
-            const secrets: TrendingSecret[] = (functionData as any[]).map((item: any) => ({
-              confession: {
-                id: item.id,
-                type: item.type as "text" | "video",
-                content: item.content,
-                videoUri: item.video_uri || undefined,
-                transcription: item.transcription,
-                timestamp: new Date(item.created_at).getTime(),
-                isAnonymous: item.is_anonymous,
-                likes: item.likes,
-                isLiked: false,
-              },
-              engagementScore: parseFloat(item.engagement_score),
-            }));
+            // Process confessions using normalizer for consistent field mapping
+            let secrets: TrendingSecret[] = [];
+            try {
+              const normalizedConfessions = await normalizeConfessions(functionData as any[]);
+              secrets = normalizedConfessions.map((confession, index) => ({
+                confession: {
+                  ...confession,
+                  isLiked: false,
+                },
+                engagementScore: parseFloat((functionData as any[])[index].engagement_score),
+              }));
+            } catch (normalizationError) {
+              if (__DEV__) {
+                console.error('Failed to normalize trending secrets from RPC:', normalizationError);
+              }
+              // Fallback to basic processing
+              secrets = (functionData as any[]).map((item: any) => ({
+                confession: {
+                  id: item.id,
+                  type: item.type as "text" | "video",
+                  content: item.content,
+                  videoUri: item.video_uri || item.video_url || undefined,
+                  transcription: item.transcription,
+                  timestamp: new Date(item.created_at).getTime(),
+                  isAnonymous: item.is_anonymous,
+                  likes: item.likes,
+                  isLiked: false,
+                },
+                engagementScore: parseFloat(item.engagement_score),
+              }));
+            }
 
             set({
               trendingSecrets: secrets,
@@ -227,23 +245,46 @@ export const useTrendingStore = create<TrendingState>()(
             return likes * decayFactor;
           };
 
-          const secrets: TrendingSecret[] = (confessions || [])
-            .map((confession) => ({
-              confession: {
-                id: confession.id,
-                type: confession.type as "text" | "video",
-                content: confession.content,
-                videoUri: confession.video_uri || undefined,
-                transcription: confession.transcription || undefined,
-                timestamp: new Date(confession.created_at).getTime(),
-                isAnonymous: confession.is_anonymous,
-                likes: confession.likes,
-                isLiked: false,
-              },
-              engagementScore: calculateEngagementScore(confession.likes, confession.created_at),
-            }))
-            .sort((a, b) => b.engagementScore - a.engagementScore)
-            .slice(0, limit);
+          // Process confessions using normalizer for consistent field mapping
+          let secrets: TrendingSecret[] = [];
+          try {
+            const normalizedConfessions = await normalizeConfessions(confessions || []);
+            secrets = normalizedConfessions
+              .map((confession, index) => {
+                const originalRow = confessions?.[index];
+                return {
+                  confession: {
+                    ...confession,
+                    isLiked: false,
+                  },
+                  engagementScore: calculateEngagementScore(originalRow?.likes || 0, originalRow?.created_at || new Date().toISOString()),
+                };
+              })
+              .sort((a, b) => b.engagementScore - a.engagementScore)
+              .slice(0, limit);
+          } catch (normalizationError) {
+            if (__DEV__) {
+              console.error('Failed to normalize trending secrets fallback:', normalizationError);
+            }
+            // Fallback to basic processing
+            secrets = (confessions || [])
+              .map((confession) => ({
+                confession: {
+                  id: confession.id,
+                  type: confession.type as "text" | "video",
+                  content: confession.content,
+                  videoUri: confession.video_uri || confession.video_url || undefined,
+                  transcription: confession.transcription || undefined,
+                  timestamp: new Date(confession.created_at).getTime(),
+                  isAnonymous: confession.is_anonymous,
+                  likes: confession.likes,
+                  isLiked: false,
+                },
+                engagementScore: calculateEngagementScore(confession.likes, confession.created_at),
+              }))
+              .sort((a, b) => b.engagementScore - a.engagementScore)
+              .slice(0, limit);
+          }
 
           set({
             trendingSecrets: secrets,
@@ -270,17 +311,28 @@ export const useTrendingStore = create<TrendingState>()(
           });
 
           if (!functionError && functionData) {
-            const results: Confession[] = (functionData as any[]).map((item: any) => ({
-              id: item.id,
-              type: item.type as "text" | "video",
-              content: item.content,
-              videoUri: item.video_uri || undefined,
-              transcription: item.transcription,
-              timestamp: new Date(item.created_at).getTime(),
-              isAnonymous: item.is_anonymous,
-              likes: item.likes,
-              isLiked: false,
-            }));
+            // Process confessions using normalizer for consistent field mapping
+            let results: Confession[] = [];
+            try {
+              results = await normalizeConfessions(functionData as any[]);
+              results = results.map(confession => ({ ...confession, isLiked: false }));
+            } catch (normalizationError) {
+              if (__DEV__) {
+                console.error('Failed to normalize hashtag search results from RPC:', normalizationError);
+              }
+              // Fallback to basic processing
+              results = (functionData as any[]).map((item: any) => ({
+                id: item.id,
+                type: item.type as "text" | "video",
+                content: item.content,
+                videoUri: item.video_uri || item.video_url || undefined,
+                transcription: item.transcription,
+                timestamp: new Date(item.created_at).getTime(),
+                isAnonymous: item.is_anonymous,
+                likes: item.likes,
+                isLiked: false,
+              }));
+            }
 
             set({
               searchResults: results,
@@ -304,25 +356,42 @@ export const useTrendingStore = create<TrendingState>()(
 
           if (error) throw error;
 
-          const results: Confession[] = (confessions || [])
-            .filter((confession) => {
+          // Process confessions using normalizer for consistent field mapping
+          let results: Confession[] = [];
+          try {
+            const filteredConfessions = (confessions || []).filter((confession) => {
               const contentHashtags = extractHashtags(confession.content || "");
               const transcriptionHashtags = confession.transcription ? extractHashtags(confession.transcription) : [];
               const allHashtags = [...contentHashtags, ...transcriptionHashtags];
-
               return allHashtags.includes(normalizedHashtag);
-            })
-            .map((confession) => ({
-              id: confession.id,
-              type: confession.type as "text" | "video",
-              content: confession.content,
-              videoUri: confession.video_uri || undefined,
-              transcription: confession.transcription || undefined,
-              timestamp: new Date(confession.created_at).getTime(),
-              isAnonymous: confession.is_anonymous,
-              likes: confession.likes,
-              isLiked: false,
-            }));
+            });
+
+            results = await normalizeConfessions(filteredConfessions);
+            results = results.map(confession => ({ ...confession, isLiked: false }));
+          } catch (normalizationError) {
+            if (__DEV__) {
+              console.error('Failed to normalize hashtag search results fallback:', normalizationError);
+            }
+            // Fallback to basic processing
+            results = (confessions || [])
+              .filter((confession) => {
+                const contentHashtags = extractHashtags(confession.content || "");
+                const transcriptionHashtags = confession.transcription ? extractHashtags(confession.transcription) : [];
+                const allHashtags = [...contentHashtags, ...transcriptionHashtags];
+                return allHashtags.includes(normalizedHashtag);
+              })
+              .map((confession) => ({
+                id: confession.id,
+                type: confession.type as "text" | "video",
+                content: confession.content,
+                videoUri: confession.video_uri || confession.video_url || undefined,
+                transcription: confession.transcription || undefined,
+                timestamp: new Date(confession.created_at).getTime(),
+                isAnonymous: confession.is_anonymous,
+                likes: confession.likes,
+                isLiked: false,
+              }));
+          }
 
           set({
             searchResults: results,

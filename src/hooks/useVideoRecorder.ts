@@ -10,7 +10,7 @@ import { CameraView, CameraType } from "expo-camera";
 import * as Audio from "expo-audio";
 import { env } from "../utils/env";
 import { useMediaPermissions } from "./useMediaPermissions";
-import { processVideoDualMode, ProcessingMode } from "../utils/videoProcessing";
+import { unifiedVideoProcessingService, ProcessingMode } from "../services/UnifiedVideoProcessingService";
 import type { ProcessedVideo, VideoProcessingOptions } from "../services/IAnonymiser";
 
 export interface VideoRecorderState {
@@ -314,13 +314,13 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
 
         if (env.expoGo) {
           // Expo Go mode - use server processing or simulation
-          processed = await processVideoDualMode(videoUri, {
+          processed = await unifiedVideoProcessingService.processVideo(videoUri, {
             ...processingOptions,
             mode: ProcessingMode.SERVER,
           });
         } else {
           // Development build - use dual mode
-          processed = await processVideoDualMode(videoUri, {
+          processed = await unifiedVideoProcessingService.processVideo(videoUri, {
             ...processingOptions,
             mode: processingMode,
           });

@@ -9,7 +9,7 @@ import { format } from "date-fns";
 import SegmentedTabs, { TabItem } from "../components/SegmentedTabs";
 import HashtagText from "../components/HashtagText";
 import type { Confession } from "../types/confession";
-import { useDebouncedValue } from "../utils/debounce";
+import { useDebouncedValue } from "../utils/consolidatedUtils";
 
 type FilterType = "all" | "text" | "video";
 

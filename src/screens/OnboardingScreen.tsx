@@ -1,228 +1,108 @@
-import React, { useRef, useState, useEffect, useMemo } from "react";
-import { View, Dimensions, Pressable, Text, Alert, ScrollView, FlatList } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, Pressable, Alert, ScrollView, Image, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import Animated, { useSharedValue } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  withSequence,
+  withDelay,
+  interpolate,
+  Easing
+} from "react-native-reanimated";
+import { BlurView } from "expo-blur";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import {
-  announceSlideChange,
-  announceOnboardingComplete,
-  announceOnboardingSkipped,
-  announceForAccessibility,
-  getAccessibilityState,
-  accessibleHapticFeedback,
-} from "../utils/accessibility";
-
-import OnboardingSlide from "../components/OnboardingSlide";
-import ProgressIndicator from "../components/ProgressIndicator";
 import AuthButton from "../components/AuthButton";
-import { OnboardingSlide as OnboardingSlideType } from "../types/auth";
 import { useAuthStore } from "../state/authStore";
-import { useOnboardingAnimation } from "../hooks/useOnboardingAnimation";
-import {
-  getOnboardingSlides,
-  trackOnboardingEvent,
-  validateOnboardingState,
-  handleOnboardingError,
-  getOnboardingConfig,
-} from "../utils/onboardingHelpers";
-
-const { width: screenWidth } = Dimensions.get("window");
 
 type NavigationProp = NativeStackNavigationProp<any>;
-// Remove custom type, use ScrollView directly
+const { width: screenWidth } = Dimensions.get("window");
 
 export default function OnboardingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, setOnboarded, isAuthenticated } = useAuthStore();
-  const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
-  const flatListRef = useRef<FlatList<OnboardingSlideType> | null>(null);
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-
+  const { impactAsync } = usePreferenceAwareHaptics();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [accessibilityState, setAccessibilityState] = useState({
-    isScreenReaderEnabled: false,
-    isReduceMotionEnabled: false,
-  });
-  const scrollX = useSharedValue(0);
 
-  // Get onboarding data and configuration
-  const onboardingSlides = useMemo(() => getOnboardingSlides(), []);
-  const config = useMemo(() => getOnboardingConfig(), []);
+  // Animation values
+  const logoScale = useSharedValue(0);
+  const logoRotation = useSharedValue(0);
+  const titleOpacity = useSharedValue(0);
+  const subtitleOpacity = useSharedValue(0);
+  const featuresOpacity = useSharedValue(0);
+  const buttonScale = useSharedValue(0);
 
-  // Modern animation hooks
-  const { skipButtonStyle, slideContainerStyle, buttonAnimatedStyle, animateButtonPress, animateSlideTransition } =
-    useOnboardingAnimation({
-      totalSlides: onboardingSlides.length,
-      currentIndex,
-      scrollX,
-    });
-
-  // Initialize accessibility state and track onboarding start
   useEffect(() => {
-    const initializeAccessibility = async () => {
-      const a11yState = await getAccessibilityState();
-      setAccessibilityState({
-        isScreenReaderEnabled: a11yState.isScreenReaderEnabled,
-        isReduceMotionEnabled: a11yState.isReduceMotionEnabled,
-      });
-    };
+    // Animate logo entrance
+    logoScale.value = withSpring(1, { damping: 15, stiffness: 100 });
+    logoRotation.value = withSequence(
+      withTiming(-10, { duration: 100 }),
+      withSpring(0, { damping: 10, stiffness: 100 })
+    );
 
-    initializeAccessibility();
-
-    trackOnboardingEvent("onboarding_started", {
-      userAuthenticated: isAuthenticated,
-      hasUser: !!user,
-    });
+    // Animate text elements with delays
+    titleOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
+    subtitleOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
+    featuresOpacity.value = withDelay(600, withTiming(1, { duration: 600 }));
+    buttonScale.value = withDelay(800, withSpring(1, { damping: 15, stiffness: 100 }));
   }, []);
 
-  // Announce slide changes for screen readers
-  useEffect(() => {
-    if (accessibilityState.isScreenReaderEnabled) {
-      const currentSlide = onboardingSlides[currentIndex];
-      announceSlideChange(currentIndex, onboardingSlides.length, currentSlide.title);
-    }
-  }, [currentIndex, accessibilityState.isScreenReaderEnabled]);
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: logoScale.value },
+      { rotate: `${logoRotation.value}deg` }
+    ],
+  }));
 
-  // Regular scroll handler for ScrollView
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    scrollX.value = offsetX;
-    console.log("📜 Scroll event - offsetX:", offsetX, "calculated index:", Math.round(offsetX / screenWidth));
-  };
+  const titleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [
+      { translateY: interpolate(titleOpacity.value, [0, 1], [20, 0]) }
+    ],
+  }));
 
-  const handleMomentumScrollEnd = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / screenWidth);
-    console.log("🛑 Momentum end - offsetX:", offsetX, "calculated index:", index, "current index:", currentIndex);
+  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: subtitleOpacity.value,
+    transform: [
+      { translateY: interpolate(subtitleOpacity.value, [0, 1], [20, 0]) }
+    ],
+  }));
 
-    // Only update if it's different from current index and within valid range
-    if (index !== currentIndex && index >= 0 && index < onboardingSlides.length) {
-      console.log("🔄 Updating index from", currentIndex, "to", index);
-      setCurrentIndex(index);
-      animateSlideTransition();
-      accessibleHapticFeedback("light");
-    } else {
-      console.log("⏸️ Index unchanged, staying at:", currentIndex);
-    }
-  };
+  const featuresAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: featuresOpacity.value,
+    transform: [
+      { translateY: interpolate(featuresOpacity.value, [0, 1], [20, 0]) }
+    ],
+  }));
 
-  // Add effect to handle programmatic scrolling - disabled to prevent conflicts
-  // useEffect(() => {
-  //   // Ensure the current index is visible when it changes
-  //   console.log('🎯 Effect: ensure index', currentIndex, 'is visible');
-  //   if (flatListRef.current && !isScrollingProgrammatically.current) {
-  //     scrollToIndex(currentIndex);
-  //   }
-  // }, [currentIndex, screenWidth]);
-
-  const handleNext = () => {
-    console.log("🔥 NEXT PRESSED - Current:", currentIndex, "Total slides:", onboardingSlides.length);
-    const nextIndex = currentIndex + 1;
-
-    if (nextIndex < onboardingSlides.length) {
-      console.log("✅ Going to slide:", nextIndex, "FlatList ref present?", !!flatListRef.current);
-
-      if (!flatListRef.current) {
-        console.error("❌ FlatList ref is null, cannot scroll");
-        return;
-      }
-
-      // Calculate target position
-      const targetX = nextIndex * screenWidth;
-      console.log("📐 Target scroll position:", targetX, "for index:", nextIndex);
-
-      try {
-        // Direct scroll without delays or flags - keep it simple
-        flatListRef.current.scrollToOffset({
-          offset: targetX,
-          animated: true,
-        });
-
-        console.log("✅ Scroll command sent successfully");
-
-        // Update state after scroll command
-        setCurrentIndex(nextIndex);
-
-        // Track slide progression
-        trackOnboardingEvent("onboarding_slide_viewed", {
-          slideIndex: nextIndex,
-          slideTitle: onboardingSlides[nextIndex].title,
-        });
-
-        // Animate button press
-        animateButtonPress();
-
-        // Haptic feedback
-        impactAsync();
-      } catch (error) {
-        console.error("❌ Scroll failed:", error);
-      }
-    } else {
-      console.log("🏁 Last slide - calling handleGetStarted");
-      handleGetStarted();
-    }
-  };
-
-  const handleSkip = () => {
-    trackOnboardingEvent("onboarding_skipped", {
-      currentSlide: currentIndex,
-      totalSlides: onboardingSlides.length,
-    });
-
-    if (accessibilityState.isScreenReaderEnabled) {
-      announceOnboardingSkipped();
-    }
-
-    navigation.navigate("SignUp");
-    accessibleHapticFeedback("light");
-  };
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
 
   const handleGetStarted = async () => {
-    if (isProcessing) return; // Prevent double-tap
+    if (isProcessing) return;
 
     setIsProcessing(true);
-    setError(null);
+    impactAsync();
 
     try {
-      animateButtonPress();
-
-      // Validate onboarding state
-      const validation = validateOnboardingState(user, isAuthenticated);
-
-      trackOnboardingEvent("onboarding_get_started_pressed", {
-        userExists: !!user,
-        isAuthenticated,
-        validationReason: validation.reason,
-      });
-
       if (user && user.id) {
-        // User is authenticated but not onboarded - mark as onboarded
         await setOnboarded();
-        trackOnboardingEvent("onboarding_completed", {
-          userId: user.id,
-          completionMethod: "get_started",
-        });
-
-        if (accessibilityState.isScreenReaderEnabled) {
-          announceOnboardingComplete();
-        }
-
-        accessibleHapticFeedback("success");
-        // Navigation will be handled automatically by auth state change
       } else {
-        // User needs to sign up first
         navigation.navigate("SignUp");
-        accessibleHapticFeedback("light");
       }
     } catch (error) {
-      const errorInfo = handleOnboardingError(error, "get_started");
-      Alert.alert(errorInfo.title, errorInfo.message, [{ text: "OK", onPress: () => setIsProcessing(false) }]);
+      Alert.alert(
+        "Error",
+        "Something went wrong. Please try again.",
+        [{ text: "OK", onPress: () => setIsProcessing(false) }]
+      );
       return;
     }
 
@@ -234,200 +114,202 @@ export default function OnboardingScreen() {
     impactAsync();
   };
 
-  // Animation styles are now provided by useOnboardingAnimation hook
-
-  const isLastSlide = currentIndex === onboardingSlides.length - 1;
+  const features = [
+    {
+      icon: "shield-checkmark",
+      title: "100% Anonymous",
+      subtitle: "No personal data required",
+      color: "#3B82F6",
+      bgColor: "rgba(59, 130, 246, 0.1)",
+    },
+    {
+      icon: "videocam",
+      title: "Video & Text",
+      subtitle: "Share in your preferred format",
+      color: "#A855F7",
+      bgColor: "rgba(168, 85, 247, 0.1)",
+    },
+    {
+      icon: "people",
+      title: "Safe Community",
+      subtitle: "Connect with understanding souls",
+      color: "#10B981",
+      bgColor: "rgba(16, 185, 129, 0.1)",
+    },
+  ];
 
   return (
-    <SafeAreaView className="flex-1 bg-black">
+    <View className="flex-1 bg-black">
       <StatusBar style="light" />
 
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-6 py-4">
-        <View className="w-10" />
-        <ProgressIndicator
-          totalSlides={onboardingSlides.length}
-          scrollX={scrollX}
-          screenWidth={screenWidth}
-          currentIndex={currentIndex}
-          accessibilityLabel={`Onboarding progress: slide ${currentIndex + 1} of ${onboardingSlides.length}`}
-        />
-        <Animated.View style={skipButtonStyle}>
-          <Pressable
-            onPress={handleSkip}
-            className="px-4 py-2 rounded-full"
-            accessibilityRole="button"
-            accessibilityLabel="Skip onboarding"
-            accessibilityHint="Skip the introduction and go directly to sign up"
-          >
-            <Text className="text-gray-400 text-16 font-medium">Skip</Text>
-          </Pressable>
-        </Animated.View>
-      </View>
-
-      {/* Slides */}
-      <Animated.View style={[{ flex: 1 }, slideContainerStyle]}>
-        <FlatList
-          ref={flatListRef}
-          data={onboardingSlides}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          renderItem={({ item, index }) => (
-            <OnboardingSlide slide={item} index={index} scrollX={scrollX} config={config} />
-          )}
-          getItemLayout={(_, index) => ({ length: screenWidth, offset: screenWidth * index, index })}
-          onScroll={handleScroll}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-          scrollEventThrottle={16}
-          bounces={false}
-          decelerationRate="fast"
-          initialScrollIndex={0}
-          accessibilityRole="none"
-          accessibilityLabel={`Onboarding slides, ${onboardingSlides.length} slides total`}
-          accessibilityHint="Swipe left or right to navigate between slides"
-          accessibilityActions={[
-            { name: "increment", label: "Next slide" },
-            { name: "decrement", label: "Previous slide" },
-          ]}
-          onAccessibilityAction={(event) => {
-            switch (event.nativeEvent.actionName) {
-              case "increment":
-                if (currentIndex < onboardingSlides.length - 1) {
-                  handleNext();
-                }
-                break;
-              case "decrement":
-                if (currentIndex > 0 && flatListRef.current) {
-                  const prevIndex = currentIndex - 1;
-                  const targetX = prevIndex * screenWidth;
-
-                  try {
-                    flatListRef.current.scrollToOffset({
-                      offset: targetX,
-                      animated: true,
-                    });
-                    setCurrentIndex(prevIndex);
-                  } catch (error) {
-                    console.error("❌ Accessibility decrement scroll failed:", error);
-                  }
-                }
-                break;
-            }
-          }}
-        />
-      </Animated.View>
-
-      {/* Error Display */}
-      {error && (
-        <View
-          style={{
-            marginHorizontal: 24,
-            marginBottom: 16,
-            padding: 16,
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: "rgba(239, 68, 68, 0.3)",
-          }}
-          accessibilityRole="alert"
-          accessibilityLabel={`Error: ${error}`}
-        >
-          <Text
-            style={{
-              color: "#EF4444",
-              fontSize: 14,
-              fontWeight: "500",
-              textAlign: "center",
-            }}
-          >
-            {error}
-          </Text>
-        </View>
-      )}
-
-      {/* Bottom Actions */}
-      <View
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={['#000000', '#0A0A0A', '#000000']}
         style={{
-          paddingHorizontal: 24,
-          paddingBottom: 32,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
         }}
-      >
-        {isLastSlide ? (
-          <Animated.View style={[{ gap: 16 }, buttonAnimatedStyle]}>
-            <AuthButton
-              title="Get Started"
-              onPress={handleGetStarted}
-              leftIcon="rocket"
-              variant="primary"
-              loading={isProcessing}
-              disabled={isProcessing}
-              accessibilityLabel="Get started with Toxic Confessions"
-              accessibilityHint="Create your account or complete onboarding"
-            />
-            <View className="flex-row items-center justify-center">
-              <Text className="text-gray-400 text-15">Already have an account? </Text>
-              <Pressable
-                onPress={handleSignIn}
-                className="px-2 py-1 rounded"
-                accessibilityRole="button"
-                accessibilityLabel="Sign in to existing account"
-                disabled={isProcessing}
-              >
-                <Text className={`text-15 font-semibold ${isProcessing ? "text-gray-600" : "text-blue-400"}`}>
-                  Sign In
-                </Text>
-              </Pressable>
+      />
+
+      {/* Decorative Background Elements */}
+      <View className="absolute top-20 -left-20 w-60 h-60 bg-blue-600/10 rounded-full blur-3xl" />
+      <View className="absolute bottom-40 -right-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl" />
+
+      <SafeAreaView className="flex-1">
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="flex-1 px-6 py-8">
+            {/* Logo Section with Glow Effect */}
+            <View className="items-center mb-8">
+              <Animated.View style={logoAnimatedStyle}>
+                {/* Glow effect behind logo */}
+                <View className="absolute -inset-8">
+                  <View className="w-40 h-40 bg-blue-500/20 rounded-full blur-2xl" />
+                </View>
+
+                {/* Logo with shadow */}
+                <View style={{
+                  shadowColor: "#3B82F6",
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 20,
+                  elevation: 10,
+                }}>
+                  <Image
+                    source={require('../../assets/logo.png')}
+                    style={{ width: 140, height: 140 }}
+                    resizeMode="contain"
+                  />
+                </View>
+              </Animated.View>
             </View>
-          </Animated.View>
-        ) : (
-          <View className="flex-row items-center justify-between">
-            <Pressable
-              onPress={() => {
-                if (currentIndex > 0 && flatListRef.current) {
-                  const prevIndex = currentIndex - 1;
-                  const targetX = prevIndex * screenWidth;
 
-                  try {
-                    flatListRef.current.scrollToOffset({
-                      offset: targetX,
-                      animated: true,
-                    });
-                    setCurrentIndex(prevIndex);
-                    impactAsync();
-                  } catch (error) {
-                    console.error("❌ Back button scroll failed:", error);
-                  }
-                }
-              }}
-              className="flex-row items-center px-4 py-3 rounded-full"
-              disabled={currentIndex === 0}
-              accessibilityRole="button"
-              accessibilityLabel="Go to previous slide"
-              accessibilityState={{ disabled: currentIndex === 0 }}
-            >
-              <Ionicons name="chevron-back" size={20} color={currentIndex === 0 ? "#4B5563" : "#8B98A5"} />
-              <Text className={`ml-2 text-16 font-medium ${currentIndex === 0 ? "text-gray-600" : "text-gray-400"}`}>
-                Back
+            {/* Title with Gradient Text Effect */}
+            <Animated.View style={titleAnimatedStyle}>
+              <Text className="text-white text-36 font-bold text-center mb-2">
+                Toxic Confessions
               </Text>
-            </Pressable>
+              <View className="h-1 w-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mx-auto mb-4" />
+            </Animated.View>
 
-            <Animated.View style={buttonAnimatedStyle}>
+            {/* Subtitle */}
+            <Animated.View style={subtitleAnimatedStyle}>
+              <Text className="text-gray-300 text-17 text-center leading-6 mb-12 px-4">
+                Share your deepest secrets anonymously.{'\n'}
+                Find comfort in shared experiences.
+              </Text>
+            </Animated.View>
+
+            {/* Features with Cards */}
+            <Animated.View style={featuresAnimatedStyle} className="mb-12">
+              {features.map((feature, index) => (
+                <View
+                  key={index}
+                  className="mb-4"
+                  style={{
+                    opacity: 1,
+                    transform: [{ translateX: 0 }],
+                  }}
+                >
+                  <View className="bg-gray-900/50 rounded-2xl p-4 border border-gray-800/50">
+                    <View className="flex-row items-center">
+                      <View
+                        className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+                        style={{ backgroundColor: feature.bgColor }}
+                      >
+                        <Ionicons
+                          name={feature.icon as any}
+                          size={24}
+                          color={feature.color}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-white text-16 font-semibold">
+                          {feature.title}
+                        </Text>
+                        <Text className="text-gray-400 text-14 mt-1">
+                          {feature.subtitle}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#10B981"
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </Animated.View>
+
+            {/* Trust Indicators */}
+            <View className="flex-row justify-center items-center mb-8 px-4">
+              <View className="flex-row items-center bg-gray-900/50 rounded-full px-4 py-2">
+                <Ionicons name="lock-closed" size={14} color="#10B981" />
+                <Text className="text-gray-400 text-12 ml-2">End-to-end encrypted</Text>
+              </View>
+              <View className="mx-2 w-1 h-1 bg-gray-600 rounded-full" />
+              <View className="flex-row items-center bg-gray-900/50 rounded-full px-4 py-2">
+                <Ionicons name="eye-off" size={14} color="#10B981" />
+                <Text className="text-gray-400 text-12 ml-2">No tracking</Text>
+              </View>
+            </View>
+
+            {/* Bottom Actions with Animation */}
+            <Animated.View style={buttonAnimatedStyle} className="mt-auto">
+              {/* Get Started Button with Gradient */}
               <Pressable
-                onPress={handleNext}
-                className="rounded-full flex-row items-center justify-center px-6 py-3 bg-blue-500 active:bg-blue-600"
-                accessibilityRole="button"
-                accessibilityLabel="Go to next slide"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={handleGetStarted}
+                disabled={isProcessing}
+                className="overflow-hidden rounded-2xl mb-4"
               >
-                <Text className="text-white text-16 font-semibold">Next</Text>
-                <Ionicons name="chevron-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                <LinearGradient
+                  colors={isProcessing ? ['#1F2937', '#1F2937'] : ['#3B82F6', '#8B5CF6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    paddingVertical: 18,
+                    paddingHorizontal: 24,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons
+                    name="rocket"
+                    size={20}
+                    color="#FFFFFF"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text className="text-white text-17 font-semibold">
+                    {isProcessing ? "Processing..." : "Get Started"}
+                  </Text>
+                </LinearGradient>
               </Pressable>
+
+              {/* Sign In Link */}
+              <View className="flex-row items-center justify-center">
+                <Text className="text-gray-400 text-15">Already have an account? </Text>
+                <Pressable
+                  onPress={handleSignIn}
+                  className="px-2 py-1 rounded"
+                  disabled={isProcessing}
+                >
+                  <Text className={`text-15 font-semibold ${isProcessing ? "text-gray-600" : "text-blue-400"}`}>
+                    Sign In
+                  </Text>
+                </Pressable>
+              </View>
             </Animated.View>
           </View>
-        )}
-      </View>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }

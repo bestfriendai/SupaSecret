@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import type { Confession } from "../types/confession";
 import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 import { trackStoreOperation } from "../utils/storePerformanceMonitor";
+import { normalizeConfessions, normalizeConfession } from "../utils/confessionNormalizer";
 
 interface SavedState {
   savedConfessionIds: string[];
@@ -220,33 +221,61 @@ export const useSavedStore = create<SavedState>()(
             return;
           }
 
+          // Get current user first
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (!user?.id) {
+            throw new Error('User not authenticated');
+          }
+
           // Fetch saved confessions from Supabase
           const { data: confessions, error } = await supabase
             .from("confessions")
             .select(
               `
               *,
-              confession_likes!left(user_id)
+              confession_likes!inner(user_id)
             `,
             )
             .in("id", state.savedConfessionIds)
+            .eq('confession_likes.user_id', user.id)
             .order("created_at", { ascending: false })
             .limit(ITEMS_PER_PAGE);
 
           if (error) throw error;
 
-          // Process confessions to add like status
-          const processedConfessions: Confession[] = (confessions || []).map((row: any) => ({
-            id: row.id,
-            type: row.type,
-            content: row.content,
-            videoUri: row.video_uri ?? undefined,
-            transcription: row.transcription ?? undefined,
-            timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
-            isAnonymous: !!row.is_anonymous,
-            likes: row.likes ?? 0,
-            isLiked: (row.confession_likes?.length ?? 0) > 0,
-          }));
+          // Process confessions using normalizer for consistent field mapping
+          let processedConfessions: Confession[] = [];
+          try {
+            const normalizedConfessions = await normalizeConfessions(confessions || []);
+
+            // Add like status from the join
+            processedConfessions = normalizedConfessions.map((confession) => {
+              const row = confessions?.find((r: any) => r.id === confession.id);
+              return {
+                ...confession,
+                isLiked: (row?.confession_likes?.length ?? 0) > 0,
+              };
+            });
+          } catch (normalizationError) {
+            if (__DEV__) {
+              console.error('Failed to normalize saved confessions:', normalizationError);
+            }
+            // Fallback to basic processing if normalization fails
+            processedConfessions = (confessions || []).map((row: any) => ({
+              id: row.id,
+              type: row.type || "text",
+              content: row.content || "",
+              videoUri: row.video_uri ?? row.video_url ?? undefined,
+              transcription: row.transcription ?? undefined,
+              timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+              isAnonymous: !!row.is_anonymous,
+              likes: row.likes ?? 0,
+              isLiked: (row?.confession_likes?.length ?? 0) > 0,
+            }));
+          }
 
           set({
             savedConfessions: processedConfessions,
@@ -281,30 +310,59 @@ export const useSavedStore = create<SavedState>()(
             return;
           }
 
+          // Get current user first
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (!user?.id) {
+            throw new Error('User not authenticated');
+          }
+
           const { data: confessions, error } = await supabase
             .from("confessions")
             .select(
               `
               *,
-              confession_likes!left(user_id)
+              confession_likes!inner(user_id)
             `,
             )
             .in("id", remainingIds.slice(0, ITEMS_PER_PAGE))
+            .eq('confession_likes.user_id', user.id)
             .order("created_at", { ascending: false });
 
           if (error) throw error;
 
-          const processedConfessions: Confession[] = (confessions || []).map((row: any) => ({
-            id: row.id,
-            type: row.type,
-            content: row.content,
-            videoUri: row.video_uri ?? undefined,
-            transcription: row.transcription ?? undefined,
-            timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
-            isAnonymous: !!row.is_anonymous,
-            likes: row.likes ?? 0,
-            isLiked: (row.confession_likes?.length ?? 0) > 0,
-          }));
+          // Process confessions using normalizer for consistent field mapping
+          let processedConfessions: Confession[] = [];
+          try {
+            const normalizedConfessions = await normalizeConfessions(confessions || []);
+
+            // Add like status from the join
+            processedConfessions = normalizedConfessions.map((confession) => {
+              const row = confessions?.find((r: any) => r.id === confession.id);
+              return {
+                ...confession,
+                isLiked: (row?.confession_likes?.length ?? 0) > 0,
+              };
+            });
+          } catch (normalizationError) {
+            if (__DEV__) {
+              console.error('Failed to normalize more saved confessions:', normalizationError);
+            }
+            // Fallback to basic processing if normalization fails
+            processedConfessions = (confessions || []).map((row: any) => ({
+              id: row.id,
+              type: row.type || "text",
+              content: row.content || "",
+              videoUri: row.video_uri ?? row.video_url ?? undefined,
+              transcription: row.transcription ?? undefined,
+              timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+              isAnonymous: !!row.is_anonymous,
+              likes: row.likes ?? 0,
+              isLiked: (row?.confession_likes?.length ?? 0) > 0,
+            }));
+          }
 
           set({
             savedConfessions: [...state.savedConfessions, ...processedConfessions],

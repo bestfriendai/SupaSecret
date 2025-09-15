@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import { wrapWithRetry } from "../utils/supabaseWithRetry";
 import { invalidateCache } from "../utils/cacheInvalidation";
-import { isValidForDatabase } from "../utils/uuid";
+import { isValidForDatabase } from "../utils/consolidatedUtils";
 import { registerStoreCleanup } from "../utils/storeCleanup";
 import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 
