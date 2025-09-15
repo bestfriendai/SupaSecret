@@ -76,7 +76,12 @@ export const useNotificationStore = create<NotificationState>()(
 
           if (error) throw error;
 
-          const notifications: Notification[] = data || [];
+          const notifications: Notification[] = (data || []).map(item => ({
+            ...item,
+            type: item.type as "like" | "reply",
+            entity_type: item.entity_type as "confession" | "reply",
+            created_at: item.created_at || new Date().toISOString(),
+          }));
           const groupedNotifications = groupNotifications(notifications);
           const unreadCount = notifications.filter((n) => !n.read_at).length;
 

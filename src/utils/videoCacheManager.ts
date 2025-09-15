@@ -8,6 +8,11 @@ interface CacheEntry {
   size: number;
   accessCount: number;
   priority: "high" | "normal" | "low";
+  lastAccessTime: number;
+  predictedNextAccess?: number;
+  quality?: "high" | "medium" | "low";
+  contentType?: "thumbnail" | "preview" | "full";
+  compressionRatio?: number;
 }
 
 interface CacheConfig {
@@ -15,6 +20,11 @@ interface CacheConfig {
   maxEntries: number;
   preloadLimit: number;
   cleanupThreshold: number;
+  memoryPressureThreshold: number;
+  compressionEnabled: boolean;
+  intelligentPreload: boolean;
+  cachePartitioning: boolean;
+  idleCleanupInterval: number;
 }
 
 class VideoCacheManager {
@@ -25,10 +35,22 @@ class VideoCacheManager {
     maxEntries: 100,
     preloadLimit: 5,
     cleanupThreshold: 0.9, // Start cleanup at 90% capacity
+    memoryPressureThreshold: 0.8, // Reduce cache when memory usage > 80%
+    compressionEnabled: true,
+    intelligentPreload: true,
+    cachePartitioning: true,
+    idleCleanupInterval: 30000, // 30 seconds
   };
   private currentCacheSize = 0;
   private cacheDir = `${FileSystem.cacheDirectory}video_cache/`;
   private isCleaningUp = false;
+  private viewingPatterns: Map<string, number[]> = new Map();
+  private cacheHitRate = 0;
+  private totalRequests = 0;
+  private totalHits = 0;
+  private idleCleanupTimer?: ReturnType<typeof setInterval>;
+  private memoryMonitorTimer?: ReturnType<typeof setInterval>;
+  private cachePartitions: Map<string, Map<string, CacheEntry>> = new Map();
 
   constructor(config?: Partial<CacheConfig>) {
     this.config = { ...this.config, ...config };
@@ -41,7 +63,17 @@ class VideoCacheManager {
       getSizeOf: (entry) => entry.size,
     });
 
+    // Initialize cache partitions
+    this.cachePartitions.set('thumbnail', new Map());
+    this.cachePartitions.set('preview', new Map());
+    this.cachePartitions.set('full', new Map());
+
     this.initializeCache();
+    this.startBackgroundTasks();
+  }
+
+  async initialize() {
+    await this.initializeCache();
   }
 
   private async initializeCache() {
@@ -52,8 +84,22 @@ class VideoCacheManager {
         await FileSystem.makeDirectoryAsync(this.cacheDir, { intermediates: true });
       }
 
+      // Create partition directories
+      if (this.config.cachePartitioning) {
+        for (const partition of ['thumbnail', 'preview', 'full']) {
+          const partitionDir = `${this.cacheDir}${partition}/`;
+          const partitionInfo = await FileSystem.getInfoAsync(partitionDir);
+          if (!partitionInfo.exists) {
+            await FileSystem.makeDirectoryAsync(partitionDir, { intermediates: true });
+          }
+        }
+      }
+
       // Load existing cache entries
       await this.loadCacheIndex();
+
+      // Load viewing patterns
+      await this.loadViewingPatterns();
     } catch (error) {
       console.error("Failed to initialize video cache:", error);
     }
@@ -172,11 +218,24 @@ class VideoCacheManager {
     const cacheKey = this.generateCacheKey(uri);
     const entry = this.cache.get(cacheKey);
 
+    this.totalRequests++;
+
     if (entry) {
       // Update access information
-      entry.timestamp = Date.now();
+      const now = Date.now();
+      entry.timestamp = now;
+      entry.lastAccessTime = now;
       entry.accessCount++;
       entry.priority = priority; // Update priority based on current usage
+
+      // Track hit rate
+      this.totalHits++;
+      this.cacheHitRate = this.totalHits / this.totalRequests;
+
+      // Update viewing patterns for intelligent preloading
+      if (this.config.intelligentPreload) {
+        this.updateViewingPattern(uri, now);
+      }
 
       this.cache.set(cacheKey, entry);
       this.lruCache.set(cacheKey, entry);
@@ -236,6 +295,7 @@ class VideoCacheManager {
           size: fileSize,
           accessCount: 1,
           priority,
+          lastAccessTime: Date.now(),
         };
 
         this.cache.set(cacheKey, entry);
@@ -268,6 +328,156 @@ class VideoCacheManager {
     return this.currentCacheSize;
   }
 
+  private startBackgroundTasks() {
+    // Start idle cleanup
+    if (this.config.idleCleanupInterval > 0) {
+      this.idleCleanupTimer = setInterval(() => {
+        this.performIdleCleanup();
+      }, this.config.idleCleanupInterval);
+    }
+
+    // Start memory pressure monitoring
+    this.memoryMonitorTimer = setInterval(() => {
+      this.checkMemoryPressure();
+    }, 5000); // Check every 5 seconds
+  }
+
+  private async performIdleCleanup() {
+    if (this.isCleaningUp) return;
+
+    try {
+      // Clean up old temporary files
+      const now = Date.now();
+      const maxAge = 2 * 60 * 60 * 1000; // 2 hours
+
+      for (const [key, entry] of this.cache.entries()) {
+        if (now - entry.lastAccessTime > maxAge && entry.priority === 'low') {
+          await this.handleEviction(key, entry);
+        }
+      }
+
+      // Optimize cache based on access patterns
+      if (this.config.intelligentPreload) {
+        await this.optimizeCacheBasedOnPatterns();
+      }
+    } catch (error) {
+      console.error('Idle cleanup failed:', error);
+    }
+  }
+
+  private async checkMemoryPressure() {
+    // Simplified memory check - in production use actual memory APIs
+    const memoryUsageRatio = this.currentCacheSize / this.config.maxCacheSize;
+
+    if (memoryUsageRatio > this.config.memoryPressureThreshold) {
+      // Reduce cache size under memory pressure
+      await this.reduceCache(0.5); // Reduce to 50% of max size
+    }
+  }
+
+  private async reduceCache(targetRatio: number) {
+    const targetSize = this.config.maxCacheSize * targetRatio;
+
+    while (this.currentCacheSize > targetSize && this.cache.size > 0) {
+      // Remove lowest priority items first
+      const entries = Array.from(this.cache.entries());
+      const lowestPriority = entries.sort((a, b) => {
+        const priorityMap = { low: 0, normal: 1, high: 2 };
+        return priorityMap[a[1].priority] - priorityMap[b[1].priority];
+      })[0];
+
+      if (lowestPriority) {
+        await this.handleEviction(lowestPriority[0], lowestPriority[1]);
+      } else {
+        break;
+      }
+    }
+  }
+
+  private updateViewingPattern(uri: string, timestamp: number) {
+    const patterns = this.viewingPatterns.get(uri) || [];
+    patterns.push(timestamp);
+
+    // Keep only recent patterns (last 10 accesses)
+    if (patterns.length > 10) {
+      patterns.shift();
+    }
+
+    this.viewingPatterns.set(uri, patterns);
+
+    // Predict next access time
+    if (patterns.length >= 2) {
+      const intervals = [];
+      for (let i = 1; i < patterns.length; i++) {
+        intervals.push(patterns[i] - patterns[i - 1]);
+      }
+      const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+
+      // Update entry with predicted next access
+      const entry = this.cache.get(this.generateCacheKey(uri));
+      if (entry) {
+        entry.predictedNextAccess = timestamp + avgInterval;
+      }
+    }
+  }
+
+  private async optimizeCacheBasedOnPatterns() {
+    const now = Date.now();
+    const upcomingVideos: string[] = [];
+
+    // Find videos likely to be accessed soon
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.predictedNextAccess &&
+          entry.predictedNextAccess - now < 60000 && // Within next minute
+          entry.predictedNextAccess > now) {
+        upcomingVideos.push(entry.uri);
+      }
+    }
+
+    // Preload predicted videos
+    if (upcomingVideos.length > 0) {
+      await this.warmCache(upcomingVideos.slice(0, 3)); // Warm up to 3 videos
+    }
+  }
+
+  async warmCache(uris: string[]) {
+    for (const uri of uris) {
+      const cacheKey = this.generateCacheKey(uri);
+      const entry = this.cache.get(cacheKey);
+
+      if (entry) {
+        // Touch the entry to keep it warm
+        entry.lastAccessTime = Date.now();
+        this.lruCache.set(cacheKey, entry);
+      }
+    }
+  }
+
+  private async loadViewingPatterns() {
+    try {
+      const patternsPath = `${this.cacheDir}patterns.json`;
+      const patternsInfo = await FileSystem.getInfoAsync(patternsPath);
+
+      if (patternsInfo.exists) {
+        const patternsContent = await FileSystem.readAsStringAsync(patternsPath);
+        const patterns = JSON.parse(patternsContent);
+        this.viewingPatterns = new Map(Object.entries(patterns));
+      }
+    } catch (error) {
+      console.error('Failed to load viewing patterns:', error);
+    }
+  }
+
+  private async saveViewingPatterns() {
+    try {
+      const patternsPath = `${this.cacheDir}patterns.json`;
+      const patterns = Object.fromEntries(this.viewingPatterns);
+      await FileSystem.writeAsStringAsync(patternsPath, JSON.stringify(patterns));
+    } catch (error) {
+      console.error('Failed to save viewing patterns:', error);
+    }
+  }
+
   getCacheStats(): {
     size: number;
     count: number;
@@ -276,6 +486,9 @@ class VideoCacheManager {
     priorityBreakdown: Record<string, number>;
     oldestEntry: number;
     newestEntry: number;
+    averageAccessFrequency: number;
+    storageEfficiency: number;
+    predictiveAccuracy?: number;
   } {
     const lruStats = this.lruCache.getStats();
     const entries = Array.from(this.cache.values());
@@ -290,14 +503,24 @@ class VideoCacheManager {
 
     const timestamps = entries.map((e) => e.timestamp);
 
+    const avgAccessFreq = entries.length > 0
+      ? entries.reduce((sum, e) => sum + e.accessCount, 0) / entries.length
+      : 0;
+
+    const storageEfficiency = this.config.maxCacheSize > 0
+      ? this.currentCacheSize / this.config.maxCacheSize
+      : 0;
+
     return {
       size: this.currentCacheSize,
       count: this.cache.size,
       maxSize: this.config.maxCacheSize,
-      hitRate: lruStats.hitRate,
+      hitRate: this.cacheHitRate,
       priorityBreakdown,
       oldestEntry: timestamps.length > 0 ? Math.min(...timestamps) : 0,
       newestEntry: timestamps.length > 0 ? Math.max(...timestamps) : 0,
+      averageAccessFrequency: avgAccessFreq,
+      storageEfficiency,
     };
   }
 
@@ -355,6 +578,20 @@ class VideoCacheManager {
     const removedCount = initialCount - this.cache.size;
 
     return { removedCount, freedSpace };
+  }
+
+  /**
+   * Cleanup on destroy
+   */
+  destroy() {
+    if (this.idleCleanupTimer) {
+      clearInterval(this.idleCleanupTimer);
+    }
+    if (this.memoryMonitorTimer) {
+      clearInterval(this.memoryMonitorTimer);
+    }
+    this.saveViewingPatterns();
+    this.saveCacheIndex();
   }
 }
 

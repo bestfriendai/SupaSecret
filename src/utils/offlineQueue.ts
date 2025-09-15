@@ -22,6 +22,23 @@ const generateUniqueId = (): string => {
   return `${timestamp}-${randomPart1}-${randomPart2}-${counter}`;
 };
 
+// Action types for different operations
+export const OFFLINE_ACTIONS = {
+  LIKE_CONFESSION: "LIKE_CONFESSION",
+  UNLIKE_CONFESSION: "UNLIKE_CONFESSION",
+  SAVE_CONFESSION: "SAVE_CONFESSION",
+  UNSAVE_CONFESSION: "UNSAVE_CONFESSION",
+  DELETE_CONFESSION: "DELETE_CONFESSION",
+  CREATE_CONFESSION: "CREATE_CONFESSION",
+  CREATE_REPLY: "CREATE_REPLY",
+  DELETE_REPLY: "DELETE_REPLY",
+  LIKE_REPLY: "LIKE_REPLY",
+  UNLIKE_REPLY: "UNLIKE_REPLY",
+  MARK_NOTIFICATION_READ: "MARK_NOTIFICATION_READ",
+} as const;
+
+export type OfflineActionType = (typeof OFFLINE_ACTIONS)[keyof typeof OFFLINE_ACTIONS];
+
 /**
  * Interface for offline action that needs to be queued
  */
@@ -40,6 +57,26 @@ export interface OfflineAction {
   maxRetries: number;
   /** Timestamp for next retry attempt */
   nextAttempt?: number;
+  /** Priority level for action processing (higher number = higher priority) */
+  priority?: number;
+  /** Whether this action requires network connectivity */
+  requiresNetwork?: boolean;
+  /** Error details from last failed attempt */
+  lastError?: {
+    message: string;
+    code?: string;
+    timestamp: number;
+    isRetryable: boolean;
+  };
+  /** State reconciliation data for complex actions */
+  reconciliation?: {
+    /** Temporary local ID that needs to be replaced with server ID */
+    tempId?: string;
+    /** Target store to update when reconciled */
+    targetStore?: string;
+    /** Additional metadata for state updates */
+    metadata?: Record<string, unknown>;
+  };
 }
 
 /**
@@ -60,12 +97,28 @@ class OfflineQueueManager {
   private listeners: ((isOnline: boolean) => void)[] = [];
   private isOnline = true;
   private netInfoUnsubscribe: (() => void) | null = null;
+  private scheduledTimer: NodeJS.Timeout | null = null;
 
   private readonly STORAGE_KEY = "offline_queue";
   private readonly MAX_QUEUE_SIZE = 100;
   private readonly DEFAULT_MAX_RETRIES = 3;
   private readonly BASE_DELAY_MS = 1000; // 1 second base delay
   private readonly MAX_DELAY_MS = 30000; // 30 seconds max delay
+
+  // Action-specific configuration
+  private readonly ACTION_CONFIG = {
+    [OFFLINE_ACTIONS.CREATE_CONFESSION]: { maxRetries: 5, priority: 10 },
+    [OFFLINE_ACTIONS.LIKE_CONFESSION]: { maxRetries: 3, priority: 5 },
+    [OFFLINE_ACTIONS.UNLIKE_CONFESSION]: { maxRetries: 3, priority: 5 },
+    [OFFLINE_ACTIONS.SAVE_CONFESSION]: { maxRetries: 3, priority: 4 },
+    [OFFLINE_ACTIONS.UNSAVE_CONFESSION]: { maxRetries: 3, priority: 4 },
+    [OFFLINE_ACTIONS.DELETE_CONFESSION]: { maxRetries: 4, priority: 8 },
+    [OFFLINE_ACTIONS.CREATE_REPLY]: { maxRetries: 5, priority: 7 },
+    [OFFLINE_ACTIONS.DELETE_REPLY]: { maxRetries: 4, priority: 6 },
+    [OFFLINE_ACTIONS.LIKE_REPLY]: { maxRetries: 3, priority: 3 },
+    [OFFLINE_ACTIONS.UNLIKE_REPLY]: { maxRetries: 3, priority: 3 },
+    [OFFLINE_ACTIONS.MARK_NOTIFICATION_READ]: { maxRetries: 2, priority: 1 },
+  } as const
 
   constructor() {
     this.initialize();
@@ -144,17 +197,42 @@ class OfflineQueueManager {
   /**
    * Add an action to the offline queue
    */
-  async enqueue(type: string, payload: any, maxRetries: number = this.DEFAULT_MAX_RETRIES): Promise<string> {
+  async enqueue(
+    type: string,
+    payload: any,
+    options?: {
+      maxRetries?: number;
+      priority?: number;
+      requiresNetwork?: boolean;
+      reconciliation?: {
+        tempId?: string;
+        targetStore?: string;
+        metadata?: Record<string, unknown>;
+      };
+    }
+  ): Promise<string> {
     const action: OfflineAction = {
       id: generateUniqueId(),
       type,
       payload,
       timestamp: Date.now(),
       retryCount: 0,
-      maxRetries,
+      maxRetries: options?.maxRetries ?? this.getDefaultMaxRetries(type),
+      priority: options?.priority ?? this.getDefaultPriority(type),
+      requiresNetwork: options?.requiresNetwork ?? true,
+      reconciliation: options?.reconciliation,
     };
 
-    this.queue.push(action);
+    // Insert action in priority order (higher priority first)
+    const insertIndex = this.queue.findIndex((existingAction) =>
+      (existingAction.priority || 0) < (action.priority || 0)
+    );
+
+    if (insertIndex === -1) {
+      this.queue.push(action);
+    } else {
+      this.queue.splice(insertIndex, 0, action);
+    }
 
     // Limit queue size and handle overflow
     if (this.queue.length > this.MAX_QUEUE_SIZE) {
@@ -215,28 +293,51 @@ class OfflineQueueManager {
         // Remove successful action from queue
         this.queue = this.queue.filter((a) => a.id !== action.id);
       } catch (error) {
-        // Increment retry count and calculate exponential backoff delay
+        // Enhanced error handling with retry logic
         const actionIndex = this.queue.findIndex((a) => a.id === action.id);
         if (actionIndex !== -1) {
+          const isRetryable = this.isRetryableError(error);
+
+          // Update action with error details
+          this.queue[actionIndex].lastError = {
+            message: error instanceof Error ? error.message : String(error),
+            timestamp: Date.now(),
+            isRetryable,
+          };
+
           this.queue[actionIndex].retryCount++;
 
-          // Remove if max retries exceeded
-          if (this.queue[actionIndex].retryCount >= action.maxRetries) {
+          // Remove if error is not retryable or max retries exceeded
+          if (!isRetryable || this.queue[actionIndex].retryCount >= action.maxRetries) {
             if (__DEV__) {
-              console.warn(`❌ Max retries exceeded for action: ${action.type}`, error);
+              const reason = !isRetryable ? 'non-retryable error' : 'max retries exceeded';
+              console.warn(`❌ Removing action ${action.type} due to ${reason}:`, error);
             }
             this.queue.splice(actionIndex, 1);
           } else {
-            // Calculate exponential backoff delay: baseDelayMs * 2^(retryCount-1)
-            const delay = Math.min(
-              this.BASE_DELAY_MS * Math.pow(2, this.queue[actionIndex].retryCount - 1),
-              this.MAX_DELAY_MS,
-            );
+            // Calculate intelligent backoff delay based on error type and priority
+            let baseDelay = this.BASE_DELAY_MS;
+
+            // Shorter delays for high-priority actions
+            if (action.priority && action.priority > 7) {
+              baseDelay = Math.max(500, this.BASE_DELAY_MS / 2);
+            }
+
+            // Longer delays for network-related errors
+            const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
+            if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+              baseDelay = this.BASE_DELAY_MS * 2;
+            }
+
+            const exponentialDelay = baseDelay * Math.pow(2, this.queue[actionIndex].retryCount - 1);
+            const jitter = Math.random() * 0.1 * exponentialDelay; // Add 10% jitter
+            const delay = Math.min(exponentialDelay + jitter, this.MAX_DELAY_MS);
+
             this.queue[actionIndex].nextAttempt = Date.now() + delay;
 
             if (__DEV__) {
               console.log(
-                `⏰ Scheduling retry for action ${action.type} in ${delay}ms (attempt ${this.queue[actionIndex].retryCount})`,
+                `⏰ Scheduling retry for ${action.type} in ${Math.round(delay)}ms (attempt ${this.queue[actionIndex].retryCount}/${action.maxRetries})`,
               );
             }
           }
@@ -247,6 +348,9 @@ class OfflineQueueManager {
     await this.saveQueue();
     this.isProcessing = false;
 
+    // Schedule next run for delayed actions
+    this.scheduleNextRun();
+
     if (__DEV__) {
       console.log(`✅ Offline queue processing complete. ${this.queue.length} actions remaining.`);
     }
@@ -255,6 +359,108 @@ class OfflineQueueManager {
   /**
    * Process a single action based on its type
    */
+  /**
+   * Get default max retries for action type
+   */
+  private getDefaultMaxRetries(type: string): number {
+    return (this.ACTION_CONFIG as any)[type]?.maxRetries ?? this.DEFAULT_MAX_RETRIES;
+  }
+
+  /**
+   * Get default priority for action type
+   */
+  private getDefaultPriority(type: string): number {
+    return (this.ACTION_CONFIG as any)[type]?.priority ?? 1;
+  }
+
+  /**
+   * Determine if an error is retryable
+   */
+  private isRetryableError(error: unknown): boolean {
+    if (!error) return false;
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const lowerMessage = errorMessage.toLowerCase();
+
+    // Non-retryable errors (validation, auth, etc.)
+    const nonRetryablePatterns = [
+      'invalid processing options',
+      'unsupported video format',
+      'video size must be less than',
+      'video must be between',
+      'please enter your confession',
+      'too short',
+      'too long',
+      'video file is required',
+      'user not authenticated',
+      'unauthorized',
+      'forbidden',
+      'not found',
+      'conflict',
+      'duplicate',
+      'unique constraint',
+    ];
+
+    if (nonRetryablePatterns.some(pattern => lowerMessage.includes(pattern))) {
+      return false;
+    }
+
+    // Retryable errors (network, temporary server issues)
+    const retryablePatterns = [
+      'network',
+      'connection',
+      'timeout',
+      'server error',
+      'internal server error',
+      'bad gateway',
+      'service unavailable',
+      'gateway timeout',
+      'temporarily unavailable',
+    ];
+
+    return retryablePatterns.some(pattern => lowerMessage.includes(pattern)) ||
+           lowerMessage.includes('5') && lowerMessage.includes('error'); // 5xx errors
+  }
+
+  /**
+   * Schedule next run based on the earliest nextAttempt time
+   */
+  private scheduleNextRun(): void {
+    // Clear existing timer
+    if (this.scheduledTimer) {
+      clearTimeout(this.scheduledTimer);
+      this.scheduledTimer = null;
+    }
+
+    if (!this.isOnline || this.queue.length === 0) {
+      return;
+    }
+
+    // Find the earliest nextAttempt time
+    const now = Date.now();
+    let earliestAttempt = Infinity;
+
+    for (const action of this.queue) {
+      if (action.nextAttempt && action.nextAttempt > now) {
+        earliestAttempt = Math.min(earliestAttempt, action.nextAttempt);
+      }
+    }
+
+    if (earliestAttempt === Infinity || earliestAttempt <= now) {
+      return; // No future attempts or all are ready now
+    }
+
+    const delay = earliestAttempt - now;
+    if (__DEV__) {
+      console.log(`📅 Scheduling next queue run in ${Math.round(delay)}ms`);
+    }
+
+    this.scheduledTimer = setTimeout(() => {
+      this.scheduledTimer = null;
+      this.processQueue();
+    }, delay);
+  }
+
   private async processAction(action: OfflineAction): Promise<void> {
     // Import stores dynamically to avoid circular dependencies
     const { processOfflineAction } = await import("./offlineActionProcessor");
@@ -314,25 +520,13 @@ class OfflineQueueManager {
       this.netInfoUnsubscribe();
       this.netInfoUnsubscribe = null;
     }
+    if (this.scheduledTimer) {
+      clearTimeout(this.scheduledTimer);
+      this.scheduledTimer = null;
+    }
     this.listeners = [];
   }
 }
 
 // Singleton instance
 export const offlineQueue = new OfflineQueueManager();
-
-// Action types for different operations
-export const OFFLINE_ACTIONS = {
-  LIKE_CONFESSION: "LIKE_CONFESSION",
-  UNLIKE_CONFESSION: "UNLIKE_CONFESSION",
-  SAVE_CONFESSION: "SAVE_CONFESSION",
-  UNSAVE_CONFESSION: "UNSAVE_CONFESSION",
-  DELETE_CONFESSION: "DELETE_CONFESSION",
-  CREATE_REPLY: "CREATE_REPLY",
-  DELETE_REPLY: "DELETE_REPLY",
-  LIKE_REPLY: "LIKE_REPLY",
-  UNLIKE_REPLY: "UNLIKE_REPLY",
-  MARK_NOTIFICATION_READ: "MARK_NOTIFICATION_READ",
-} as const;
-
-export type OfflineActionType = (typeof OFFLINE_ACTIONS)[keyof typeof OFFLINE_ACTIONS];

@@ -5,7 +5,7 @@ import { useTrendingStore } from "../state/trendingStore";
 import { getTimePeriodText } from "../utils/trending";
 import TrendingSkeleton from "../components/TrendingSkeleton";
 import { getButtonA11yProps, getCloseButtonA11yProps } from "../utils/accessibility";
-import { useDebouncedSearch } from "../utils/debounce";
+import { useDebouncedSearch } from "../utils/consolidatedUtils";
 import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
 import { dismissKeyboard } from "../utils/keyboardUtils";
 import { TimePeriodButton } from "../components/TimePeriodButton";
@@ -39,27 +39,43 @@ export default function TrendingScreen() {
     clearError,
   } = useTrendingStore();
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+
   /**
    * Debounced search functionality for hashtag search input
    * - Prevents excessive API calls while user is typing
    * - 300ms delay allows for natural typing pause before triggering search
    * - Automatically clears search when input is empty
    */
-  const { searchQuery, isSearching, handleSearchChange, setSearchQuery } = useDebouncedSearch(
-    async (query: string) => {
+  const debouncedSearchQuery = useDebouncedSearch(searchQuery, 300);
+
+  // Trigger search when debounced value changes
+  useEffect(() => {
+    const performSearch = async () => {
       try {
-        if (query.trim()) {
-          await searchByHashtag(query.trim());
+        setIsSearching(true);
+        if (debouncedSearchQuery.trim()) {
+          await searchByHashtag(debouncedSearchQuery.trim());
         } else {
           clearSearch();
         }
       } catch (err) {
         logger.error("Debounced search failed:", err);
         setErrorState("Search failed. Please try again.");
+      } finally {
+        setIsSearching(false);
       }
-    },
-    300, // 300ms debounce delay
-  );
+    };
+
+    if (debouncedSearchQuery !== undefined) {
+      performSearch();
+    }
+  }, [debouncedSearchQuery, searchByHashtag, clearSearch]);
+
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchQuery(text);
+  }, []);
 
   /**
    * Immediate search for hashtag taps (non-debounced)
@@ -142,7 +158,7 @@ export default function TrendingScreen() {
   // Inline components moved to separate files for modularity and memoization.
 
   return (
-    <ScreenKeyboardWrapper className="flex-1 bg-black" scrollable={true} dismissOnTap={true}>
+    <ScreenKeyboardWrapper className="flex-1 bg-black" scrollable={false} dismissOnTap={true}>
       {/* Search and Filters */}
       <View
         style={{

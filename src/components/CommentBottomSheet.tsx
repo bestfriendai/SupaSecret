@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { InlineCharacterCounter } from "./CharacterCounter";
-import { sanitizeText } from "../utils/sanitize";
+import { sanitizeText } from "../utils/consolidatedUtils";
 import { BottomSheetKeyboardWrapper } from "./KeyboardAvoidingWrapper";
 import { getOptimizedTextInputProps } from "../utils/keyboardUtils";
 

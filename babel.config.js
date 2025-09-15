@@ -15,7 +15,9 @@ module.exports = function (api) {
         },
       ],
       // Worklets plugin for Reanimated v4 - must be last
-      "react-native-worklets/plugin",
+      // This is the new plugin required for Expo SDK 54 and Reanimated v4
+      // Note: NativeWind v4 may have limited compatibility with Reanimated v4
+      "react-native-worklets/plugin", // Must be absolutely last
     ],
   };
 };

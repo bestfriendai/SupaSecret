@@ -91,10 +91,11 @@ const loadRevenueCat = async () => {
   if (!Purchases && !IS_EXPO_GO) {
     try {
       const RevenueCatModule = await import("react-native-purchases");
-      Purchases = RevenueCatModule.default;
-      _CustomerInfo = RevenueCatModule.CustomerInfo;
-      _PurchasesOffering = RevenueCatModule.PurchasesOffering;
-      _PurchasesPackage = RevenueCatModule.PurchasesPackage;
+      Purchases = RevenueCatModule.default as any;
+      // Types are exported separately in v9+
+      _CustomerInfo = {} as any;
+      _PurchasesOffering = {} as any;
+      _PurchasesPackage = {} as any;
       if (__DEV__) {
         console.log("🚀 RevenueCat module loaded successfully");
       }
@@ -313,11 +314,10 @@ export class RevenueCatService {
       const { enqueue, isOnline } = await import("../lib/offlineQueue");
       const doUpsert = async () => {
         const { error } = await withSupabaseRetry(async () =>
-          supabase.from("user_subscriptions").upsert({
+          supabase.from("user_memberships").upsert({
             user_id: user.id,
-            is_premium: isPremium,
-            subscription_ids: activeSubscriptions,
-            customer_info: customerInfo as any,
+            tier: isPremium ? "plus" : "free",
+            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }),
         );

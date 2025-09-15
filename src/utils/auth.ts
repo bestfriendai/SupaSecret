@@ -1,7 +1,7 @@
 import { User, AuthCredentials, SignUpData } from "../types/auth";
 import { supabase } from "../lib/supabase";
 import Constants from "expo-constants";
-import { sanitizeText } from "./sanitize";
+import { sanitizeText } from "./consolidatedUtils";
 
 // SDK 53: Input sanitization to prevent XSS vulnerabilities
 export const sanitizeInput = (input: string): string => {
@@ -219,13 +219,40 @@ export const signInUser = async (credentials: AuthCredentials): Promise<User> =>
   return user;
 };
 
-// Get current user
+// Get current user with enhanced session management
 export const getCurrentUser = async (): Promise<User | null> => {
   try {
-    // First check if we have a valid session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // Enhanced session validation with retry logic
+    let session = null;
+    let sessionError = null;
+
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      session = data.session;
+      sessionError = error;
+    } catch (error) {
+      sessionError = error;
+      if (__DEV__) {
+        console.warn("Failed to get session, retrying once...", error);
+      }
+
+      // Retry once after a brief delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        session = data.session;
+        sessionError = error;
+      } catch (retryError) {
+        sessionError = retryError;
+      }
+    }
+
+    if (sessionError) {
+      if (__DEV__) {
+        console.error("Session retrieval failed:", sessionError);
+      }
+      return null;
+    }
 
     if (!session) {
       if (__DEV__) {
@@ -234,37 +261,127 @@ export const getCurrentUser = async (): Promise<User | null> => {
       return null;
     }
 
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
+    // Validate session expiry
+    if (session.expires_at) {
+      const expiresAt = new Date(session.expires_at * 1000);
+      const now = new Date();
+      const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
 
-    if (!authUser) {
+      if (now >= new Date(expiresAt.getTime() - bufferTime)) {
+        if (__DEV__) {
+          console.log("🔍 Session expired or expiring soon, attempting refresh...");
+        }
+
+        // Try to refresh the session
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            if (__DEV__) {
+              console.error("Session refresh failed:", refreshError);
+            }
+            return null;
+          }
+          session = refreshData.session;
+        } catch (refreshError) {
+          if (__DEV__) {
+            console.error("Session refresh error:", refreshError);
+          }
+          return null;
+        }
+      }
+    }
+
+    // Get user with retry logic
+    let authUser = null;
+    let userError = null;
+
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      authUser = data.user;
+      userError = error;
+    } catch (error) {
+      userError = error;
       if (__DEV__) {
-        console.log("🔍 No authenticated user found");
+        console.warn("Failed to get user, retrying once...", error);
+      }
+
+      // Retry once
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        authUser = data.user;
+        userError = error;
+      } catch (retryError) {
+        userError = retryError;
+      }
+    }
+
+    if (userError || !authUser) {
+      if (__DEV__) {
+        console.log("🔍 No authenticated user found", (userError as any)?.message);
       }
       return null;
     }
 
-    // Get user profile data
-    const { data: profileData, error: profileError } = await supabase
-      .from("user_profiles")
-      .select("username, is_onboarded, created_at, last_login_at")
-      .eq("id", authUser.id)
-      .single();
+    // Get user profile data with retry logic
+    let profileData = null;
+    let profileError = null;
+
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("username, is_onboarded, created_at, last_login_at")
+        .eq("id", authUser.id)
+        .single();
+
+      profileData = data;
+      profileError = error;
+    } catch (error) {
+      profileError = error;
+      if (__DEV__) {
+        console.warn("Failed to get profile, retrying once...", error);
+      }
+
+      // Retry once for profile data
+      try {
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("username, is_onboarded, created_at, last_login_at")
+          .eq("id", authUser.id)
+          .single();
+
+        profileData = data;
+        profileError = error;
+      } catch (retryError) {
+        profileError = retryError;
+      }
+    }
 
     if (__DEV__) {
       console.log("🔍 Profile query result:", {
         userId: authUser.id,
         profileData,
-        profileError: profileError?.message,
-        errorCode: profileError?.code,
+        profileError: (profileError as any)?.message,
+        errorCode: (profileError as any)?.code,
       });
     }
 
-    if (profileError && profileError.code !== "PGRST116") {
+    // Handle profile errors gracefully
+    if (profileError && (profileError as any).code !== "PGRST116") {
       if (__DEV__) {
-        console.error("Error fetching user profile:", profileError);
+        console.warn("Error fetching user profile, using fallback data:", profileError);
       }
+
+      // Return user with fallback profile data if profile fetch fails
+      const fallbackUser: User = {
+        id: authUser.id,
+        email: authUser.email!,
+        username: undefined,
+        createdAt: authUser.created_at ? new Date(authUser.created_at).getTime() : Date.now(),
+        isOnboarded: false, // Default to false for safety
+        lastLoginAt: Date.now(),
+      };
+
+      return fallbackUser;
     }
 
     // Return user in our format
@@ -290,6 +407,28 @@ export const getCurrentUser = async (): Promise<User | null> => {
     if (__DEV__) {
       console.error("Error getting current user:", error);
     }
+
+    // Enhanced error classification
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase();
+
+      if (errorMessage.includes('network') ||
+          errorMessage.includes('connection') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('fetch')) {
+        if (__DEV__) {
+          console.warn("Network-related error in getCurrentUser, user may still be authenticated");
+        }
+        // For network errors, we might want to preserve cached user data in calling code
+      } else if (errorMessage.includes('unauthorized') ||
+                 errorMessage.includes('invalid') ||
+                 errorMessage.includes('expired')) {
+        if (__DEV__) {
+          console.log("Auth-related error in getCurrentUser, user needs to re-authenticate");
+        }
+      }
+    }
+
     return null;
   }
 };
@@ -355,15 +494,46 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
   }
 };
 
-// Sign out user
+// Sign out user with enhanced error handling
 export const signOutUser = async (): Promise<void> => {
-  const { error } = await supabase.auth.signOut();
+  try {
+    const { error } = await supabase.auth.signOut();
 
-  if (error) {
-    if (__DEV__) {
-      console.error("Error signing out:", error);
+    if (error) {
+      if (__DEV__) {
+        console.error("Error signing out:", error);
+      }
+
+      // For certain errors, we might still want to clear local state
+      const errorMessage = error.message.toLowerCase();
+      if (errorMessage.includes('network') ||
+          errorMessage.includes('connection') ||
+          errorMessage.includes('timeout')) {
+        if (__DEV__) {
+          console.warn("Network error during sign out, but clearing local auth state anyway");
+        }
+        // Don't throw for network errors - local state should still be cleared
+        return;
+      }
+
+      throw new AuthError("SIGNOUT_ERROR", "Failed to sign out. Please try again.");
     }
-    throw new Error("Failed to sign out");
+
+    if (__DEV__) {
+      console.log("✅ User signed out successfully");
+    }
+  } catch (error) {
+    if (__DEV__) {
+      console.error("Sign out error:", error);
+    }
+
+    // If it's already an AuthError, re-throw it
+    if (error instanceof AuthError) {
+      throw error;
+    }
+
+    // For other errors, wrap in AuthError
+    throw new AuthError("SIGNOUT_ERROR", "Failed to sign out. Please try again.");
   }
 };
 

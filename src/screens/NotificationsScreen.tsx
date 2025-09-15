@@ -9,7 +9,7 @@ import { formatDistanceToNow } from "date-fns";
 import type { GroupedNotification } from "../types/notification";
 import NotificationSkeleton from "../components/NotificationSkeleton";
 import { getButtonA11yProps } from "../utils/accessibility";
-import { useDebouncedRefresh } from "../utils/debounce";
+import { useDebouncedRefresh } from "../utils/consolidatedUtils";
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
@@ -28,7 +28,7 @@ export default function NotificationsScreen() {
   } = useNotificationStore();
 
   // Debounced refresh functionality
-  const { refresh } = useDebouncedRefresh(loadNotifications, 1000);
+  const refresh = useDebouncedRefresh(loadNotifications, 1000);
 
   // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {

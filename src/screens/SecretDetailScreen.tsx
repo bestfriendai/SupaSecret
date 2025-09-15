@@ -20,7 +20,7 @@ import { useReplyStore } from "../state/replyStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import ReportModal from "../components/ReportModal";
 import HashtagText from "../components/HashtagText";
-import { isValidForDatabase } from "../utils/uuid";
+import { isValidForDatabase } from "../utils/consolidatedUtils";
 import { safeGoBackFromDetail } from "../utils/navigation";
 
 type SecretDetailRouteProp = RouteProp<

@@ -12,13 +12,13 @@ export interface Notification {
 
 export interface NotificationPreferences {
   user_id: string;
-  likes_enabled: boolean;
-  replies_enabled: boolean;
-  push_enabled: boolean;
-  quiet_hours_start: string;
-  quiet_hours_end: string;
-  created_at: string;
-  updated_at: string;
+  likes_enabled: boolean | null;
+  replies_enabled: boolean | null;
+  push_enabled: boolean | null;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface GroupedNotification {

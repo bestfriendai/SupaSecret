@@ -32,11 +32,17 @@ export const useMembershipStore = create<MembershipState>()(
           if (data) {
             // Check if membership is still active
             const isActive = !data.expires_at || new Date(data.expires_at) > new Date();
-            const tier: MembershipTier = isActive ? data.tier : "free";
+            const tier: MembershipTier = isActive ? (data.tier as MembershipTier) : "free";
 
             set({
               currentTier: tier,
-              membership: data,
+              membership: {
+                ...data,
+                tier: tier,
+                auto_renew: data.auto_renew || false,
+                created_at: data.created_at || new Date().toISOString(),
+                updated_at: data.updated_at || new Date().toISOString(),
+              },
               isLoading: false,
             });
           } else {

@@ -28,6 +28,7 @@ import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
 import ReportModal from "./ReportModal";
 import VideoProgressIndicator from "./VideoProgressIndicator";
 import TikTokCaptionsOverlay from "./TikTokCaptionsOverlay";
+import { ErrorBoundary } from "./ErrorBoundary";
 import VideoSkeleton from "./VideoSkeleton";
 import VideoGuidanceOverlay from "./VideoGuidanceOverlay";
 import VideoControls from "./VideoControls";
@@ -388,7 +389,8 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   // currentVideo/currentPlayer are defined above
 
   return (
-    <View className="flex-1 bg-black">
+    <ErrorBoundary resetKeys={[currentIndex]} resetOnPropsChange>
+      <View className="flex-1 bg-black">
       <StatusBar hidden />
       <GestureDetector gesture={composedGestures}>
         <Animated.View style={[{ flex: 1 }, containerStyle]}>
@@ -641,5 +643,6 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
       {/* First-time User Guidance */}
       <VideoGuidanceOverlay isVisible={showGuidance} onDismiss={() => setShowGuidance(false)} />
     </View>
+    </ErrorBoundary>
   );
 }

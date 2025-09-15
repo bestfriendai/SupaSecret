@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { useReplyStore } from "../state/replyStore";
-import { isValidForDatabase } from "../utils/uuid";
+import { isValidForDatabase } from "../utils/consolidatedUtils";
 
 /**
  * Optimized hook for loading replies that prevents N+1 query problems

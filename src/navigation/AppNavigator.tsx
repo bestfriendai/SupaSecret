@@ -1,10 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, Text, Platform } from "react-native";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { ErrorState } from "../components/ErrorState";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HomeScreen from "../screens/HomeScreen";
 import CreateConfessionScreen from "../screens/CreateConfessionScreen";
 import VideoRecordScreen from "../screens/VideoRecordScreen";
@@ -98,6 +102,7 @@ function AuthStackNavigator() {
 
 function MainTabs() {
   const { setCurrentTab } = useGlobalVideoStore();
+  const insets = useSafeAreaInsets();
 
   // Global video pause handler
   const handleTabChange = (state: any) => {
@@ -111,10 +116,6 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenListeners={{
-        tabPress: (e) => {
-          // Prevent default behavior if needed
-          // e.preventDefault();
-        },
         state: (e) => {
           handleTabChange(e.data.state);
         },
@@ -145,12 +146,25 @@ function MainTabs() {
           backgroundColor: "#000000",
           borderTopColor: "#2F3336",
           borderTopWidth: 0.5,
-          height: 60,
-          paddingBottom: 8,
+          height: Platform.OS === 'ios'
+            ? 60 + insets.bottom
+            : 60 + (insets.bottom > 0 ? insets.bottom : 0),
+          paddingBottom: Platform.OS === 'ios'
+            ? insets.bottom
+            : insets.bottom > 0 ? insets.bottom : 8,
+          paddingTop: 8,
+          elevation: 8,
         },
         tabBarHideOnKeyboard: true,
         tabBarActiveBackgroundColor: "transparent",
         tabBarInactiveBackgroundColor: "transparent",
+        tabBarLabelStyle: {
+          fontSize: 10,
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
+        },
         tabBarBadgeStyle: {
           backgroundColor: "#F91880",
           color: "#FFFFFF",
@@ -173,8 +187,8 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: "Toxic Confessions",
-          header: () => <AppHeader title="Toxic Confessions" showTrendingBar={true} />,
+          title: "Secrets",
+          header: () => <AppHeader title="Secrets" showTrendingBar={true} />,
         }}
       />
       <Tab.Screen
@@ -213,61 +227,101 @@ function MainTabs() {
   );
 }
 
+// Helper function for structured navigation logging
+const logNavigationState = (context: string, state: any) => {
+  if (!__DEV__) return;
+  console.log(`[AppNavigator] ${context}:`, state);
+};
+
 export default function AppNavigator() {
   const { isAuthenticated, isLoading, user, checkAuthState } = useAuthStore();
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
+  const AUTH_CHECK_TIMEOUT = 10000; // 10 seconds timeout
 
-  useEffect(() => {
-    if (__DEV__) {
-      console.log("[AppNavigator] Mount useEffect - calling checkAuthState");
+  // Robust initialization with timeout handling
+  const initializeAuth = useCallback(async () => {
+    setIsInitializing(true);
+    setInitError(null);
+
+    let timeoutId: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('Auth check timeout')), AUTH_CHECK_TIMEOUT);
+    });
+
+    try {
+      await Promise.race([
+        checkAuthState(),
+        timeoutPromise
+      ]);
+      setIsInitializing(false);
+    } catch (error) {
+      logNavigationState('Auth initialization failed', error);
+      setInitError('Unable to verify authentication status. Please try again.');
+      setIsInitializing(false);
+    } finally {
+      // Clear the timeout to prevent memory leaks and unhandled rejections
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
-    checkAuthState();
   }, [checkAuthState]);
 
-  if (__DEV__) {
-    console.log("[AppNavigator] Rendering - current state:", {
-      isAuthenticated,
-      isLoading,
-      hasUser: !!user,
-      userId: user?.id,
-    });
-  }
+  useEffect(() => {
+    logNavigationState('Mount', { isAuthenticated, hasUser: !!user });
+    initializeAuth();
+  }, []);
 
-  // Show loading screen while checking auth state
-  if (isLoading) {
-    if (__DEV__) {
-      console.log("[AppNavigator] SHOWING LOADING SCREEN - isLoading is true");
+  // Consolidated state logging
+  useEffect(() => {
+    if (!isInitializing) {
+      logNavigationState('State Update', {
+        isAuthenticated,
+        isLoading,
+        hasUser: !!user,
+        userId: user?.id,
+        isOnboarded: user?.isOnboarded,
+      });
     }
+  }, [isAuthenticated, isLoading, user, isInitializing])
+
+  // Show loading screen during initialization
+  if (isInitializing || isLoading) {
+    logNavigationState('Loading', { isInitializing, isLoading });
     return (
       <View style={{ flex: 1, backgroundColor: "black", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" color="#1D9BF0" />
+        <LoadingSpinner size={48} color="#1D9BF0" />
+        <Text style={{ color: '#666', marginTop: 16, fontSize: 14 }}>
+          {isInitializing ? 'Initializing...' : 'Loading...'}
+        </Text>
       </View>
     );
   }
 
-  // Determine which stack to show
-  // Show auth stack if: not authenticated OR authenticated but not onboarded
-  const shouldShowAuth = !isAuthenticated || (isAuthenticated && user && !user.isOnboarded);
-
-  if (__DEV__) {
-    console.log("[AppNavigator] Navigation decision:", {
-      isAuthenticated,
-      user: user ? `${user.email} (onboarded: ${user.isOnboarded})` : null,
-      shouldShowAuth,
-      reason: !isAuthenticated
-        ? "not authenticated"
-        : isAuthenticated && user && !user.isOnboarded
-          ? "not onboarded"
-          : "fully authenticated",
-    });
+  // Show error state if initialization failed
+  if (initError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "black", padding: 20 }}>
+        <ErrorState
+          message={initError}
+          onRetry={initializeAuth}
+          type="auth"
+        />
+      </View>
+    );
   }
 
-  if (__DEV__) {
-    if (shouldShowAuth) {
-      console.log("[AppNavigator] RENDERING AUTH STACK - user needs authentication/onboarding");
-    } else {
-      console.log("[AppNavigator] RENDERING MAIN TABS - user is fully authenticated");
-    }
-  }
+  // Determine which stack to show with simplified logic
+  const shouldShowAuth = !isAuthenticated || (user && !user.isOnboarded);
+
+  logNavigationState('Navigation Decision', {
+    shouldShowAuth,
+    reason: !isAuthenticated
+      ? 'not_authenticated'
+      : user && !user.isOnboarded
+        ? 'needs_onboarding'
+        : 'authenticated',
+  })
 
   return (
     <NavigationContainer
@@ -304,13 +358,11 @@ export default function AppNavigator() {
       }}
       fallback={<View style={{ flex: 1, backgroundColor: "#000000" }} />}
       onReady={() => {
-        if (__DEV__) {
-          console.log("🧭 Navigation container ready");
-        }
+        logNavigationState('Container Ready', { timestamp: Date.now() });
       }}
       onStateChange={(state) => {
-        if (__DEV__) {
-          console.log("🧭 Navigation state changed:", state?.routes[state?.index]?.name);
+        if (state?.routes && state?.index !== undefined) {
+          logNavigationState('Route Changed', state.routes[state.index]?.name);
         }
       }}
     >

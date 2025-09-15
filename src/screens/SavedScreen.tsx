@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import HashtagText from "../components/HashtagText";
 import ConfessionSkeleton from "../components/ConfessionSkeleton";
-import { useDebouncedRefresh } from "../utils/debounce";
+import { useDebouncedRefresh } from "../utils/consolidatedUtils";
 import { safeGoBackFromModal } from "../utils/navigation";
 
 export default function SavedScreen() {
@@ -35,7 +35,7 @@ export default function SavedScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Debounced refresh functionality
-  const { refresh } = useDebouncedRefresh(() => loadSavedConfessions(true), 1000);
+  const refresh = useDebouncedRefresh(() => loadSavedConfessions(true), 1000);
 
   useEffect(() => {
     loadSavedConfessions();

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "./global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -44,6 +44,7 @@ export default function App() {
   const checkAuthState = useAuthStore((state) => state.checkAuthState);
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
   const loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -71,9 +72,18 @@ export default function App() {
         setupConfessionSubscriptions();
         setupNotificationSubscriptions();
 
-        // Check auth state and load initial data
+        // Check auth state first
         await checkAuthState();
-        await loadUserPreferences();
+
+        // Load user preferences before confessions (ensures store is initialized)
+        try {
+          await loadUserPreferences();
+        } catch (error) {
+          console.error("[App] Failed to load user preferences:", error);
+          // Continue with default preferences
+        }
+
+        // Load confessions after preferences are set
         await loadConfessions();
 
         // Offline queue starts automatically
@@ -83,6 +93,8 @@ export default function App() {
         }
       } catch (error) {
         console.error("[App] App initialization failed:", error);
+      } finally {
+        setIsInitializing(false);
       }
     };
 
@@ -96,6 +108,17 @@ export default function App() {
       // Offline queue cleanup is handled automatically
     };
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
+
+  // Show a simple loading screen while initializing
+  if (isInitializing) {
+    return (
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+          {/* Simple loading indicator - can be replaced with a splash screen */}
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <ErrorBoundary>

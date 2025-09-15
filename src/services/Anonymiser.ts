@@ -1,6 +1,6 @@
 import { env } from "../utils/env";
 import { IAnonymiser } from "./IAnonymiser";
-import { videoProcessingService } from "./VideoProcessingService";
+import { videoProcessingService } from "./UnifiedVideoProcessingService";
 
 // Lazy load native anonymiser to prevent Expo Go crashes
 let nativeAnonymiser: IAnonymiser | null = null;

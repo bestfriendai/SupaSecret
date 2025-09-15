@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
-import { Report, ReportState, CreateReportRequest } from "../types/report";
+import { Report, ReportState, CreateReportRequest, ReportReason, ReportStatus } from "../types/report";
 
 export const useReportStore = create<ReportState>()(
   persist(
@@ -60,10 +60,10 @@ export const useReportStore = create<ReportState>()(
             confessionId: data.confession_id || undefined,
             replyId: data.reply_id || undefined,
             reporterUserId: data.reporter_user_id,
-            reason: data.reason,
+            reason: data.reason as ReportReason,
             additionalDetails: data.additional_details || undefined,
-            status: data.status,
-            createdAt: data.created_at,
+            status: data.status as ReportStatus,
+            createdAt: data.created_at || "",
             reviewedAt: data.reviewed_at || undefined,
             reviewedBy: data.reviewed_by || undefined,
           };
@@ -111,10 +111,10 @@ export const useReportStore = create<ReportState>()(
             confessionId: item.confession_id || undefined,
             replyId: item.reply_id || undefined,
             reporterUserId: item.reporter_user_id,
-            reason: item.reason,
+            reason: item.reason as ReportReason,
             additionalDetails: item.additional_details || undefined,
-            status: item.status,
-            createdAt: item.created_at,
+            status: item.status as ReportStatus,
+            createdAt: item.created_at || "",
             reviewedAt: item.reviewed_at || undefined,
             reviewedBy: item.reviewed_by || undefined,
           }));

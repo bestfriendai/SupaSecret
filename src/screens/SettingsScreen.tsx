@@ -12,7 +12,7 @@ import SettingsToggle from "../components/SettingsToggle";
 import SettingsPicker from "../components/SettingsPicker";
 import { pushNotificationManager } from "../utils/pushNotifications";
 import { AlertModal, ConfirmModal } from "../components/AnimatedModal";
-import { useDebounce } from "../utils/debounce";
+import { useDebounce } from "../utils/consolidatedUtils";
 import { getPrivacyPolicyUrl, getTermsOfServiceUrl, getHelpSupportUrl } from "../constants/urls";
 import { runAllTests } from "../utils/testDatabase";
 

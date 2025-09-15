@@ -14,10 +14,12 @@ import {
 export interface StandardError {
   code: string;
   message: string;
-  timestamp: number;
+  timestamp?: number;
   context?: string;
   isRetryable?: boolean;
   originalError?: unknown;
+  details?: Record<string, any>;
+  statusCode?: number;
 }
 
 export interface ErrorHandlingOptions {
@@ -203,9 +205,33 @@ export function translateSupabaseError(code?: string): string | undefined {
 }
 
 /**
+ * Get screen-specific error message with fallback to generic messages
+ */
+export const getScreenSpecificMessage = (error: StandardError, screenName: string): string => {
+  // Import screen error messages
+  const { getScreenErrorMessage } = require('./screenErrorMessages');
+
+  const screenError = getScreenErrorMessage(error, screenName);
+  if (screenError.message !== error.message) {
+    // Include suggestion if available
+    return screenError.suggestion
+      ? `${screenError.message} ${screenError.suggestion}`
+      : screenError.message;
+  }
+
+  // Fall back to generic user-friendly message
+  return getUserFriendlyMessage(error);
+};
+
+/**
  * User-friendly error messages for common error codes
  */
-export const getUserFriendlyMessage = (error: StandardError): string => {
+export const getUserFriendlyMessage = (error: StandardError, screenContext?: string): string => {
+  // If screen context provided, try screen-specific messages first
+  if (screenContext) {
+    return getScreenSpecificMessage(error, screenContext);
+  }
+
   // First try to get Supabase-specific error message
   const supabaseMessage = translateSupabaseError(error.code);
   if (supabaseMessage) {

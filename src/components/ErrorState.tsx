@@ -12,15 +12,16 @@ interface ErrorConfig {
 }
 
 interface ErrorStateProps {
-  type: "network" | "generic" | "empty";
+  type: "network" | "generic" | "empty" | "auth" | "video" | "permission";
   title?: string;
   message?: string;
   actionLabel?: string;
   onAction?: () => void;
+  onRetry?: () => void;
   icon?: IoniconsName;
 }
 
-export const ErrorState: React.FC<ErrorStateProps> = ({ type, title, message, actionLabel, onAction, icon }) => {
+export const ErrorState: React.FC<ErrorStateProps> = ({ type, title, message, actionLabel, onAction, onRetry, icon }) => {
   const getErrorConfig = (): ErrorConfig => {
     switch (type) {
       case "network":
@@ -37,6 +38,27 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ type, title, message, ac
           message: message || "Be the first to share an anonymous confession with the community",
           actionLabel: actionLabel || "Share Secret",
         };
+      case "auth":
+        return {
+          icon: icon || "person-circle-outline",
+          title: title || "Authentication Error",
+          message: message || "Unable to verify your authentication status. Please try again.",
+          actionLabel: actionLabel || "Retry",
+        };
+      case "video":
+        return {
+          icon: icon || "videocam-off-outline",
+          title: title || "Video Error",
+          message: message || "Unable to load videos. Please check your connection and try again.",
+          actionLabel: actionLabel || "Retry",
+        };
+      case "permission":
+        return {
+          icon: icon || "shield-outline",
+          title: title || "Permission Error",
+          message: message || "Unable to check permissions. Please try again.",
+          actionLabel: actionLabel || "Retry",
+        };
       case "generic":
       default:
         return {
@@ -50,6 +72,9 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ type, title, message, ac
 
   const config: ErrorConfig = getErrorConfig();
 
+  // Use onRetry if provided, otherwise use onAction
+  const handleAction = onRetry || onAction;
+
   return (
     <View className="flex-1 items-center justify-center px-6 py-20">
       <View className="items-center">
@@ -61,10 +86,10 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ type, title, message, ac
 
         <Text className="text-gray-500 text-15 mb-8 text-center leading-6 max-w-sm">{config.message}</Text>
 
-        {onAction && (
+        {handleAction && (
           <Pressable
             className="bg-blue-500 rounded-full px-8 py-3 min-w-32"
-            onPress={onAction}
+            onPress={handleAction}
             accessibilityRole="button"
             accessibilityLabel={config.actionLabel}
           >

@@ -5,9 +5,13 @@ import { CameraView, CameraType } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
-import { processVideoConfession } from "../utils/videoProcessing";
+import { unifiedVideoProcessingService } from "../services/UnifiedVideoProcessingService";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { useMediaPermissions } from "../hooks/useMediaPermissions";
+import { useScreenStatus } from "../hooks/useScreenStatus";
+import { getUserFriendlyMessage, StandardError } from "../utils/errorHandling";
+import { withErrorBoundary, ErrorBoundary } from "../components/ErrorBoundary";
+import { PermissionGate } from "../components/PermissionGate";
 import { BlurView } from "expo-blur";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as Speech from "expo-speech";
@@ -26,10 +30,22 @@ import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
 // const AnimatedView = Animated.createAnimatedComponent(View);
 // const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export default function VideoRecordScreen() {
+function VideoRecordScreen() {
   // All hooks must be called at the top level, before any conditional logic
-  const { impactAsync, notificationAsync } = usePreferenceAwareHaptics();
+  // Safely use haptics hook with error handling
+  let haptics = { impactAsync: async () => {}, notificationAsync: async () => {} };
+  try {
+    const hapticsResult = usePreferenceAwareHaptics();
+    haptics = hapticsResult;
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("Haptics initialization failed, using fallback:", error);
+    }
+  }
+  const { impactAsync, notificationAsync } = haptics;
+
   const { permissionState, requestVideoPermissions, hasVideoPermissions } = useMediaPermissions();
+  const screenStatus = useScreenStatus({ screenName: 'VideoRecordScreen', loadingTimeout: 20000 });
   const [facing, setFacing] = useState<CameraType>("front");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -132,6 +148,7 @@ export default function VideoRecordScreen() {
       try {
         if (previewPlayer) {
           previewPlayer.pause?.();
+          previewPlayer.release?.();
         }
       } catch (error) {
         if (__DEV__) {
@@ -356,7 +373,7 @@ export default function VideoRecordScreen() {
 
     try {
       // Process video with face blur, voice change, and transcription
-      const processedVideo = await processVideoConfession(videoUri, {
+      const processedVideo = await unifiedVideoProcessingService.processVideo(videoUri, {
         enableTranscription: true,
         enableFaceBlur: true,
         enableVoiceChange: true,
@@ -379,21 +396,19 @@ export default function VideoRecordScreen() {
       console.error("Processing error:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-      let userFriendlyMessage = "Failed to process your video confession.";
-      let suggestions = "Please try recording again.";
+      // Use centralized error handling
+      const standardError: StandardError = {
+        code: errorMessage.includes("transcription") ? "TRANSCRIPTION_FAILED" :
+              errorMessage.includes("storage") ? "STORAGE_FULL" :
+              errorMessage.includes("network") ? "NETWORK_ERROR" :
+              "PROCESSING_FAILED",
+        message: errorMessage,
+      };
 
-      if (errorMessage.includes("transcription")) {
-        userFriendlyMessage = "Video recorded successfully, but transcription failed.";
-        suggestions = "Your video will be saved without transcription. You can try again later.";
-      } else if (errorMessage.includes("storage") || errorMessage.includes("space")) {
-        userFriendlyMessage = "Not enough storage space to process video.";
-        suggestions = "Please free up some space and try again.";
-      } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
-        userFriendlyMessage = "Network error during processing.";
-        suggestions = "Please check your internet connection and try again.";
-      }
+      const userFriendlyMessage = getUserFriendlyMessage(standardError, 'VideoRecordScreen');
+      screenStatus.setError(userFriendlyMessage);
 
-      showMessage(`${userFriendlyMessage}\n\n${suggestions}`, "error", [
+      showMessage(userFriendlyMessage, "error", [
         { text: "Try Again", onPress: () => setIsProcessing(false) },
         { text: "Go Back", onPress: () => navigation.goBack() },
       ]);
@@ -404,99 +419,6 @@ export default function VideoRecordScreen() {
     }
   };
 
-  // Render permission loading state
-  if (permissionState.loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "white", fontSize: 18 }}>Checking permissions...</Text>
-      </View>
-    );
-  }
-
-  // Render permission request screen
-  if (!hasVideoPermissions) {
-    const needsCamera = !permissionState.camera;
-    const needsAudio = !permissionState.microphone;
-
-    return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: "black",
-          justifyContent: "center",
-          alignItems: "center",
-          paddingHorizontal: 24,
-        }}
-      >
-        <View
-          style={{
-            width: 80,
-            height: 80,
-            backgroundColor: "#374151",
-            borderRadius: 40,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 24,
-          }}
-        >
-          <Ionicons name={needsCamera ? "camera-outline" : "mic-outline"} size={40} color="#8B98A5" />
-        </View>
-        <Text style={{ color: "white", fontSize: 20, fontWeight: "600", marginTop: 16, textAlign: "center" }}>
-          {needsCamera && needsAudio
-            ? "Camera & Microphone Access Required"
-            : needsCamera
-              ? "Camera Permission Required"
-              : "Microphone Permission Required"}
-        </Text>
-        <Text
-          style={{
-            color: "#9CA3AF",
-            fontSize: 16,
-            marginTop: 8,
-            textAlign: "center",
-            marginBottom: 32,
-            lineHeight: 24,
-          }}
-        >
-          We need {needsCamera && needsAudio ? "camera and microphone" : needsCamera ? "camera" : "microphone"} access
-          to record your anonymous video confession with privacy protection.
-        </Text>
-        <Pressable
-          style={{
-            backgroundColor: "#3B82F6",
-            borderRadius: 9999,
-            paddingHorizontal: 32,
-            paddingVertical: 16,
-            marginBottom: 16,
-          }}
-          onPress={requestVideoPermissions}
-        >
-          <Text style={{ color: "white", fontWeight: "600", fontSize: 18 }}>Grant Permissions</Text>
-        </Pressable>
-        <Pressable
-          style={{
-            backgroundColor: "#374151",
-            borderRadius: 9999,
-            paddingHorizontal: 24,
-            paddingVertical: 12,
-            marginBottom: 8,
-          }}
-          onPress={() => {
-            // Retry permissions request
-            requestVideoPermissions();
-          }}
-        >
-          <Text style={{ color: "#D1D5DB", fontWeight: "500" }}>Refresh Permissions</Text>
-        </Pressable>
-        <Pressable
-          style={{ backgroundColor: "#1F2937", borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 12 }}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={{ color: "#D1D5DB", fontWeight: "500" }}>Go Back</Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
 
   // Render processing screen
   if (isProcessing) {
@@ -672,8 +594,10 @@ export default function VideoRecordScreen() {
 
   // Render main camera screen
   return (
-    <View style={{ flex: 1, backgroundColor: "black" }}>
-      <CameraView ref={cameraRef} style={{ flex: 1 }} facing={facing} mode="video" videoBitrate={5000000}>
+    <PermissionGate permissions={['camera', 'microphone']}>
+      <ErrorBoundary resetKeys={previewUri ? [previewUri] : []} resetOnPropsChange>
+        <View style={{ flex: 1, backgroundColor: "black" }}>
+        <CameraView ref={cameraRef} style={{ flex: 1 }} facing={facing} mode="video" videoBitrate={5000000}>
         {/* Overlay UI */}
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}>
           {/* Top Controls */}
@@ -925,6 +849,10 @@ export default function VideoRecordScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+        </View>
+      </ErrorBoundary>
+    </PermissionGate>
   );
 }
+
+export default withErrorBoundary(VideoRecordScreen);

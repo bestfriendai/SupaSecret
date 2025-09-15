@@ -13,7 +13,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "expo-blur";
 import { InlineCharacterCounter } from "./CharacterCounter";
-import { sanitizeText } from "../utils/sanitize";
+import { sanitizeText } from "../utils/consolidatedUtils";
 import { useReplyStore } from "../state/replyStore";
 import { useToastHelpers } from "../contexts/ToastContext";
 
