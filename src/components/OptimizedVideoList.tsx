@@ -67,6 +67,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
   const [currentVideoText, setCurrentVideoText] = useState<string>("");
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Load confessions when component mounts
   useEffect(() => {
@@ -175,7 +176,15 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   const handleCommentPress = useCallback(
     (confessionId: string) => {
       try {
+        // Pause all videos when opening comments
+        const currentPlayer = videoConfessions.findIndex(v => v.id === confessionId);
+        if (currentPlayer >= 0) {
+          // Force pause all videos to prevent background playback
+          setIsScrolling(true); // This will trigger pause in EnhancedVideoItem
+        }
+        
         setCurrentVideoId(confessionId);
+        setModalOpen(true);
         const video = videoConfessions.find((v) => v.id === confessionId);
         setCurrentVideoText(video?.transcription || video?.content || "");
         commentSheetRef.current?.present();
@@ -354,6 +363,10 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           bottomSheetModalRef={commentSheetRef}
           confessionId={currentVideoId || ""}
           key={currentVideoId || "empty"}
+          onDismiss={() => {
+            setModalOpen(false);
+            setIsScrolling(false);
+          }}
         />
 
         {/* Share Bottom Sheet */}
@@ -361,12 +374,20 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           bottomSheetModalRef={shareSheetRef}
           confessionId={currentVideoId || ""}
           confessionText={currentVideoText}
+          onDismiss={() => {
+            setModalOpen(false);
+            setIsScrolling(false);
+          }}
         />
 
         {/* Report Modal */}
         <ReportModal
           isVisible={reportModalVisible}
-          onClose={() => setReportModalVisible(false)}
+          onClose={() => {
+            setReportModalVisible(false);
+            setModalOpen(false);
+            setIsScrolling(false);
+          }}
           confessionId={currentVideoId || undefined}
           contentType="confession"
         />

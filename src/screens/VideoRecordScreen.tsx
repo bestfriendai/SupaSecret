@@ -1,363 +1,209 @@
-import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, Modal, Platform } from "react-native";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { View, Text, Pressable, Alert, StyleSheet, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, CameraType } from "expo-camera";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import * as Haptics from "expo-haptics";
 import { useConfessionStore } from "../state/confessionStore";
-import { unifiedVideoProcessingService } from "../services/UnifiedVideoProcessingService";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { useMediaPermissions } from "../hooks/useMediaPermissions";
-import { useScreenStatus } from "../hooks/useScreenStatus";
-import { getUserFriendlyMessage, StandardError } from "../utils/errorHandling";
-import { withErrorBoundary, ErrorBoundary } from "../components/ErrorBoundary";
+import { withErrorBoundary } from "../components/ErrorBoundary";
 import { PermissionGate } from "../components/PermissionGate";
-import { BlurView } from "expo-blur";
-import { VideoView, useVideoPlayer } from "expo-video";
-import * as Speech from "expo-speech";
-// Temporarily disabled Reanimated due to NativeWind v4 + Expo SDK 54 compatibility issues
-// import Animated, {
-//   useAnimatedStyle,
-//   useSharedValue,
-//   withSpring,
-//   withTiming,
-//   interpolate,
-// } from "react-native-reanimated";
+import { IS_EXPO_GO } from "../utils/environmentCheck";
+import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
+import { generateUUID } from "../utils/consolidatedUtils";
 
-import TikTokCaptionsOverlay from "../components/TikTokCaptionsOverlay";
+// Expo Camera fallback
+import { CameraView, CameraType } from "expo-camera";
+import { useMediaPermissions } from "../hooks/useMediaPermissions";
 
-// Create animated components - temporarily disabled
-// const AnimatedView = Animated.createAnimatedComponent(View);
-// const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const MAX_DURATION = 60; // seconds
+const RECORDING_QUALITY = "hd"; // 'sd', 'hd', 'fhd', '4k'
 
 function VideoRecordScreen() {
-  // All hooks must be called at the top level, before any conditional logic
-  // Safely use haptics hook with error handling
-  let haptics = { impactAsync: async () => {}, notificationAsync: async () => {} };
-  try {
-    const hapticsResult = usePreferenceAwareHaptics();
-    haptics = hapticsResult;
-  } catch (error) {
-    if (__DEV__) {
-      console.warn("Haptics initialization failed, using fallback:", error);
-    }
-  }
-  const { impactAsync, notificationAsync } = haptics;
-
-  const { permissionState, requestVideoPermissions, hasVideoPermissions } = useMediaPermissions();
-  const screenStatus = useScreenStatus({ screenName: 'VideoRecordScreen', loadingTimeout: 20000 });
-  const [facing, setFacing] = useState<CameraType>("front");
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [processingProgress, setProcessingProgress] = useState(0);
-  const [processingStatus, setProcessingStatus] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState<"success" | "error">("success");
-  const [modalButtons, setModalButtons] = useState<{ text: string; onPress?: () => void }[]>([]);
-  const [blurIntensity, setBlurIntensity] = useState(25);
-
-  const cameraRef = useRef<CameraView>(null);
-  const recordingPromiseRef = useRef<Promise<any> | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const navigation = useNavigation();
+  const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
   const addConfession = useConfessionStore((state) => state.addConfession);
 
-  // Mount/recording guards to prevent camera-unmounted errors
-  const isMountedRef = useRef(true);
-  const isRecordingRef = useRef(false);
-  const cleanupRef = useRef<(() => void) | undefined>(() => {});
+  // Expo Camera hooks (always called)
+  const { hasVideoPermissions, requestVideoPermissions } = useMediaPermissions();
+  const [facing, setFacing] = useState<CameraType>("back");
+  const expoCameraRef = useRef<CameraView>(null);
 
+  // Common state
+  const [camera, setCamera] = useState<any>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [visionCameraReady, setVisionCameraReady] = useState(false);
+
+  // Timer ref for recording duration
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingPromiseRef = useRef<Promise<any> | null>(null);
+
+  // Initialize Vision Camera if available
   useEffect(() => {
-    isRecordingRef.current = isRecording;
-  }, [isRecording]);
+    const initVisionCamera = async () => {
+      if (IS_EXPO_GO) {
+        setVisionCameraReady(false);
+        return;
+      }
 
-  useEffect(() => {
-    isMountedRef.current = true;
-
-    // Store cleanup function for use in navigation listener
-    cleanupRef.current = cleanup;
-
-    const removeBeforeRemove = (navigation as any).addListener?.("beforeRemove", (e: any) => {
-      // If recording, stop it before navigating away to avoid unmounted errors
-      if (isRecordingRef.current) {
-        e.preventDefault();
-        try {
-          cameraRef.current?.stopRecording();
-        } catch (error) {
-          if (__DEV__) {
-            console.warn("Error stopping recording during navigation:", error);
+      try {
+        const visionCamera = await import("react-native-vision-camera");
+        const { Camera: VisionCamera } = visionCamera;
+        
+        // Check permissions
+        const cameraPermission = await VisionCamera.getCameraPermissionStatus();
+        if (cameraPermission !== "granted") {
+          const newPermission = await VisionCamera.requestCameraPermission();
+          if (newPermission !== "granted") {
+            setVisionCameraReady(false);
+            return;
           }
         }
-        // Allow navigation to proceed after a brief tick
-        setTimeout(() => {
-          (navigation as any).dispatch?.(e.data.action);
-        }, 200);
-      }
-    });
 
-    return () => {
-      isMountedRef.current = false;
-      try {
-        cleanupRef.current?.();
+        setVisionCameraReady(true);
       } catch (error) {
-        if (__DEV__) {
-          console.warn("Error during component unmount cleanup:", error);
-        }
-      }
-      removeBeforeRemove && removeBeforeRemove();
-    };
-  }, [navigation]);
-
-  // Animation values for TikTok-like UI - temporarily disabled due to NativeWind compatibility issues
-  // const recordButtonScale = useSharedValue(1);
-  // const recordButtonOpacity = useSharedValue(1);
-  // const controlsOpacity = useSharedValue(1);
-  // const blurIntensity = useSharedValue(25);
-  // const captionsScale = useSharedValue(1);
-
-  // Animated styles - temporarily disabled for debugging
-  // const recordButtonAnimatedStyle = useAnimatedStyle(() => ({
-  //   transform: [{ scale: recordButtonScale.value }],
-  //   opacity: recordButtonOpacity.value,
-  // }));
-
-  // const controlsAnimatedStyle = useAnimatedStyle(() => ({
-  //   opacity: controlsOpacity.value,
-  // }));
-
-  // const captionsAnimatedStyle = useAnimatedStyle(() => ({
-  //   transform: [{ scale: captionsScale.value }],
-  // }));
-
-  // Preview state after processing (before upload)
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewUri, setPreviewUri] = useState<string | null>(null);
-  const [previewTranscription, setPreviewTranscription] = useState<string>("");
-  const previewPlayer = useVideoPlayer(previewUri, (player) => {
-    if (player) {
-      player.loop = true;
-      player.muted = true; // Expo Go: mute original and use TTS for masking
-    }
-  });
-
-  // Preview player cleanup
-  useEffect(() => {
-    return () => {
-      try {
-        if (previewPlayer) {
-          previewPlayer.pause?.();
-          previewPlayer.release?.();
-        }
-      } catch (error) {
-        if (__DEV__) {
-          console.warn("Error cleaning up preview player:", error);
-        }
+        console.warn("Vision Camera not available:", error);
+        setVisionCameraReady(false);
       }
     };
-  }, [previewPlayer]);
 
-  // Start/stop preview playback + TTS voice masking for Expo Go
-  useEffect(() => {
-    if (showPreview && previewUri && previewPlayer) {
-      try {
-        // Reset player position before playing
-        previewPlayer.currentTime = 0;
-        previewPlayer.play?.();
-      } catch (error) {
-        if (__DEV__) {
-          console.warn("Error starting preview playback:", error);
-        }
+    initVisionCamera();
+  }, []);
+
+  // Request permissions on focus
+  useFocusEffect(
+    useCallback(() => {
+      if (!visionCameraReady && !hasVideoPermissions) {
+        requestVideoPermissions();
       }
-      if (previewTranscription) {
-        // Simulate voice change using TTS (lower pitch / slower rate)
-        Speech.stop();
-        Speech.speak(previewTranscription, {
-          language: "en-US",
-          pitch: 0.75,
-          rate: 0.9,
-          volume: 1.0,
+      return () => {
+        // Cleanup on unfocus
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+        }
+      };
+    }, [visionCameraReady, hasVideoPermissions, requestVideoPermissions])
+  );
+
+  const startRecording = async () => {
+    if (isRecording) return;
+
+    try {
+      setError(null);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      // Haptic feedback
+      if (hapticsEnabled) {
+        await notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
+      // Start duration timer
+      timerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => {
+          const newDuration = prev + 1;
+          if (newDuration >= MAX_DURATION) {
+            stopRecording();
+            return prev;
+          }
+          return newDuration;
         });
-      }
-    } else {
-      try {
-        Speech.stop();
-        if (previewPlayer) {
-          previewPlayer.pause?.();
-        }
-      } catch (error) {
-        if (__DEV__) {
-          console.warn("Error stopping preview playback:", error);
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPreview, previewUri, previewTranscription, previewPlayer]);
+      }, 1000);
 
-  const showMessage = (
-    message: string,
-    type: "success" | "error",
-    buttons?: { text: string; onPress?: () => void }[],
-  ) => {
-    if (!isMountedRef.current) return;
-    setModalMessage(message);
-    setModalType(type);
-    setModalButtons(buttons || [{ text: "OK", onPress: () => setShowModal(false) }]);
-    setShowModal(true);
+      // Use Expo Camera for recording
+      if (expoCameraRef.current) {
+        const recordingOptions: any = { maxDuration: MAX_DURATION };
+        if (Platform.OS === "ios") {
+          recordingOptions.codec = "avc1";
+        }
+
+        recordingPromiseRef.current = expoCameraRef.current.recordAsync(recordingOptions);
+        const video = await recordingPromiseRef.current;
+
+        if (video && video.uri) {
+          await handleRecordingComplete(video.uri);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      setError("Failed to start recording. Please check permissions.");
+      setIsRecording(false);
+    }
   };
 
-  // Check permissions on mount
-  useEffect(() => {
-    const initPermissions = () => {
-      try {
-        console.log("🔍 Checking initial permissions...");
-        // Permissions are automatically checked by the hook
-      } catch (error) {
-        console.error("❌ Error checking permissions:", error);
-      }
-    };
+  const stopRecording = async () => {
+    if (!isRecording) return;
 
-    initPermissions();
-  }, []);
-
-  // Cleanup effect - must be called after all other hooks
-  useEffect(() => {
-    return cleanup;
-  }, []);
-
-  // Cleanup function to prevent memory leaks
-  const cleanup = () => {
     try {
-      // Stop recording if in progress
-      if (isRecordingRef.current) {
-        cameraRef.current?.stopRecording();
+      if (expoCameraRef.current) {
+        expoCameraRef.current.stopRecording();
       }
 
-      // Stop TTS speech
-      Speech.stop();
-
-      // Pause preview player
-      if (previewPlayer) {
-        previewPlayer.pause?.();
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       }
-
-      // Clear timers
+    } catch (error) {
+      console.error("Failed to stop recording:", error);
+      setError("Failed to stop recording.");
+    } finally {
+      setIsRecording(false);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+    }
+  };
 
-      // Clear recording promise
-      recordingPromiseRef.current = null;
+  const handleRecordingComplete = async (videoPath: string) => {
+    try {
+      // Add to offline queue for processing
+      const tempId = generateUUID();
+      offlineQueue.enqueue(OFFLINE_ACTIONS.CREATE_CONFESSION, {
+        tempId,
+        confession: {
+          type: "video",
+          content: "Anonymous video confession",
+          videoUri: videoPath,
+          isAnonymous: true,
+        },
+      });
 
-      // Reset state if component is still mounted
-      if (isMountedRef.current) {
-        setIsRecording(false);
-        setRecordingTime(0);
-        setIsProcessing(false);
-        setProcessingProgress(0);
-        setProcessingStatus("");
-        setShowPreview(false);
-        setPreviewUri(null);
-        setPreviewTranscription("");
-      }
+      Alert.alert(
+        "Recording Complete!",
+        `Video recorded successfully and queued for processing (${tempId.slice(0, 8)}...)`,
+        [
+          {
+            text: "Record Another",
+            onPress: () => {
+              // Reset for another recording
+              setRecordingDuration(0);
+              setError(null);
+            },
+          },
+          {
+            text: "Done",
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
     } catch (error) {
-      if (__DEV__) {
-        console.warn("Error during cleanup:", error);
-      }
+      console.error("Failed to handle recording:", error);
+      setError("Failed to process recording.");
     }
   };
 
   const toggleCameraFacing = () => {
+    // Toggle for Expo Camera
     setFacing((current) => (current === "back" ? "front" : "back"));
-    impactAsync();
-  };
 
-  const startRecording = async () => {
-    if (!cameraRef.current || isRecording) return;
-
-    // Double-check permissions before recording
-    if (!hasVideoPermissions) {
-      const granted = await requestVideoPermissions();
-      if (!granted) return;
-    }
-
-    setIsRecording(true);
-    setRecordingTime(0);
-
-    // Add haptic feedback
-    notificationAsync();
-
-    // TikTok-like animation: scale down record button and fade controls
-
-    setBlurIntensity(35);
-
-    // Start timer
-    timerRef.current = setInterval(() => {
-      setRecordingTime((prev) => prev + 1);
-    }, 1000);
-
-    try {
-      const recordingOptions: any = { maxDuration: 60 };
-      if (Platform.OS === "ios") {
-        // H.264 codec (FourCC 'avc1') required on iOS for bitrate control and compatibility
-        recordingOptions.codec = "avc1";
-      }
-      recordingPromiseRef.current = cameraRef.current.recordAsync(recordingOptions);
-
-      const video = await recordingPromiseRef.current;
-
-      if (video && video.uri) {
-        await processVideo(video.uri);
-      }
-    } catch (error) {
-      console.error("Recording error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-      if (errorMessage !== "Recording stopped") {
-        let userFriendlyMessage = "Failed to record video. Please try again.";
-
-        if (errorMessage.includes("permission")) {
-          userFriendlyMessage = "Camera or microphone permission was denied. Please check your settings.";
-        } else if (errorMessage.includes("storage") || errorMessage.includes("space")) {
-          userFriendlyMessage = "Not enough storage space to record video. Please free up some space.";
-        } else if (errorMessage.includes("camera")) {
-          userFriendlyMessage = "Camera is not available. Please make sure no other app is using the camera.";
-        }
-
-        showMessage(userFriendlyMessage, "error", [
-          { text: "Try Again" },
-          { text: "Go Back", onPress: () => navigation.goBack() },
-        ]);
-      }
-    } finally {
-      setIsRecording(false);
-      setRecordingTime(0);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+    if (hapticsEnabled) {
+      impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
-  const stopRecording = () => {
-    if (cameraRef.current && isRecording) {
-      cameraRef.current.stopRecording();
-      impactAsync();
-
-      // TikTok-like animation: restore record button and controls
-
-      setBlurIntensity(25);
-
-      setIsRecording(false);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-  };
-
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -366,493 +212,189 @@ function VideoRecordScreen() {
     };
   }, []);
 
-  const processVideo = async (videoUri: string) => {
-    setIsProcessing(true);
-    setProcessingProgress(0);
-    setProcessingStatus("Starting processing...");
+  // Permission check
+  const hasPermissions = hasVideoPermissions;
 
-    try {
-      // Process video with face blur, voice change, and transcription
-      const processedVideo = await unifiedVideoProcessingService.processVideo(videoUri, {
-        enableTranscription: true,
-        enableFaceBlur: true,
-        enableVoiceChange: true,
-        quality: "medium",
-        onProgress: (progress, status) => {
-          setProcessingProgress(progress);
-          setProcessingStatus(status);
-        },
-      });
-
-      // Show preview with simulated voice change + captions overlay
-      setIsProcessing(false);
-      setProcessingProgress(100);
-      setProcessingStatus("");
-      setPreviewUri(processedVideo.uri);
-      setPreviewTranscription(processedVideo.transcription || "");
-      setShowPreview(true);
-      return;
-    } catch (error) {
-      console.error("Processing error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-      // Use centralized error handling
-      const standardError: StandardError = {
-        code: errorMessage.includes("transcription") ? "TRANSCRIPTION_FAILED" :
-              errorMessage.includes("storage") ? "STORAGE_FULL" :
-              errorMessage.includes("network") ? "NETWORK_ERROR" :
-              "PROCESSING_FAILED",
-        message: errorMessage,
-      };
-
-      const userFriendlyMessage = getUserFriendlyMessage(standardError, 'VideoRecordScreen');
-      screenStatus.setError(userFriendlyMessage);
-
-      showMessage(userFriendlyMessage, "error", [
-        { text: "Try Again", onPress: () => setIsProcessing(false) },
-        { text: "Go Back", onPress: () => navigation.goBack() },
-      ]);
-    } finally {
-      setIsProcessing(false);
-      setProcessingProgress(0);
-      setProcessingStatus("");
-    }
-  };
-
-
-  // Render processing screen
-  if (isProcessing) {
+  if (!hasPermissions) {
     return (
-      <SafeAreaView className="flex-1 bg-black justify-center items-center px-6">
-        <Ionicons name="cog" size={64} color="#1D9BF0" />
-        <Text className="text-white text-xl font-semibold mt-4 text-center">Processing Your Video</Text>
-        <Text className="text-gray-400 text-base mt-2 text-center mb-6">
-          {processingStatus || "Applying face blur, voice change, and transcription..."}
-        </Text>
-
-        {/* Progress Bar */}
-        <View className="w-full max-w-xs bg-gray-800 rounded-full h-2 mb-4">
-          <View
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${processingProgress}%` }}
-          />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <Text style={styles.permissionText}>Camera permission required</Text>
+          <Pressable style={styles.button} onPress={requestVideoPermissions}>
+            <Text style={styles.buttonText}>Grant Permission</Text>
+          </Pressable>
         </View>
-
-        <Text className="text-blue-400 text-sm font-medium">{Math.round(processingProgress)}% Complete</Text>
       </SafeAreaView>
     );
   }
 
-  // Render preview screen (after processing, before upload)
-  if (showPreview && previewUri) {
-    return (
-      <View className="flex-1 bg-black">
-        {previewPlayer ? (
-          <VideoView player={previewPlayer} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />
-        ) : (
-          <View style={{ flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" }}>
-            <Text style={{ color: "white" }}>Loading preview...</Text>
-          </View>
-        )}
-        {/* Mild blur to maintain privacy even in preview */}
-        <BlurView intensity={15} tint="dark" style={{ position: "absolute", inset: 0 }} pointerEvents="none" />
-
-        {/* Enhanced captions overlay with TikTok-like styling */}
-        <View
-          style={[
-            { position: "absolute", left: 0, right: 0, bottom: 140, paddingHorizontal: 16 },
-            // captionsAnimatedStyle, // temporarily disabled
-          ]}
-        >
-          <View className="bg-black/60 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/20 shadow-lg">
-            <TikTokCaptionsOverlay
-              text={previewTranscription}
-              currentTime={previewPlayer?.currentTime || 0}
-              duration={previewPlayer?.duration || 1}
-            />
-            {/* Add a subtle glow effect */}
-            <View className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-500/10 to-purple-500/10 blur-sm -z-10" />
-          </View>
-        </View>
-
-        {/* Top + Bottom controls */}
-        <SafeAreaView className="absolute top-0 left-0 right-0 flex-row justify-between items-center px-4 py-2">
-          <Pressable
-            className="bg-black/70 rounded-full p-3"
-            onPress={() => {
-              try {
-                Speech.stop();
-                if (previewPlayer) {
-                  previewPlayer.pause?.();
-                }
-              } catch (error) {
-                if (__DEV__) {
-                  console.warn("Error stopping preview during close:", error);
-                }
-              }
-              setShowPreview(false);
-              setPreviewUri(null);
-              setPreviewTranscription("");
-            }}
-          >
-            <Ionicons name="close" size={24} color="#FFFFFF" />
-          </Pressable>
-
-          <View className="bg-black/70 rounded-full px-4 py-2 flex-row items-center">
-            <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-            <Text className="text-green-400 text-sm font-semibold ml-2">Voice changed</Text>
-          </View>
-
-          <View style={{ width: 48 }} />
-        </SafeAreaView>
-
-        <SafeAreaView className="absolute bottom-0 left-0 right-0 items-center pb-8">
-          <View className="flex-row items-center justify-center space-x-4">
-            <Pressable
-              className="bg-gray-800 rounded-full px-6 py-3 mr-3"
-              onPress={() => {
-                try {
-                  Speech.stop();
-                  if (previewPlayer) {
-                    previewPlayer.pause?.();
-                  }
-                } catch (error) {
-                  if (__DEV__) {
-                    console.warn("Error stopping preview during retake:", error);
-                  }
-                }
-                setShowPreview(false);
-                setPreviewUri(null);
-                setPreviewTranscription("");
-              }}
-            >
-              <Text className="text-white font-semibold">Retake</Text>
-            </Pressable>
-            <Pressable
-              className="bg-blue-500 rounded-full px-8 py-3"
-              onPress={async () => {
-                try {
-                  // Begin upload step
-                  setIsProcessing(true);
-                  setProcessingStatus("Uploading video to secure storage...");
-                  setProcessingProgress(90);
-
-                  await addConfession(
-                    {
-                      type: "video",
-                      content: "Video confession with face blur and voice change applied",
-                      videoUri: previewUri,
-                      transcription: previewTranscription,
-                      isAnonymous: true,
-                    },
-                    {
-                      onUploadProgress: (pct) => {
-                        const mapped = 90 + pct * 0.1;
-                        setProcessingProgress(Math.min(100, Math.max(90, mapped)));
-                      },
-                    },
-                  );
-
-                  Speech.stop();
-                  setShowPreview(false);
-                  setPreviewUri(null);
-                  setPreviewTranscription("");
-
-                  showMessage("Your video confession has been processed and shared anonymously!", "success", [
-                    { text: "OK", onPress: () => navigation.goBack() },
-                  ]);
-                } catch (err) {
-                  console.error(err);
-                  showMessage("Failed to upload video. Please try again.", "error");
-                } finally {
-                  try {
-                    Speech.stop();
-                    if (previewPlayer) {
-                      previewPlayer.pause?.();
-                    }
-                  } catch (error) {
-                    if (__DEV__) {
-                      console.warn("Error stopping preview after upload:", error);
-                    }
-                  }
-                  setShowPreview(false);
-                  setPreviewUri(null);
-                  setPreviewTranscription("");
-                  setIsProcessing(false);
-                  setProcessingProgress(0);
-                  setProcessingStatus("");
-                }
-              }}
-            >
-              <Text className="text-white font-semibold">Share</Text>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  // Render main camera screen
   return (
-    <PermissionGate permissions={['camera', 'microphone']}>
-      <ErrorBoundary resetKeys={previewUri ? [previewUri] : []} resetOnPropsChange>
-        <View style={{ flex: 1, backgroundColor: "black" }}>
-        <CameraView ref={cameraRef} style={{ flex: 1 }} facing={facing} mode="video" videoBitrate={5000000}>
-        {/* Overlay UI */}
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}>
+    <PermissionGate permissions={["camera", "microphone"]}>
+      <SafeAreaView style={styles.container}>
+        {/* Camera View */}
+        <CameraView ref={expoCameraRef} style={styles.camera} facing={facing} />
+
+        {/* Controls Overlay */}
+        <View style={styles.controlsOverlay}>
           {/* Top Controls */}
-          <SafeAreaView
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-            }}
-          >
-            <Pressable
-              style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, padding: 12 }}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+          <View style={styles.topControls}>
+            <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="white" />
             </Pressable>
 
-            <View
-              style={{
-                backgroundColor: "rgba(0,0,0,0.7)",
-                borderRadius: 9999,
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <View style={{ width: 8, height: 8, backgroundColor: "#10B981", borderRadius: 9999, marginRight: 8 }} />
-              <Text style={{ color: "white", fontSize: 14, fontWeight: "500" }}>Protected Mode</Text>
-            </View>
-
-            <Pressable
-              style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, padding: 12 }}
-              onPress={toggleCameraFacing}
-            >
-              <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />
+            <Pressable onPress={toggleCameraFacing} style={styles.switchButton}>
+              <Ionicons name="camera-reverse" size={24} color="white" />
             </Pressable>
-          </SafeAreaView>
 
-          {/* Bottom Controls */}
-          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
-            <SafeAreaView style={{ alignItems: "center", paddingBottom: 32 }}>
-              <View
-                style={{
-                  backgroundColor: "rgba(0,0,0,0.7)",
-                  borderRadius: 16,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  marginBottom: 16,
-                  marginHorizontal: 16,
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-                  <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-                  <Text style={{ color: "#10B981", fontSize: 14, fontWeight: "600", marginLeft: 8 }}>
-                    Privacy Protection Active
-                  </Text>
-                </View>
-                <Text style={{ color: "white", fontSize: 14, textAlign: "center", lineHeight: 20 }}>
-                  Face blur and voice change will be applied automatically
+            {isRecording && (
+              <View style={styles.recordingIndicator}>
+                <View style={styles.recordingDot} />
+                <Text style={styles.recordingText}>
+                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, "0")}
                 </Text>
               </View>
-
-              {isRecording && (
-                <View
-                  style={{
-                    backgroundColor: "#DC2626",
-                    borderRadius: 9999,
-                    paddingHorizontal: 24,
-                    paddingVertical: 12,
-                    marginBottom: 16,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    shadowColor: "#EF4444",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.5,
-                    shadowRadius: 8,
-                  }}
-                >
-                  <View
-                    style={{ width: 12, height: 12, backgroundColor: "white", borderRadius: 9999, marginRight: 12 }}
-                  />
-                  <Text style={{ color: "white", fontSize: 16, fontWeight: "bold", letterSpacing: 1 }}>
-                    REC {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")}
-                  </Text>
-                  {/* Progress indicator */}
-                  <View
-                    style={{
-                      marginLeft: 12,
-                      width: 64,
-                      height: 4,
-                      backgroundColor: "#F87171",
-                      borderRadius: 9999,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <View
-                      style={{
-                        height: "100%",
-                        backgroundColor: "white",
-                        borderRadius: 9999,
-                        width: `${(recordingTime / 60) * 100}%`,
-                      }}
-                    />
-                  </View>
-                </View>
-              )}
-
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 32 }}>
-                {/* Camera Flip Button */}
-                <View>
-                  <Pressable
-                    style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, padding: 12 }}
-                    onPress={toggleCameraFacing}
-                    disabled={isRecording || isProcessing}
-                    accessibilityRole="button"
-                    accessibilityLabel="Switch camera"
-                  >
-                    <Ionicons name="camera-reverse-outline" size={24} color="#FFFFFF" />
-                  </Pressable>
-                </View>
-
-                {/* Record Button with TikTok-like animation */}
-                <View>
-                  <Pressable
-                    style={{
-                      borderRadius: 9999,
-                      padding: 24,
-                      borderWidth: 4,
-                      backgroundColor: isRecording ? "#DC2626" : "transparent",
-                      borderColor: isRecording ? "#F87171" : "white",
-                      shadowColor: isRecording ? "#EF4444" : "transparent",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.5,
-                      shadowRadius: 8,
-                    }}
-                    onPress={isRecording ? stopRecording : startRecording}
-                    disabled={isProcessing}
-                    accessibilityRole="button"
-                    accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
-                  >
-                    <View
-                      style={{
-                        borderRadius: 9999,
-                        width: isRecording ? 24 : 32,
-                        height: isRecording ? 24 : 32,
-                        backgroundColor: isRecording ? "white" : "#EF4444",
-                      }}
-                    />
-                  </Pressable>
-                </View>
-
-                {/* Close Button */}
-                <View>
-                  <Pressable
-                    style={{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 9999, padding: 12 }}
-                    onPress={() => navigation.goBack()}
-                    disabled={isRecording || isProcessing}
-                    accessibilityRole="button"
-                    accessibilityLabel="Close camera"
-                  >
-                    <Ionicons name="close" size={24} color="#FFFFFF" />
-                  </Pressable>
-                </View>
-              </View>
-
-              {!isRecording && (
-                <View style={{ alignItems: "center", marginTop: 16 }}>
-                  <Text style={{ color: "white", fontSize: 16, fontWeight: "600", marginBottom: 4 }}>
-                    Tap to start recording
-                  </Text>
-                  <Text style={{ color: "#9CA3AF", fontSize: 14 }}>Max duration: 60 seconds</Text>
-                </View>
-              )}
-            </SafeAreaView>
+            )}
           </View>
-        </View>
-        {/* Privacy blur overlay with dynamic intensity for TikTok-like effect */}
-        <BlurView
-          intensity={blurIntensity}
-          tint="dark"
-          style={{ position: "absolute", inset: 0 }}
-          pointerEvents="none"
-        />
 
-        {/* Live captions overlay for recording preview */}
-        {isRecording && (
-          <View style={{ position: "absolute", left: 0, right: 0, bottom: 140, paddingHorizontal: 16 }}>
-            <View
-              style={{
-                backgroundColor: "rgba(0,0,0,0.6)",
-                borderRadius: 16,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-              }}
+          {/* Bottom Controls */}
+          <View style={styles.bottomControls}>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+
+            <Pressable
+              onPress={isRecording ? stopRecording : startRecording}
+              style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
             >
-              <Text style={{ color: "white", fontSize: 14, fontWeight: "500", textAlign: "center" }}>
-                Recording with live privacy protection...
+              <Text style={styles.recordButtonText}>
+                {isRecording ? "Stop" : `Record (${MAX_DURATION}s max)`}
               </Text>
-            </View>
-          </View>
-        )}
-      </CameraView>
+            </Pressable>
 
-      {/* Custom Modal */}
-      <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: 24,
-          }}
-        >
-          <View style={{ backgroundColor: "#111827", borderRadius: 16, padding: 24, width: "100%", maxWidth: 384 }}>
-            <View style={{ alignItems: "center", marginBottom: 16 }}>
-              <Ionicons
-                name={modalType === "success" ? "checkmark-circle" : "alert-circle"}
-                size={48}
-                color={modalType === "success" ? "#10B981" : "#EF4444"}
-              />
-            </View>
-            <Text style={{ color: "white", fontSize: 16, textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
-              {modalMessage}
+            <Text style={styles.infoText}>
+              {visionCameraReady ? "Vision Camera Ready" : "Using Expo Camera"}
             </Text>
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              {modalButtons.map((button, index) => (
-                <Pressable
-                  key={index}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    paddingHorizontal: 16,
-                    borderRadius: 9999,
-                    backgroundColor: index === 0 ? "#3B82F6" : "#374151",
-                  }}
-                  onPress={() => {
-                    setShowModal(false);
-                    button.onPress?.();
-                  }}
-                >
-                  <Text style={{ color: "white", fontWeight: "600", textAlign: "center" }}>{button.text}</Text>
-                </Pressable>
-              ))}
-            </View>
           </View>
         </View>
-      </Modal>
-        </View>
-      </ErrorBoundary>
+      </SafeAreaView>
     </PermissionGate>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "black",
+  },
+  camera: {
+    flex: 1,
+  },
+  controlsOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "space-between",
+    padding: 20,
+  },
+  topControls: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 50,
+  },
+  backButton: {
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  switchButton: {
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  recordingIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,0,0,0.8)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "white",
+    marginRight: 8,
+  },
+  recordingText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  bottomControls: {
+    alignItems: "center",
+    paddingBottom: 50,
+  },
+  errorText: {
+    color: "red",
+    fontSize: 14,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  recordButton: {
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 30,
+    minWidth: 120,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  recordButtonInactive: {
+    backgroundColor: "red",
+  },
+  recordButtonActive: {
+    backgroundColor: "darkred",
+  },
+  recordButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  infoText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  permissionText: {
+    color: "white",
+    fontSize: 18,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: "#1D9BF0",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});
 
 export default withErrorBoundary(VideoRecordScreen);

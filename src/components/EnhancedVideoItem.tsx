@@ -13,6 +13,7 @@ import { useGlobalVideoStore } from "../state/globalVideoStore";
 import AnimatedActionButton from "./AnimatedActionButton";
 import { useVideoPlayer } from "expo-video";
 import type { Confession } from "../types/confession";
+import { getViewCount } from "../utils/viewsCalculator";
 
 const { height: screenHeight } = Dimensions.get("window");
 
@@ -65,9 +66,9 @@ function EnhancedVideoItem({
 
   const videoStats = useMemo(() => ({
     duration: confession.duration || 0,
-    viewCount: confession.views || 0,
+    viewCount: getViewCount(confession),
     isProcessed: confession.processed || false,
-  }), [confession.duration, confession.views, confession.processed]);
+  }), [confession.duration, confession.processed, confession.id]);
 
   // Debug log for sound preferences
   if (__DEV__) {

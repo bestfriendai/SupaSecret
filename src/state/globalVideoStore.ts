@@ -161,21 +161,47 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
 
 // Local helper to defensively dispose any kind of player
 function disposePlayer(player: any) {
+  if (!player) return;
+
   try {
-    // First pause playback to avoid issues
-    if (typeof player.pause === "function") player.pause();
+    // Check if player is still valid before attempting operations
+    if (typeof player === "object" && player !== null) {
+      // First pause playback to avoid issues - with additional safety checks
+      if (typeof player.pause === "function") {
+        try {
+          player.pause();
+        } catch (pauseError) {
+          // Silently ignore pause errors - player might already be disposed
+          if (__DEV__) {
+            console.warn("Player pause failed during disposal (expected if already disposed):", pauseError);
+          }
+        }
+      }
 
-    // expo-video specific cleanup using release() method
-    if (typeof player.release === "function") {
-      player.release();
-      return; // expo-video player disposed successfully
+      // expo-video specific cleanup using release() method
+      if (typeof player.release === "function") {
+        try {
+          player.release();
+          return; // expo-video player disposed successfully
+        } catch (releaseError) {
+          if (__DEV__) {
+            console.warn("Player release failed during disposal:", releaseError);
+          }
+        }
+      }
+
+      // Fallback for other player types
+      try {
+        if (typeof player.stop === "function") player.stop();
+        if (typeof player.dispose === "function") player.dispose();
+        if (typeof player.destroy === "function") player.destroy();
+        if (typeof player.removeAllListeners === "function") player.removeAllListeners();
+      } catch (fallbackError) {
+        if (__DEV__) {
+          console.warn("Player fallback disposal methods failed:", fallbackError);
+        }
+      }
     }
-
-    // Fallback for other player types
-    if (typeof player.stop === "function") player.stop();
-    if (typeof player.dispose === "function") player.dispose();
-    if (typeof player.destroy === "function") player.destroy();
-    if (typeof player.removeAllListeners === "function") player.removeAllListeners();
   } catch (error) {
     if (__DEV__) {
       console.warn("Error during player disposal:", error);
