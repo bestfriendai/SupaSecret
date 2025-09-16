@@ -7,11 +7,15 @@ import { ErrorState } from "../components/ErrorState";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useScreenStatus } from "../hooks/useScreenStatus";
 import { createScreenValidator } from "../utils/screenValidation";
+import { useDataIntegrityMonitor } from "../hooks/useDataIntegrityMonitor";
 
 function VideoFeedScreen() {
   const navigation = useNavigation();
   const [error, setError] = React.useState<string | null>(null);
   const validator = createScreenValidator('VideoFeedScreen');
+
+  // Monitor data integrity for key uniqueness issues
+  const { totalConfessions, videoConfessions } = useDataIntegrityMonitor();
 
   // Handle navigation focus for cleanup
   useFocusEffect(

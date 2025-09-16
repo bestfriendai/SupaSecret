@@ -18,7 +18,7 @@ import { getViewCount } from "../utils/viewsCalculator";
 const { height: screenHeight } = Dimensions.get("window");
 
 interface EnhancedVideoItemProps {
-  confession: Confession;
+  confession: Confession; // Keep required - we'll handle undefined at parent level
   isActive: boolean;
   onClose: () => void;
   onCommentPress?: (confessionId: string) => void;
@@ -98,28 +98,56 @@ function EnhancedVideoItem({
     }
   });
 
-  // Player cleanup on unmount or sourceUri change
+  // Enhanced player cleanup for Hermes compatibility
   useEffect(() => {
-    // Cleanup function
+    // Cleanup function with enhanced error handling for Hermes
     return () => {
       try {
         if (player) {
-          // Check if player is still valid before calling methods
-          if (player.playing !== undefined && typeof player.pause === 'function') {
+          // Enhanced disposal sequence for Hermes/iOS compatibility
+          const disposePlayer = async () => {
             try {
-              player.pause();
+              // Check if player is still valid before calling methods
+              if (player.playing !== undefined && typeof player.pause === 'function') {
+                // Pause first
+                await player.pause();
+
+                // Small delay to ensure pause completes before disposal
+                setTimeout(() => {
+                  try {
+                    // Additional cleanup if available
+                    if (typeof player.unload === 'function') {
+                      player.unload();
+                    }
+                  } catch (unloadError) {
+                    // Silently ignore unload errors during cleanup
+                    if (__DEV__) {
+                      console.warn(`Video unload failed for ${confession.id}:`, unloadError);
+                    }
+                  }
+                }, 50);
+              }
             } catch (pauseError) {
               // Silently ignore pause errors during cleanup
               // This can happen if the player is already disposed
+              if (__DEV__) {
+                console.warn(`Video pause failed during disposal for ${confession.id}:`, pauseError);
+              }
             }
-          }
+          };
+
+          // Execute disposal asynchronously to prevent blocking
+          disposePlayer();
         }
       } catch (error) {
         // Silently ignore disposal errors
         // These often occur when navigating away quickly
+        if (__DEV__) {
+          console.warn(`Video disposal error for ${confession.id}:`, error);
+        }
       }
     };
-  }, [player]);
+  }, [player, confession.id]);
 
   // Clean up old player when sourceUri changes
   useEffect(() => {
@@ -543,18 +571,30 @@ function EnhancedVideoItem({
 
 // Enhanced memo comparison with granular prop checking
 const areEqual = (prev: EnhancedVideoItemProps, next: EnhancedVideoItemProps) => {
+  // Handle undefined confessions
+  if (!prev.confession && !next.confession) return true;
+  if (!prev.confession || !next.confession) return false;
+
   // Quick identity check
   if (prev.confession === next.confession) return true;
 
+  // Validate both confessions have IDs (required for uniqueness)
+  if (!prev.confession.id || !next.confession.id) {
+    if (__DEV__) {
+      console.warn('EnhancedVideoItem: areEqual called with confession missing ID');
+    }
+    return false; // Force re-render for safety
+  }
+
   // Granular property comparison to minimize re-renders
-  const sameId = prev.confession?.id === next.confession?.id;
+  const sameId = prev.confession.id === next.confession.id;
   const sameActivity = prev.isActive === next.isActive && prev.screenFocused === next.screenFocused;
   const sameAudioOverride = prev.forceUnmuted === next.forceUnmuted;
-  const sameCounts = (prev.confession?.likes || 0) === (next.confession?.likes || 0);
-  const sameLiked = !!prev.confession?.isLiked === !!next.confession?.isLiked;
-  const sameUri = prev.confession?.videoUri === next.confession?.videoUri;
-  const sameTranscription = prev.confession?.transcription === next.confession?.transcription;
-  const sameProcessingState = prev.confession?.processed === next.confession?.processed;
+  const sameCounts = (prev.confession.likes || 0) === (next.confession.likes || 0);
+  const sameLiked = !!prev.confession.isLiked === !!next.confession.isLiked;
+  const sameUri = prev.confession.videoUri === next.confession.videoUri;
+  const sameTranscription = prev.confession.transcription === next.confession.transcription;
+  const sameProcessingState = prev.confession.processed === next.confession.processed;
 
   // Only re-render if essential props changed
   return sameId && sameActivity && sameAudioOverride && sameCounts &&

@@ -3,6 +3,7 @@ import "./global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { View, Text, Pressable } from "react-native";
 import * as Audio from "expo-audio";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { useAuthStore, cleanupAuthListener, setupAuthListener } from "./src/state/authStore";
@@ -18,6 +19,7 @@ import RetryBanner from "./src/components/RetryBanner";
 import { offlineQueue } from "./src/utils/offlineQueue";
 import { initializeServices } from "./src/services/ServiceInitializer";
 import { checkEnvironment } from "./src/utils/environmentCheck";
+import "./src/utils/hermesTestUtils"; // Auto-run Hermes compatibility tests
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
@@ -121,7 +123,44 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Enhanced error logging for Hermes issues
+        if (__DEV__) {
+          console.group("🚨 App-Level Error Boundary");
+          console.error("Error:", error);
+          console.error("Error Info:", errorInfo);
+          console.error("Stack:", error.stack);
+          console.groupEnd();
+        }
+      }}
+      resetOnPropsChange={true}
+      fallback={(error, errorInfo) => (
+        <SafeAreaProvider>
+          <GestureHandlerRootView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 20 }}>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 18, textAlign: 'center', marginBottom: 20 }}>
+                App encountered an error and needs to restart
+              </Text>
+              <Text style={{ color: '#666', fontSize: 14, textAlign: 'center', marginBottom: 30 }}>
+                {error.message}
+              </Text>
+              <Pressable
+                style={{ backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }}
+                onPress={() => {
+                  // Force app reload for Hermes issues
+                  if (typeof window !== 'undefined' && window.location) {
+                    window.location.reload();
+                  }
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Reload App</Text>
+              </Pressable>
+            </View>
+          </GestureHandlerRootView>
+        </SafeAreaProvider>
+      )}
+    >
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <BottomSheetModalProvider>
