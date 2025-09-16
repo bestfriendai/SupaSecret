@@ -29,7 +29,32 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   const confessions = useConfessionStore((state) => state.confessions);
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
   const isLoading = useConfessionStore((state) => state.isLoading);
-  const videoConfessions = useMemo(() => confessions.filter((c) => c.type === "video"), [confessions]);
+  const videoConfessions = useMemo(() => {
+    const filtered = confessions.filter((c) => c && c.type === "video" && c.id);
+
+    // Validate for duplicates and dedupe if necessary
+    if (filtered.length > 0) {
+      const ids = filtered.map(c => c.id);
+      const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+
+      if (duplicates.length > 0) {
+        if (__DEV__) {
+          console.warn('OptimizedVideoList: Duplicate confession IDs detected:', duplicates);
+        }
+        // Dedupe by ID using Map
+        const uniqueConfessions = Array.from(
+          new Map(filtered.map(item => [item.id, item])).values()
+        );
+        if (__DEV__) {
+          console.log(`OptimizedVideoList: Deduplicated ${filtered.length - uniqueConfessions.length} duplicate confessions`);
+        }
+        return uniqueConfessions;
+      }
+    }
+
+    return filtered;
+  }, [confessions]);
+
   const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -73,11 +98,19 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   useEffect(() => {
     const loadData = async () => {
       try {
+        if (__DEV__) {
+          console.log('OptimizedVideoList: Loading confessions...');
+        }
         // Always try to load fresh data when the video tab is accessed
         await loadConfessions();
+        if (__DEV__) {
+          console.log(`OptimizedVideoList: Loaded ${confessions.length} total confessions, ${videoConfessions.length} video confessions`);
+        }
       } catch (error) {
+        if (__DEV__) {
+          console.error('OptimizedVideoList: Failed to load confessions:', error);
+        }
         onError?.(error);
-        console.error('Failed to load confessions:', error);
       }
     };
 
@@ -234,6 +267,18 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
 
   const renderItem = useCallback(
     ({ item, index }: { item: Confession; index: number }) => {
+      // Add null check for item to prevent crashes
+      if (!item || !item.id) {
+        if (__DEV__) {
+          console.warn(`OptimizedVideoList: Invalid item at index ${index}:`, item);
+        }
+        return (
+          <View style={{ height: screenHeight, width: screenWidth, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: '#999', fontSize: 16 }}>Invalid video data</Text>
+          </View>
+        );
+      }
+
       const isPreloading = preloadedIndexes.current.has(index);
       const isNearActive = Math.abs(index - currentIndex) <= 1;
       const shouldOptimizeRender = isScrolling && !isNearActive;
@@ -259,10 +304,19 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
         </View>
       );
     },
-    [onClose, currentIndex, isFocused, isScrolling, handleCommentPress, handleSharePress, handleSavePress, handleReportPress, onError],
+    [onClose, currentIndex, isFocused, isScrolling, handleCommentPress, handleSharePress, handleSavePress, handleReportPress],
   );
 
-  const keyExtractor = useCallback((item: Confession) => item.id, []);
+  const keyExtractor = useCallback((item: Confession, index: number) => {
+    // Ensure unique key: prefer id, fallback to index (but warn if no id)
+    if (!item?.id) {
+      if (__DEV__) {
+        console.warn('OptimizedVideoList: Confession missing ID at index', index, item);
+      }
+      return `fallback-${index}-${Date.now()}`;
+    }
+    return item.id;  // Unique UUID
+  }, []);
 
   // Performance tracking and cleanup
   useEffect(() => {

@@ -173,8 +173,16 @@ export const useConfessionStore = create<ConfessionState>()(
             const confessions: Confession[] = await normalizeConfessions((finalData as any[]) || []);
 
             const combinedConfessions = __DEV__ ? [...confessions, ...sampleConfessions] : [...confessions];
-            // Remove duplicates by ID
+
+            // Remove duplicates by ID with enhanced logging
             const uniqueConfessions = Array.from(new Map(combinedConfessions.map((c) => [c.id, c])).values());
+
+            if (__DEV__ && combinedConfessions.length !== uniqueConfessions.length) {
+              console.warn(
+                `ConfessionStore: Deduplicated ${combinedConfessions.length - uniqueConfessions.length} duplicate confessions`
+              );
+            }
+
             const finalConfessions = uniqueConfessions.sort((a, b) => b.timestamp - a.timestamp).slice(0, 200); // limit to reduce memory pressure
 
             set({

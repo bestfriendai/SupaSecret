@@ -27,7 +27,10 @@ export class ErrorBoundary extends Component<Props, State> {
   private resetTimeoutId: number | null = null;
 
   constructor(props: Props) {
+    // Call super first without type annotation to avoid Hermes issues
     super(props);
+
+    // Initialize state directly without type inference issues
     this.state = {
       hasError: false,
       error: null,
