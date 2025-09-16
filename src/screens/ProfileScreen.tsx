@@ -21,6 +21,7 @@ import { useConfessionStore } from "../state/confessionStore";
 import { useMembershipStore } from "../state/membershipStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { cn } from "../utils/cn";
+import { calculateBulkViews } from "../utils/viewsCalculator";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 
 // Enhanced interface for stat items with better UX
@@ -180,17 +181,37 @@ const ProfileScreen = () => {
     const finalUserConfessions = userConfessions || [];
     // Get video analytics from store
     const { videoAnalytics } = useConfessionStore.getState();
-
-    // Calculate total views from video analytics
-    const totalViews = finalUserConfessions.reduce((acc, confession) => {
-      const analytics = videoAnalytics[confession.id];
-      if (analytics) {
-        // Use watch_sessions as view count, fallback to interactions
-        return acc + (analytics.watch_sessions || analytics.interactions || 0);
-      }
-      // For confessions without analytics, assume at least 1 view (the user's own view)
-      return acc + 1;
-    }, 0);
+    
+    // Get all confession IDs
+    const confessionIds = finalUserConfessions.map(confession => confession.id);
+    
+    // Calculate views using the utility function (synchronously with available data)
+    let totalViews = 0;
+    
+    // If we have videoAnalytics data available, use it to calculate views
+    if (videoAnalytics && Object.keys(videoAnalytics).length > 0) {
+      // Transform videoAnalytics into the format expected by the utility
+      const analyticsArray = Object.entries(videoAnalytics).flatMap(([confessionId, analytics]) => {
+        if (!analytics || !analytics.sessions) return [];
+        return Object.keys(analytics.sessions).map(sessionId => ({
+          confession_id: confessionId,
+          session_id: sessionId
+        }));
+      });
+      
+      // Calculate views for each confession and sum them up
+      finalUserConfessions.forEach(confession => {
+        const sessions = new Set(
+          analyticsArray
+            .filter(va => va.confession_id === confession.id)
+            .map(va => va.session_id)
+        );
+        totalViews += sessions.size || 1; // At least 1 view per confession
+      });
+    } else {
+      // Fallback: assume at least 1 view per confession
+      totalViews = finalUserConfessions.length;
+    }
 
     return {
       confessions: finalUserConfessions.length,
