@@ -84,23 +84,22 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signIn: async (credentials: AuthCredentials, _persistSession: boolean = true) => {
-        await withErrorHandling(
-          set,
-          async () => {
-            const user = await signInUser(credentials);
-            set({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-            });
-          },
-          {
-            shouldThrow: true,
-            context: "signIn",
-            customMessage: "Failed to sign in. Please check your credentials.",
-          },
-        );
+        set({ isLoading: true, error: null });
+        try {
+          const user = await signInUser(credentials);
+          set({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+        } catch (error) {
+          // Just set loading to false, don't change auth state
+          // This prevents navigation away from sign-in screen
+          set({ isLoading: false });
+          // Re-throw the error so SignInScreen can handle it
+          throw error;
+        }
       },
 
       signOut: async () => {

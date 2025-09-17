@@ -65,11 +65,19 @@ const Tab = createBottomTabNavigator<TabParamList>();
 // Create navigation ref for v7
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
+// Store the current auth route globally to persist across re-renders
+let currentAuthRoute: keyof AuthStackParamList | null = null;
+
 function AuthStackNavigator() {
   const { isAuthenticated, user } = useAuthStore();
 
   // Determine initial route based on auth state
   const getInitialRouteName = (): keyof AuthStackParamList => {
+    // If we have a current route (user navigated to SignIn/SignUp), preserve it
+    if (currentAuthRoute) {
+      return currentAuthRoute;
+    }
+
     if (!isAuthenticated) {
       return "Onboarding"; // Show onboarding for unauthenticated users
     } else if (isAuthenticated && user && !user.isOnboarded) {
@@ -91,6 +99,19 @@ function AuthStackNavigator() {
         gestureDirection: "horizontal",
         // detachInactiveScreens removed - not supported in current version
         // sceneContainerStyle removed - not supported in current version
+      }}
+      screenListeners={{
+        state: (e) => {
+          const state = e.data.state;
+          if (state && state.routes && state.index !== undefined) {
+            const currentRoute = state.routes[state.index];
+            // Track current route to persist it across re-renders
+            currentAuthRoute = currentRoute.name as keyof AuthStackParamList;
+            if (__DEV__) {
+              console.log('[AuthStack] Current route:', currentAuthRoute);
+            }
+          }
+        }
       }}
     >
       <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -316,6 +337,7 @@ export default function AppNavigator() {
 
   logNavigationState('Navigation Decision', {
     shouldShowAuth,
+    currentAuthRoute,
     reason: !isAuthenticated
       ? 'not_authenticated'
       : user && !user.isOnboarded
