@@ -89,13 +89,23 @@ const loadVisionCamera = async () => {
 
 export class VisionCameraProcessor {
   private static instance: VisionCameraProcessor;
+  private static initPromise: Promise<VisionCameraProcessor> | null = null;
   private isVisionCameraAvailable: boolean = false;
 
   static async getInstance(): Promise<VisionCameraProcessor> {
     if (!this.instance) {
-      this.instance = new VisionCameraProcessor();
-      await this.instance.initialize();
+      if (!this.initPromise) {
+        this.initPromise = this.createInstance();
+      }
+      return this.initPromise;
     }
+    return this.instance;
+  }
+
+  private static async createInstance(): Promise<VisionCameraProcessor> {
+    this.instance = new VisionCameraProcessor();
+    await this.instance.initialize();
+    this.initPromise = null; // Clear the promise after completion
     return this.instance;
   }
 

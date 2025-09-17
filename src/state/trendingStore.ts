@@ -7,16 +7,33 @@ import { HashtagData, TrendingSecret } from "../utils/trending";
 import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 import { normalizeConfessions, normalizeConfession } from "../utils/confessionNormalizer";
 
-// Memoized hashtag extraction
+// Memoized hashtag extraction with proper key generation
 const hashtagRegex = /#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi;
 const hashtagMemo = new Map<string, string[]>();
+
+// Simple hash function for generating consistent keys
+const simpleHash = (str: string): string => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash.toString();
+};
+
 const extractHashtags = (text: string): string[] => {
   if (!text) return [];
-  const key = text.length > 200 ? text.slice(0, 200) : text; // cheap memo key
+
+  // Use full text for short strings, hash for longer ones
+  const key = text.length <= 200 ? text : simpleHash(text);
+
   const cached = hashtagMemo.get(key);
   if (cached) return cached;
+
   const matches = text.match(hashtagRegex);
   const lower = matches ? matches.map((t) => t.toLowerCase()) : [];
+
   hashtagMemo.set(key, lower);
   return lower;
 };

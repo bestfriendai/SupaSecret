@@ -262,7 +262,7 @@ export const useMediaPermissions = (options: MediaPermissionOptions = {}) => {
 
     // Permission checks
     checkAllPermissions,
-    hasVideoPermissions,
+    hasVideoPermissions: hasVideoPermissions(),
     hasAllPermissions: permissionState.camera && permissionState.microphone && permissionState.mediaLibrary,
 
     // Utilities

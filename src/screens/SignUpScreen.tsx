@@ -10,12 +10,28 @@ import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
 import { AlertModal } from "../components/AnimatedModal";
 import { getPrivacyPolicyUrl, getTermsOfServiceUrl } from "../constants/urls";
-import { AuthStackParamList } from "../navigation/AppNavigator";
+import { AuthStackParamList, RootStackParamList } from "../navigation/AppNavigator";
+import { CompositeNavigationProp } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { validateEmail, validatePassword, getPasswordStrength } from "../utils/auth";
 import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
 
-type NavigationProp = NativeStackNavigationProp<AuthStackParamList>;
+type NavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<AuthStackParamList>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
+
+// Type-safe navigation helper
+const navigateToWebView = (navigation: NavigationProp, url: string, title: string) => {
+  // Try to navigate to parent first, then fallback to current navigator
+  const parentNav = navigation.getParent();
+  if (parentNav) {
+    parentNav.navigate('WebView', { url, title });
+  } else {
+    // Fallback - this might not work depending on navigator structure
+    (navigation as any).navigate('WebView', { url, title });
+  }
+};
 
 export default function SignUpScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -237,38 +253,14 @@ export default function SignUpScreen() {
                 I agree to the{" "}
                 <Text
                   className="text-blue-400 underline"
-                  onPress={() => {
-                    const parentNav = (navigation as any)?.getParent?.();
-                    if (parentNav)
-                      parentNav.navigate("WebView", {
-                        url: getTermsOfServiceUrl(),
-                        title: "Terms of Service",
-                      });
-                    else
-                      (navigation as any).navigate("WebView", {
-                        url: getTermsOfServiceUrl(),
-                        title: "Terms of Service",
-                      });
-                  }}
+                  onPress={() => navigateToWebView(navigation, getTermsOfServiceUrl(), "Terms of Service")}
                 >
                   Terms of Service
                 </Text>{" "}
                 and{" "}
                 <Text
                   className="text-blue-400 underline"
-                  onPress={() => {
-                    const parentNav = (navigation as any)?.getParent?.();
-                    if (parentNav)
-                      parentNav.navigate("WebView", {
-                        url: getPrivacyPolicyUrl(),
-                        title: "Privacy Policy",
-                      });
-                    else
-                      (navigation as any).navigate("WebView", {
-                        url: getPrivacyPolicyUrl(),
-                        title: "Privacy Policy",
-                      });
-                  }}
+                  onPress={() => navigateToWebView(navigation, getPrivacyPolicyUrl(), "Privacy Policy")}
                 >
                   Privacy Policy
                 </Text>

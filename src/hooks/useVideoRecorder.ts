@@ -79,11 +79,18 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRecorderRef = useRef<any | null>(null);
   const speechRecognitionRef = useRef<any>(null);
+  const isRecordingRef = useRef<boolean>(false);
+  const stopRecordingRef = useRef<(() => Promise<void>) | null>(null);
 
   // State
   const [facing, setFacing] = useState<CameraType>("front");
   const [recordingTime, setRecordingTime] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
   const [isPaused, setIsPaused] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
@@ -127,7 +134,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
           if (prev >= maxDuration) {
-            stopRecording();
+            stopRecordingRef.current?.();
             return prev;
           }
           return prev + 1;
@@ -145,12 +152,12 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
         clearInterval(timerRef.current);
       }
     };
-  }, [isRecording, isPaused, maxDuration]);
+  }, [isRecording, isPaused, maxDuration, stopRecording]);
 
   // Auto-stop recording when max duration reached
   useEffect(() => {
     if (recordingTime >= maxDuration && isRecording) {
-      stopRecording();
+      stopRecordingRef.current?.();
     }
   }, [recordingTime, maxDuration, isRecording]);
 
@@ -185,7 +192,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       setError(undefined);
 
       // Check permissions
-      if (!hasVideoPermissions) {
+      if (!hasVideoPermissions()) {
         const granted = await requestVideoPermissions();
         if (!granted) {
           throw new Error("Camera and microphone permissions are required");
@@ -257,6 +264,11 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       onError?.(errorMessage);
     }
   }, [cameraRef, isRecording, onError]);
+
+  // Keep stopRecording ref in sync
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
 
   const pauseRecording = useCallback(async () => {
     if (!isRecording || isPaused) return;
@@ -387,7 +399,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
 
     let currentIndex = 0;
     const interval = setInterval(() => {
-      if (currentIndex < phrases.length && isRecording) {
+      if (currentIndex < phrases.length && isRecordingRef.current) {
         setLiveTranscription(phrases[currentIndex]);
         currentIndex++;
       } else {
@@ -488,7 +500,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
     isRecording,
     isProcessing,
     recordingTime,
-    hasPermissions: hasVideoPermissions,
+    hasPermissions: hasVideoPermissions(),
     error,
   };
 };

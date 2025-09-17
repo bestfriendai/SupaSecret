@@ -53,7 +53,7 @@ export const useOfflineQueue = (): UseOfflineQueueReturn => {
   }, []);
 
   const enqueueAction = useCallback(
-    async (type: OfflineActionType, payload: any, maxRetries: number = 3): Promise<string> => {
+    async (type: OfflineActionType, payload: Record<string, unknown>, maxRetries: number = 3): Promise<string> => {
       return await offlineQueue.enqueue(type, payload, { maxRetries });
     },
     [],
@@ -63,7 +63,7 @@ export const useOfflineQueue = (): UseOfflineQueueReturn => {
     async <T>(
       action: () => Promise<T>,
       fallbackType: OfflineActionType,
-      fallbackPayload: any,
+      fallbackPayload: Record<string, unknown>,
       maxRetries: number = 3,
     ): Promise<T | string> => {
       // Read current network status at execution time to avoid stale closure

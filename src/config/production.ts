@@ -5,25 +5,62 @@
 
 import { Platform } from "react-native";
 
+// Helper function to get environment variables with validation
+const getEnvVar = (
+  name: string,
+  options: { required?: boolean; default?: string | null } = {}
+): string | null => {
+  const { required = false, default: defaultValue = null } = options;
+  const value = process.env[name];
+
+  if (!value || value.trim() === '') {
+    if (required) {
+      console.error(`❌ Required environment variable ${name} is not set`);
+      if (!__DEV__) {
+        throw new Error(`Missing required environment variable: ${name}`);
+      }
+    }
+    return defaultValue;
+  }
+
+  // Check for placeholder values
+  const placeholderPatterns = ['YOUR_', 'PLACEHOLDER', 'EXAMPLE_', 'TEST_', 'DEMO_'];
+  const hasPlaceholder = placeholderPatterns.some(pattern => value.includes(pattern));
+
+  if (hasPlaceholder) {
+    if (required) {
+      console.error(`❌ Environment variable ${name} contains placeholder value: ${value}`);
+      if (!__DEV__) {
+        throw new Error(`Environment variable ${name} has placeholder value in production`);
+      }
+    } else {
+      console.warn(`⚠️ Environment variable ${name} contains placeholder value: ${value}`);
+    }
+    return defaultValue;
+  }
+
+  return value;
+};
+
 export const PRODUCTION_CONFIG = {
   // AdMob Configuration
   ADMOB: {
     APP_ID: Platform.select({
-      ios: process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID || null,
-      android: process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID || null,
+      ios: getEnvVar('EXPO_PUBLIC_ADMOB_IOS_APP_ID', { required: true }),
+      android: getEnvVar('EXPO_PUBLIC_ADMOB_ANDROID_APP_ID', { required: true }),
     }),
     AD_UNITS: {
       banner: Platform.select({
-        ios: process.env.EXPO_PUBLIC_ADMOB_IOS_BANNER_ID || null,
-        android: process.env.EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID || null,
+        ios: getEnvVar('EXPO_PUBLIC_ADMOB_IOS_BANNER_ID', { required: true }),
+        android: getEnvVar('EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID', { required: true }),
       }),
       interstitial: Platform.select({
-        ios: process.env.EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID || null,
-        android: process.env.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID || null,
+        ios: getEnvVar('EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID', { required: true }),
+        android: getEnvVar('EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID', { required: true }),
       }),
       rewarded: Platform.select({
-        ios: process.env.EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID || null,
-        android: process.env.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID || null,
+        ios: getEnvVar('EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID', { required: true }),
+        android: getEnvVar('EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID', { required: true }),
       }),
     },
   },
@@ -31,8 +68,8 @@ export const PRODUCTION_CONFIG = {
   // RevenueCat Configuration
   REVENUECAT: {
     API_KEY: Platform.select({
-      ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || null,
-      android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || null,
+      ios: getEnvVar('EXPO_PUBLIC_REVENUECAT_IOS_KEY', { required: true }),
+      android: getEnvVar('EXPO_PUBLIC_REVENUECAT_ANDROID_KEY', { required: true }),
     }),
     ENTITLEMENTS: {
       PREMIUM: "premium",
@@ -46,19 +83,19 @@ export const PRODUCTION_CONFIG = {
   // Analytics Configuration
   ANALYTICS: {
     // Google Analytics
-    GOOGLE_ANALYTICS_ID: "G-YOUR_GOOGLE_ANALYTICS_ID",
+    GOOGLE_ANALYTICS_ID: getEnvVar('EXPO_PUBLIC_GOOGLE_ANALYTICS_ID', { required: true }),
 
     // Firebase Analytics (optional - only if environment variables are provided)
-    FIREBASE_CONFIG: process.env.EXPO_PUBLIC_FIREBASE_API_KEY
+    FIREBASE_CONFIG: getEnvVar('EXPO_PUBLIC_FIREBASE_API_KEY')
       ? {
-          apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-          authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-          projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-          storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-          messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+          apiKey: getEnvVar('EXPO_PUBLIC_FIREBASE_API_KEY', { required: true }),
+          authDomain: getEnvVar('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN', { required: true }),
+          projectId: getEnvVar('EXPO_PUBLIC_FIREBASE_PROJECT_ID', { required: true }),
+          storageBucket: getEnvVar('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET', { required: true }),
+          messagingSenderId: getEnvVar('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID', { required: true }),
           appId: Platform.select({
-            ios: process.env.EXPO_PUBLIC_FIREBASE_APP_ID_IOS,
-            android: process.env.EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID,
+            ios: getEnvVar('EXPO_PUBLIC_FIREBASE_APP_ID_IOS', { required: true }),
+            android: getEnvVar('EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID', { required: true }),
           }),
         }
       : null,
@@ -66,7 +103,7 @@ export const PRODUCTION_CONFIG = {
 
   // Sentry Configuration
   SENTRY: {
-    DSN: "https://YOUR_SENTRY_DSN@sentry.io/YOUR_PROJECT_ID",
+    DSN: getEnvVar('EXPO_PUBLIC_SENTRY_DSN', { required: true }),
     ENVIRONMENT: __DEV__ ? "development" : "production",
     DEBUG: __DEV__,
   },
@@ -74,43 +111,46 @@ export const PRODUCTION_CONFIG = {
   // Push Notifications
   PUSH_NOTIFICATIONS: {
     // OneSignal
-    ONESIGNAL_APP_ID: "YOUR_ONESIGNAL_APP_ID",
+    ONESIGNAL_APP_ID: getEnvVar('EXPO_PUBLIC_ONESIGNAL_APP_ID', { required: false }),
 
     // Firebase Cloud Messaging
-    FCM_SENDER_ID: "YOUR_FCM_SENDER_ID",
+    FCM_SENDER_ID: getEnvVar('EXPO_PUBLIC_FCM_SENDER_ID', { required: false }),
   },
 
   // External APIs
   EXTERNAL_APIS: {
     // Content moderation
-    CONTENT_MODERATION_API_KEY: "YOUR_CONTENT_MODERATION_API_KEY",
+    CONTENT_MODERATION_API_KEY: getEnvVar('EXPO_PUBLIC_CONTENT_MODERATION_API_KEY', { required: false }),
 
     // Speech-to-Text (if using cloud service)
-    SPEECH_TO_TEXT_API_KEY: "YOUR_SPEECH_API_KEY",
+    SPEECH_TO_TEXT_API_KEY: getEnvVar('EXPO_PUBLIC_SPEECH_TO_TEXT_API_KEY', { required: false }),
 
     // Translation service (if needed)
-    TRANSLATION_API_KEY: "YOUR_TRANSLATION_API_KEY",
+    TRANSLATION_API_KEY: getEnvVar('EXPO_PUBLIC_TRANSLATION_API_KEY', { required: false }),
   },
 
   // App Store Configuration
   APP_STORE: {
-    IOS_APP_ID: "YOUR_IOS_APP_ID",
-    ANDROID_PACKAGE_NAME: "com.toxic.confessions",
+    IOS_APP_ID: getEnvVar('EXPO_PUBLIC_IOS_APP_ID', { required: false }),
+    ANDROID_PACKAGE_NAME: getEnvVar('EXPO_PUBLIC_ANDROID_PACKAGE_NAME', {
+      required: false,
+      default: "com.toxic.confessions"
+    }),
 
     // App Store Connect API (for analytics)
-    APP_STORE_CONNECT_KEY_ID: "YOUR_APP_STORE_CONNECT_KEY_ID",
-    APP_STORE_CONNECT_ISSUER_ID: "YOUR_APP_STORE_CONNECT_ISSUER_ID",
+    APP_STORE_CONNECT_KEY_ID: getEnvVar('EXPO_PUBLIC_APP_STORE_CONNECT_KEY_ID', { required: false }),
+    APP_STORE_CONNECT_ISSUER_ID: getEnvVar('EXPO_PUBLIC_APP_STORE_CONNECT_ISSUER_ID', { required: false }),
   },
 
   // Social Media Integration
   SOCIAL: {
     // Twitter API (if sharing features)
-    TWITTER_API_KEY: "YOUR_TWITTER_API_KEY",
-    TWITTER_API_SECRET: "YOUR_TWITTER_API_SECRET",
+    TWITTER_API_KEY: getEnvVar('EXPO_PUBLIC_TWITTER_API_KEY', { required: false }),
+    TWITTER_API_SECRET: getEnvVar('EXPO_PUBLIC_TWITTER_API_SECRET', { required: false }),
 
     // Instagram Basic Display (if needed)
-    INSTAGRAM_APP_ID: "YOUR_INSTAGRAM_APP_ID",
-    INSTAGRAM_APP_SECRET: "YOUR_INSTAGRAM_APP_SECRET",
+    INSTAGRAM_APP_ID: getEnvVar('EXPO_PUBLIC_INSTAGRAM_APP_ID', { required: false }),
+    INSTAGRAM_APP_SECRET: getEnvVar('EXPO_PUBLIC_INSTAGRAM_APP_SECRET', { required: false }),
   },
 
   // Legal URLs
@@ -183,35 +223,89 @@ export const getConfig = () => {
 };
 
 // Validation function to ensure all required keys are set
-export const validateProductionConfig = (): { isValid: boolean; missingKeys: string[] } => {
+export const validateProductionConfig = (): {
+  isValid: boolean;
+  missingKeys: string[];
+  warnings: string[];
+} => {
   const missingKeys: string[] = [];
+  const warnings: string[] = [];
 
-  // Check critical keys that must be set for production
-  const criticalKeys = [
-    "ADMOB.APP_ID",
-    "ADMOB.AD_UNITS.banner",
-    "ADMOB.AD_UNITS.interstitial",
-    "ADMOB.AD_UNITS.rewarded",
-    "REVENUECAT.API_KEY",
-    "SENTRY.DSN",
+  // Helper function to check if a value is valid
+  const isValidValue = (value: any): boolean => {
+    if (!value) return false;
+    if (typeof value === 'string') {
+      return !value.includes('YOUR_') && !value.includes('PLACEHOLDER') && value.trim() !== '';
+    }
+    return true;
+  };
+
+  // Helper function to recursively check configuration values
+  const checkConfigValue = (obj: any, path: string = ''): void => {
+    for (const [key, value] of Object.entries(obj)) {
+      const currentPath = path ? `${path}.${key}` : key;
+
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        // Skip Platform.select objects and similar
+        const objValue = value as any;
+        if (objValue.ios !== undefined || objValue.android !== undefined) {
+          // Check platform-specific values
+          if (objValue.ios && !isValidValue(objValue.ios)) {
+            warnings.push(`${currentPath}.ios has invalid or placeholder value`);
+          }
+          if (objValue.android && !isValidValue(objValue.android)) {
+            warnings.push(`${currentPath}.android has invalid or placeholder value`);
+          }
+        } else {
+          checkConfigValue(value, currentPath);
+        }
+      } else if (!isValidValue(value)) {
+        // Check if this is a critical key
+        const criticalKeys = [
+          'ADMOB.APP_ID',
+          'ADMOB.AD_UNITS.banner',
+          'ADMOB.AD_UNITS.interstitial',
+          'ADMOB.AD_UNITS.rewarded',
+          'REVENUECAT.API_KEY',
+          'ANALYTICS.GOOGLE_ANALYTICS_ID',
+          'SENTRY.DSN'
+        ];
+
+        if (criticalKeys.includes(currentPath)) {
+          missingKeys.push(currentPath);
+        } else {
+          warnings.push(`${currentPath} has invalid or placeholder value`);
+        }
+      }
+    }
+  };
+
+  // Check all configuration values
+  checkConfigValue(PRODUCTION_CONFIG);
+
+  // Additional validation for environment variables
+  const requiredEnvVars = [
+    'EXPO_PUBLIC_ADMOB_IOS_APP_ID',
+    'EXPO_PUBLIC_ADMOB_ANDROID_APP_ID',
+    'EXPO_PUBLIC_REVENUECAT_IOS_KEY',
+    'EXPO_PUBLIC_REVENUECAT_ANDROID_KEY',
+    'EXPO_PUBLIC_GOOGLE_ANALYTICS_ID',
+    'EXPO_PUBLIC_SENTRY_DSN'
   ];
 
-  criticalKeys.forEach((keyPath) => {
-    const keys = keyPath.split(".");
-    let current: any = PRODUCTION_CONFIG;
-
-    for (const key of keys) {
-      if (!current[key] || current[key].toString().includes("YOUR_")) {
-        missingKeys.push(keyPath);
-        break;
+  requiredEnvVars.forEach(envVar => {
+    const value = process.env[envVar];
+    if (!value || value.includes('YOUR_') || value.includes('PLACEHOLDER')) {
+      if (!missingKeys.some(key => key.includes(envVar.replace('EXPO_PUBLIC_', '').toLowerCase()))) {
+        missingKeys.push(`Environment variable: ${envVar}`);
       }
-      current = current[key];
     }
   });
 
   return {
     isValid: missingKeys.length === 0,
     missingKeys,
+    warnings,
   };
 };
 
@@ -224,4 +318,84 @@ export const isFeatureEnabled = (feature: keyof typeof PRODUCTION_CONFIG.FEATURE
 export const getTimeoutForOperation = (operation: "api" | "upload"): number => {
   const config = getConfig();
   return operation === "upload" ? config.PERFORMANCE.UPLOAD_TIMEOUT_MS : config.PERFORMANCE.API_TIMEOUT_MS;
+};
+
+// Helper to check if all critical configuration is properly set
+export const isCriticalConfigValid = (): boolean => {
+  const validation = validateProductionConfig();
+  const config = getConfig();
+
+  // Check if essential services are properly configured when enabled
+  const essentialChecks = [
+    // AdMob check
+    !config.FEATURES.ENABLE_ADS || (config.ADMOB.APP_ID !== null),
+    // Analytics check
+    !config.FEATURES.ENABLE_ANALYTICS || (config.ANALYTICS.GOOGLE_ANALYTICS_ID !== null),
+    // Sentry check
+    !config.FEATURES.ENABLE_CRASH_REPORTING || (config.SENTRY.DSN !== null),
+  ];
+
+  return validation.isValid && essentialChecks.every(check => check);
+};
+
+// Initialize and validate configuration
+export const initializeProductionConfig = (): void => {
+  const validation = validateProductionConfig();
+
+  if (!validation.isValid) {
+    console.error('❌ Production configuration validation failed!');
+    console.error('Missing required configuration keys:');
+    validation.missingKeys.forEach(key => {
+      console.error(`  - ${key}`);
+    });
+
+    if (!__DEV__) {
+      throw new Error('Invalid production configuration. Please check your environment variables and ensure all required keys are set.');
+    }
+  }
+
+  if (validation.warnings.length > 0) {
+    console.warn('⚠️  Production configuration warnings:');
+    validation.warnings.forEach(warning => {
+      console.warn(`  - ${warning}`);
+    });
+  }
+
+  if (validation.isValid && validation.warnings.length === 0) {
+    console.log('✅ Production configuration validated successfully');
+  }
+
+  // Additional runtime checks for critical services
+  const config = getConfig();
+
+  // Check AdMob configuration
+  if (config.FEATURES.ENABLE_ADS) {
+    const admobAppId = config.ADMOB.APP_ID;
+    if (!admobAppId) {
+      console.error('❌ AdMob is enabled but APP_ID is not configured');
+      if (!__DEV__) {
+        throw new Error('AdMob APP_ID is required when ads are enabled');
+      }
+    }
+  }
+
+  // Check analytics configuration
+  if (config.FEATURES.ENABLE_ANALYTICS) {
+    if (!config.ANALYTICS.GOOGLE_ANALYTICS_ID) {
+      console.error('❌ Analytics is enabled but Google Analytics ID is not configured');
+      if (!__DEV__) {
+        throw new Error('Google Analytics ID is required when analytics are enabled');
+      }
+    }
+  }
+
+  // Check crash reporting configuration
+  if (config.FEATURES.ENABLE_CRASH_REPORTING) {
+    if (!config.SENTRY.DSN) {
+      console.error('❌ Crash reporting is enabled but Sentry DSN is not configured');
+      if (!__DEV__) {
+        throw new Error('Sentry DSN is required when crash reporting is enabled');
+      }
+    }
+  }
 };

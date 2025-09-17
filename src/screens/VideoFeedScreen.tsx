@@ -1,6 +1,8 @@
 import React, { useEffect, useCallback } from "react";
 import { View, Text } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import type { NavigationProp } from "@react-navigation/native";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 import OptimizedVideoList from "../components/OptimizedVideoList";
 import { withErrorBoundary } from "../components/ErrorBoundary";
 import { ErrorState } from "../components/ErrorState";
@@ -10,7 +12,7 @@ import { createScreenValidator } from "../utils/screenValidation";
 import { useDataIntegrityMonitor } from "../hooks/useDataIntegrityMonitor";
 
 function VideoFeedScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [error, setError] = React.useState<string | null>(null);
   const validator = createScreenValidator('VideoFeedScreen');
 
@@ -52,12 +54,12 @@ function VideoFeedScreen() {
         navigation.goBack();
       } else {
         validator.warn('Cannot go back, navigating to Home');
-        (navigation as any).navigate('Home');
+        navigation.navigate('MainTabs');
       }
     } catch (navError) {
       validator.error('Navigation failed:', navError);
       // Force navigate to home as fallback
-      (navigation as any).navigate('Home');
+      navigation.navigate('MainTabs');
     }
   }, [navigation, validator]);
 

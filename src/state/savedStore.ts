@@ -236,7 +236,7 @@ export const useSavedStore = create<SavedState>()(
             .select(
               `
               *,
-              confession_likes!inner(user_id)
+              confession_likes!left(user_id)
             `,
             )
             .in("id", state.savedConfessionIds)
@@ -324,7 +324,7 @@ export const useSavedStore = create<SavedState>()(
             .select(
               `
               *,
-              confession_likes!inner(user_id)
+              confession_likes!left(user_id)
             `,
             )
             .in("id", remainingIds.slice(0, ITEMS_PER_PAGE))

@@ -105,6 +105,11 @@ function VideoRecordScreen() {
         setRecordingDuration((prev) => {
           const newDuration = prev + 1;
           if (newDuration >= MAX_DURATION) {
+            // Clear interval immediately when max duration reached
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
             stopRecording();
             return prev;
           }

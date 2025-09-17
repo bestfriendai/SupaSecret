@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
@@ -76,30 +76,80 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ type, title, message, ac
   const handleAction = onRetry || onAction;
 
   return (
-    <View className="flex-1 items-center justify-center px-6 py-20">
-      <View className="items-center">
-        <View className="w-20 h-20 bg-gray-800 rounded-full items-center justify-center mb-6">
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.iconContainer}>
           <Ionicons name={config.icon} size={40} color="#8B98A5" />
         </View>
 
-        <Text className="text-white text-20 font-bold mb-3 text-center">{config.title}</Text>
+        <Text style={styles.title}>{config.title}</Text>
 
-        <Text className="text-gray-500 text-15 mb-8 text-center leading-6 max-w-sm">{config.message}</Text>
+        <Text style={styles.message}>{config.message}</Text>
 
         {handleAction && (
           <Pressable
-            className="bg-blue-500 rounded-full px-8 py-3 min-w-32"
+            style={styles.button}
             onPress={handleAction}
             accessibilityRole="button"
             accessibilityLabel={config.actionLabel}
           >
-            <Text className="text-white font-semibold text-center text-16">{config.actionLabel}</Text>
+            <Text style={styles.buttonText}>{config.actionLabel}</Text>
           </Pressable>
         )}
       </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 80,
+  },
+  content: {
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#1F2937',
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  message: {
+    color: '#6B7280',
+    fontSize: 15,
+    marginBottom: 32,
+    textAlign: 'center',
+    lineHeight: 24,
+    maxWidth: 320,
+  },
+  button: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 25,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    minWidth: 128,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textAlign: 'center',
+    fontSize: 16,
+  },
+});
 
 // Specific error state components for common use cases
 export const NetworkErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (

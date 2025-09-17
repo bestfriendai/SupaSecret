@@ -17,12 +17,25 @@ type WebViewScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 // URL allowlist for security - only allow these domains and schemes
 const ALLOWED_SCHEMES = ["http", "https"];
 const ALLOWED_DOMAINS = [
-  // Add your trusted domains here
-  "example.com",
-  "privacy-policy-domain.com",
-  "terms-of-service-domain.com",
-  "help-domain.com",
-  // Add more domains as needed
+  // Production domains
+  "toxicconfessions.com",
+  "www.toxicconfessions.com",
+  "app.toxicconfessions.com",
+  "support.toxicconfessions.com",
+  "help.toxicconfessions.com",
+  "privacy.toxicconfessions.com",
+  "terms.toxicconfessions.com",
+  // Development domains
+  "localhost",
+  "127.0.0.1",
+  "192.168.1.1",
+  // Common service domains for legal content
+  "iubenda.com",
+  "www.iubenda.com",
+  "termly.io",
+  "www.termly.io",
+  "privacypolicy.com",
+  "www.privacypolicy.com",
 ];
 
 // Helper function to validate URLs
@@ -35,10 +48,13 @@ const isUrlAllowed = (url: string): boolean => {
       return false;
     }
 
-    // For now, allow all https/http URLs - you can uncomment domain checking if needed
-    // if (!ALLOWED_DOMAINS.some(domain => parsedUrl.hostname.endsWith(domain))) {
-    //   return false;
-    // }
+    // Check if domain is allowed
+    if (!ALLOWED_DOMAINS.some(domain =>
+      parsedUrl.hostname === domain ||
+      parsedUrl.hostname.endsWith('.' + domain)
+    )) {
+      return false;
+    }
 
     return true;
   } catch {

@@ -85,6 +85,9 @@ export const useFaceBlurProcessing = () => {
         onProgress?.(40, "Analyzing faces...");
 
         // Detect faces in the extracted frame
+        if (!faceDetector) {
+          throw new Error("Face detector not initialized");
+        }
         const faces = await faceDetector.processImage(thumbnailUri);
 
         console.log(`Detected ${faces.length} faces in video`);

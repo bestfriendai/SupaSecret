@@ -24,14 +24,14 @@ export default function SettingsScreen() {
   const { preferences: notificationPreferences, loadPreferences, updatePreferences } = useNotificationStore();
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState<"confirm" | "success" | "signout">("confirm");
+  const [modalType, setModalType] = useState<"confirm" | "success" | "signout" | "error">("confirm");
 
   useEffect(() => {
     loadUserPreferences();
     loadPreferences();
   }, [loadUserPreferences, loadPreferences]);
 
-  const showMessage = (message: string, type: "confirm" | "success" | "signout") => {
+  const showMessage = (message: string, type: "confirm" | "success" | "signout" | "error") => {
     setModalMessage(message);
     setModalType(type);
     setShowModal(true);
@@ -69,11 +69,12 @@ export default function SettingsScreen() {
 
   const handleTestDatabase = async () => {
     console.log("🧪 Starting database tests...");
-    showMessage("Running database tests... Check console for results.", "success");
     try {
       await runAllTests();
+      showMessage("Database tests completed successfully! Check console for detailed results.", "success");
     } catch (error) {
       console.error("❌ Database test failed:", error);
+      showMessage("Database tests failed. Check console for error details.", "error");
     }
   };
 
@@ -458,7 +459,7 @@ export default function SettingsScreen() {
         <AlertModal
           visible={showModal}
           onClose={() => setShowModal(false)}
-          title={modalType === "success" ? "Success!" : "Notice"}
+          title={modalType === "success" ? "Success!" : modalType === "error" ? "Error" : "Notice"}
           message={modalMessage}
           confirmText="OK"
         />

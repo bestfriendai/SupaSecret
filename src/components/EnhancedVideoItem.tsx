@@ -97,17 +97,24 @@ function EnhancedVideoItem({
     }
   });
 
+  // Add disposal flag to prevent race conditions
+  const isDisposingRef = useRef(false);
+
   // Enhanced player cleanup for Hermes compatibility
   useEffect(() => {
     // Cleanup function with enhanced error handling for Hermes
     return () => {
+      // Set disposal flag to prevent concurrent disposal attempts
+      if (isDisposingRef.current) return;
+      isDisposingRef.current = true;
+
       try {
         if (player) {
           // Enhanced disposal sequence for Hermes/iOS compatibility
           const disposePlayer = async () => {
             try {
               // First check if player exists and hasn't been disposed
-              if (!player) return;
+              if (!player || isDisposingRef.current === false) return;
 
               // Try to safely check player state
               let isValid = false;
@@ -118,11 +125,12 @@ function EnhancedVideoItem({
                 // Player is already disposed
                 if (checkError?.message?.includes('NativeSharedObjectNotFoundException') ||
                     checkError?.message?.includes('Unable to find the native shared object')) {
+                  isDisposingRef.current = false;
                   return; // Already disposed, nothing to do
                 }
               }
 
-              if (isValid && typeof player.pause === 'function') {
+              if (isValid && typeof player.pause === 'function' && isDisposingRef.current) {
                 // Pause first
                 try {
                   await player.pause();
@@ -139,6 +147,7 @@ function EnhancedVideoItem({
 
                 // Small delay to ensure pause completes before disposal
                 setTimeout(() => {
+                  if (!isDisposingRef.current) return;
                   try {
                     // Additional cleanup if available
                     if (typeof (player as any).unload === 'function') {
@@ -149,8 +158,12 @@ function EnhancedVideoItem({
                     if (__DEV__ && !unloadError?.message?.includes('NativeSharedObject')) {
                       console.warn(`Video unload failed for ${confession.id}:`, unloadError?.message);
                     }
+                  } finally {
+                    isDisposingRef.current = false;
                   }
                 }, 50);
+              } else {
+                isDisposingRef.current = false;
               }
             } catch (pauseError: any) {
               // Silently ignore disposal-related errors
@@ -159,6 +172,7 @@ function EnhancedVideoItem({
                   !pauseError?.message?.includes('Unable to find the native shared object')) {
                 console.warn(`Video pause failed during disposal for ${confession.id}:`, pauseError?.message);
               }
+              isDisposingRef.current = false;
             }
           };
 
@@ -171,6 +185,7 @@ function EnhancedVideoItem({
         if (__DEV__) {
           console.warn(`Video disposal error for ${confession.id}:`, error);
         }
+        isDisposingRef.current = false;
       }
     };
   }, [player, confession.id]);
@@ -192,13 +207,16 @@ function EnhancedVideoItem({
 
   // Register video player with global store and ensure autoplay
   useEffect(() => {
+    let playTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
     if (player) {
       registerVideoPlayer(confession.id, player);
 
       // Ensure video starts playing when it's the active item
       if (isActive && screenFocused) {
         // Small delay to ensure player is ready
-        const playTimer = setTimeout(() => {
+        playTimer = setTimeout(() => {
           if (player && typeof player.play === "function") {
             try {
               player.play();
@@ -207,7 +225,7 @@ function EnhancedVideoItem({
                 console.warn(`Failed to autoplay video ${confession.id}:`, error);
               }
               // Retry play after a short delay
-              setTimeout(() => {
+              retryTimer = setTimeout(() => {
                 if (player && typeof player.play === "function") {
                   try {
                     player.play();
@@ -219,18 +237,19 @@ function EnhancedVideoItem({
             }
           }
         }, 100);
-
-        return () => {
-          clearTimeout(playTimer);
-          unregisterVideoPlayer(confession.id);
-        };
       }
-
-      return () => {
-        unregisterVideoPlayer(confession.id);
-      };
     }
-    return undefined;
+
+    return () => {
+      // Clear both timers to prevent memory leaks
+      if (playTimer) {
+        clearTimeout(playTimer);
+      }
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
+      unregisterVideoPlayer(confession.id);
+    };
   }, [player, confession.id, registerVideoPlayer, unregisterVideoPlayer, isActive, screenFocused]);
 
   // React to sound preference changes

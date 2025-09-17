@@ -345,13 +345,48 @@ export const accessibleHapticFeedback = async (
 
     // Reduce haptic intensity if reduce motion is enabled
     if (isReduceMotionEnabled) {
-      // Use lighter haptic feedback
-      return;
+      // Use lighter haptic feedback or skip entirely
+      if (type === "heavy") {
+        type = "light";
+      } else if (type === "medium") {
+        type = "light";
+      }
+      // Skip haptics for error/warning/success if reduce motion is enabled
+      if (['error', 'warning', 'success'].includes(type)) {
+        return;
+      }
     }
 
-    // Normal haptic feedback - would need to import Haptics from expo-haptics
-    // For now, just log the feedback type
-    console.log(`Haptic feedback: ${type}`);
+    // Import and use expo-haptics for real haptic feedback
+    try {
+      const Haptics = await import('expo-haptics');
+
+      switch (type) {
+        case 'light':
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          break;
+        case 'medium':
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          break;
+        case 'heavy':
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          break;
+        case 'success':
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          break;
+        case 'warning':
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          break;
+        case 'error':
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          break;
+        default:
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (hapticsError) {
+      // Fallback if expo-haptics is not available
+      console.log(`Haptic feedback (fallback): ${type}`);
+    }
   } catch (error) {
     console.warn("Haptic feedback failed:", error);
   }

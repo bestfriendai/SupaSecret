@@ -308,52 +308,7 @@ export const useConfessionStore = create<ConfessionState>()(
 
           // Check if user is online for immediate processing vs offline queue
           if (!offlineQueue.getNetworkStatus()) {
-            // User is offline - queue the confession creation
-            const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-            const tempConfession: Confession = {
-              id: tempId,
-              type: confession.type,
-              content: confession.content,
-              videoUri: confession.videoUri,
-              transcription: confession.transcription,
-              timestamp: Date.now(),
-              isAnonymous: confession.isAnonymous,
-              likes: 0,
-              isLiked: false,
-            };
-
-            // Add to local state optimistically
-            set((state) => ({
-              confessions: [tempConfession, ...state.confessions],
-              isLoading: false,
-            }));
-
-            // Queue for later processing
-            await offlineQueue.enqueue(
-              OFFLINE_ACTIONS.CREATE_CONFESSION,
-              {
-                tempId,
-                confession: {
-                  type: confession.type,
-                  content: confession.content,
-                  videoUri: confession.videoUri,
-                  transcription: confession.transcription,
-                  isAnonymous: confession.isAnonymous,
-                },
-              },
-              {
-                priority: 10, // High priority for confession creation
-                reconciliation: {
-                  tempId,
-                  targetStore: 'confessionStore',
-                  metadata: { type: confession.type }
-                }
-              }
-            );
-
-            if (__DEV__) {
-              console.log('✅ Confession queued for offline processing with temp ID:', tempId);
-            }
+            await get().queueTempConfession(confession, { type: confession.type });
             return;
           }
 
@@ -413,49 +368,7 @@ export const useConfessionStore = create<ConfessionState>()(
                   console.error('Video upload failed:', uploadError);
                 }
                 // If upload fails, queue for retry
-                const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-                const tempConfession: Confession = {
-                  id: tempId,
-                  type: confession.type,
-                  content: confession.content,
-                  videoUri: confession.videoUri,
-                  transcription: confession.transcription,
-                  timestamp: Date.now(),
-                  isAnonymous: confession.isAnonymous,
-                  likes: 0,
-                  isLiked: false,
-                };
-
-                set((state) => ({
-                  confessions: [tempConfession, ...state.confessions],
-                  isLoading: false,
-                }));
-
-                await offlineQueue.enqueue(
-                  OFFLINE_ACTIONS.CREATE_CONFESSION,
-                  {
-                    tempId,
-                    confession: {
-                      type: confession.type,
-                      content: confession.content,
-                      videoUri: confession.videoUri,
-                      transcription: confession.transcription,
-                      isAnonymous: confession.isAnonymous,
-                    },
-                  },
-                  {
-                    priority: 10, // High priority for confession creation
-                    reconciliation: {
-                      tempId,
-                      targetStore: 'confessionStore',
-                      metadata: { type: confession.type, uploadFailed: true }
-                    }
-                  }
-                );
-
-                if (__DEV__) {
-                  console.log('✅ Confession queued due to upload failure with temp ID:', tempId);
-                }
+                await get().queueTempConfession(confession, { type: confession.type, uploadFailed: true });
                 return;
               }
             } else {
@@ -934,6 +847,55 @@ export const useConfessionStore = create<ConfessionState>()(
 
       clearError: () => {
         set({ error: null });
+      },
+
+      // Helper function to extract duplicate logic for queuing temp confessions
+      queueTempConfession: async (confession: any, metadata: any) => {
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+        const tempConfession: Confession = {
+          id: tempId,
+          type: confession.type,
+          content: confession.content,
+          videoUri: confession.videoUri,
+          transcription: confession.transcription,
+          timestamp: Date.now(),
+          isAnonymous: confession.isAnonymous,
+          likes: 0,
+          isLiked: false,
+        };
+
+        // Add to local state optimistically
+        set((state) => ({
+          confessions: [tempConfession, ...state.confessions],
+          isLoading: false,
+        }));
+
+        // Queue for later processing
+        await offlineQueue.enqueue(
+          OFFLINE_ACTIONS.CREATE_CONFESSION,
+          {
+            tempId,
+            confession: {
+              type: confession.type,
+              content: confession.content,
+              videoUri: confession.videoUri,
+              transcription: confession.transcription,
+              isAnonymous: confession.isAnonymous,
+            },
+          },
+          {
+            priority: 10, // High priority for confession creation
+            reconciliation: {
+              tempId,
+              targetStore: 'confessionStore',
+              metadata
+            }
+          }
+        );
+
+        if (__DEV__) {
+          console.log('✅ Confession queued for offline processing with temp ID:', tempId);
+        }
       },
     }),
     {

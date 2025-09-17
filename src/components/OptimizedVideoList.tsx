@@ -7,6 +7,7 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
+import { useGlobalVideoStore } from "../state/globalVideoStore";
 import EnhancedVideoItem from "./EnhancedVideoItem";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
 import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
@@ -56,6 +57,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   }, [confessions]);
 
   const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
+  const { pauseAllVideos } = useGlobalVideoStore();
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const currentIndexRef = useRef(initialIndex);
@@ -212,10 +214,10 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
         // Pause all videos when opening comments
         const currentPlayer = videoConfessions.findIndex(v => v.id === confessionId);
         if (currentPlayer >= 0) {
-          // Force pause all videos to prevent background playback
-          setIsScrolling(true); // This will trigger pause in EnhancedVideoItem
+          // Explicitly pause all videos to prevent background playback
+          pauseAllVideos();
         }
-        
+
         setCurrentVideoId(confessionId);
         setModalOpen(true);
         const video = videoConfessions.find((v) => v.id === confessionId);
@@ -226,7 +228,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
         console.error("Failed to open comments:", error);
       }
     },
-    [videoConfessions, onError],
+    [videoConfessions, onError, pauseAllVideos],
   );
 
   // Handle share press
@@ -419,7 +421,6 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           key={currentVideoId || "empty"}
           onDismiss={() => {
             setModalOpen(false);
-            setIsScrolling(false);
           }}
         />
 
@@ -430,7 +431,6 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           confessionText={currentVideoText}
           onDismiss={() => {
             setModalOpen(false);
-            setIsScrolling(false);
           }}
         />
 
@@ -440,7 +440,6 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           onClose={() => {
             setReportModalVisible(false);
             setModalOpen(false);
-            setIsScrolling(false);
           }}
           confessionId={currentVideoId || undefined}
           contentType="confession"

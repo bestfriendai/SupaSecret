@@ -66,7 +66,7 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
     setError(null);
 
     try {
-      checkAllPermissions();
+      await checkAllPermissions();
 
       const denied: string[] = [];
 

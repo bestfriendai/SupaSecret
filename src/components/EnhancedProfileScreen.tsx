@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import type { NavigationProp } from "@react-navigation/native";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useAuthStore } from "../state/authStore";
 import { useConfessionStore } from "../state/confessionStore";
 import { useMembershipStore } from "../state/membershipStore";
@@ -35,7 +37,7 @@ interface EnhancedProfileScreenProps {
 }
 
 export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ userId }) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { user, signOut } = useAuthStore();
   const { userConfessions, loadUserConfessions } = useConfessionStore();
   const { membershipTier } = useMembershipStore();
@@ -52,6 +54,16 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
   const [activeTab, setActiveTab] = useState<"confessions" | "liked" | "saved">("confessions");
   const [profileData, setProfileData] = useState<any>(null);
 
+  // Add isMounted flag to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+
+  // Set isMounted to false on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const isOwnProfile = !userId || userId === user?.id;
   const displayUser = profileData || user;
 
@@ -67,7 +79,11 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
           .select("*")
           .eq("id", userId)
           .single();
-        setProfileData(profile);
+
+        // Check if component is still mounted before updating state
+        if (isMountedRef.current) {
+          setProfileData(profile);
+        }
       }
 
       // Load user stats
@@ -79,16 +95,19 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
       const totalLikes = confessions?.reduce((sum, c) => sum + (c.likes || 0), 0) || 0;
       const totalViews = confessions?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
 
-      setStats({
-        confessions: confessions?.length || 0,
-        likes: totalLikes,
-        views: totalViews,
-        followers: 0, // Placeholder - would need followers table
-        following: 0, // Placeholder - would need following table
-      });
+      // Check if component is still mounted before updating state
+      if (isMountedRef.current) {
+        setStats({
+          confessions: confessions?.length || 0,
+          likes: totalLikes,
+          views: totalViews,
+          followers: 0, // Placeholder - would need followers table
+          following: 0, // Placeholder - would need following table
+        });
+      }
 
       // Load user confessions
-      if (isOwnProfile) {
+      if (isOwnProfile && isMountedRef.current) {
         await loadUserConfessions();
       }
 
@@ -116,11 +135,11 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
 
   const handleEditProfile = useCallback(() => {
     // Navigate to edit profile screen
-    navigation.navigate("EditProfile" as never);
+    navigation.navigate("EditProfile");
   }, [navigation]);
 
   const handleSettings = useCallback(() => {
-    navigation.navigate("Settings" as never);
+    navigation.navigate("Settings");
   }, [navigation]);
 
   const handleSignOut = useCallback(async () => {
