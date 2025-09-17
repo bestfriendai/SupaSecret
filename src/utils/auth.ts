@@ -142,12 +142,15 @@ export const signUpUser = async (data: SignUpData): Promise<User> => {
 export const signInUser = async (credentials: AuthCredentials): Promise<User> => {
   const { email, password } = credentials;
 
-  if (!validateEmail(email)) {
-    throw new AuthError("INVALID_EMAIL", "Please enter a valid email address");
+  // Input validation
+  if (!email) {
+    throw new AuthError("MISSING_EMAIL", "Please enter your email address");
   }
-
   if (!password) {
     throw new AuthError("MISSING_PASSWORD", "Please enter your password");
+  }
+  if (!validateEmail(email)) {
+    throw new AuthError("INVALID_EMAIL", "Please enter a valid email address");
   }
 
   // Sign in with Supabase Auth
@@ -165,7 +168,15 @@ export const signInUser = async (credentials: AuthCredentials): Promise<User> =>
   }
 
   if (authError) {
+    // Map Supabase-specific errors for better user feedback
     if (authError.message.includes("Invalid login credentials")) {
+      // Try to determine if it's a user not found vs wrong password
+      // First, check if we can find any additional context in the error
+      if (authError.message.includes("User not found")) {
+        throw new AuthError("USER_NOT_FOUND", "No account found with this email. Please sign up instead.");
+      }
+      // For now, we'll provide a generic message that doesn't reveal whether the user exists
+      // This is actually a security best practice
       throw new AuthError(
         "INVALID_CREDENTIALS",
         "Invalid email or password. Please check your credentials and try again.",
@@ -183,6 +194,7 @@ export const signInUser = async (credentials: AuthCredentials): Promise<User> =>
     if (authError.message.includes("Network")) {
       throw new AuthError("NETWORK_ERROR", "Network error. Please check your connection and try again.");
     }
+    // Fallback for other errors
     throw new AuthError("SIGNIN_ERROR", "Sign in failed. Please try again.");
   }
 
@@ -586,7 +598,7 @@ export const debugAuthState = async () => {
 };
 
 // Custom AuthError class
-class AuthError extends Error {
+export class AuthError extends Error {
   code: string;
 
   constructor(code: string, message: string) {

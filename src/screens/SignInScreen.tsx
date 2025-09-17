@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, Switch } from "react-native";
+import { View, Text, Pressable, Switch, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { type NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -12,7 +12,7 @@ import AuthButton from "../components/AuthButton";
 import { useAuthStore } from "../state/authStore";
 import { ScreenKeyboardWrapper } from "../components/KeyboardAvoidingWrapper";
 import { getButtonA11yProps } from "../utils/accessibility";
-import { validateEmail, sendPasswordReset } from "../utils/auth";
+import { validateEmail, sendPasswordReset, AuthError } from "../utils/auth";
 import { useToastHelpers } from "../contexts/ToastContext";
 
 import { safeGoBackFromAuth } from "../utils/navigation";
@@ -72,7 +72,11 @@ export default function SignInScreen() {
     // Check network connectivity
     const netInfo = await NetInfo.fetch();
     if (!netInfo.isConnected) {
-      showError("No internet connection. Please check your network and try again.");
+      Alert.alert(
+        "Network Error",
+        "No internet connection. Please check your network and try again.",
+        [{ text: "OK" }]
+      );
       return;
     }
 
@@ -80,7 +84,7 @@ export default function SignInScreen() {
       if (__DEV__) {
         console.log("🔍 Attempting sign in with:", formData.email);
       }
-      await signIn(formData, rememberMe); // Pass remember me flag
+      await signIn(formData, rememberMe);
       impactAsync();
       showSuccess("Welcome back! You have successfully signed in.");
       // Navigation will be handled by the auth state change
@@ -89,12 +93,61 @@ export default function SignInScreen() {
         console.log("🔍 Sign in error caught:", error);
       }
       notificationAsync();
-      if (error instanceof Error) {
-        if (__DEV__) {
-          console.log("🔍 Showing error toast:", error.message);
+
+      // Handle specific error types with Alert
+      let errorTitle = "Sign In Error";
+      let errorMessage = "Sign in failed. Please try again.";
+      let buttons: any[] = [{ text: "OK" }];
+
+      if (error instanceof AuthError) {
+        switch (error.code) {
+          case "INVALID_CREDENTIALS":
+            errorTitle = "Invalid Credentials";
+            errorMessage = "Wrong email or password. Please check and try again.";
+            break;
+          case "USER_NOT_FOUND":
+            errorTitle = "Account Not Found";
+            errorMessage = "No account found with this email. Would you like to sign up?";
+            buttons = [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Sign Up",
+                onPress: () => navigation.navigate("SignUp")
+              }
+            ];
+            break;
+          case "EMAIL_NOT_CONFIRMED":
+            errorTitle = "Email Not Verified";
+            errorMessage = "Please check your email and click the confirmation link before signing in.";
+            break;
+          case "TOO_MANY_REQUESTS":
+            errorTitle = "Too Many Attempts";
+            errorMessage = "Too many sign-in attempts. Please wait a few minutes and try again.";
+            break;
+          case "NETWORK_ERROR":
+            errorTitle = "Network Error";
+            errorMessage = "Please check your internet connection and try again.";
+            break;
+          case "MISSING_EMAIL":
+          case "INVALID_EMAIL":
+            errorTitle = "Invalid Email";
+            errorMessage = error.message;
+            break;
+          case "MISSING_PASSWORD":
+            errorTitle = "Missing Password";
+            errorMessage = error.message;
+            break;
+          default:
+            errorTitle = "Sign In Failed";
+            errorMessage = error.message || "An unexpected error occurred. Please try again.";
+            break;
         }
-        showError(error.message);
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
+
+      // Show Alert instead of toast
+      Alert.alert(errorTitle, errorMessage, buttons);
     }
   };
 

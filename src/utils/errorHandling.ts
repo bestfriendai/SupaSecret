@@ -57,7 +57,8 @@ export const processError = (error: unknown, context?: string, customMessage?: s
 
     // Handle auth errors
     if (error.name === "AuthError") {
-      code = "AUTH_ERROR";
+      // Preserve the specific auth error code
+      code = (error as any).code || "AUTH_ERROR";
     }
 
     // Handle network errors
