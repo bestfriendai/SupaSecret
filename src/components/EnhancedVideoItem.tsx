@@ -81,14 +81,13 @@ function EnhancedVideoItem({
     p.muted = forceUnmuted ? false : !soundEnabled;
     // Enable autoplay for active videos
     if (isActive && screenFocused) {
-      // Handle play promise properly
-      const playPromise = p.play();
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch((error: any) => {
-          if (__DEV__) {
-            console.warn(`Initial autoplay failed for ${confession.id}:`, error);
-          }
-        });
+      // Play the video (returns void in expo-video)
+      try {
+        p.play();
+      } catch (error: any) {
+        if (__DEV__) {
+          console.warn(`Initial autoplay failed for ${confession.id}:`, error);
+        }
       }
     }
     if (__DEV__) {
@@ -107,31 +106,58 @@ function EnhancedVideoItem({
           // Enhanced disposal sequence for Hermes/iOS compatibility
           const disposePlayer = async () => {
             try {
-              // Check if player is still valid before calling methods
-              if (player.playing !== undefined && typeof player.pause === 'function') {
+              // First check if player exists and hasn't been disposed
+              if (!player) return;
+
+              // Try to safely check player state
+              let isValid = false;
+              try {
+                // This will throw if player is disposed
+                isValid = player.playing !== undefined;
+              } catch (checkError: any) {
+                // Player is already disposed
+                if (checkError?.message?.includes('NativeSharedObjectNotFoundException') ||
+                    checkError?.message?.includes('Unable to find the native shared object')) {
+                  return; // Already disposed, nothing to do
+                }
+              }
+
+              if (isValid && typeof player.pause === 'function') {
                 // Pause first
-                await player.pause();
+                try {
+                  await player.pause();
+                } catch (pauseError: any) {
+                  // Check if it's a disposal-related error
+                  if (!pauseError?.message?.includes('NativeSharedObjectNotFoundException') &&
+                      !pauseError?.message?.includes('Unable to find the native shared object')) {
+                    // Only log non-disposal errors in dev
+                    if (__DEV__) {
+                      console.warn(`Video pause error for ${confession.id}:`, pauseError?.message);
+                    }
+                  }
+                }
 
                 // Small delay to ensure pause completes before disposal
                 setTimeout(() => {
                   try {
                     // Additional cleanup if available
-                    if (typeof player.unload === 'function') {
-                      player.unload();
+                    if (typeof (player as any).unload === 'function') {
+                      (player as any).unload();
                     }
-                  } catch (unloadError) {
+                  } catch (unloadError: any) {
                     // Silently ignore unload errors during cleanup
-                    if (__DEV__) {
-                      console.warn(`Video unload failed for ${confession.id}:`, unloadError);
+                    if (__DEV__ && !unloadError?.message?.includes('NativeSharedObject')) {
+                      console.warn(`Video unload failed for ${confession.id}:`, unloadError?.message);
                     }
                   }
                 }, 50);
               }
-            } catch (pauseError) {
-              // Silently ignore pause errors during cleanup
-              // This can happen if the player is already disposed
-              if (__DEV__) {
-                console.warn(`Video pause failed during disposal for ${confession.id}:`, pauseError);
+            } catch (pauseError: any) {
+              // Silently ignore disposal-related errors
+              if (__DEV__ &&
+                  !pauseError?.message?.includes('NativeSharedObjectNotFoundException') &&
+                  !pauseError?.message?.includes('Unable to find the native shared object')) {
+                console.warn(`Video pause failed during disposal for ${confession.id}:`, pauseError?.message);
               }
             }
           };
@@ -174,24 +200,22 @@ function EnhancedVideoItem({
         // Small delay to ensure player is ready
         const playTimer = setTimeout(() => {
           if (player && typeof player.play === "function") {
-            const playPromise = player.play();
-            if (playPromise && typeof playPromise.catch === 'function') {
-              playPromise.catch((error: any) => {
-                if (__DEV__) {
-                  console.warn(`Failed to autoplay video ${confession.id}:`, error);
-                }
-                // Retry play after a short delay
-                setTimeout(() => {
-                  if (player && typeof player.play === "function") {
-                    const retryPromise = player.play();
-                    if (retryPromise && typeof retryPromise.catch === 'function') {
-                      retryPromise.catch(() => {
-                        // Silently ignore retry failures
-                      });
-                    }
+            try {
+              player.play();
+            } catch (error: any) {
+              if (__DEV__) {
+                console.warn(`Failed to autoplay video ${confession.id}:`, error);
+              }
+              // Retry play after a short delay
+              setTimeout(() => {
+                if (player && typeof player.play === "function") {
+                  try {
+                    player.play();
+                  } catch (retryError) {
+                    // Silently ignore retry failures
                   }
-                }, 100);
-              });
+                }
+              }, 100);
             }
           }
         }, 100);
@@ -259,24 +283,17 @@ function EnhancedVideoItem({
               // Add a small delay to ensure the player is ready
               setTimeout(() => {
                 if (player && typeof player.play === "function") {
-                  const playPromise = player.play();
-                  if (playPromise && typeof playPromise.catch === 'function') {
-                    playPromise
-                      .then(() => {
-                        wasPlayingRef.current = true;
-                        updatePlayerState(confession.id, true);
-                        if (__DEV__) {
-                          console.log(`Video ${confession.id}: Started playing`);
-                        }
-                      })
-                      .catch((error: any) => {
-                        if (__DEV__) {
-                          console.warn(`Failed to play video ${confession.id}:`, error);
-                        }
-                      });
-                  } else {
+                  try {
+                    player.play();
                     wasPlayingRef.current = true;
                     updatePlayerState(confession.id, true);
+                    if (__DEV__) {
+                      console.log(`Video ${confession.id}: Started playing`);
+                    }
+                  } catch (error: any) {
+                    if (__DEV__) {
+                      console.warn(`Failed to play video ${confession.id}:`, error);
+                    }
                   }
                 }
               }, 50);
@@ -338,11 +355,10 @@ function EnhancedVideoItem({
             }
           } else if (nextAppState === "active" && wasPlayingRef.current && isActive) {
             // App is coming back to foreground, resume if it was playing and is active
-            const playPromise = player.play();
-            if (playPromise && typeof playPromise.catch === 'function') {
-              playPromise.catch(() => {
-                // Silently ignore play errors when resuming from background
-              });
+            try {
+              player.play();
+            } catch (error) {
+              // Silently ignore play errors when resuming from background
             }
           }
         } catch (e) {
@@ -361,11 +377,10 @@ function EnhancedVideoItem({
       if (player && player.playing && typeof player.pause === "function") {
         player.pause();
       } else if (player && typeof player.play === "function") {
-        const playPromise = player.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-          playPromise.catch((error: any) => {
-            if (__DEV__) console.warn("Toggle play failed:", error);
-          });
+        try {
+          player.play();
+        } catch (error: any) {
+          if (__DEV__) console.warn("Toggle play failed:", error);
         }
       }
     } catch (e) {
@@ -452,7 +467,6 @@ function EnhancedVideoItem({
         }}
         contentFit="cover"
         nativeControls={false}
-        allowsExternalPlayback={false}
         allowsPictureInPicture={false}
       />
 

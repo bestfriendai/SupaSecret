@@ -80,14 +80,38 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       // Graceful pause with timeout
       const pausePromise = new Promise<void>((resolve) => {
         try {
-          if (player.playing) {
-            player.pause();
+          // Check if player is still valid
+          let shouldPause = false;
+          try {
+            shouldPause = player.playing;
+          } catch (checkError: any) {
+            // Player already disposed
+            if (checkError?.message?.includes('NativeSharedObjectNotFoundException') ||
+                checkError?.message?.includes('Unable to find the native shared object')) {
+              resolve();
+              return;
+            }
+          }
+
+          if (shouldPause) {
+            try {
+              player.pause();
+            } catch (pauseErr: any) {
+              // Only log non-disposal errors
+              if (__DEV__ &&
+                  !pauseErr?.message?.includes('NativeSharedObjectNotFoundException') &&
+                  !pauseErr?.message?.includes('Unable to find the native shared object')) {
+                console.warn('Video pause error during disposal:', pauseErr?.message);
+              }
+            }
           }
           resolve();
-        } catch (pauseError) {
-          // Ignore pause errors during disposal
-          if (__DEV__) {
-            console.warn('Video pause failed during disposal:', pauseError);
+        } catch (pauseError: any) {
+          // Ignore disposal-related errors
+          if (__DEV__ &&
+              !pauseError?.message?.includes('NativeSharedObjectNotFoundException') &&
+              !pauseError?.message?.includes('Unable to find the native shared object')) {
+            console.warn('Video pause failed during disposal:', pauseError?.message);
           }
           resolve();
         }

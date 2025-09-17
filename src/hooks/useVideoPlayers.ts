@@ -112,9 +112,12 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
               if (currentPlayer && typeof currentPlayer.pause === "function") {
                 currentPlayer.pause();
               }
-            } catch (error) {
-              if (__DEV__) {
-                console.warn(`Failed to pause current player:`, error);
+            } catch (error: any) {
+              // Only log non-disposal errors
+              if (__DEV__ &&
+                  !error?.message?.includes('NativeSharedObjectNotFoundException') &&
+                  !error?.message?.includes('Unable to find the native shared object')) {
+                console.warn(`Failed to pause current player:`, error?.message);
               }
             }
           }
@@ -197,9 +200,12 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
         if (player && typeof player.pause === "function") {
           player.pause();
         }
-      } catch (error) {
-        if (__DEV__) {
-          console.warn("Failed to pause player:", error);
+      } catch (error: any) {
+        // Only log non-disposal errors
+        if (__DEV__ &&
+            !error?.message?.includes('NativeSharedObjectNotFoundException') &&
+            !error?.message?.includes('Unable to find the native shared object')) {
+          console.warn("Failed to pause player:", error?.message);
         }
       }
     });
