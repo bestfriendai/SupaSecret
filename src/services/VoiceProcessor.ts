@@ -77,13 +77,27 @@ export const useVoiceModification = () => {
 
         onProgress?.(40, `Processing audio with ${effectDescription} effect...`);
 
-        // FFmpeg command for pitch shifting
-        // asetrate changes the sample rate, aresample resamples back to original rate
-        const voiceCommand = `-i "${videoUri}" -af "asetrate=44100*${pitchFactor},aresample=44100" -c:v copy -y "${outputUri}"`;
+        // Validate pitch factor to prevent command injection
+        if (pitchFactor < 0.1 || pitchFactor > 10.0) {
+          throw new Error("Invalid pitch factor value");
+        }
 
-        console.log("Executing voice modification command:", voiceCommand);
+        // Sanitize file paths
+        const sanitizedInputPath = this.sanitizeFilePath(videoUri);
+        const sanitizedOutputPath = sanitizeFilePath(outputUri);
 
-        const session = await FFmpegKit.FFmpegKit.execute(voiceCommand);
+        // Use safe FFmpeg args array instead of string interpolation
+        const args = [
+          "-i", sanitizedInputPath,
+          "-af", `asetrate=44100*${pitchFactor},aresample=44100`,
+          "-c:v", "copy",
+          "-y",
+          sanitizedOutputPath
+        ];
+
+        console.log("Executing voice modification with safe args:", args);
+
+        const session = await FFmpegKit.FFmpegKit.executeWithArguments(args);
         const returnCode = await session.getReturnCode();
 
         onProgress?.(70, "Finalizing voice-modified video...");
@@ -133,9 +147,24 @@ export const useVoiceModification = () => {
         const outputUri = audioUri.replace(/\.(m4a|wav|mp3)$/i, `_voice_${effect}.$1`);
         const pitchFactor = effect === "deep" ? 0.8 : 1.2;
 
-        const audioCommand = `-i "${audioUri}" -af "asetrate=44100*${pitchFactor},aresample=44100" -y "${outputUri}"`;
+        // Validate pitch factor
+        if (pitchFactor < 0.1 || pitchFactor > 10.0) {
+          throw new Error("Invalid pitch factor value");
+        }
 
-        const session = await FFmpegKit.FFmpegKit.execute(audioCommand);
+        // Sanitize file paths
+        const sanitizedInputPath = sanitizeFilePath(audioUri);
+        const sanitizedOutputPath = sanitizeFilePath(outputUri);
+
+        // Use safe FFmpeg args array
+        const args = [
+          "-i", sanitizedInputPath,
+          "-af", `asetrate=44100*${pitchFactor},aresample=44100`,
+          "-y",
+          sanitizedOutputPath
+        ];
+
+        const session = await FFmpegKit.FFmpegKit.executeWithArguments(args);
         const returnCode = await session.getReturnCode();
 
         if (FFmpegKit.ReturnCode.isSuccess(returnCode)) {
@@ -151,11 +180,30 @@ export const useVoiceModification = () => {
     []
   );
 
+  // Helper function to sanitize file paths
+  const sanitizeFilePath = (path: string): string => {
+    if (!path || typeof path !== 'string') {
+      throw new Error('Invalid file path provided');
+    }
+
+    // Remove dangerous characters
+    const sanitized = path.replace(/[;&|`$(){}\[\]<>"'\\]/g, '');
+
+    // Validate path is within expected directories
+    if (!sanitized.includes(FileSystem.cacheDirectory!) &&
+        !sanitized.includes(FileSystem.documentDirectory!)) {
+      throw new Error('File path not in allowed directory');
+    }
+
+    return sanitized;
+  };
+
   return {
     processVideoWithVoiceEffect,
     processAudioWithVoiceEffect,
     isProcessing,
     error,
+    sanitizeFilePath, // Export for use in processAudioWithVoiceEffect
   };
 };
 

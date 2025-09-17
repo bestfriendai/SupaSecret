@@ -131,7 +131,11 @@ export class RevenueCatService {
   ): Promise<RevenueCatPurchaseResult | undefined> {
     for (let i = 0; i < attempts; i++) {
       try {
-        return await Purchases!.purchasePackage(pkg);
+        // Add null check for Purchases
+        if (!Purchases) {
+          throw new Error("RevenueCat Purchases not initialized");
+        }
+        return await Purchases.purchasePackage(pkg);
       } catch (e: any) {
         const msg = (e?.message || "").toLowerCase();
         const userCanceled = msg.includes("cancel");
@@ -245,8 +249,12 @@ export class RevenueCatService {
         console.log("🚀 Purchasing package:", packageToPurchase);
       }
       const result = await this.purchaseWithRetry(packageToPurchase);
-      const customerInfo = result?.customerInfo;
-      const productIdentifier = result?.productIdentifier;
+      // Handle undefined result
+      if (!result) {
+        throw new Error("Purchase result is undefined");
+      }
+      const customerInfo = result.customerInfo;
+      const productIdentifier = result.productIdentifier;
 
       if (__DEV__) {
         console.log("✅ Purchase completed successfully!", { customerInfo, productIdentifier });
@@ -336,7 +344,8 @@ export class RevenueCatService {
       }
 
       try {
-        await withSupabaseConfig(doUpsert);
+        // Fix withSupabaseConfig usage - it should wrap the operation
+        await withSupabaseConfig(() => doUpsert());
         console.log("✅ Subscription status synced with Supabase");
       } catch (e: any) {
         const msg = (e?.message || "").toLowerCase();

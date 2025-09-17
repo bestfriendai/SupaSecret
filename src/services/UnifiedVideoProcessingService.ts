@@ -619,11 +619,31 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     const inPath = this.pathForFFmpeg(videoUri);
     const outPath = this.pathForFFmpeg(outputUri);
 
+    // Validate and sanitize blur sigma value
     const blurSigma = quality === "high" ? 15 : quality === "low" ? 25 : 20;
-    const crf = this.qualityToCrf(quality || "medium");
-    const cmd = `-y -i "${inPath}" -vf "gblur=sigma=${blurSigma}" -c:v libx264 -crf ${crf} -preset veryfast -c:a copy "${outPath}"`;
+    if (blurSigma < 1 || blurSigma > 50) {
+      throw new Error("Invalid blur sigma value");
+    }
 
-    const success = await this.runFFmpeg(cmd);
+    // Validate and sanitize CRF value
+    const crf = this.qualityToCrf(quality || "medium");
+    if (crf < 0 || crf > 51) {
+      throw new Error("Invalid CRF value");
+    }
+
+    // Use safe FFmpeg args array instead of string interpolation
+    const args = [
+      "-y",
+      "-i", this.sanitizeFFmpegPath(inPath),
+      "-vf", `gblur=sigma=${blurSigma}`,
+      "-c:v", "libx264",
+      "-crf", crf.toString(),
+      "-preset", "veryfast",
+      "-c:a", "copy",
+      this.sanitizeFFmpegPath(outPath)
+    ];
+
+    const success = await this.runFFmpegSafe(args);
     if (!success) {
       await FileSystem.copyAsync({ from: videoUri, to: outputUri });
     }
@@ -737,6 +757,42 @@ class UnifiedVideoProcessingService implements IAnonymiser {
 
   private pathForFFmpeg(uri: string): string {
     return uri.startsWith("file://") ? uri.replace("file://", "") : uri;
+  }
+
+  private sanitizeFFmpegPath(path: string): string {
+    // Remove dangerous characters and validate path
+    if (!path || typeof path !== 'string') {
+      throw new Error('Invalid path provided');
+    }
+
+    // Remove shell metacharacters and ensure path safety
+    const sanitized = path.replace(/[;&|`$(){}\[\]<>"'\\]/g, '');
+
+    // Validate that path exists within expected directories
+    if (!sanitized.includes(FileSystem.cacheDirectory!) &&
+        !sanitized.includes(FileSystem.documentDirectory!)) {
+      throw new Error('Path not in allowed directory');
+    }
+
+    return sanitized;
+  }
+
+  private async runFFmpegSafe(args: string[]): Promise<boolean> {
+    try {
+      const isAvailable = await this.checkFFmpegAvailability();
+      if (!isAvailable) return false;
+
+      const ff = await import("ffmpeg-kit-react-native");
+      if (!ff || !ff.FFmpegKit) return false;
+
+      // Use executeWithArguments for safer execution
+      const session = await ff.FFmpegKit.executeWithArguments(args);
+      const returnCode = await session.getReturnCode();
+      return ff.ReturnCode.isSuccess(returnCode);
+    } catch (error) {
+      console.warn("FFmpeg execution failed:", error);
+      return false;
+    }
   }
 
   private async runFFmpeg(command: string): Promise<boolean> {

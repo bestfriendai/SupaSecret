@@ -8,9 +8,7 @@ import { View, Text, Pressable, ScrollView, Modal, Linking, Alert } from "react-
 import { Ionicons } from "@expo/vector-icons";
 import { useConsentStore, ConsentPreferences } from "../state/consentStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-
-// Privacy Policy URL - replace with your actual privacy policy URL
-const PRIVACY_POLICY_URL = "https://toxicconfessions.app/privacy";
+import { PRIVACY_POLICY_URL } from "../constants/urls";
 
 interface ConsentDialogProps {
   visible: boolean;

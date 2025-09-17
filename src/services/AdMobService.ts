@@ -220,10 +220,29 @@ export class AdMobService {
 
           unsubscribeError = this.interstitialAd.addAdEventListener(AET?.ERROR || "error", async (error: any) => {
             console.error("Interstitial ad error:", error);
-            // schedule reload with simple backoff
+            // schedule reload with simple backoff and abort mechanism
+            let aborted = false;
+            const timeouts: NodeJS.Timeout[] = [];
+
+            const abort = () => {
+              aborted = true;
+              timeouts.forEach(clearTimeout);
+            };
+
+            // Store original cleanup and create enhanced cleanup
+            const originalCleanup = cleanup;
+            const enhancedCleanup = () => {
+              abort();
+              originalCleanup();
+            };
+
             try {
-              for (let i = 0; i < 3; i++) {
+              for (let i = 0; i < 3 && !aborted; i++) {
+                const timeout = setTimeout(() => {}, 500 * Math.pow(2, i));
+                timeouts.push(timeout);
                 await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
+                if (aborted) break;
+
                 try {
                   if (this.isValidAdUnit(AD_UNIT_IDS.interstitial)) {
                     this.interstitialAd = InterstitialAd.createForAdRequest(AD_UNIT_IDS.interstitial);
@@ -233,7 +252,7 @@ export class AdMobService {
                 } catch {}
               }
             } catch {}
-            cleanup();
+            enhancedCleanup();
             resolve(false);
           });
 

@@ -41,6 +41,8 @@ export default function PullToRefreshOverlay({
   const progressArc = useSharedValue(0);
   const trendingHintOpacity = useSharedValue(0);
 
+  const shouldTrigger = pullDistance >= threshold;
+
   // Update progress arc based on pull distance
   useEffect(() => {
     const progress = Math.min(pullDistance / threshold, 1);
@@ -48,6 +50,8 @@ export default function PullToRefreshOverlay({
   }, [pullDistance, threshold]);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
     if (isRefreshing) {
       if (!userPreferences?.reduced_motion) {
         rotation.value = withRepeat(
@@ -74,12 +78,18 @@ export default function PullToRefreshOverlay({
           withDelay(2000, withTiming(0, { duration: 300 })),
         );
 
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           setShowTrendingHint(false);
           onRefreshComplete();
         }, 3000);
       }
     }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [isRefreshing, userPreferences?.reduced_motion, trendingHashtags, onRefreshComplete]);
 
   // Dynamic messaging based on context and pull state
@@ -131,8 +141,6 @@ export default function PullToRefreshOverlay({
   const trendingHintStyle = useAnimatedStyle(() => ({
     opacity: trendingHintOpacity.value,
   }));
-
-  const shouldTrigger = pullDistance >= threshold;
 
   return (
     <>

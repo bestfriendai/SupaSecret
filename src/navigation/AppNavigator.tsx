@@ -38,6 +38,7 @@ export type RootStackParamList = {
   VideoPlayer: { confessionId: string };
   Saved: undefined;
   Settings: undefined;
+  EditProfile: undefined;
   MySecrets: undefined;
   Paywall: { feature?: string; source?: string };
   WebView: { url: string; title: string };

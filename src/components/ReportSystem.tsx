@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput, Alert, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
@@ -39,6 +39,7 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState<"category" | "details" | "confirmation">("category");
+  const [reportId, setReportId] = useState<string | null>(null);
 
   const handleCategorySelect = useCallback(async (category: ReportCategory) => {
     setSelectedCategory(category);
@@ -57,7 +58,7 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from("reports").insert({
+      const { data, error } = await supabase.from("reports").insert({
         reporter_user_id: user.id, // Fixed: use reporter_user_id instead of reporter_id
         content_id: contentId,
         content_type: contentType,
@@ -65,10 +66,17 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
         additional_details: description.trim() || null,
         status: "pending",
         created_at: new Date().toISOString(),
-      });
+      })
+      .select('id')
+      .single();
 
       if (error) {
         throw error;
+      }
+
+      // Store the actual report ID from the database
+      if (data?.id) {
+        setReportId(data.id);
       }
 
       if (hapticsEnabled) {
@@ -77,11 +85,6 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
 
       setStep("confirmation");
       onReportSubmitted?.();
-
-      // Auto-close after showing confirmation
-      setTimeout(() => {
-        onClose();
-      }, 2000);
 
     } catch (error) {
       console.error("Report submission error:", error);
@@ -92,7 +95,24 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedCategory, user, contentId, contentType, description, hapticsEnabled, impactAsync, onReportSubmitted, onClose]);
+  }, [selectedCategory, user, contentId, contentType, description, hapticsEnabled, impactAsync, onReportSubmitted]);
+
+  // Handle auto-close with timeout cleanup
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (step === "confirmation") {
+      timeoutId = setTimeout(() => {
+        onClose();
+      }, 2000);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [step, onClose]);
 
   const renderCategoryStep = () => (
     <View style={styles.stepContainer}>
@@ -202,7 +222,7 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
 
       <View style={styles.confirmationDetails}>
         <Text style={styles.confirmationDetailText}>
-          Report ID: {contentId.slice(0, 8)}...
+          Report ID: {reportId ? reportId.slice(0, 8) + '...' : 'Pending...'}
         </Text>
         <Text style={styles.confirmationDetailText}>
           Category: {REPORT_CATEGORIES.find(c => c.id === selectedCategory)?.label}

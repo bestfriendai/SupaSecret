@@ -31,7 +31,8 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
 }) => {
   const { hapticsEnabled, impactAsync } = usePreferenceAwareHaptics();
   const { trendingHashtags, trendingSecrets } = useTrendingStore();
-  
+  const videoAnalytics = useConfessionStore(state => state.videoAnalytics);
+
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +59,7 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
       const totalConfessions = confessionData?.length || 0;
       const totalLikes = confessionData?.reduce((sum, c) => sum + (c.likes || 0), 0) || 0;
       
-      // Get video analytics from store for view counts
-      const { videoAnalytics } = useConfessionStore.getState();
+      // Get video analytics from store for view counts (now accessed from component scope)
       
       // Calculate total views from video analytics instead of confession.views
       let totalViews = 0;
@@ -146,7 +146,7 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [timePeriod]);
+  }, [timePeriod, videoAnalytics]);
 
   useEffect(() => {
     loadAnalytics();

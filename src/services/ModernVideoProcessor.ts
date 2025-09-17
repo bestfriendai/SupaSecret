@@ -455,7 +455,13 @@ export class ModernVideoProcessor {
     const outputUri = `${outputDir}trimmed_${Date.now()}.mp4`;
     const duration = endTime - startTime;
 
-    const command = `-ss ${startTime} -i ${videoUri} -t ${duration} -c copy ${outputUri}`;
+    // Safe FFmpeg arguments to prevent command injection
+    const safeStartTime = String(startTime).replace(/[^0-9.]/g, '');
+    const safeDuration = String(duration).replace(/[^0-9.]/g, '');
+    const safeVideoUri = videoUri.replace(/[;&|`$(){}[\]<>]/g, '');
+    const safeOutputUri = outputUri.replace(/[;&|`$(){}[\]<>]/g, '');
+
+    const command = `-ss ${safeStartTime} -i "${safeVideoUri}" -t ${safeDuration} -c copy "${safeOutputUri}"`;
 
     const session = await FFmpegKit.execute(command);
     const returnCode = await session.getReturnCode();
