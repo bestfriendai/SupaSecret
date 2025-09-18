@@ -3,7 +3,6 @@ if (__DEV__) {
   console.log("[index] Project ID is: ", process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID);
 }
 import "react-native-reanimated";
-import "react-native-worklets";
 import "react-native-get-random-values";
 import { LogBox } from "react-native";
 LogBox.ignoreLogs([
