@@ -21,6 +21,7 @@ export type Database = {
           id: string
           is_anonymous: boolean
           likes: number
+          session_id: string | null
           transcription: string | null
           type: string
           updated_at: string | null
@@ -32,6 +33,7 @@ export type Database = {
           video_thumbnail_url: string | null
           video_uri: string | null
           video_url: string | null
+          views: number
         }
         Insert: {
           content: string
@@ -39,6 +41,7 @@ export type Database = {
           id?: string
           is_anonymous?: boolean
           likes?: number
+          session_id?: string | null
           transcription?: string | null
           type: string
           updated_at?: string | null
@@ -50,6 +53,7 @@ export type Database = {
           video_thumbnail_url?: string | null
           video_uri?: string | null
           video_url?: string | null
+          views?: number
         }
         Update: {
           content?: string
@@ -57,6 +61,7 @@ export type Database = {
           id?: string
           is_anonymous?: boolean
           likes?: number
+          session_id?: string | null
           transcription?: string | null
           type?: string
           updated_at?: string | null
@@ -68,6 +73,7 @@ export type Database = {
           video_thumbnail_url?: string | null
           video_uri?: string | null
           video_url?: string | null
+          views?: number
         }
         Relationships: []
       }
@@ -430,6 +436,7 @@ export type Database = {
           confession_id: string
           interactions: number | null
           last_watched: string | null
+          session_id: string | null
           updated_at: string | null
           watch_time: number | null
         }
@@ -438,6 +445,7 @@ export type Database = {
           confession_id: string
           interactions?: number | null
           last_watched?: string | null
+          session_id?: string | null
           updated_at?: string | null
           watch_time?: number | null
         }
@@ -446,6 +454,7 @@ export type Database = {
           confession_id?: string
           interactions?: number | null
           last_watched?: string | null
+          session_id?: string | null
           updated_at?: string | null
           watch_time?: number | null
         }
