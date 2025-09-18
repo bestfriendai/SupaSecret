@@ -181,30 +181,28 @@ const ProfileScreen = () => {
     const finalUserConfessions = userConfessions || [];
     // Get video analytics from store
     const { videoAnalytics } = useConfessionStore.getState();
-    
+
     // Get all confession IDs
-    const confessionIds = finalUserConfessions.map(confession => confession.id);
-    
+    const confessionIds = finalUserConfessions.map((confession) => confession.id);
+
     // Calculate views using the utility function (synchronously with available data)
     let totalViews = 0;
-    
+
     // If we have videoAnalytics data available, use it to calculate views
     if (videoAnalytics && Object.keys(videoAnalytics).length > 0) {
       // Transform videoAnalytics into the format expected by the utility
       const analyticsArray = Object.entries(videoAnalytics).flatMap(([confessionId, analytics]) => {
         if (!analytics || !analytics.sessions) return [];
-        return Object.keys(analytics.sessions).map(sessionId => ({
+        return Object.keys(analytics.sessions).map((sessionId) => ({
           confession_id: confessionId,
-          session_id: sessionId
+          session_id: sessionId,
         }));
       });
-      
+
       // Calculate views for each confession and sum them up
-      finalUserConfessions.forEach(confession => {
+      finalUserConfessions.forEach((confession) => {
         const sessions = new Set(
-          analyticsArray
-            .filter(va => va.confession_id === confession.id)
-            .map(va => va.session_id)
+          analyticsArray.filter((va) => va.confession_id === confession.id).map((va) => va.session_id),
         );
         totalViews += sessions.size || 1; // At least 1 view per confession
       });

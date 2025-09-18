@@ -42,7 +42,7 @@ class VideoCacheManager {
     idleCleanupInterval: 30000, // 30 seconds
   };
   private currentCacheSize = 0;
-  private cacheDir = `${FileSystem.cacheDirectory}video_cache/`;
+  private cacheDir = `${FileSystem.Paths.cache.uri}video_cache/`;
   private isCleaningUp = false;
   private viewingPatterns: Map<string, number[]> = new Map();
   private cacheHitRate = 0;
@@ -64,9 +64,9 @@ class VideoCacheManager {
     });
 
     // Initialize cache partitions
-    this.cachePartitions.set('thumbnail', new Map());
-    this.cachePartitions.set('preview', new Map());
-    this.cachePartitions.set('full', new Map());
+    this.cachePartitions.set("thumbnail", new Map());
+    this.cachePartitions.set("preview", new Map());
+    this.cachePartitions.set("full", new Map());
 
     this.initializeCache();
     this.startBackgroundTasks();
@@ -86,7 +86,7 @@ class VideoCacheManager {
 
       // Create partition directories
       if (this.config.cachePartitioning) {
-        for (const partition of ['thumbnail', 'preview', 'full']) {
+        for (const partition of ["thumbnail", "preview", "full"]) {
           const partitionDir = `${this.cacheDir}${partition}/`;
           const partitionInfo = await FileSystem.getInfoAsync(partitionDir);
           if (!partitionInfo.exists) {
@@ -351,7 +351,7 @@ class VideoCacheManager {
       const maxAge = 2 * 60 * 60 * 1000; // 2 hours
 
       for (const [key, entry] of this.cache.entries()) {
-        if (now - entry.lastAccessTime > maxAge && entry.priority === 'low') {
+        if (now - entry.lastAccessTime > maxAge && entry.priority === "low") {
           await this.handleEviction(key, entry);
         }
       }
@@ -361,7 +361,7 @@ class VideoCacheManager {
         await this.optimizeCacheBasedOnPatterns();
       }
     } catch (error) {
-      console.error('Idle cleanup failed:', error);
+      console.error("Idle cleanup failed:", error);
     }
   }
 
@@ -427,9 +427,11 @@ class VideoCacheManager {
 
     // Find videos likely to be accessed soon
     for (const [key, entry] of this.cache.entries()) {
-      if (entry.predictedNextAccess &&
-          entry.predictedNextAccess - now < 60000 && // Within next minute
-          entry.predictedNextAccess > now) {
+      if (
+        entry.predictedNextAccess &&
+        entry.predictedNextAccess - now < 60000 && // Within next minute
+        entry.predictedNextAccess > now
+      ) {
         upcomingVideos.push(entry.uri);
       }
     }
@@ -464,7 +466,7 @@ class VideoCacheManager {
         this.viewingPatterns = new Map(Object.entries(patterns));
       }
     } catch (error) {
-      console.error('Failed to load viewing patterns:', error);
+      console.error("Failed to load viewing patterns:", error);
     }
   }
 
@@ -474,7 +476,7 @@ class VideoCacheManager {
       const patterns = Object.fromEntries(this.viewingPatterns);
       await FileSystem.writeAsStringAsync(patternsPath, JSON.stringify(patterns));
     } catch (error) {
-      console.error('Failed to save viewing patterns:', error);
+      console.error("Failed to save viewing patterns:", error);
     }
   }
 
@@ -503,13 +505,9 @@ class VideoCacheManager {
 
     const timestamps = entries.map((e) => e.timestamp);
 
-    const avgAccessFreq = entries.length > 0
-      ? entries.reduce((sum, e) => sum + e.accessCount, 0) / entries.length
-      : 0;
+    const avgAccessFreq = entries.length > 0 ? entries.reduce((sum, e) => sum + e.accessCount, 0) / entries.length : 0;
 
-    const storageEfficiency = this.config.maxCacheSize > 0
-      ? this.currentCacheSize / this.config.maxCacheSize
-      : 0;
+    const storageEfficiency = this.config.maxCacheSize > 0 ? this.currentCacheSize / this.config.maxCacheSize : 0;
 
     return {
       size: this.currentCacheSize,

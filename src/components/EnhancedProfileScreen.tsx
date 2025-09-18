@@ -1,15 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-  Image,
-  Dimensions,
-  RefreshControl,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, Dimensions, RefreshControl, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -74,11 +64,7 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
     try {
       // Load user profile
       if (!isOwnProfile) {
-        const { data: profile } = await supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("id", userId)
-          .single();
+        const { data: profile } = await supabase.from("user_profiles").select("*").eq("id", userId).single();
 
         // Check if component is still mounted before updating state
         if (isMountedRef.current) {
@@ -113,7 +99,6 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
       if (isOwnProfile && isMountedRef.current) {
         await loadUserConfessions();
       }
-
     } catch (error) {
       console.error("Error loading profile data:", error);
     }
@@ -129,12 +114,15 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
     setIsRefreshing(false);
   }, [loadProfileData]);
 
-  const handleTabChange = useCallback(async (tab: typeof activeTab) => {
-    setActiveTab(tab);
-    if (hapticsEnabled) {
-      await impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  }, [hapticsEnabled, impactAsync]);
+  const handleTabChange = useCallback(
+    async (tab: typeof activeTab) => {
+      setActiveTab(tab);
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    },
+    [hapticsEnabled, impactAsync],
+  );
 
   const handleEditProfile = useCallback(() => {
     // Navigate to edit profile screen
@@ -146,23 +134,19 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
   }, [navigation]);
 
   const handleSignOut = useCallback(async () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            if (hapticsEnabled) {
-              await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            }
-            await signOut();
-          },
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          if (hapticsEnabled) {
+            await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          }
+          await signOut();
         },
-      ]
-    );
+      },
+    ]);
   }, [signOut, hapticsEnabled, impactAsync]);
 
   const formatNumber = (num: number): string => {
@@ -195,7 +179,7 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="white" />
           </Pressable>
-          
+
           <View style={styles.headerInfo}>
             <Text style={styles.headerName}>{displayUser?.username || "Anonymous"}</Text>
             <Text style={styles.headerSubtitle}>{stats.confessions} secrets</Text>
@@ -232,11 +216,10 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
                 {membershipBadge.label} Member
               </Text>
             )}
-            <Text style={styles.bio}>
-              {displayUser?.bio || "Sharing secrets anonymously 🤫"}
-            </Text>
+            <Text style={styles.bio}>{displayUser?.bio || "Sharing secrets anonymously 🤫"}</Text>
             <Text style={styles.joinDate}>
-              Joined {new Date(displayUser?.created_at || Date.now()).toLocaleDateString("en-US", {
+              Joined{" "}
+              {new Date(displayUser?.created_at || Date.now()).toLocaleDateString("en-US", {
                 month: "long",
                 year: "numeric",
               })}
@@ -273,17 +256,17 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
             <Text style={styles.statValue}>{formatNumber(stats.confessions)}</Text>
             <Text style={styles.statLabel}>Secrets</Text>
           </Pressable>
-          
+
           <Pressable style={styles.statItem}>
             <Text style={styles.statValue}>{formatNumber(stats.likes)}</Text>
             <Text style={styles.statLabel}>Likes</Text>
           </Pressable>
-          
+
           <Pressable style={styles.statItem}>
             <Text style={styles.statValue}>{formatNumber(stats.views)}</Text>
             <Text style={styles.statLabel}>Views</Text>
           </Pressable>
-          
+
           <Pressable style={styles.statItem}>
             <Text style={styles.statValue}>{formatNumber(stats.followers)}</Text>
             <Text style={styles.statLabel}>Followers</Text>
@@ -296,14 +279,8 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
             style={[styles.tab, activeTab === "confessions" && styles.activeTab]}
             onPress={() => handleTabChange("confessions")}
           >
-            <Ionicons
-              name="document-text"
-              size={20}
-              color={activeTab === "confessions" ? "#1D9BF0" : "#666"}
-            />
-            <Text style={[styles.tabText, activeTab === "confessions" && styles.activeTabText]}>
-              Secrets
-            </Text>
+            <Ionicons name="document-text" size={20} color={activeTab === "confessions" ? "#1D9BF0" : "#666"} />
+            <Text style={[styles.tabText, activeTab === "confessions" && styles.activeTabText]}>Secrets</Text>
           </Pressable>
 
           {isOwnProfile && (
@@ -312,28 +289,16 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
                 style={[styles.tab, activeTab === "liked" && styles.activeTab]}
                 onPress={() => handleTabChange("liked")}
               >
-                <Ionicons
-                  name="heart"
-                  size={20}
-                  color={activeTab === "liked" ? "#1D9BF0" : "#666"}
-                />
-                <Text style={[styles.tabText, activeTab === "liked" && styles.activeTabText]}>
-                  Liked
-                </Text>
+                <Ionicons name="heart" size={20} color={activeTab === "liked" ? "#1D9BF0" : "#666"} />
+                <Text style={[styles.tabText, activeTab === "liked" && styles.activeTabText]}>Liked</Text>
               </Pressable>
 
               <Pressable
                 style={[styles.tab, activeTab === "saved" && styles.activeTab]}
                 onPress={() => handleTabChange("saved")}
               >
-                <Ionicons
-                  name="bookmark"
-                  size={20}
-                  color={activeTab === "saved" ? "#1D9BF0" : "#666"}
-                />
-                <Text style={[styles.tabText, activeTab === "saved" && styles.activeTabText]}>
-                  Saved
-                </Text>
+                <Ionicons name="bookmark" size={20} color={activeTab === "saved" ? "#1D9BF0" : "#666"} />
+                <Text style={[styles.tabText, activeTab === "saved" && styles.activeTabText]}>Saved</Text>
               </Pressable>
             </>
           )}

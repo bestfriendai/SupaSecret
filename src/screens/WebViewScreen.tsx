@@ -49,10 +49,7 @@ const isUrlAllowed = (url: string): boolean => {
     }
 
     // Check if domain is allowed
-    if (!ALLOWED_DOMAINS.some(domain =>
-      parsedUrl.hostname === domain ||
-      parsedUrl.hostname.endsWith('.' + domain)
-    )) {
+    if (!ALLOWED_DOMAINS.some((domain) => parsedUrl.hostname === domain || parsedUrl.hostname.endsWith("." + domain))) {
       return false;
     }
 

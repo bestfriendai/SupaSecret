@@ -94,10 +94,7 @@ export namespace Debounce {
   /**
    * Generic debounce function
    */
-  export function create<T extends (...args: any[]) => any>(
-    func: T,
-    delay: number
-  ): (...args: Parameters<T>) => void {
+  export function create<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     return (...args: Parameters<T>) => {
@@ -112,7 +109,7 @@ export namespace Debounce {
   export function createWithImmediate<T extends (...args: any[]) => any>(
     func: T,
     delay: number,
-    immediate: boolean = false
+    immediate: boolean = false,
   ): (...args: Parameters<T>) => void {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let lastCall = 0;
@@ -139,7 +136,7 @@ export namespace Debounce {
    */
   export function throttle<T extends (...args: any[]) => any>(
     func: T,
-    limit: number
+    limit: number,
   ): (...args: Parameters<T>) => void {
     let inThrottle = false;
 
@@ -226,7 +223,7 @@ export namespace Common {
    * Sleep utility for async operations
    */
   export const sleep = (ms: number): Promise<void> => {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   };
 
   /**
@@ -242,7 +239,7 @@ export namespace Common {
   export const deepClone = <T>(obj: T): T => {
     if (obj === null || typeof obj !== "object") return obj;
     if (obj instanceof Date) return new Date(obj.getTime()) as any;
-    if (obj instanceof Array) return obj.map(item => deepClone(item)) as any;
+    if (obj instanceof Array) return obj.map((item) => deepClone(item)) as any;
 
     const clonedObj = {} as T;
     for (const key in obj) {
@@ -257,15 +254,15 @@ export namespace Common {
    * Format bytes to human readable string
    */
   export const formatBytes = (bytes: number, decimals: number = 2): string => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
 
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   };
 
   /**
@@ -387,10 +384,7 @@ export const useDebouncedSearch = (searchTerm: string, delay: number = 300): str
   return useDebouncedValue(searchTerm, delay);
 };
 
-export const useDebouncedRefresh = <T extends () => Promise<void>>(
-  refreshFn: T,
-  delay: number = 1000
-): T => {
+export const useDebouncedRefresh = <T extends () => Promise<void>>(refreshFn: T, delay: number = 1000): T => {
   const debouncedFn = useDebounce(refreshFn, delay);
   return debouncedFn as T;
 };

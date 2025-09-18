@@ -76,7 +76,7 @@ export const useNotificationStore = create<NotificationState>()(
 
           if (error) throw error;
 
-          const notifications: Notification[] = (data || []).map(item => ({
+          const notifications: Notification[] = (data || []).map((item) => ({
             ...item,
             type: item.type as "like" | "reply",
             entity_type: item.entity_type as "confession" | "reply",

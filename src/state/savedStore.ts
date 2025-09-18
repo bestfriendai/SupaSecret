@@ -227,7 +227,7 @@ export const useSavedStore = create<SavedState>()(
           } = await supabase.auth.getUser();
 
           if (!user?.id) {
-            throw new Error('User not authenticated');
+            throw new Error("User not authenticated");
           }
 
           // Fetch saved confessions from Supabase
@@ -240,7 +240,7 @@ export const useSavedStore = create<SavedState>()(
             `,
             )
             .in("id", state.savedConfessionIds)
-            .eq('confession_likes.user_id', user.id)
+            .eq("confession_likes.user_id", user.id)
             .order("created_at", { ascending: false })
             .limit(ITEMS_PER_PAGE);
 
@@ -261,7 +261,7 @@ export const useSavedStore = create<SavedState>()(
             });
           } catch (normalizationError) {
             if (__DEV__) {
-              console.error('Failed to normalize saved confessions:', normalizationError);
+              console.error("Failed to normalize saved confessions:", normalizationError);
             }
             // Fallback to basic processing if normalization fails
             processedConfessions = (confessions || []).map((row: any) => ({
@@ -273,6 +273,7 @@ export const useSavedStore = create<SavedState>()(
               timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
               isAnonymous: !!row.is_anonymous,
               likes: row.likes ?? 0,
+              views: row.views ?? 0,
               isLiked: (row?.confession_likes?.length ?? 0) > 0,
             }));
           }
@@ -316,7 +317,7 @@ export const useSavedStore = create<SavedState>()(
           } = await supabase.auth.getUser();
 
           if (!user?.id) {
-            throw new Error('User not authenticated');
+            throw new Error("User not authenticated");
           }
 
           const { data: confessions, error } = await supabase
@@ -328,7 +329,7 @@ export const useSavedStore = create<SavedState>()(
             `,
             )
             .in("id", remainingIds.slice(0, ITEMS_PER_PAGE))
-            .eq('confession_likes.user_id', user.id)
+            .eq("confession_likes.user_id", user.id)
             .order("created_at", { ascending: false });
 
           if (error) throw error;
@@ -348,7 +349,7 @@ export const useSavedStore = create<SavedState>()(
             });
           } catch (normalizationError) {
             if (__DEV__) {
-              console.error('Failed to normalize more saved confessions:', normalizationError);
+              console.error("Failed to normalize more saved confessions:", normalizationError);
             }
             // Fallback to basic processing if normalization fails
             processedConfessions = (confessions || []).map((row: any) => ({
@@ -360,6 +361,7 @@ export const useSavedStore = create<SavedState>()(
               timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
               isAnonymous: !!row.is_anonymous,
               likes: row.likes ?? 0,
+              views: row.views ?? 0,
               isLiked: (row?.confession_likes?.length ?? 0) > 0,
             }));
           }

@@ -57,6 +57,8 @@ export default function CreateConfessionScreen() {
         type: "text",
         content: trimmedContent,
         isAnonymous: true,
+        views: 0,
+        likes: 0,
       });
 
       if (__DEV__) {

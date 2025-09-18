@@ -114,21 +114,23 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
               }
             } catch (error: any) {
               // Only log non-disposal errors
-              if (__DEV__ &&
-                  !error?.message?.includes('NativeSharedObjectNotFoundException') &&
-                  !error?.message?.includes('Unable to find the native shared object')) {
+              if (
+                __DEV__ &&
+                !error?.message?.includes("NativeSharedObjectNotFoundException") &&
+                !error?.message?.includes("Unable to find the native shared object")
+              ) {
                 console.warn(`Failed to pause current player:`, error?.message);
               }
             }
           }
 
-          const playPromise = player.play();
-          if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch((error: any) => {
-              if (__DEV__) {
-                console.warn(`Failed to play video at index ${index}:`, error);
-              }
-            });
+          try {
+            player.play();
+            // Note: player.play() in expo-video returns void, not a Promise
+          } catch (error) {
+            if (__DEV__) {
+              console.warn(`Failed to play video at index ${index}:`, error);
+            }
           }
           currentPlayingRef.current = index;
 
@@ -202,9 +204,11 @@ export const useVideoPlayers = (videos: VideoItem[]): VideoPlayerManager => {
         }
       } catch (error: any) {
         // Only log non-disposal errors
-        if (__DEV__ &&
-            !error?.message?.includes('NativeSharedObjectNotFoundException') &&
-            !error?.message?.includes('Unable to find the native shared object')) {
+        if (
+          __DEV__ &&
+          !error?.message?.includes("NativeSharedObjectNotFoundException") &&
+          !error?.message?.includes("Unable to find the native shared object")
+        ) {
           console.warn("Failed to pause player:", error?.message);
         }
       }

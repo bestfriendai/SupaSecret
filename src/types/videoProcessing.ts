@@ -6,11 +6,11 @@
 // Core Video Types
 // ============================================
 
-export type VideoQuality = 'highest' | 'high' | 'medium' | 'low';
-export type VoiceEffect = 'none' | 'robot' | 'whisper' | 'deep' | 'light';
-export type VideoFormat = 'mp4' | 'mov' | 'avi' | 'mkv' | 'm4v' | '3gp' | 'webm';
-export type ProcessingMode = 'local' | 'server' | 'hybrid' | 'ffmpeg';
-export type ContentType = 'thumbnail' | 'preview' | 'full';
+export type VideoQuality = "highest" | "high" | "medium" | "low";
+export type VoiceEffect = "none" | "robot" | "whisper" | "deep" | "light";
+export type VideoFormat = "mp4" | "mov" | "avi" | "mkv" | "m4v" | "3gp" | "webm";
+export type ProcessingMode = "local" | "server" | "hybrid" | "ffmpeg";
+export type ContentType = "thumbnail" | "preview" | "full";
 
 // ============================================
 // Processing Options
@@ -33,7 +33,7 @@ export interface ExtendedVideoProcessingOptions extends VideoProcessingOptions {
   priority?: number;
   fallbackToServer?: boolean;
   maxRetries?: number;
-  cacheStrategy?: 'aggressive' | 'normal' | 'bypass';
+  cacheStrategy?: "aggressive" | "normal" | "bypass";
 }
 
 // ============================================
@@ -83,7 +83,7 @@ export interface ProcessingJob {
   maxRetries?: number;
 }
 
-export type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+export type ProcessingStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
 
 // ============================================
 // Processing Progress
@@ -98,14 +98,14 @@ export interface ProcessingProgress {
 }
 
 export type ProcessingStage =
-  | 'initializing'
-  | 'downloading'
-  | 'processing'
-  | 'applying-effects'
-  | 'transcribing'
-  | 'generating-thumbnail'
-  | 'uploading'
-  | 'finalizing';
+  | "initializing"
+  | "downloading"
+  | "processing"
+  | "applying-effects"
+  | "transcribing"
+  | "generating-thumbnail"
+  | "uploading"
+  | "finalizing";
 
 // ============================================
 // Cache Types
@@ -117,7 +117,7 @@ export interface VideoCacheEntry {
   timestamp: number;
   size: number;
   accessCount: number;
-  priority: 'high' | 'normal' | 'low';
+  priority: "high" | "normal" | "low";
   lastAccessTime: number;
   predictedNextAccess?: number;
   quality?: VideoQuality;
@@ -146,25 +146,25 @@ export class VideoProcessingError extends Error {
   constructor(
     message: string,
     public code: VideoProcessingErrorCode,
-    public originalError?: Error
+    public originalError?: Error,
   ) {
     super(message);
-    this.name = 'VideoProcessingError';
+    this.name = "VideoProcessingError";
   }
 }
 
 export enum VideoProcessingErrorCode {
-  INVALID_INPUT = 'INVALID_INPUT',
-  FILE_NOT_FOUND = 'FILE_NOT_FOUND',
-  UNSUPPORTED_FORMAT = 'UNSUPPORTED_FORMAT',
-  SIZE_LIMIT_EXCEEDED = 'SIZE_LIMIT_EXCEEDED',
-  PROCESSING_FAILED = 'PROCESSING_FAILED',
-  TRANSCRIPTION_FAILED = 'TRANSCRIPTION_FAILED',
-  UPLOAD_FAILED = 'UPLOAD_FAILED',
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  TIMEOUT = 'TIMEOUT',
-  CANCELLED = 'CANCELLED',
-  UNKNOWN = 'UNKNOWN'
+  INVALID_INPUT = "INVALID_INPUT",
+  FILE_NOT_FOUND = "FILE_NOT_FOUND",
+  UNSUPPORTED_FORMAT = "UNSUPPORTED_FORMAT",
+  SIZE_LIMIT_EXCEEDED = "SIZE_LIMIT_EXCEEDED",
+  PROCESSING_FAILED = "PROCESSING_FAILED",
+  TRANSCRIPTION_FAILED = "TRANSCRIPTION_FAILED",
+  UPLOAD_FAILED = "UPLOAD_FAILED",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  TIMEOUT = "TIMEOUT",
+  CANCELLED = "CANCELLED",
+  UNKNOWN = "UNKNOWN",
 }
 
 // ============================================
@@ -193,30 +193,25 @@ export interface ProcessingStats {
 // ============================================
 
 export function isVideoQuality(value: unknown): value is VideoQuality {
-  return typeof value === 'string' &&
-    ['highest', 'high', 'medium', 'low'].includes(value);
+  return typeof value === "string" && ["highest", "high", "medium", "low"].includes(value);
 }
 
 export function isVoiceEffect(value: unknown): value is VoiceEffect {
-  return typeof value === 'string' &&
-    ['none', 'robot', 'whisper', 'deep', 'light'].includes(value);
+  return typeof value === "string" && ["none", "robot", "whisper", "deep", "light"].includes(value);
 }
 
 export function isVideoFormat(value: unknown): value is VideoFormat {
-  return typeof value === 'string' &&
-    ['mp4', 'mov', 'avi', 'mkv', 'm4v', '3gp', 'webm'].includes(value);
+  return typeof value === "string" && ["mp4", "mov", "avi", "mkv", "m4v", "3gp", "webm"].includes(value);
 }
 
 export function isProcessingMode(value: unknown): value is ProcessingMode {
-  return typeof value === 'string' &&
-    ['local', 'server', 'hybrid', 'ffmpeg'].includes(value);
+  return typeof value === "string" && ["local", "server", "hybrid", "ffmpeg"].includes(value);
 }
 
 export function isProcessedVideo(value: unknown): value is ProcessedVideo {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== "object") return false;
   const v = value as any;
-  return typeof v.uri === 'string' &&
-         typeof v.duration === 'number';
+  return typeof v.uri === "string" && typeof v.duration === "number";
 }
 
 // ============================================

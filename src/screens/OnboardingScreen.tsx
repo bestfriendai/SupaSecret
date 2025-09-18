@@ -14,7 +14,7 @@ import Animated, {
   withSequence,
   withDelay,
   interpolate,
-  Easing
+  Easing,
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
@@ -43,7 +43,7 @@ export default function OnboardingScreen() {
     logoScale.value = withSpring(1, { damping: 15, stiffness: 100 });
     logoRotation.value = withSequence(
       withTiming(-10, { duration: 100 }),
-      withSpring(0, { damping: 10, stiffness: 100 })
+      withSpring(0, { damping: 10, stiffness: 100 }),
     );
 
     // Animate text elements with delays
@@ -54,31 +54,22 @@ export default function OnboardingScreen() {
   }, []);
 
   const logoAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: logoScale.value },
-      { rotate: `${logoRotation.value}deg` }
-    ],
+    transform: [{ scale: logoScale.value }, { rotate: `${logoRotation.value}deg` }],
   }));
 
   const titleAnimatedStyle = useAnimatedStyle(() => ({
     opacity: titleOpacity.value,
-    transform: [
-      { translateY: interpolate(titleOpacity.value, [0, 1], [20, 0]) }
-    ],
+    transform: [{ translateY: interpolate(titleOpacity.value, [0, 1], [20, 0]) }],
   }));
 
   const subtitleAnimatedStyle = useAnimatedStyle(() => ({
     opacity: subtitleOpacity.value,
-    transform: [
-      { translateY: interpolate(subtitleOpacity.value, [0, 1], [20, 0]) }
-    ],
+    transform: [{ translateY: interpolate(subtitleOpacity.value, [0, 1], [20, 0]) }],
   }));
 
   const featuresAnimatedStyle = useAnimatedStyle(() => ({
     opacity: featuresOpacity.value,
-    transform: [
-      { translateY: interpolate(featuresOpacity.value, [0, 1], [20, 0]) }
-    ],
+    transform: [{ translateY: interpolate(featuresOpacity.value, [0, 1], [20, 0]) }],
   }));
 
   const buttonAnimatedStyle = useAnimatedStyle(() => ({
@@ -98,11 +89,9 @@ export default function OnboardingScreen() {
         navigation.navigate("SignUp");
       }
     } catch (error) {
-      Alert.alert(
-        "Error",
-        "Something went wrong. Please try again.",
-        [{ text: "OK", onPress: () => setIsProcessing(false) }]
-      );
+      Alert.alert("Error", "Something went wrong. Please try again.", [
+        { text: "OK", onPress: () => setIsProcessing(false) },
+      ]);
       return;
     }
 
@@ -144,9 +133,9 @@ export default function OnboardingScreen() {
 
       {/* Background Gradient */}
       <LinearGradient
-        colors={['#000000', '#0A0A0A', '#000000']}
+        colors={["#000000", "#0A0A0A", "#000000"]}
         style={{
-          position: 'absolute',
+          position: "absolute",
           left: 0,
           right: 0,
           top: 0,
@@ -159,11 +148,7 @@ export default function OnboardingScreen() {
       <View className="absolute bottom-40 -right-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl" />
 
       <SafeAreaView className="flex-1">
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
           <View className="flex-1 px-6 py-8">
             {/* Logo Section with Glow Effect */}
             <View className="items-center mb-8">
@@ -174,15 +159,17 @@ export default function OnboardingScreen() {
                 </View>
 
                 {/* Logo with shadow */}
-                <View style={{
-                  shadowColor: "#3B82F6",
-                  shadowOffset: { width: 0, height: 10 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 20,
-                  elevation: 10,
-                }}>
+                <View
+                  style={{
+                    shadowColor: "#3B82F6",
+                    shadowOffset: { width: 0, height: 10 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 20,
+                    elevation: 10,
+                  }}
+                >
                   <Image
-                    source={require('../../assets/logo.png')}
+                    source={require("../../assets/logo.png")}
                     style={{ width: 140, height: 140 }}
                     resizeMode="contain"
                   />
@@ -192,16 +179,14 @@ export default function OnboardingScreen() {
 
             {/* Title with Gradient Text Effect */}
             <Animated.View style={titleAnimatedStyle}>
-              <Text className="text-white text-36 font-bold text-center mb-2">
-                Toxic Confessions
-              </Text>
+              <Text className="text-white text-36 font-bold text-center mb-2">Toxic Confessions</Text>
               <View className="h-1 w-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mx-auto mb-4" />
             </Animated.View>
 
             {/* Subtitle */}
             <Animated.View style={subtitleAnimatedStyle}>
               <Text className="text-gray-300 text-17 text-center leading-6 mb-12 px-4">
-                Share your deepest secrets anonymously.{'\n'}
+                Share your deepest secrets anonymously.{"\n"}
                 Find comfort in shared experiences.
               </Text>
             </Animated.View>
@@ -223,25 +208,13 @@ export default function OnboardingScreen() {
                         className="w-12 h-12 rounded-xl items-center justify-center mr-4"
                         style={{ backgroundColor: feature.bgColor }}
                       >
-                        <Ionicons
-                          name={feature.icon as any}
-                          size={24}
-                          color={feature.color}
-                        />
+                        <Ionicons name={feature.icon as any} size={24} color={feature.color} />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-white text-16 font-semibold">
-                          {feature.title}
-                        </Text>
-                        <Text className="text-gray-400 text-14 mt-1">
-                          {feature.subtitle}
-                        </Text>
+                        <Text className="text-white text-16 font-semibold">{feature.title}</Text>
+                        <Text className="text-gray-400 text-14 mt-1">{feature.subtitle}</Text>
                       </View>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color="#10B981"
-                      />
+                      <Ionicons name="checkmark-circle" size={20} color="#10B981" />
                     </View>
                   </View>
                 </View>
@@ -270,23 +243,18 @@ export default function OnboardingScreen() {
                 className="overflow-hidden rounded-2xl mb-4"
               >
                 <LinearGradient
-                  colors={isProcessing ? ['#1F2937', '#1F2937'] : ['#3B82F6', '#8B5CF6']}
+                  colors={isProcessing ? ["#1F2937", "#1F2937"] : ["#3B82F6", "#8B5CF6"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{
                     paddingVertical: 18,
                     paddingHorizontal: 24,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  <Ionicons
-                    name="rocket"
-                    size={20}
-                    color="#FFFFFF"
-                    style={{ marginRight: 8 }}
-                  />
+                  <Ionicons name="rocket" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
                   <Text className="text-white text-17 font-semibold">
                     {isProcessing ? "Processing..." : "Get Started"}
                   </Text>
@@ -296,11 +264,7 @@ export default function OnboardingScreen() {
               {/* Sign In Link */}
               <View className="flex-row items-center justify-center">
                 <Text className="text-gray-400 text-15">Already have an account? </Text>
-                <Pressable
-                  onPress={handleSignIn}
-                  className="px-2 py-1 rounded"
-                  disabled={isProcessing}
-                >
+                <Pressable onPress={handleSignIn} className="px-2 py-1 rounded" disabled={isProcessing}>
                   <Text className={`text-15 font-semibold ${isProcessing ? "text-gray-600" : "text-blue-400"}`}>
                     Sign In
                   </Text>

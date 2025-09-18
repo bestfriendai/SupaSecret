@@ -15,14 +15,14 @@ export interface PerformanceMetrics {
 }
 
 export type PerformanceCategory =
-  | 'render'
-  | 'api'
-  | 'cache'
-  | 'video'
-  | 'navigation'
-  | 'storage'
-  | 'computation'
-  | 'network';
+  | "render"
+  | "api"
+  | "cache"
+  | "video"
+  | "navigation"
+  | "storage"
+  | "computation"
+  | "network";
 
 // ============================================
 // Render Performance
@@ -66,7 +66,7 @@ export interface CachePerformance {
 }
 
 export interface CacheStats {
-  type: 'memory' | 'disk' | 'hybrid';
+  type: "memory" | "disk" | "hybrid";
   performance: CachePerformance;
   partitions?: Map<string, CachePerformance>;
 }
@@ -118,9 +118,9 @@ export interface MemoryMetrics {
 }
 
 export enum MemoryPressure {
-  NORMAL = 'normal',
-  MODERATE = 'moderate',
-  CRITICAL = 'critical'
+  NORMAL = "normal",
+  MODERATE = "moderate",
+  CRITICAL = "critical",
 }
 
 // ============================================
@@ -134,8 +134,8 @@ export interface NetworkMetrics {
   failedRequests: number;
   averageResponseTime: number;
   totalDataTransferred: number;
-  connectionType?: 'wifi' | 'cellular' | 'none';
-  effectiveType?: '2g' | '3g' | '4g' | '5g';
+  connectionType?: "wifi" | "cellular" | "none";
+  effectiveType?: "2g" | "3g" | "4g" | "5g";
 }
 
 export interface APIPerformance {
@@ -184,7 +184,7 @@ export const DEFAULT_THRESHOLDS: PerformanceThresholds = {
   videoLoadTime: 3000,
   memoryUsage: 100,
   frameRate: 60,
-  scrollVelocity: 2
+  scrollVelocity: 2,
 };
 
 // ============================================
@@ -246,8 +246,8 @@ export interface PerformanceBudget {
   category: PerformanceCategory;
   metric: string;
   budget: number;
-  unit: 'ms' | 'MB' | 'count' | 'percent';
-  severity: 'warning' | 'error';
+  unit: "ms" | "MB" | "count" | "percent";
+  severity: "warning" | "error";
 }
 
 export interface BudgetViolation {
@@ -262,16 +262,13 @@ export interface BudgetViolation {
 // ============================================
 
 export function isPerformanceMetrics(value: unknown): value is PerformanceMetrics {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== "object") return false;
   const v = value as any;
-  return typeof v.timestamp === 'number' &&
-         typeof v.duration === 'number' &&
-         typeof v.operation === 'string';
+  return typeof v.timestamp === "number" && typeof v.duration === "number" && typeof v.operation === "string";
 }
 
 export function isMemoryPressure(value: unknown): value is MemoryPressure {
-  return typeof value === 'string' &&
-    Object.values(MemoryPressure).includes(value as MemoryPressure);
+  return typeof value === "string" && Object.values(MemoryPressure).includes(value as MemoryPressure);
 }
 
 // ============================================

@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { VideoView, useVideoPlayer, useEventListener } from 'expo-video';
-import { View } from 'react-native';
+import React, { useRef, useEffect, useCallback, useState } from "react";
+import { VideoView, useVideoPlayer } from "expo-video";
+import { View } from "react-native";
 
 interface HermesCompatibleVideoPlayerProps {
   videoUri: string;
@@ -32,7 +32,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
     try {
       player.loop = true;
       player.muted = false;
-      
+
       // Set initial play state
       if (isActive && !isDisposing) {
         player.play();
@@ -41,7 +41,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       }
     } catch (error) {
       if (__DEV__) {
-        console.warn('Video player setup error:', error);
+        console.warn("Video player setup error:", error);
       }
       onError?.(error as Error);
     }
@@ -59,7 +59,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       }
     } catch (error) {
       if (__DEV__) {
-        console.warn('Video play/pause error:', error);
+        console.warn("Video play/pause error:", error);
       }
     }
   }, [player, isActive, isDisposing]);
@@ -86,8 +86,10 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
             shouldPause = player.playing;
           } catch (checkError: any) {
             // Player already disposed
-            if (checkError?.message?.includes('NativeSharedObjectNotFoundException') ||
-                checkError?.message?.includes('Unable to find the native shared object')) {
+            if (
+              checkError?.message?.includes("NativeSharedObjectNotFoundException") ||
+              checkError?.message?.includes("Unable to find the native shared object")
+            ) {
               resolve();
               return;
             }
@@ -98,20 +100,24 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
               player.pause();
             } catch (pauseErr: any) {
               // Only log non-disposal errors
-              if (__DEV__ &&
-                  !pauseErr?.message?.includes('NativeSharedObjectNotFoundException') &&
-                  !pauseErr?.message?.includes('Unable to find the native shared object')) {
-                console.warn('Video pause error during disposal:', pauseErr?.message);
+              if (
+                __DEV__ &&
+                !pauseErr?.message?.includes("NativeSharedObjectNotFoundException") &&
+                !pauseErr?.message?.includes("Unable to find the native shared object")
+              ) {
+                console.warn("Video pause error during disposal:", pauseErr?.message);
               }
             }
           }
           resolve();
         } catch (pauseError: any) {
           // Ignore disposal-related errors
-          if (__DEV__ &&
-              !pauseError?.message?.includes('NativeSharedObjectNotFoundException') &&
-              !pauseError?.message?.includes('Unable to find the native shared object')) {
-            console.warn('Video pause failed during disposal:', pauseError?.message);
+          if (
+            __DEV__ &&
+            !pauseError?.message?.includes("NativeSharedObjectNotFoundException") &&
+            !pauseError?.message?.includes("Unable to find the native shared object")
+          ) {
+            console.warn("Video pause failed during disposal:", pauseError?.message);
           }
           resolve();
         }
@@ -127,22 +133,12 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       // Wait for either pause to complete or timeout
       await Promise.race([pausePromise, timeoutPromise]);
 
-      // Additional cleanup if available
-      if (typeof player.unload === 'function') {
-        try {
-          await player.unload();
-        } catch (unloadError) {
-          // Silently ignore unload errors
-          if (__DEV__) {
-            console.warn('Video unload failed:', unloadError);
-          }
-        }
-      }
-
+      // Note: player.unload() does not exist in expo-video
+      // The player is automatically disposed when the component unmounts
     } catch (error) {
       // Silently ignore all disposal errors
       if (__DEV__) {
-        console.warn('Video disposal error:', error);
+        console.warn("Video disposal error:", error);
       }
     } finally {
       // Clean up timeout
@@ -160,31 +156,37 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
     };
   }, [disposePlayer]);
 
-  // Handle player status changes with useEventListener for proper expo-video API usage
-  useEventListener(player, 'statusChange', useCallback(({ status, error }) => {
-    if (isDisposing) return;
+  // Handle player status changes using useEffect
+  useEffect(() => {
+    if (!player || isDisposing) return;
 
-    try {
-      if (error) {
+    // Monitor player properties for status updates
+    const checkStatus = () => {
+      try {
+        const statusUpdate = {
+          isPlaying: player.playing,
+          currentTime: player.currentTime,
+          duration: player.duration,
+          muted: player.muted,
+          loop: player.loop,
+          error: null,
+        };
+        onPlaybackStatusUpdate?.(statusUpdate);
+      } catch (statusError) {
         if (__DEV__) {
-          console.warn('Video playback error:', error);
+          console.warn("Playback status update error:", statusError);
         }
-        onError?.(new Error(error.message || 'Video playback error'));
+        onError?.(new Error("Failed to get playback status"));
       }
+    };
 
-      // Create status object compatible with the existing interface
-      const statusUpdate = {
-        ...status,
-        error: error?.message || null,
-      };
+    // Check status periodically
+    const interval = setInterval(checkStatus, 1000);
 
-      onPlaybackStatusUpdate?.(statusUpdate);
-    } catch (statusError) {
-      if (__DEV__) {
-        console.warn('Playback status update error:', statusError);
-      }
-    }
-  }, [onError, onPlaybackStatusUpdate, isDisposing]));
+    return () => {
+      clearInterval(interval);
+    };
+  }, [player, isDisposing, onPlaybackStatusUpdate, onError]);
 
   if (isDisposing) {
     return <View style={style} className={className} />;

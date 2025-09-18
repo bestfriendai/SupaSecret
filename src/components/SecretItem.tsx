@@ -33,10 +33,7 @@ function SecretItemComponent({ item, onPress, onLikePress }: Props) {
   }, [item.confession.timestamp]);
 
   // Memoize formatted engagement score
-  const formattedScore = useMemo(
-    () => formatEngagementScore(item.engagementScore),
-    [item.engagementScore]
-  );
+  const formattedScore = useMemo(() => formatEngagementScore(item.engagementScore), [item.engagementScore]);
 
   // Memoize computed values
   const likesCount = useMemo(() => item.confession.likes || 0, [item.confession.likes]);
@@ -55,23 +52,14 @@ function SecretItemComponent({ item, onPress, onLikePress }: Props) {
   // Memoize styles to avoid recreation
   const containerStyle = useMemo(
     () => ({ backgroundColor: "#0F1724", borderRadius: 12, padding: 12, marginBottom: 12 }),
-    []
+    [],
   );
 
-  const contentTextStyle = useMemo(
-    () => ({ color: "#fff", fontSize: 15, lineHeight: 20 }),
-    []
-  );
+  const contentTextStyle = useMemo(() => ({ color: "#fff", fontSize: 15, lineHeight: 20 }), []);
 
-  const scoreTextStyle = useMemo(
-    () => ({ color: "#60A5FA", fontSize: 12, fontWeight: "700" as const }),
-    []
-  );
+  const scoreTextStyle = useMemo(() => ({ color: "#60A5FA", fontSize: 12, fontWeight: "700" as const }), []);
 
-  const metaTextStyle = useMemo(
-    () => ({ color: "#9CA3AF", fontSize: 12 }),
-    []
-  );
+  const metaTextStyle = useMemo(() => ({ color: "#9CA3AF", fontSize: 12 }), []);
 
   return (
     <Pressable onPress={handlePress} style={containerStyle}>
@@ -82,9 +70,7 @@ function SecretItemComponent({ item, onPress, onLikePress }: Props) {
           </Text>
         </View>
         <View style={{ marginLeft: 12, alignItems: "flex-end" }}>
-          <Text style={scoreTextStyle}>
-            Score: {formattedScore}
-          </Text>
+          <Text style={scoreTextStyle}>Score: {formattedScore}</Text>
         </View>
       </View>
 

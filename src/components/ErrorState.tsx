@@ -21,7 +21,15 @@ interface ErrorStateProps {
   icon?: IoniconsName;
 }
 
-export const ErrorState: React.FC<ErrorStateProps> = ({ type, title, message, actionLabel, onAction, onRetry, icon }) => {
+export const ErrorState: React.FC<ErrorStateProps> = ({
+  type,
+  title,
+  message,
+  actionLabel,
+  onAction,
+  onRetry,
+  icon,
+}) => {
   const getErrorConfig = (): ErrorConfig => {
     switch (type) {
       case "network":
@@ -104,49 +112,49 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ type, title, message, ac
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 24,
     paddingVertical: 80,
   },
   content: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   iconContainer: {
     width: 80,
     height: 80,
-    backgroundColor: '#1F2937',
+    backgroundColor: "#1F2937",
     borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 24,
   },
   title: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   message: {
-    color: '#6B7280',
+    color: "#6B7280",
     fontSize: 15,
     marginBottom: 32,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 24,
     maxWidth: 320,
   },
   button: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: "#3B82F6",
     borderRadius: 25,
     paddingHorizontal: 32,
     paddingVertical: 12,
     minWidth: 128,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    textAlign: 'center',
+    color: "#FFFFFF",
+    fontWeight: "600",
+    textAlign: "center",
     fontSize: 16,
   },
 });

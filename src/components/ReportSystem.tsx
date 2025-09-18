@@ -24,14 +24,9 @@ const REPORT_CATEGORIES = [
   { id: "other", label: "Other", icon: "ellipsis-horizontal" },
 ] as const;
 
-type ReportCategory = typeof REPORT_CATEGORIES[number]["id"];
+type ReportCategory = (typeof REPORT_CATEGORIES)[number]["id"];
 
-export const ReportSystem: React.FC<ReportSystemProps> = ({
-  contentId,
-  contentType,
-  onClose,
-  onReportSubmitted,
-}) => {
+export const ReportSystem: React.FC<ReportSystemProps> = ({ contentId, contentType, onClose, onReportSubmitted }) => {
   const { user } = useAuthStore();
   const { hapticsEnabled, impactAsync } = usePreferenceAwareHaptics();
 
@@ -41,13 +36,16 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
   const [step, setStep] = useState<"category" | "details" | "confirmation">("category");
   const [reportId, setReportId] = useState<string | null>(null);
 
-  const handleCategorySelect = useCallback(async (category: ReportCategory) => {
-    setSelectedCategory(category);
-    if (hapticsEnabled) {
-      await impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    setStep("details");
-  }, [hapticsEnabled, impactAsync]);
+  const handleCategorySelect = useCallback(
+    async (category: ReportCategory) => {
+      setSelectedCategory(category);
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      setStep("details");
+    },
+    [hapticsEnabled, impactAsync],
+  );
 
   const handleSubmitReport = useCallback(async () => {
     if (!selectedCategory || !user) {
@@ -58,17 +56,19 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase.from("reports").insert({
-        reporter_user_id: user.id, // Fixed: use reporter_user_id instead of reporter_id
-        content_id: contentId,
-        content_type: contentType,
-        reason: selectedCategory, // Fixed: use reason instead of category
-        additional_details: description.trim() || null,
-        status: "pending",
-        created_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single();
+      const { data, error } = await supabase
+        .from("reports")
+        .insert({
+          reporter_user_id: user.id, // Fixed: use reporter_user_id instead of reporter_id
+          content_id: contentId,
+          content_type: contentType,
+          reason: selectedCategory, // Fixed: use reason instead of category
+          additional_details: description.trim() || null,
+          status: "pending",
+          created_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
 
       if (error) {
         throw error;
@@ -85,13 +85,9 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
 
       setStep("confirmation");
       onReportSubmitted?.();
-
     } catch (error) {
       console.error("Report submission error:", error);
-      Alert.alert(
-        "Submission Failed",
-        "Unable to submit your report. Please try again later."
-      );
+      Alert.alert("Submission Failed", "Unable to submit your report. Please try again later.");
     } finally {
       setIsSubmitting(false);
     }
@@ -117,18 +113,13 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
   const renderCategoryStep = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>Why are you reporting this content?</Text>
-      <Text style={styles.stepSubtitle}>
-        Select the category that best describes the issue
-      </Text>
+      <Text style={styles.stepSubtitle}>Select the category that best describes the issue</Text>
 
       <ScrollView style={styles.categoriesContainer} showsVerticalScrollIndicator={false}>
         {REPORT_CATEGORIES.map((category) => (
           <Pressable
             key={category.id}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category.id && styles.categoryButtonSelected,
-            ]}
+            style={[styles.categoryButton, selectedCategory === category.id && styles.categoryButtonSelected]}
             onPress={() => handleCategorySelect(category.id)}
           >
             <Ionicons
@@ -136,19 +127,10 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
               size={24}
               color={selectedCategory === category.id ? "#1D9BF0" : "#666"}
             />
-            <Text
-              style={[
-                styles.categoryLabel,
-                selectedCategory === category.id && styles.categoryLabelSelected,
-              ]}
-            >
+            <Text style={[styles.categoryLabel, selectedCategory === category.id && styles.categoryLabelSelected]}>
               {category.label}
             </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={selectedCategory === category.id ? "#1D9BF0" : "#666"}
-            />
+            <Ionicons name="chevron-forward" size={20} color={selectedCategory === category.id ? "#1D9BF0" : "#666"} />
           </Pressable>
         ))}
       </ScrollView>
@@ -158,18 +140,16 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
   const renderDetailsStep = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>Additional Details</Text>
-      <Text style={styles.stepSubtitle}>
-        Help us understand the issue better (optional)
-      </Text>
+      <Text style={styles.stepSubtitle}>Help us understand the issue better (optional)</Text>
 
       <View style={styles.selectedCategoryDisplay}>
         <Ionicons
-          name={REPORT_CATEGORIES.find(c => c.id === selectedCategory)?.icon as any}
+          name={REPORT_CATEGORIES.find((c) => c.id === selectedCategory)?.icon as any}
           size={20}
           color="#1D9BF0"
         />
         <Text style={styles.selectedCategoryText}>
-          {REPORT_CATEGORIES.find(c => c.id === selectedCategory)?.label}
+          {REPORT_CATEGORIES.find((c) => c.id === selectedCategory)?.label}
         </Text>
       </View>
 
@@ -184,15 +164,10 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
         textAlignVertical="top"
       />
 
-      <Text style={styles.characterCount}>
-        {description.length}/500 characters
-      </Text>
+      <Text style={styles.characterCount}>{description.length}/500 characters</Text>
 
       <View style={styles.actionButtons}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => setStep("category")}
-        >
+        <Pressable style={styles.backButton} onPress={() => setStep("category")}>
           <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
 
@@ -201,9 +176,7 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
           onPress={handleSubmitReport}
           disabled={isSubmitting}
         >
-          <Text style={styles.submitButtonText}>
-            {isSubmitting ? "Submitting..." : "Submit Report"}
-          </Text>
+          <Text style={styles.submitButtonText}>{isSubmitting ? "Submitting..." : "Submit Report"}</Text>
         </Pressable>
       </View>
     </View>
@@ -222,10 +195,10 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
 
       <View style={styles.confirmationDetails}>
         <Text style={styles.confirmationDetailText}>
-          Report ID: {reportId ? reportId.slice(0, 8) + '...' : 'Pending...'}
+          Report ID: {reportId ? reportId.slice(0, 8) + "..." : "Pending..."}
         </Text>
         <Text style={styles.confirmationDetailText}>
-          Category: {REPORT_CATEGORIES.find(c => c.id === selectedCategory)?.label}
+          Category: {REPORT_CATEGORIES.find((c) => c.id === selectedCategory)?.label}
         </Text>
       </View>
     </View>
@@ -253,9 +226,7 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
             ]}
           />
         </View>
-        <Text style={styles.progressText}>
-          Step {step === "category" ? "1" : step === "details" ? "2" : "3"} of 3
-        </Text>
+        <Text style={styles.progressText}>Step {step === "category" ? "1" : step === "details" ? "2" : "3"} of 3</Text>
       </View>
 
       {/* Content */}
@@ -267,9 +238,7 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Reports are reviewed by our moderation team within 24 hours
-        </Text>
+        <Text style={styles.footerText}>Reports are reviewed by our moderation team within 24 hours</Text>
       </View>
     </View>
   );

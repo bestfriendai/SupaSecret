@@ -19,7 +19,7 @@ export const calculateViews = async (confessionId: string): Promise<number> => {
     }
 
     // Count unique session_ids
-    const uniqueSessions = new Set(data?.map(item => item.session_id));
+    const uniqueSessions = new Set(data?.map((item) => item.session_id));
     return uniqueSessions.size;
   } catch (e) {
     console.error("Error calculating views:", e);
@@ -34,7 +34,7 @@ export const calculateViews = async (confessionId: string): Promise<number> => {
  */
 export const calculateBulkViews = async (confessionIds: string[]): Promise<Record<string, number>> => {
   if (!confessionIds.length) return {};
-  
+
   try {
     // Get all analytics for the provided confession IDs
     const { data, error } = await supabase
@@ -49,14 +49,14 @@ export const calculateBulkViews = async (confessionIds: string[]): Promise<Recor
 
     // Group by confession_id and count unique session_ids
     const viewCounts: Record<string, Set<string>> = {};
-    
+
     // Initialize all confession IDs with empty sets
-    confessionIds.forEach(id => {
+    confessionIds.forEach((id) => {
       viewCounts[id] = new Set();
     });
-    
+
     // Add session IDs to the appropriate sets
-    data?.forEach(item => {
+    data?.forEach((item) => {
       if (item.confession_id && item.session_id) {
         if (!viewCounts[item.confession_id]) {
           viewCounts[item.confession_id] = new Set();
@@ -64,13 +64,13 @@ export const calculateBulkViews = async (confessionIds: string[]): Promise<Recor
         viewCounts[item.confession_id].add(item.session_id);
       }
     });
-    
+
     // Convert sets to counts
     const result: Record<string, number> = {};
     Object.entries(viewCounts).forEach(([id, sessions]) => {
       result[id] = sessions.size;
     });
-    
+
     return result;
   } catch (e) {
     console.error("Error calculating bulk views:", e);
@@ -87,18 +87,16 @@ export const calculateBulkViews = async (confessionIds: string[]): Promise<Recor
  */
 export const getViewCount = (
   confession: { id: string; views?: number },
-  videoAnalytics?: Array<{ confession_id: string; session_id: string }>
+  videoAnalytics?: { confession_id: string; session_id: string }[],
 ): number => {
   // If we have video analytics data, calculate from that
   if (videoAnalytics?.length) {
     const sessions = new Set(
-      videoAnalytics
-        .filter(va => va.confession_id === confession.id)
-        .map(va => va.session_id)
+      videoAnalytics.filter((va) => va.confession_id === confession.id).map((va) => va.session_id),
     );
     return sessions.size;
   }
-  
+
   // Fall back to confession.views if it exists (for backward compatibility)
   return confession.views || 0;
 };

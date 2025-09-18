@@ -13,7 +13,7 @@ import SettingsPicker from "../components/SettingsPicker";
 import { pushNotificationManager } from "../utils/pushNotifications";
 import { AlertModal, ConfirmModal } from "../components/AnimatedModal";
 import { useDebounce } from "../utils/consolidatedUtils";
-import { getPrivacyPolicyUrl, getTermsOfServiceUrl, getHelpSupportUrl } from "../constants/urls";
+import { getPrivacyPolicyUrlSync, getTermsOfServiceUrlSync, getHelpSupportUrlSync } from "../constants/urls";
 import { runAllTests } from "../utils/testDatabase";
 
 export default function SettingsScreen() {
@@ -120,14 +120,14 @@ export default function SettingsScreen() {
     // Update UI immediately for better UX
     updateUserPreferences({ [key]: value });
     // Debounce the actual save to backend
-    debouncedPreferenceUpdate(key, value);
+    void debouncedPreferenceUpdate(key, value);
   };
 
   const handleNotificationPreferenceUpdate = (key: string, value: any) => {
     // Update UI immediately for better UX
     updatePreferences({ [key]: value });
     // Debounce the actual save to backend
-    debouncedNotificationPreferenceUpdate(key, value);
+    void debouncedNotificationPreferenceUpdate(key, value);
   };
 
   return (
@@ -351,7 +351,7 @@ export default function SettingsScreen() {
                 accessibilityLabel="View privacy policy"
                 onPress={() =>
                   navigation.navigate("WebView", {
-                    url: getPrivacyPolicyUrl(),
+                    url: getPrivacyPolicyUrlSync(),
                     title: "Privacy Policy",
                   })
                 }
@@ -365,7 +365,7 @@ export default function SettingsScreen() {
                 accessibilityLabel="View terms of service"
                 onPress={() =>
                   navigation.navigate("WebView", {
-                    url: getTermsOfServiceUrl(),
+                    url: getTermsOfServiceUrlSync(),
                     title: "Terms of Service",
                   })
                 }
@@ -379,7 +379,7 @@ export default function SettingsScreen() {
                 accessibilityLabel="Get help and support"
                 onPress={() =>
                   navigation.navigate("WebView", {
-                    url: getHelpSupportUrl(),
+                    url: getHelpSupportUrlSync(),
                     title: "Help & Support",
                   })
                 }

@@ -9,7 +9,7 @@ import { usePreferenceAwareHaptics } from "../utils/haptics";
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
 import { AlertModal } from "../components/AnimatedModal";
-import { getPrivacyPolicyUrl, getTermsOfServiceUrl } from "../constants/urls";
+import { getPrivacyPolicyUrlSync, getTermsOfServiceUrlSync } from "../constants/urls";
 import { AuthStackParamList, RootStackParamList } from "../navigation/AppNavigator";
 import { CompositeNavigationProp } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
@@ -26,10 +26,10 @@ const navigateToWebView = (navigation: NavigationProp, url: string, title: strin
   // Try to navigate to parent first, then fallback to current navigator
   const parentNav = navigation.getParent();
   if (parentNav) {
-    parentNav.navigate('WebView', { url, title });
+    parentNav.navigate("WebView", { url, title });
   } else {
     // Fallback - this might not work depending on navigator structure
-    (navigation as any).navigate('WebView', { url, title });
+    (navigation as any).navigate("WebView", { url, title });
   }
 };
 
@@ -101,7 +101,7 @@ export default function SignUpScreen() {
     clearError();
 
     if (!validateForm()) {
-      notificationAsync();
+      void notificationAsync();
       return;
     }
 
@@ -112,10 +112,10 @@ export default function SignUpScreen() {
 
     try {
       await signUp(formData);
-      notificationAsync();
+      void notificationAsync();
       // Navigation will be handled automatically by auth state change
     } catch (error) {
-      notificationAsync();
+      void notificationAsync();
       if (error instanceof Error) {
         showMessage(error.message, "error");
       }
@@ -124,7 +124,7 @@ export default function SignUpScreen() {
 
   const handleSignIn = () => {
     navigation.navigate("SignIn");
-    impactAsync();
+    void impactAsync();
   };
 
   const passwordStrength = getPasswordStrength(formData.password);
@@ -253,14 +253,14 @@ export default function SignUpScreen() {
                 I agree to the{" "}
                 <Text
                   className="text-blue-400 underline"
-                  onPress={() => navigateToWebView(navigation, getTermsOfServiceUrl(), "Terms of Service")}
+                  onPress={() => navigateToWebView(navigation, getTermsOfServiceUrlSync(), "Terms of Service")}
                 >
                   Terms of Service
                 </Text>{" "}
                 and{" "}
                 <Text
                   className="text-blue-400 underline"
-                  onPress={() => navigateToWebView(navigation, getPrivacyPolicyUrl(), "Privacy Policy")}
+                  onPress={() => navigateToWebView(navigation, getPrivacyPolicyUrlSync(), "Privacy Policy")}
                 >
                   Privacy Policy
                 </Text>

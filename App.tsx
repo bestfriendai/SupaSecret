@@ -115,7 +115,9 @@ export default function App() {
   if (isInitializing) {
     return (
       <SafeAreaProvider>
-        <GestureHandlerRootView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+        <GestureHandlerRootView
+          style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}
+        >
           {/* Simple loading indicator - can be replaced with a splash screen */}
         </GestureHandlerRootView>
       </SafeAreaProvider>
@@ -137,24 +139,26 @@ export default function App() {
       resetOnPropsChange={true}
       fallback={(error, errorInfo) => (
         <SafeAreaProvider>
-          <GestureHandlerRootView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 20 }}>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: 18, textAlign: 'center', marginBottom: 20 }}>
+          <GestureHandlerRootView
+            style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000", padding: 20 }}
+          >
+            <View style={{ alignItems: "center" }}>
+              <Text style={{ color: "#fff", fontSize: 18, textAlign: "center", marginBottom: 20 }}>
                 App encountered an error and needs to restart
               </Text>
-              <Text style={{ color: '#666', fontSize: 14, textAlign: 'center', marginBottom: 30 }}>
+              <Text style={{ color: "#666", fontSize: 14, textAlign: "center", marginBottom: 30 }}>
                 {error.message}
               </Text>
               <Pressable
-                style={{ backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }}
+                style={{ backgroundColor: "#007AFF", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }}
                 onPress={() => {
                   // Force app reload for Hermes issues
-                  if (typeof window !== 'undefined' && window.location) {
+                  if (typeof window !== "undefined" && window.location) {
                     window.location.reload();
                   }
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Reload App</Text>
+                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Reload App</Text>
               </Pressable>
             </View>
           </GestureHandlerRootView>

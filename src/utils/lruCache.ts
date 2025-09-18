@@ -42,7 +42,7 @@ export class LRUCache<T> {
     totalAccessTime: 0,
     accessCount: 0,
   };
-  private batchOperationQueue: Map<string, { operation: 'set' | 'delete', value?: T }> = new Map();
+  private batchOperationQueue: Map<string, { operation: "set" | "delete"; value?: T }> = new Map();
   private batchTimer?: ReturnType<typeof setTimeout>;
   private cleanupScheduled = false;
 
@@ -188,7 +188,7 @@ export class LRUCache<T> {
     // Call eviction callback
     const evictResult = this.options.onEvict(key, entry.value);
     if (evictResult instanceof Promise) {
-      evictResult.catch(err => console.error('Eviction callback error:', err));
+      evictResult.catch((err) => console.error("Eviction callback error:", err));
     }
 
     if (this.options.enableStatistics) {
@@ -233,9 +233,10 @@ export class LRUCache<T> {
       }
     });
 
-    const hitRate = this.statistics.hits + this.statistics.misses > 0
-      ? this.statistics.hits / (this.statistics.hits + this.statistics.misses)
-      : 0;
+    const hitRate =
+      this.statistics.hits + this.statistics.misses > 0
+        ? this.statistics.hits / (this.statistics.hits + this.statistics.misses)
+        : 0;
 
     return {
       size: this.cache.size,
@@ -389,16 +390,16 @@ export class LRUCache<T> {
   /**
    * Batch operations for better performance
    */
-  batchSet(entries: Array<[string, T]>): void {
+  batchSet(entries: [string, T][]): void {
     entries.forEach(([key, value]) => {
-      this.batchOperationQueue.set(key, { operation: 'set', value });
+      this.batchOperationQueue.set(key, { operation: "set", value });
     });
     this.processBatchOperations();
   }
 
   batchDelete(keys: string[]): void {
-    keys.forEach(key => {
-      this.batchOperationQueue.set(key, { operation: 'delete' });
+    keys.forEach((key) => {
+      this.batchOperationQueue.set(key, { operation: "delete" });
     });
     this.processBatchOperations();
   }
@@ -410,9 +411,9 @@ export class LRUCache<T> {
 
     this.batchTimer = setTimeout(() => {
       this.batchOperationQueue.forEach(({ operation, value }, key) => {
-        if (operation === 'set' && value !== undefined) {
+        if (operation === "set" && value !== undefined) {
           this.set(key, value);
-        } else if (operation === 'delete') {
+        } else if (operation === "delete") {
           this.delete(key);
         }
       });
@@ -438,7 +439,7 @@ export class LRUCache<T> {
 
   private warmupCache(): void {
     // Implementation for initial warmup from options
-    console.log('Cache warmup initiated with', this.options.warmupEntries.length, 'entries');
+    console.log("Cache warmup initiated with", this.options.warmupEntries.length, "entries");
   }
 
   /**
@@ -467,11 +468,11 @@ export class LRUCache<T> {
   private compress(value: any): { value: any; size: number } {
     // Compression disabled for React Native - Buffer not available
     // In production, use a RN-compatible compression library
-    if (this.options.enableCompression && typeof value === 'string' && value.length > 1024) {
+    if (this.options.enableCompression && typeof value === "string" && value.length > 1024) {
       // For now, just return the original value
       // TODO: Integrate react-native-compression or similar
       if (__DEV__) {
-        console.log('Compression requested but not available in React Native');
+        console.log("Compression requested but not available in React Native");
       }
     }
     return {
@@ -485,12 +486,17 @@ export class LRUCache<T> {
    */
   debug(): void {
     if (__DEV__) {
-      console.log('Cache Debug Info:');
-      console.log('- Size:', this.cache.size, '/', this.options.maxSize);
-      console.log('- Memory:', (this.currentMemoryUsage / 1024 / 1024).toFixed(2), 'MB /',
-                  (this.options.maxMemory / 1024 / 1024).toFixed(2), 'MB');
-      console.log('- Statistics:', this.statistics);
-      console.log('- Top 5 by score:');
+      console.log("Cache Debug Info:");
+      console.log("- Size:", this.cache.size, "/", this.options.maxSize);
+      console.log(
+        "- Memory:",
+        (this.currentMemoryUsage / 1024 / 1024).toFixed(2),
+        "MB /",
+        (this.options.maxMemory / 1024 / 1024).toFixed(2),
+        "MB",
+      );
+      console.log("- Statistics:", this.statistics);
+      console.log("- Top 5 by score:");
 
       const entries = Array.from(this.cache.entries())
         .map(([key, entry]) => ({ key, score: entry.score || 0 }))

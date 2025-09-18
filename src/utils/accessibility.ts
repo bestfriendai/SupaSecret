@@ -352,32 +352,32 @@ export const accessibleHapticFeedback = async (
         type = "light";
       }
       // Skip haptics for error/warning/success if reduce motion is enabled
-      if (['error', 'warning', 'success'].includes(type)) {
+      if (["error", "warning", "success"].includes(type)) {
         return;
       }
     }
 
     // Import and use expo-haptics for real haptic feedback
     try {
-      const Haptics = await import('expo-haptics');
+      const Haptics = await import("expo-haptics");
 
       switch (type) {
-        case 'light':
+        case "light":
           await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           break;
-        case 'medium':
+        case "medium":
           await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           break;
-        case 'heavy':
+        case "heavy":
           await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           break;
-        case 'success':
+        case "success":
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           break;
-        case 'warning':
+        case "warning":
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           break;
-        case 'error':
+        case "error":
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           break;
         default:

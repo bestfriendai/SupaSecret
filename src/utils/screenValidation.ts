@@ -2,8 +2,8 @@
  * Screen validation utilities to ensure all screens are properly configured
  */
 
-import type { NavigationProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../navigation/AppNavigator';
+import type { NavigationProp } from "@react-navigation/native";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 
 // Define required screen validations
 export interface ScreenValidation {
@@ -20,9 +20,9 @@ export interface ScreenValidation {
 export const validateNavigation = (navigation: NavigationProp<any>): boolean => {
   try {
     if (!navigation) return false;
-    if (typeof navigation.navigate !== 'function') return false;
-    if (typeof navigation.goBack !== 'function') return false;
-    if (typeof navigation.canGoBack !== 'function') return false;
+    if (typeof navigation.navigate !== "function") return false;
+    if (typeof navigation.goBack !== "function") return false;
+    if (typeof navigation.canGoBack !== "function") return false;
     return true;
   } catch {
     return false;
@@ -33,14 +33,14 @@ export const validateNavigation = (navigation: NavigationProp<any>): boolean => 
  * Validates that required props are provided
  */
 export const validateRequiredProps = (props: Record<string, any>, required: string[]): boolean => {
-  return required.every(prop => props[prop] !== undefined && props[prop] !== null);
+  return required.every((prop) => props[prop] !== undefined && props[prop] !== null);
 };
 
 /**
  * Validates that handlers are properly defined
  */
 export const validateHandlers = (handlers: Record<string, any>): boolean => {
-  return Object.values(handlers).every(handler => typeof handler === 'function');
+  return Object.values(handlers).every((handler) => typeof handler === "function");
 };
 
 /**
@@ -49,12 +49,12 @@ export const validateHandlers = (handlers: Record<string, any>): boolean => {
 export const safeNavigate = (
   navigation: NavigationProp<RootStackParamList>,
   routeName: keyof RootStackParamList,
-  params?: any
+  params?: any,
 ) => {
   try {
     if (!validateNavigation(navigation)) {
       if (__DEV__) {
-        console.warn('Navigation object is invalid');
+        console.warn("Navigation object is invalid");
       }
       return false;
     }
@@ -63,7 +63,7 @@ export const safeNavigate = (
     return true;
   } catch (error) {
     if (__DEV__) {
-      console.error('Navigation failed:', error);
+      console.error("Navigation failed:", error);
     }
     return false;
   }
@@ -83,7 +83,7 @@ export const safeGoBack = (navigation: NavigationProp<any>, fallback?: () => voi
     }
   } catch (error) {
     if (__DEV__) {
-      console.error('Go back failed:', error);
+      console.error("Go back failed:", error);
     }
   }
   return false;
@@ -105,8 +105,8 @@ export const validateScreenState = (state: {
   }
 
   // Check for error states
-  if (state.error && typeof state.error !== 'string') {
-    issues.push('Error should be a string or null');
+  if (state.error && typeof state.error !== "string") {
+    issues.push("Error should be a string or null");
   }
 
   return {
@@ -122,17 +122,17 @@ export const createScreenValidator = (screenName: string) => {
   return {
     log: (message: string, data?: any) => {
       if (__DEV__) {
-        console.log(`[${screenName}] ${message}`, data ? data : '');
+        console.log(`[${screenName}] ${message}`, data ? data : "");
       }
     },
     warn: (message: string, data?: any) => {
       if (__DEV__) {
-        console.warn(`[${screenName}] ${message}`, data ? data : '');
+        console.warn(`[${screenName}] ${message}`, data ? data : "");
       }
     },
     error: (message: string, error?: any) => {
       if (__DEV__) {
-        console.error(`[${screenName}] ${message}`, error ? error : '');
+        console.error(`[${screenName}] ${message}`, error ? error : "");
       }
     },
     validateState: (state: any) => validateScreenState(state),

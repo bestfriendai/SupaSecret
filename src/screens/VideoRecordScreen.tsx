@@ -51,7 +51,7 @@ function VideoRecordScreen() {
       try {
         const visionCamera = await import("react-native-vision-camera");
         const { Camera: VisionCamera } = visionCamera;
-        
+
         // Check permissions
         const cameraPermission = await VisionCamera.getCameraPermissionStatus();
         if (cameraPermission !== "granted") {
@@ -84,7 +84,7 @@ function VideoRecordScreen() {
           clearInterval(timerRef.current);
         }
       };
-    }, [visionCameraReady, hasVideoPermissions, requestVideoPermissions])
+    }, [visionCameraReady, hasVideoPermissions, requestVideoPermissions]),
   );
 
   const startRecording = async () => {
@@ -191,7 +191,7 @@ function VideoRecordScreen() {
             text: "Done",
             onPress: () => navigation.goBack(),
           },
-        ]
+        ],
       );
     } catch (error) {
       console.error("Failed to handle recording:", error);
@@ -269,14 +269,10 @@ function VideoRecordScreen() {
               onPress={isRecording ? stopRecording : startRecording}
               style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
             >
-              <Text style={styles.recordButtonText}>
-                {isRecording ? "Stop" : `Record (${MAX_DURATION}s max)`}
-              </Text>
+              <Text style={styles.recordButtonText}>{isRecording ? "Stop" : `Record (${MAX_DURATION}s max)`}</Text>
             </Pressable>
 
-            <Text style={styles.infoText}>
-              {visionCameraReady ? "Vision Camera Ready" : "Using Expo Camera"}
-            </Text>
+            <Text style={styles.infoText}>{visionCameraReady ? "Vision Camera Ready" : "Using Expo Camera"}</Text>
           </View>
         </View>
       </SafeAreaView>

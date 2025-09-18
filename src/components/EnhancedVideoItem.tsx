@@ -59,16 +59,22 @@ function EnhancedVideoItem({
   );
 
   // Memoize expensive calculations
-  const anonymizerInfo = useMemo(() => ({
-    hasFaceBlur: confession.faceBlurApplied || false,
-    hasVoiceChange: confession.voiceChangeApplied || false,
-  }), [confession.faceBlurApplied, confession.voiceChangeApplied]);
+  const anonymizerInfo = useMemo(
+    () => ({
+      hasFaceBlur: confession.faceBlurApplied || false,
+      hasVoiceChange: confession.voiceChangeApplied || false,
+    }),
+    [confession.faceBlurApplied, confession.voiceChangeApplied],
+  );
 
-  const videoStats = useMemo(() => ({
-    duration: confession.duration || 0,
-    viewCount: getViewCount(confession),
-    isProcessed: confession.processed || false,
-  }), [confession.duration, confession.processed, confession.id]);
+  const videoStats = useMemo(
+    () => ({
+      duration: confession.duration || 0,
+      viewCount: getViewCount(confession),
+      isProcessed: confession.processed || false,
+    }),
+    [confession.duration, confession.processed, confession.id],
+  );
 
   // Debug log for sound preferences
   if (__DEV__) {
@@ -123,21 +129,25 @@ function EnhancedVideoItem({
                 isValid = player.playing !== undefined;
               } catch (checkError: any) {
                 // Player is already disposed
-                if (checkError?.message?.includes('NativeSharedObjectNotFoundException') ||
-                    checkError?.message?.includes('Unable to find the native shared object')) {
+                if (
+                  checkError?.message?.includes("NativeSharedObjectNotFoundException") ||
+                  checkError?.message?.includes("Unable to find the native shared object")
+                ) {
                   isDisposingRef.current = false;
                   return; // Already disposed, nothing to do
                 }
               }
 
-              if (isValid && typeof player.pause === 'function' && isDisposingRef.current) {
+              if (isValid && typeof player.pause === "function" && isDisposingRef.current) {
                 // Pause first
                 try {
                   await player.pause();
                 } catch (pauseError: any) {
                   // Check if it's a disposal-related error
-                  if (!pauseError?.message?.includes('NativeSharedObjectNotFoundException') &&
-                      !pauseError?.message?.includes('Unable to find the native shared object')) {
+                  if (
+                    !pauseError?.message?.includes("NativeSharedObjectNotFoundException") &&
+                    !pauseError?.message?.includes("Unable to find the native shared object")
+                  ) {
                     // Only log non-disposal errors in dev
                     if (__DEV__) {
                       console.warn(`Video pause error for ${confession.id}:`, pauseError?.message);
@@ -150,12 +160,12 @@ function EnhancedVideoItem({
                   if (!isDisposingRef.current) return;
                   try {
                     // Additional cleanup if available
-                    if (typeof (player as any).unload === 'function') {
+                    if (typeof (player as any).unload === "function") {
                       (player as any).unload();
                     }
                   } catch (unloadError: any) {
                     // Silently ignore unload errors during cleanup
-                    if (__DEV__ && !unloadError?.message?.includes('NativeSharedObject')) {
+                    if (__DEV__ && !unloadError?.message?.includes("NativeSharedObject")) {
                       console.warn(`Video unload failed for ${confession.id}:`, unloadError?.message);
                     }
                   } finally {
@@ -167,9 +177,11 @@ function EnhancedVideoItem({
               }
             } catch (pauseError: any) {
               // Silently ignore disposal-related errors
-              if (__DEV__ &&
-                  !pauseError?.message?.includes('NativeSharedObjectNotFoundException') &&
-                  !pauseError?.message?.includes('Unable to find the native shared object')) {
+              if (
+                __DEV__ &&
+                !pauseError?.message?.includes("NativeSharedObjectNotFoundException") &&
+                !pauseError?.message?.includes("Unable to find the native shared object")
+              ) {
                 console.warn(`Video pause failed during disposal for ${confession.id}:`, pauseError?.message);
               }
               isDisposingRef.current = false;
@@ -614,7 +626,7 @@ const areEqual = (prev: EnhancedVideoItemProps, next: EnhancedVideoItemProps) =>
   // Validate both confessions have IDs (required for uniqueness)
   if (!prev.confession.id || !next.confession.id) {
     if (__DEV__) {
-      console.warn('EnhancedVideoItem: areEqual called with confession missing ID');
+      console.warn("EnhancedVideoItem: areEqual called with confession missing ID");
     }
     return false; // Force re-render for safety
   }
@@ -630,8 +642,16 @@ const areEqual = (prev: EnhancedVideoItemProps, next: EnhancedVideoItemProps) =>
   const sameProcessingState = prev.confession.processed === next.confession.processed;
 
   // Only re-render if essential props changed
-  return sameId && sameActivity && sameAudioOverride && sameCounts &&
-         sameLiked && sameUri && sameTranscription && sameProcessingState;
+  return (
+    sameId &&
+    sameActivity &&
+    sameAudioOverride &&
+    sameCounts &&
+    sameLiked &&
+    sameUri &&
+    sameTranscription &&
+    sameProcessingState
+  );
 };
 
 export default memo(EnhancedVideoItem, areEqual);

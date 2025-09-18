@@ -43,7 +43,7 @@ function HomeScreen() {
   const isLoadingMore = useConfessionStore((state) => state.isLoadingMore);
 
   // Initialize screen validator
-  const validator = createScreenValidator('HomeScreen');
+  const validator = createScreenValidator("HomeScreen");
 
   // Debug: Log confessions count when it changes
   useEffect(() => {
@@ -59,7 +59,7 @@ function HomeScreen() {
   const { scrollViewRef } = useScrollRestoration({ key: "home-feed" });
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
-  const screenStatus = useScreenStatus({ screenName: 'HomeScreen', loadingTimeout: 20000 });
+  const screenStatus = useScreenStatus({ screenName: "HomeScreen", loadingTimeout: 20000 });
   const [refreshing, setRefreshing] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportingConfessionId, setReportingConfessionId] = useState<string | null>(null);
@@ -73,13 +73,13 @@ function HomeScreen() {
   // Initialize data loading on component mount
   useEffect(() => {
     const initializeScreen = async () => {
-      validator.log('Screen mounted, initializing...');
+      validator.log("Screen mounted, initializing...");
 
       try {
         // Check network connectivity first
         const netInfo = await NetInfo.fetch();
         if (!netInfo.isConnected) {
-          validator.warn('No network connection detected');
+          validator.warn("No network connection detected");
           setNetworkError(true);
           return;
         }
@@ -87,11 +87,11 @@ function HomeScreen() {
 
         // Load initial confessions if none exist
         if (confessions.length === 0 && !isLoading) {
-          validator.log('Loading initial confessions...');
+          validator.log("Loading initial confessions...");
           await loadConfessions();
         }
       } catch (error) {
-        validator.error('Failed to initialize screen:', error);
+        validator.error("Failed to initialize screen:", error);
         setNetworkError(true);
       }
     };
@@ -140,15 +140,15 @@ function HomeScreen() {
         return true;
       },
       {
-        errorContext: 'Refreshing home feed',
+        errorContext: "Refreshing home feed",
         onError: (error) => {
-          console.error('[HomeScreen] Refresh failed:', error);
+          console.error("[HomeScreen] Refresh failed:", error);
           setNetworkError(true);
         },
         onSuccess: () => {
           setNetworkError(false);
         },
-      }
+      },
     );
 
     if (!result) {
@@ -178,15 +178,15 @@ function HomeScreen() {
   const handleToggleLike = useCallback(
     async (confessionId: string) => {
       try {
-        validator.log('Toggle like:', { confessionId });
+        validator.log("Toggle like:", { confessionId });
         if (!confessionId) {
-          validator.error('Invalid confession ID for like toggle');
+          validator.error("Invalid confession ID for like toggle");
           return;
         }
         await debouncedToggleLike(confessionId);
         impactAsync();
       } catch (error) {
-        validator.error('Like toggle failed:', error);
+        validator.error("Like toggle failed:", error);
       }
     },
     [debouncedToggleLike, impactAsync, validator],
@@ -195,26 +195,26 @@ function HomeScreen() {
   const handleSecretPress = useCallback(
     (confession: Confession) => {
       try {
-        validator.log('Secret press:', { id: confession.id, type: confession.type });
+        validator.log("Secret press:", { id: confession.id, type: confession.type });
         impactAsync();
 
         // Validate confession data before navigation
         if (!confession || !confession.id) {
-          validator.error('Invalid confession data for navigation');
+          validator.error("Invalid confession data for navigation");
           return;
         }
 
         if (confession.type === "video") {
           // Navigate to full-screen video player with validation
-          validator.log('Navigating to VideoPlayer');
+          validator.log("Navigating to VideoPlayer");
           (navigation as any).navigate("VideoPlayer", { confessionId: confession.id });
         } else {
           // Navigate to text confession detail with validation
-          validator.log('Navigating to SecretDetail');
+          validator.log("Navigating to SecretDetail");
           (navigation as any).navigate("SecretDetail", { confessionId: confession.id });
         }
       } catch (error) {
-        validator.error('Navigation failed:', error);
+        validator.error("Navigation failed:", error);
         // Fallback: Try navigation without validation
         if (confession.type === "video") {
           (navigation as any).navigate("VideoPlayer", { confessionId: confession.id });
@@ -422,12 +422,7 @@ function HomeScreen() {
               )
             }
             refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={["#1D9BF0"]}
-                tintColor="#1D9BF0"
-              />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#1D9BF0"]} tintColor="#1D9BF0" />
             }
             onViewableItemsChanged={({ viewableItems }) => {
               const visibleIds = viewableItems.map((item) => item.item.id);

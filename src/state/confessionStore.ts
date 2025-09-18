@@ -11,10 +11,7 @@ import { trackPositiveInteraction, showReviewPrompt } from "../utils/reviewPromp
 import { registerStoreCleanup } from "../utils/storeCleanup";
 import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 import { normalizeConfession, normalizeConfessions } from "../utils/confessionNormalizer";
-import {
-  confessionValidation,
-  videoValidation
-} from "../utils/validation";
+import { confessionValidation, videoValidation } from "../utils/validation";
 import * as FileSystem from "expo-file-system";
 
 // Debounce utility for preventing race conditions in like toggles
@@ -45,6 +42,7 @@ const sampleConfessions: Confession[] = [
     isAnonymous: true,
     timestamp: Date.now() - 3600000, // 1 hour ago
     likes: 42,
+    views: 156,
     isLiked: false,
   },
   {
@@ -57,6 +55,7 @@ const sampleConfessions: Confession[] = [
     isAnonymous: true,
     timestamp: Date.now() - 7200000, // 2 hours ago
     likes: 128,
+    views: 342,
     isLiked: true,
   },
   {
@@ -67,6 +66,7 @@ const sampleConfessions: Confession[] = [
     isAnonymous: true,
     timestamp: Date.now() - 10800000, // 3 hours ago
     likes: 67,
+    views: 234,
     isLiked: false,
   },
   {
@@ -77,6 +77,7 @@ const sampleConfessions: Confession[] = [
     isAnonymous: true,
     timestamp: Date.now() - 14400000, // 4 hours ago
     likes: 89,
+    views: 287,
     isLiked: false,
   },
   {
@@ -89,6 +90,7 @@ const sampleConfessions: Confession[] = [
     isAnonymous: true,
     timestamp: Date.now() - 18000000, // 5 hours ago
     likes: 156,
+    views: 445,
     isLiked: false,
   },
   {
@@ -101,6 +103,7 @@ const sampleConfessions: Confession[] = [
     isAnonymous: true,
     timestamp: Date.now() - 21600000, // 6 hours ago
     likes: 203,
+    views: 567,
     isLiked: true,
   },
   {
@@ -113,6 +116,7 @@ const sampleConfessions: Confession[] = [
     isAnonymous: true,
     timestamp: Date.now() - 25200000, // 7 hours ago
     likes: 94,
+    views: 198,
     isLiked: false,
   },
   {
@@ -125,6 +129,7 @@ const sampleConfessions: Confession[] = [
     isAnonymous: true,
     timestamp: Date.now() - 28800000, // 8 hours ago
     likes: 76,
+    views: 123,
     isLiked: false,
   },
 ];
@@ -179,7 +184,7 @@ export const useConfessionStore = create<ConfessionState>()(
 
             if (__DEV__ && combinedConfessions.length !== uniqueConfessions.length) {
               console.warn(
-                `ConfessionStore: Deduplicated ${combinedConfessions.length - uniqueConfessions.length} duplicate confessions`
+                `ConfessionStore: Deduplicated ${combinedConfessions.length - uniqueConfessions.length} duplicate confessions`,
               );
             }
 
@@ -290,11 +295,14 @@ export const useConfessionStore = create<ConfessionState>()(
           const validationResult = confessionValidation.complete({
             content: confession.content,
             type: confession.type,
-            video: confession.type === 'video' && confession.videoUri ? {
-              file: { uri: confession.videoUri },
-              // Duration and size would need to be extracted from video file
-              // For now, we'll skip these specific validations
-            } : undefined,
+            video:
+              confession.type === "video" && confession.videoUri
+                ? {
+                    file: { uri: confession.videoUri },
+                    // Duration and size would need to be extracted from video file
+                    // For now, we'll skip these specific validations
+                  }
+                : undefined,
           });
 
           if (!validationResult.isValid && validationResult.error) {
@@ -303,7 +311,7 @@ export const useConfessionStore = create<ConfessionState>()(
 
           // Log validation warnings
           if (validationResult.warnings && __DEV__) {
-            console.warn('Confession validation warnings:', validationResult.warnings);
+            console.warn("Confession validation warnings:", validationResult.warnings);
           }
 
           // Check if user is online for immediate processing vs offline queue
@@ -339,7 +347,7 @@ export const useConfessionStore = create<ConfessionState>()(
                 }
 
                 if (videoFileValidation.warnings && __DEV__) {
-                  console.warn('Video file warnings:', videoFileValidation.warnings);
+                  console.warn("Video file warnings:", videoFileValidation.warnings);
                 }
 
                 // Get file info for size and duration validation
@@ -351,7 +359,7 @@ export const useConfessionStore = create<ConfessionState>()(
                   }
 
                   if (sizeValidation.warnings && __DEV__) {
-                    console.warn('Video size warnings:', sizeValidation.warnings);
+                    console.warn("Video size warnings:", sizeValidation.warnings);
                   }
                 }
 
@@ -365,7 +373,7 @@ export const useConfessionStore = create<ConfessionState>()(
                 signedVideoUrl = result.signedUrl; // use for immediate playback
               } catch (uploadError) {
                 if (__DEV__) {
-                  console.error('Video upload failed:', uploadError);
+                  console.error("Video upload failed:", uploadError);
                 }
                 // If upload fails, queue for retry
                 await get().queueTempConfession(confession, { type: confession.type, uploadFailed: true });
@@ -423,6 +431,7 @@ export const useConfessionStore = create<ConfessionState>()(
             timestamp: new Date(data.created_at).getTime(),
             isAnonymous: data.is_anonymous,
             likes: data.likes,
+            views: data.views,
             isLiked: false,
           };
 
@@ -449,24 +458,26 @@ export const useConfessionStore = create<ConfessionState>()(
           console.log("✅ Confession added successfully to timeline");
         } catch (error) {
           if (__DEV__) {
-            console.error('Failed to add confession:', error);
+            console.error("Failed to add confession:", error);
           }
 
           let errorMessage = "Failed to add confession";
 
           // Provide user-friendly error messages based on validation failures
           if (error instanceof Error) {
-            if (error.message.includes('Video validation failed:') ||
-                error.message.includes('Please enter your confession') ||
-                error.message.includes('too short') ||
-                error.message.includes('too long') ||
-                error.message.includes('Video file is required') ||
-                error.message.includes('Unsupported video format')) {
+            if (
+              error.message.includes("Video validation failed:") ||
+              error.message.includes("Please enter your confession") ||
+              error.message.includes("too short") ||
+              error.message.includes("too long") ||
+              error.message.includes("Video file is required") ||
+              error.message.includes("Unsupported video format")
+            ) {
               // These are validation errors - show the original message
               errorMessage = error.message;
-            } else if (error.message.includes('User not authenticated')) {
+            } else if (error.message.includes("User not authenticated")) {
               errorMessage = "Please sign in to share your confession";
-            } else if (error.message.includes('upload')) {
+            } else if (error.message.includes("upload")) {
               errorMessage = "Failed to upload video. Please check your connection and try again.";
             } else {
               errorMessage = error.message;
@@ -626,9 +637,12 @@ export const useConfessionStore = create<ConfessionState>()(
             }
 
             // Check authentication first - the function requires it
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            const {
+              data: { user },
+              error: authError,
+            } = await supabase.auth.getUser();
             if (authError || !user) {
-              throw new Error('Please sign in to like confessions');
+              throw new Error("Please sign in to like confessions");
             }
 
             // Try RPC first for server-verified toggle
@@ -861,6 +875,7 @@ export const useConfessionStore = create<ConfessionState>()(
           timestamp: Date.now(),
           isAnonymous: confession.isAnonymous,
           likes: 0,
+          views: 0,
           isLiked: false,
         };
 
@@ -887,14 +902,14 @@ export const useConfessionStore = create<ConfessionState>()(
             priority: 10, // High priority for confession creation
             reconciliation: {
               tempId,
-              targetStore: 'confessionStore',
-              metadata
-            }
-          }
+              targetStore: "confessionStore",
+              metadata,
+            },
+          },
         );
 
         if (__DEV__) {
-          console.log('✅ Confession queued for offline processing with temp ID:', tempId);
+          console.log("✅ Confession queued for offline processing with temp ID:", tempId);
         }
       },
     }),

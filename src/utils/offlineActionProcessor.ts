@@ -67,7 +67,7 @@ export async function processOfflineAction(action: OfflineAction): Promise<void>
         action.payload as {
           tempId: string;
           confession: {
-            type: 'text' | 'video';
+            type: "text" | "video";
             content: string;
             videoUri?: string;
             transcription?: string;
@@ -136,11 +136,13 @@ async function processLikeConfession(payload: {
 }): Promise<void> {
   const { confessionId } = payload;
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Check authentication first - the function requires it
   if (!user) {
-    throw new Error('User must be authenticated to like confessions');
+    throw new Error("User must be authenticated to like confessions");
   }
 
   // Use RPC for server-verified toggle - fail fast if it doesn't work
@@ -155,7 +157,7 @@ async function processLikeConfession(payload: {
 
   // Validate the response format matches documentation
   if (!rpcData || !Array.isArray(rpcData) || rpcData.length === 0) {
-    throw new Error('Invalid response from toggle_confession_like function');
+    throw new Error("Invalid response from toggle_confession_like function");
   }
 }
 
@@ -232,7 +234,7 @@ async function processCreateConfession(
   payload: {
     tempId: string;
     confession: {
-      type: 'text' | 'video';
+      type: "text" | "video";
       content: string;
       videoUri?: string;
       transcription?: string;
@@ -243,7 +245,7 @@ async function processCreateConfession(
     tempId?: string;
     targetStore?: string;
     metadata?: Record<string, unknown>;
-  }
+  },
 ): Promise<void> {
   const { tempId, confession } = payload;
 
@@ -255,9 +257,12 @@ async function processCreateConfession(
   const validationResult = confessionValidation.complete({
     content: confession.content,
     type: confession.type,
-    video: confession.type === 'video' && confession.videoUri ? {
-      file: { uri: confession.videoUri },
-    } : undefined,
+    video:
+      confession.type === "video" && confession.videoUri
+        ? {
+            file: { uri: confession.videoUri },
+          }
+        : undefined,
   });
 
   if (!validationResult.isValid) {
@@ -288,7 +293,7 @@ async function processCreateConfession(
         if (__DEV__) {
           console.error(`❌ Video upload failed for tempId ${tempId}:`, uploadError);
         }
-        throw new Error(`Video upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
+        throw new Error(`Video upload failed: ${uploadError instanceof Error ? uploadError.message : "Unknown error"}`);
       }
     } else {
       // If it's already a remote URL, we can't use it directly in the database
@@ -323,16 +328,16 @@ async function processCreateConfession(
   }
 
   // Handle state reconciliation - replace temp confession with real one
-  if (reconciliation?.targetStore === 'confessionStore') {
+  if (reconciliation?.targetStore === "confessionStore") {
     try {
       // Dynamically import the store to avoid circular dependencies
-      const { useConfessionStore } = await import('../state/confessionStore');
+      const { useConfessionStore } = await import("../state/confessionStore");
 
       // Get current store state
       const { confessions } = useConfessionStore.getState();
 
       // Find and replace the temp confession with the real one
-      const tempIndex = confessions.findIndex(c => c.id === tempId);
+      const tempIndex = confessions.findIndex((c) => c.id === tempId);
       if (tempIndex !== -1) {
         // Use normalizeConfession to properly handle field mapping and signed URLs
         const realConfession = await normalizeConfession(data);

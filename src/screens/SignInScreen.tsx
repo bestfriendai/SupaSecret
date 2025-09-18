@@ -72,11 +72,9 @@ export default function SignInScreen() {
     // Check network connectivity
     const netInfo = await NetInfo.fetch();
     if (!netInfo.isConnected) {
-      Alert.alert(
-        "Network Error",
-        "No internet connection. Please check your network and try again.",
-        [{ text: "OK" }]
-      );
+      Alert.alert("Network Error", "No internet connection. Please check your network and try again.", [
+        { text: "OK" },
+      ]);
       return;
     }
 
@@ -112,8 +110,8 @@ export default function SignInScreen() {
               { text: "Cancel", style: "cancel" },
               {
                 text: "Sign Up",
-                onPress: () => navigation.navigate("SignUp")
-              }
+                onPress: () => navigation.navigate("SignUp"),
+              },
             ];
             break;
           case "EMAIL_NOT_CONFIRMED":

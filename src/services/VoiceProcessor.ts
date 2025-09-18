@@ -83,16 +83,19 @@ export const useVoiceModification = () => {
         }
 
         // Sanitize file paths
-        const sanitizedInputPath = this.sanitizeFilePath(videoUri);
+        const sanitizedInputPath = sanitizeFilePath(videoUri);
         const sanitizedOutputPath = sanitizeFilePath(outputUri);
 
         // Use safe FFmpeg args array instead of string interpolation
         const args = [
-          "-i", sanitizedInputPath,
-          "-af", `asetrate=44100*${pitchFactor},aresample=44100`,
-          "-c:v", "copy",
+          "-i",
+          sanitizedInputPath,
+          "-af",
+          `asetrate=44100*${pitchFactor},aresample=44100`,
+          "-c:v",
+          "copy",
           "-y",
-          sanitizedOutputPath
+          sanitizedOutputPath,
         ];
 
         console.log("Executing voice modification with safe args:", args);
@@ -133,66 +136,64 @@ export const useVoiceModification = () => {
         setIsProcessing(false);
       }
     },
-    []
+    [],
   );
 
   // Process audio file separately (for preview or audio-only processing)
-  const processAudioWithVoiceEffect = useCallback(
-    async (audioUri: string, effect: VoiceEffect): Promise<string> => {
-      if (effect === "none") return audioUri;
+  const processAudioWithVoiceEffect = useCallback(async (audioUri: string, effect: VoiceEffect): Promise<string> => {
+    if (effect === "none") return audioUri;
 
-      try {
-        await loadFFmpeg();
+    try {
+      await loadFFmpeg();
 
-        const outputUri = audioUri.replace(/\.(m4a|wav|mp3)$/i, `_voice_${effect}.$1`);
-        const pitchFactor = effect === "deep" ? 0.8 : 1.2;
+      const outputUri = audioUri.replace(/\.(m4a|wav|mp3)$/i, `_voice_${effect}.$1`);
+      const pitchFactor = effect === "deep" ? 0.8 : 1.2;
 
-        // Validate pitch factor
-        if (pitchFactor < 0.1 || pitchFactor > 10.0) {
-          throw new Error("Invalid pitch factor value");
-        }
-
-        // Sanitize file paths
-        const sanitizedInputPath = sanitizeFilePath(audioUri);
-        const sanitizedOutputPath = sanitizeFilePath(outputUri);
-
-        // Use safe FFmpeg args array
-        const args = [
-          "-i", sanitizedInputPath,
-          "-af", `asetrate=44100*${pitchFactor},aresample=44100`,
-          "-y",
-          sanitizedOutputPath
-        ];
-
-        const session = await FFmpegKit.FFmpegKit.executeWithArguments(args);
-        const returnCode = await session.getReturnCode();
-
-        if (FFmpegKit.ReturnCode.isSuccess(returnCode)) {
-          return outputUri;
-        } else {
-          throw new Error("Audio processing failed");
-        }
-      } catch (error) {
-        console.error("Audio voice processing failed:", error);
-        return audioUri;
+      // Validate pitch factor
+      if (pitchFactor < 0.1 || pitchFactor > 10.0) {
+        throw new Error("Invalid pitch factor value");
       }
-    },
-    []
-  );
+
+      // Sanitize file paths
+      const sanitizedInputPath = sanitizeFilePath(audioUri);
+      const sanitizedOutputPath = sanitizeFilePath(outputUri);
+
+      // Use safe FFmpeg args array
+      const args = [
+        "-i",
+        sanitizedInputPath,
+        "-af",
+        `asetrate=44100*${pitchFactor},aresample=44100`,
+        "-y",
+        sanitizedOutputPath,
+      ];
+
+      const session = await FFmpegKit.FFmpegKit.executeWithArguments(args);
+      const returnCode = await session.getReturnCode();
+
+      if (FFmpegKit.ReturnCode.isSuccess(returnCode)) {
+        return outputUri;
+      } else {
+        throw new Error("Audio processing failed");
+      }
+    } catch (error) {
+      console.error("Audio voice processing failed:", error);
+      return audioUri;
+    }
+  }, []);
 
   // Helper function to sanitize file paths
   const sanitizeFilePath = (path: string): string => {
-    if (!path || typeof path !== 'string') {
-      throw new Error('Invalid file path provided');
+    if (!path || typeof path !== "string") {
+      throw new Error("Invalid file path provided");
     }
 
     // Remove dangerous characters
-    const sanitized = path.replace(/[;&|`$(){}\[\]<>"'\\]/g, '');
+    const sanitized = path.replace(/[;&|`$(){}\[\]<>"'\\]/g, "");
 
     // Validate path is within expected directories
-    if (!sanitized.includes(FileSystem.cacheDirectory!) &&
-        !sanitized.includes(FileSystem.documentDirectory!)) {
-      throw new Error('File path not in allowed directory');
+    if (!sanitized.includes(FileSystem.Paths.cache.uri!) && !sanitized.includes(FileSystem.Paths.document.uri!)) {
+      throw new Error("File path not in allowed directory");
     }
 
     return sanitized;
@@ -227,16 +228,13 @@ export const advancedVoiceEffects = {
 export const applyVoiceEffectFallback = async (
   videoUri: string,
   effect: VoiceEffect,
-  onProgress?: (progress: number, status: string) => void
+  onProgress?: (progress: number, status: string) => void,
 ): Promise<string> => {
   onProgress?.(0, "Processing voice effect...");
 
   if (IS_EXPO_GO) {
     onProgress?.(100, "Voice effects not available in Expo Go");
-    Alert.alert(
-      "Feature Limited",
-      "Voice modification requires a development build. Original audio will be used."
-    );
+    Alert.alert("Feature Limited", "Voice modification requires a development build. Original audio will be used.");
     return videoUri;
   }
 
