@@ -37,7 +37,7 @@ export const transcribeAudio = async (
         "Audio URI is required and cannot be empty",
         API_ERROR_CODES.MISSING_PARAMETER,
       );
-      handleApiError(error, "transcription", context);
+      return handleApiError(error, "transcription", context);
     }
 
     // Validate options
@@ -52,7 +52,7 @@ export const transcribeAudio = async (
         "Temperature must be between 0.0 and 1.0",
         API_ERROR_CODES.INVALID_PARAMETER,
       );
-      handleApiError(error, "transcription", context);
+      return handleApiError(error, "transcription", context);
     }
 
     return await executeApiRequest(
@@ -64,7 +64,7 @@ export const transcribeAudio = async (
             "Transcription API key not found in environment variables",
             API_ERROR_CODES.API_KEY_NOT_FOUND,
           );
-          handleApiError(error, "transcription", context);
+          throw error;
         }
 
         // Log request for debugging
@@ -112,7 +112,7 @@ export const transcribeAudio = async (
             errorData,
             response.status >= 500, // Retry on server errors
           );
-          handleApiError(error, "transcription", context);
+          return handleApiError(error, "transcription", context);
         }
 
         const data = await response.json();

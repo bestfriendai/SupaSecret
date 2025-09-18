@@ -249,7 +249,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
       }
 
       // Retry once after a brief delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       try {
         const { data, error } = await supabase.auth.getSession();
         session = data.session;
@@ -424,17 +424,21 @@ export const getCurrentUser = async (): Promise<User | null> => {
     if (error instanceof Error) {
       const errorMessage = error.message.toLowerCase();
 
-      if (errorMessage.includes('network') ||
-          errorMessage.includes('connection') ||
-          errorMessage.includes('timeout') ||
-          errorMessage.includes('fetch')) {
+      if (
+        errorMessage.includes("network") ||
+        errorMessage.includes("connection") ||
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("fetch")
+      ) {
         if (__DEV__) {
           console.warn("Network-related error in getCurrentUser, user may still be authenticated");
         }
         // For network errors, we might want to preserve cached user data in calling code
-      } else if (errorMessage.includes('unauthorized') ||
-                 errorMessage.includes('invalid') ||
-                 errorMessage.includes('expired')) {
+      } else if (
+        errorMessage.includes("unauthorized") ||
+        errorMessage.includes("invalid") ||
+        errorMessage.includes("expired")
+      ) {
         if (__DEV__) {
           console.log("Auth-related error in getCurrentUser, user needs to re-authenticate");
         }
@@ -518,9 +522,7 @@ export const signOutUser = async (): Promise<void> => {
 
       // For certain errors, we might still want to clear local state
       const errorMessage = error.message.toLowerCase();
-      if (errorMessage.includes('network') ||
-          errorMessage.includes('connection') ||
-          errorMessage.includes('timeout')) {
+      if (errorMessage.includes("network") || errorMessage.includes("connection") || errorMessage.includes("timeout")) {
         if (__DEV__) {
           console.warn("Network error during sign out, but clearing local auth state anyway");
         }

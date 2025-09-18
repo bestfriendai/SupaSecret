@@ -22,7 +22,7 @@ export default function AppHeader({ title, showTrendingBar = true }: AppHeaderPr
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-800/50">
         <View className="flex-row items-center">
           <Image
-            source={require('../../assets/logo.png')}
+            source={require("../../assets/logo.png")}
             style={{ width: 32, height: 32, marginRight: 10 }}
             resizeMode="contain"
           />

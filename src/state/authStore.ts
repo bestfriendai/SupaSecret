@@ -28,14 +28,14 @@ interface SupabaseSession {
     updated_at?: string;
     app_metadata?: Record<string, unknown>;
     user_metadata?: Record<string, unknown>;
-    identities?: Array<{
+    identities?: {
       identity_id: string;
       provider: string;
       identity_data?: Record<string, unknown>;
       last_sign_in_at?: string;
       created_at?: string;
       updated_at?: string;
-    }>;
+    }[];
   };
 }
 
@@ -200,11 +200,11 @@ export const useAuthStore = create<AuthState>()(
               } catch (error) {
                 sessionError = error;
                 if (__DEV__) {
-                  console.warn('Failed to get session, retrying...', error);
+                  console.warn("Failed to get session, retrying...", error);
                 }
 
                 // Retry once after a brief delay
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise((resolve) => setTimeout(resolve, 1000));
                 try {
                   const { data, error } = await supabase.auth.getSession();
                   session = data.session;
@@ -217,7 +217,7 @@ export const useAuthStore = create<AuthState>()(
               // Handle session errors
               if (sessionError) {
                 if (__DEV__) {
-                  console.error('Session retrieval failed:', sessionError);
+                  console.error("Session retrieval failed:", sessionError);
                 }
                 // If we have rehydrated user data and this is just a network issue, keep existing state
                 if (rehydratedUser && rehydratedAuth) {
@@ -232,7 +232,7 @@ export const useAuthStore = create<AuthState>()(
               // Validate session
               if (!isSessionValid(session as SupabaseSession | null)) {
                 if (__DEV__) {
-                  console.log('Session invalid or expired, signing out');
+                  console.log("Session invalid or expired, signing out");
                 }
                 await signOutUser();
                 set({ user: null, isAuthenticated: false, isLoading: false, error: null });
@@ -248,7 +248,7 @@ export const useAuthStore = create<AuthState>()(
                 user = await getCurrentUser();
               } catch (userError) {
                 if (__DEV__) {
-                  console.warn('Failed to get current user, using rehydrated data if available:', userError);
+                  console.warn("Failed to get current user, using rehydrated data if available:", userError);
                 }
                 // If we can't get fresh user data but have valid session and rehydrated user, keep existing user
                 if (rehydratedUser && rehydratedAuth) {
@@ -262,32 +262,31 @@ export const useAuthStore = create<AuthState>()(
                 user,
                 isAuthenticated: !!user,
                 isLoading: false,
-                error: null
+                error: null,
               });
 
               if (__DEV__) {
-                console.log('Auth state check completed:', { hasUser: !!user, userId: user?.id });
+                console.log("Auth state check completed:", { hasUser: !!user, userId: user?.id });
               }
-
             } catch (error) {
               if (__DEV__) {
-                console.error('Auth state check failed:', error);
+                console.error("Auth state check failed:", error);
               }
 
               // Enhanced error handling with graceful fallbacks
               const { user: rehydratedUser, isAuthenticated: rehydratedAuth } = get();
 
               // If error is network-related and we have valid rehydrated data, preserve it
-              const isNetworkError = error instanceof Error && (
-                error.message.includes('network') ||
-                error.message.includes('timeout') ||
-                error.message.includes('connection') ||
-                error.message.includes('fetch')
-              );
+              const isNetworkError =
+                error instanceof Error &&
+                (error.message.includes("network") ||
+                  error.message.includes("timeout") ||
+                  error.message.includes("connection") ||
+                  error.message.includes("fetch"));
 
               if (isNetworkError && rehydratedUser && rehydratedAuth) {
                 if (__DEV__) {
-                  console.log('Network error detected, preserving rehydrated auth state');
+                  console.log("Network error detected, preserving rehydrated auth state");
                 }
                 set({ isLoading: false, error: null });
               } else {
@@ -337,7 +336,7 @@ export const useAuthStore = create<AuthState>()(
       onRehydrateStorage: () => (state, error) => {
         if (error) {
           if (__DEV__) {
-            console.error('Failed to rehydrate auth state:', error);
+            console.error("Failed to rehydrate auth state:", error);
           }
           // Error handled, state will be reset automatically
           return;
@@ -350,9 +349,9 @@ export const useAuthStore = create<AuthState>()(
 
           if (hasUser !== claimsAuth) {
             if (__DEV__) {
-              console.warn('Inconsistent auth state detected during rehydration, correcting...', {
+              console.warn("Inconsistent auth state detected during rehydration, correcting...", {
                 hasUser,
-                claimsAuth
+                claimsAuth,
               });
             }
             // Correct inconsistent state - if we have a user, we should be authenticated
@@ -363,7 +362,7 @@ export const useAuthStore = create<AuthState>()(
           if (state.user) {
             if (!state.user.id) {
               if (__DEV__) {
-                console.warn('Invalid user data in rehydrated state (missing ID), clearing...');
+                console.warn("Invalid user data in rehydrated state (missing ID), clearing...");
               }
               state.user = null;
               state.isAuthenticated = false;
@@ -386,7 +385,7 @@ export const useAuthStore = create<AuthState>()(
               const { checkAuthState } = useAuthStore.getState();
               checkAuthState().catch((error) => {
                 if (__DEV__) {
-                  console.error('Post-rehydration auth check failed:', error);
+                  console.error("Post-rehydration auth check failed:", error);
                 }
               });
             }, 500);

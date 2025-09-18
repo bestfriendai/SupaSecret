@@ -68,7 +68,7 @@ export const useFaceBlurProcessing = () => {
         });
 
         // Extract first frame for face detection
-        const thumbnailUri = `${FileSystem.cacheDirectory}face_detection_frame.jpg`;
+        const thumbnailUri = `${FileSystem.Paths.cache.uri}face_detection_frame.jpg`;
 
         onProgress?.(30, "Extracting frame for analysis...");
 
@@ -152,7 +152,7 @@ export const useFaceBlurProcessing = () => {
         setIsProcessing(false);
       }
     },
-    []
+    [],
   );
 
   return {
@@ -166,7 +166,7 @@ export const useFaceBlurProcessing = () => {
 export const processVideoWithSelectiveFaceBlur = async (
   videoUri: string,
   faces: any[],
-  options: FaceBlurOptions = {}
+  options: FaceBlurOptions = {},
 ): Promise<string> => {
   const { blurIntensity = 15 } = options;
 
@@ -194,7 +194,7 @@ export const processVideoWithSelectiveFaceBlur = async (
 export const applyGeneralBlur = async (
   videoUri: string,
   blurIntensity: number = 15,
-  onProgress?: (progress: number, status: string) => void
+  onProgress?: (progress: number, status: string) => void,
 ): Promise<string> => {
   onProgress?.(0, "Applying general blur...");
 

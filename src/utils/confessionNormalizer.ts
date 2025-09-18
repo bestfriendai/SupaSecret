@@ -13,7 +13,7 @@ export function getVideoUriFromRow(dbRow: any): string | null {
   // Check both field variations for backward compatibility
   const videoPath = dbRow.video_uri || dbRow.video_url;
 
-  if (!videoPath || typeof videoPath !== 'string') {
+  if (!videoPath || typeof videoPath !== "string") {
     return null;
   }
 
@@ -27,18 +27,19 @@ export function getVideoUriFromRow(dbRow: any): string | null {
  */
 export function normalizeConfessionSync(dbRow: any): Confession {
   if (!dbRow || !dbRow.id) {
-    throw new Error('Invalid database row: missing required id field');
+    throw new Error("Invalid database row: missing required id field");
   }
 
   const base: Confession = {
     id: dbRow.id,
-    type: (dbRow.type === "video" || dbRow.type === "text") ? dbRow.type : "text",
+    type: dbRow.type === "video" || dbRow.type === "text" ? dbRow.type : "text",
     content: dbRow.content || "",
     videoUri: undefined,
     transcription: dbRow.transcription || undefined,
     timestamp: dbRow.created_at ? new Date(dbRow.created_at).getTime() : Date.now(),
     isAnonymous: Boolean(dbRow.is_anonymous),
     likes: Math.max(0, parseInt(dbRow.likes) || 0),
+    views: Math.max(0, parseInt(dbRow.views) || 0),
     isLiked: false,
   };
 
@@ -114,7 +115,7 @@ export async function normalizeConfession(dbRow: any): Promise<Confession> {
 
     // Return a minimal valid confession object on error
     return {
-      id: dbRow?.id || 'unknown',
+      id: dbRow?.id || "unknown",
       type: "text",
       content: "Content unavailable",
       videoUri: undefined,
@@ -122,6 +123,7 @@ export async function normalizeConfession(dbRow: any): Promise<Confession> {
       timestamp: Date.now(),
       isAnonymous: true,
       likes: 0,
+      views: 0,
       isLiked: false,
     };
   }
@@ -134,7 +136,7 @@ export async function normalizeConfession(dbRow: any): Promise<Confession> {
 export async function normalizeConfessions(dbRows: any[]): Promise<Confession[]> {
   if (!Array.isArray(dbRows)) {
     if (__DEV__) {
-      console.warn('normalizeConfessions called with non-array input:', dbRows);
+      console.warn("normalizeConfessions called with non-array input:", dbRows);
     }
     return [];
   }
@@ -144,7 +146,7 @@ export async function normalizeConfessions(dbRows: any[]): Promise<Confession[]>
       return await normalizeConfession(row);
     } catch (error) {
       if (__DEV__) {
-        console.error('Failed to normalize confession in batch:', error);
+        console.error("Failed to normalize confession in batch:", error);
       }
       return null;
     }

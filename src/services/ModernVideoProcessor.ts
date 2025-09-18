@@ -4,20 +4,20 @@
  * Replaces deprecated react-native-video-processing
  */
 
-import * as VideoThumbnails from 'expo-video-thumbnails';
-import * as ImageManipulator from 'expo-image-manipulator';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import * as FileSystem from 'expo-file-system';
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import * as VideoThumbnails from "expo-video-thumbnails";
+import * as ImageManipulator from "expo-image-manipulator";
+import { VideoView, useVideoPlayer } from "expo-video";
+import * as FileSystem from "expo-file-system";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 import {
   videoValidation,
   validateVideoProcessingOptions,
-  VideoProcessingOptions as ValidationVideoProcessingOptions
-} from '../utils/validation';
+  VideoProcessingOptions as ValidationVideoProcessingOptions,
+} from "../utils/validation";
 
 // Check if we're in Expo Go or Development Build
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+const IS_EXPO_GO = Constants.appOwnership === "expo";
 const IS_DEV_BUILD = Constants.appOwnership === null;
 const HAS_FFMPEG = !IS_EXPO_GO; // FFmpeg only available in dev builds
 
@@ -31,18 +31,18 @@ const loadFFmpeg = async () => {
   if (!HAS_FFMPEG || FFmpegKit) return;
 
   try {
-    const ffmpegModule = await import('ffmpeg-kit-react-native');
+    const ffmpegModule = await import("ffmpeg-kit-react-native");
     FFmpegKit = ffmpegModule.FFmpegKit;
     FFmpegKitConfig = ffmpegModule.FFmpegKitConfig;
     FFprobeKit = ffmpegModule.FFprobeKit;
     ReturnCode = ffmpegModule.ReturnCode;
 
     if (__DEV__) {
-      console.log('✅ FFmpeg loaded successfully for development build');
+      console.log("✅ FFmpeg loaded successfully for development build");
     }
   } catch (error) {
     if (__DEV__) {
-      console.log('⚠️ FFmpeg not available - using Expo Go fallbacks');
+      console.log("⚠️ FFmpeg not available - using Expo Go fallbacks");
     }
   }
 };
@@ -53,10 +53,10 @@ if (HAS_FFMPEG) {
 }
 
 export interface VideoProcessingOptions {
-  quality?: 'low' | 'medium' | 'high' | 'highest';
+  quality?: "low" | "medium" | "high" | "highest";
   maxDuration?: number; // seconds
   removeAudio?: boolean;
-  outputFormat?: 'mp4' | 'mov';
+  outputFormat?: "mp4" | "mov";
   width?: number;
   height?: number;
   bitrate?: number;
@@ -88,15 +88,15 @@ export class ModernVideoProcessor {
   async processVideo(
     videoUri: string,
     options: VideoProcessingOptions = {},
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<ProcessedVideo> {
     try {
       onProgress?.(1);
 
       // Validate processing options using comprehensive validation
       const mappedOptions: ValidationVideoProcessingOptions = {
-        quality: options.quality === 'highest' ? 'high' : options.quality as 'low' | 'medium' | 'high' | undefined,
-        voiceEffect: 'none', // Not supported in this processor
+        quality: options.quality === "highest" ? "high" : (options.quality as "low" | "medium" | "high" | undefined),
+        voiceEffect: "none", // Not supported in this processor
         transcriptionEnabled: false, // Not supported in this processor
         backgroundMusic: false,
         filters: [], // Not supported in this processor
@@ -109,7 +109,7 @@ export class ModernVideoProcessor {
 
       // Log validation warnings
       if (optionsValidation.warnings && __DEV__) {
-        console.warn('ModernVideoProcessor options warnings:', optionsValidation.warnings);
+        console.warn("ModernVideoProcessor options warnings:", optionsValidation.warnings);
       }
 
       onProgress?.(2);
@@ -135,7 +135,7 @@ export class ModernVideoProcessor {
         }
 
         if (sizeValidation.warnings && __DEV__) {
-          console.warn('Video size warnings:', sizeValidation.warnings);
+          console.warn("Video size warnings:", sizeValidation.warnings);
         }
       }
 
@@ -150,11 +150,11 @@ export class ModernVideoProcessor {
 
       // Validate environment-specific options
       if (IS_EXPO_GO && options.maxDuration && options.maxDuration > 120) {
-        throw new Error('Maximum duration in Expo Go is limited to 120 seconds');
+        throw new Error("Maximum duration in Expo Go is limited to 120 seconds");
       }
 
       if (!IS_EXPO_GO && options.maxDuration && options.maxDuration > 300) {
-        throw new Error('Maximum duration is limited to 300 seconds');
+        throw new Error("Maximum duration is limited to 300 seconds");
       }
 
       onProgress?.(5);
@@ -166,14 +166,16 @@ export class ModernVideoProcessor {
         return this.processVideoWithFFmpeg(videoUri, options, onProgress);
       }
     } catch (error) {
-      console.error('[ModernVideoProcessor] Processing failed:', error);
+      console.error("[ModernVideoProcessor] Processing failed:", error);
 
       // Enhanced error handling for validation errors
       if (error instanceof Error) {
-        if (error.message.includes('Invalid processing options:') ||
-            error.message.includes('Unsupported video format') ||
-            error.message.includes('Video size must be less than') ||
-            error.message.includes('Maximum duration')) {
+        if (
+          error.message.includes("Invalid processing options:") ||
+          error.message.includes("Unsupported video format") ||
+          error.message.includes("Video size must be less than") ||
+          error.message.includes("Maximum duration")
+        ) {
           // These are validation errors - re-throw with original message
           throw error;
         }
@@ -181,7 +183,7 @@ export class ModernVideoProcessor {
         throw new Error(`Video processing failed: ${error.message}`);
       }
 
-      throw new Error('Video processing failed: Unknown error occurred');
+      throw new Error("Video processing failed: Unknown error occurred");
     }
   }
 
@@ -191,10 +193,10 @@ export class ModernVideoProcessor {
   private async processVideoExpoGo(
     videoUri: string,
     options: VideoProcessingOptions,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<ProcessedVideo> {
     if (__DEV__) {
-      console.log('📱 Using Expo Go video processing fallback');
+      console.log("📱 Using Expo Go video processing fallback");
     }
 
     onProgress?.(10);
@@ -202,7 +204,7 @@ export class ModernVideoProcessor {
     // Get video info
     const videoInfo = await FileSystem.getInfoAsync(videoUri);
     if (!videoInfo.exists) {
-      throw new Error('Video file not found');
+      throw new Error("Video file not found");
     }
 
     onProgress?.(30);
@@ -213,7 +215,7 @@ export class ModernVideoProcessor {
     onProgress?.(60);
 
     // In Expo Go, we can't compress or trim, so we just copy the file
-    const outputDir = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}processed/`;
+    const outputDir = `${FileSystem.Paths.cache.uri || FileSystem.Paths.document.uri}processed/`;
     await FileSystem.makeDirectoryAsync(outputDir, { intermediates: true });
 
     const outputUri = `${outputDir}video_${Date.now()}.mp4`;
@@ -237,7 +239,7 @@ export class ModernVideoProcessor {
     onProgress?.(100);
 
     if (__DEV__) {
-      console.log('✅ Expo Go video processing complete (limited features)');
+      console.log("✅ Expo Go video processing complete (limited features)");
     }
 
     return result;
@@ -249,17 +251,17 @@ export class ModernVideoProcessor {
   private async processVideoWithFFmpeg(
     videoUri: string,
     options: VideoProcessingOptions,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<ProcessedVideo> {
     await loadFFmpeg();
 
     if (!FFmpegKit) {
-      console.warn('FFmpeg not available, falling back to Expo Go processing');
+      console.warn("FFmpeg not available, falling back to Expo Go processing");
       return this.processVideoExpoGo(videoUri, options, onProgress);
     }
 
     if (__DEV__) {
-      console.log('🎬 Using FFmpeg for full video processing');
+      console.log("🎬 Using FFmpeg for full video processing");
     }
 
     onProgress?.(10);
@@ -270,7 +272,7 @@ export class ModernVideoProcessor {
     onProgress?.(20);
 
     // Build FFmpeg command
-    const outputDir = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}processed/`;
+    const outputDir = `${FileSystem.Paths.cache.uri || FileSystem.Paths.document.uri}processed/`;
     await FileSystem.makeDirectoryAsync(outputDir, { intermediates: true });
 
     const outputUri = `${outputDir}video_${Date.now()}.mp4`;
@@ -283,7 +285,7 @@ export class ModernVideoProcessor {
     const returnCode = await session.getReturnCode();
 
     if (!ReturnCode.isSuccess(returnCode)) {
-      throw new Error('Video processing failed');
+      throw new Error("Video processing failed");
     }
 
     onProgress?.(80);
@@ -309,7 +311,7 @@ export class ModernVideoProcessor {
     onProgress?.(100);
 
     if (__DEV__) {
-      console.log('✅ FFmpeg video processing complete');
+      console.log("✅ FFmpeg video processing complete");
     }
 
     return result;
@@ -327,10 +329,10 @@ export class ModernVideoProcessor {
       return uri;
     } catch (error) {
       if (__DEV__) {
-        console.warn('Failed to generate thumbnail:', error);
+        console.warn("Failed to generate thumbnail:", error);
       }
       // Return a placeholder or empty string if thumbnail generation fails
-      return '';
+      return "";
     }
   }
 
@@ -354,7 +356,7 @@ export class ModernVideoProcessor {
         const info = await session.getMediaInformation();
         if (info) {
           const streams = info.getStreams();
-          const videoStream = streams.find((s: any) => s.getType() === 'video');
+          const videoStream = streams.find((s: any) => s.getType() === "video");
 
           resolve({
             width: videoStream?.getWidth() || 1920,
@@ -364,7 +366,7 @@ export class ModernVideoProcessor {
             fps: videoStream?.getFps() || 30,
           });
         } else {
-          reject(new Error('Failed to get video metadata'));
+          reject(new Error("Failed to get video metadata"));
         }
       });
     });
@@ -377,9 +379,9 @@ export class ModernVideoProcessor {
     inputUri: string,
     outputUri: string,
     options: VideoProcessingOptions,
-    metadata: any
+    metadata: any,
   ): string {
-    const args: string[] = ['-i', inputUri];
+    const args: string[] = ["-i", inputUri];
 
     // Quality/bitrate settings
     const qualityBitrates = {
@@ -389,42 +391,42 @@ export class ModernVideoProcessor {
       highest: 5000000,
     };
 
-    const bitrate = options.bitrate || qualityBitrates[options.quality || 'high'];
-    args.push('-b:v', `${bitrate}`);
+    const bitrate = options.bitrate || qualityBitrates[options.quality || "high"];
+    args.push("-b:v", `${bitrate}`);
 
     // Resolution
     if (options.width || options.height) {
       const width = options.width || -2;
       const height = options.height || -2;
-      args.push('-vf', `scale=${width}:${height}`);
+      args.push("-vf", `scale=${width}:${height}`);
     }
 
     // Frame rate
     if (options.fps) {
-      args.push('-r', `${options.fps}`);
+      args.push("-r", `${options.fps}`);
     }
 
     // Duration limit
     if (options.maxDuration) {
-      args.push('-t', `${options.maxDuration}`);
+      args.push("-t", `${options.maxDuration}`);
     }
 
     // Audio settings
     if (options.removeAudio) {
-      args.push('-an');
+      args.push("-an");
     } else {
-      args.push('-c:a', 'aac', '-b:a', '128k');
+      args.push("-c:a", "aac", "-b:a", "128k");
     }
 
     // Output format
-    args.push('-c:v', 'h264');
-    args.push('-preset', 'fast');
-    args.push('-movflags', 'faststart');
+    args.push("-c:v", "h264");
+    args.push("-preset", "fast");
+    args.push("-movflags", "faststart");
 
     // Output file
     args.push(outputUri);
 
-    return args.join(' ');
+    return args.join(" ");
   }
 
   /**
@@ -434,12 +436,12 @@ export class ModernVideoProcessor {
     videoUri: string,
     startTime: number,
     endTime: number,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<ProcessedVideo> {
     if (IS_EXPO_GO) {
       // In Expo Go, we can't trim, so return original
       if (__DEV__) {
-        console.warn('Video trimming not available in Expo Go');
+        console.warn("Video trimming not available in Expo Go");
       }
       return this.processVideoExpoGo(videoUri, {}, onProgress);
     }
@@ -449,17 +451,17 @@ export class ModernVideoProcessor {
       return this.processVideoExpoGo(videoUri, {}, onProgress);
     }
 
-    const outputDir = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}trimmed/`;
+    const outputDir = `${FileSystem.Paths.cache.uri || FileSystem.Paths.document.uri}trimmed/`;
     await FileSystem.makeDirectoryAsync(outputDir, { intermediates: true });
 
     const outputUri = `${outputDir}trimmed_${Date.now()}.mp4`;
     const duration = endTime - startTime;
 
     // Safe FFmpeg arguments to prevent command injection
-    const safeStartTime = String(startTime).replace(/[^0-9.]/g, '');
-    const safeDuration = String(duration).replace(/[^0-9.]/g, '');
-    const safeVideoUri = videoUri.replace(/[;&|`$(){}[\]<>]/g, '');
-    const safeOutputUri = outputUri.replace(/[;&|`$(){}[\]<>]/g, '');
+    const safeStartTime = String(startTime).replace(/[^0-9.]/g, "");
+    const safeDuration = String(duration).replace(/[^0-9.]/g, "");
+    const safeVideoUri = videoUri.replace(/[;&|`$(){}[\]<>]/g, "");
+    const safeOutputUri = outputUri.replace(/[;&|`$(){}[\]<>]/g, "");
 
     const command = `-ss ${safeStartTime} -i "${safeVideoUri}" -t ${safeDuration} -c copy "${safeOutputUri}"`;
 
@@ -467,7 +469,7 @@ export class ModernVideoProcessor {
     const returnCode = await session.getReturnCode();
 
     if (!ReturnCode.isSuccess(returnCode)) {
-      throw new Error('Video trimming failed');
+      throw new Error("Video trimming failed");
     }
 
     return this.getVideoInfo(outputUri);
@@ -478,8 +480,8 @@ export class ModernVideoProcessor {
    */
   async compressVideo(
     videoUri: string,
-    quality: 'low' | 'medium' | 'high' = 'medium',
-    onProgress?: (progress: number) => void
+    quality: "low" | "medium" | "high" = "medium",
+    onProgress?: (progress: number) => void,
   ): Promise<ProcessedVideo> {
     return this.processVideo(videoUri, { quality }, onProgress);
   }
@@ -496,7 +498,7 @@ export class ModernVideoProcessor {
       }
 
       // Try to extract from common video patterns
-      const formats = ['mp4', 'mov', 'avi', 'mkv', 'm4v', '3gp', 'webm'];
+      const formats = ["mp4", "mov", "avi", "mkv", "m4v", "3gp", "webm"];
       for (const format of formats) {
         if (videoUri.toLowerCase().includes(format)) {
           return format;
@@ -506,7 +508,7 @@ export class ModernVideoProcessor {
       return null;
     } catch (error) {
       if (__DEV__) {
-        console.warn('Failed to extract format from URI:', videoUri, error);
+        console.warn("Failed to extract format from URI:", videoUri, error);
       }
       return null;
     }

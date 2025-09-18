@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform } from "react-native";
 
 /**
  * Hermes compatibility test utilities
@@ -86,10 +86,10 @@ export function testVideoDisposalHandling(): boolean {
     // Test disposal pattern that was causing warnings
     const disposePlayer = async () => {
       try {
-        if (mockPlayer.playing !== undefined && typeof mockPlayer.pause === 'function') {
+        if (mockPlayer.playing !== undefined && typeof mockPlayer.pause === "function") {
           await mockPlayer.pause();
-          
-          if (typeof mockPlayer.unload === 'function') {
+
+          if (typeof mockPlayer.unload === "function") {
             await mockPlayer.unload();
           }
         }
@@ -140,15 +140,15 @@ export function runHermesCompatibilityTests(): HermesTestResult {
 export function logHermesInfo(): void {
   if (__DEV__) {
     console.group("🔧 Hermes Engine Information");
-    
+
     // Check if Hermes is enabled
-    const isHermes = typeof HermesInternal === 'object' && HermesInternal !== null;
+    const isHermes = typeof HermesInternal === "object" && HermesInternal !== null;
     console.log("Hermes Enabled:", isHermes ? "✅ YES" : "❌ NO");
-    
+
     if (isHermes) {
       try {
         // @ts-ignore - HermesInternal is not typed
-        const hermesVersion = HermesInternal?.getRuntimeProperties?.()?.['OSS Release Version'];
+        const hermesVersion = HermesInternal?.getRuntimeProperties?.()?.["OSS Release Version"];
         if (hermesVersion) {
           console.log("Hermes Version:", hermesVersion);
         }
@@ -156,11 +156,11 @@ export function logHermesInfo(): void {
         console.log("Hermes Version: Unable to determine");
       }
     }
-    
+
     // Log JavaScript engine info
     console.log("JavaScript Engine:", isHermes ? "Hermes" : "JSC/V8");
     console.log("Platform:", Platform.OS);
-    
+
     console.groupEnd();
   }
 }

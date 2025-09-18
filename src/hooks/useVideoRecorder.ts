@@ -152,7 +152,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
         clearInterval(timerRef.current);
       }
     };
-  }, [isRecording, isPaused, maxDuration, stopRecording]);
+  }, [isRecording, isPaused, maxDuration]);
 
   // Auto-stop recording when max duration reached
   useEffect(() => {
@@ -192,7 +192,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       setError(undefined);
 
       // Check permissions
-      if (!hasVideoPermissions()) {
+      if (!hasVideoPermissions) {
         const granted = await requestVideoPermissions();
         if (!granted) {
           throw new Error("Camera and microphone permissions are required");
@@ -231,7 +231,6 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   }, [
     cameraRef,
     isRecording,
-    hasVideoPermissions,
     requestVideoPermissions,
     maxDuration,
     quality,
@@ -500,7 +499,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
     isRecording,
     isProcessing,
     recordingTime,
-    hasPermissions: hasVideoPermissions(),
+    hasPermissions: hasVideoPermissions,
     error,
   };
 };

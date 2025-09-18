@@ -109,10 +109,10 @@ function AuthStackNavigator() {
             // Track current route to persist it across re-renders
             currentAuthRoute = currentRoute.name as keyof AuthStackParamList;
             if (__DEV__) {
-              console.log('[AuthStack] Current route:', currentAuthRoute);
+              console.log("[AuthStack] Current route:", currentAuthRoute);
             }
           }
-        }
+        },
       }}
     >
       <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -168,12 +168,8 @@ function MainTabs() {
           backgroundColor: "#000000",
           borderTopColor: "#2F3336",
           borderTopWidth: 0.5,
-          height: Platform.OS === 'ios'
-            ? 60 + insets.bottom
-            : 60 + (insets.bottom > 0 ? insets.bottom : 0),
-          paddingBottom: Platform.OS === 'ios'
-            ? insets.bottom
-            : insets.bottom > 0 ? insets.bottom : 8,
+          height: Platform.OS === "ios" ? 60 + insets.bottom : 60 + (insets.bottom > 0 ? insets.bottom : 0),
+          paddingBottom: Platform.OS === "ios" ? insets.bottom : insets.bottom > 0 ? insets.bottom : 8,
           paddingTop: 8,
           elevation: 8,
         },
@@ -182,7 +178,7 @@ function MainTabs() {
         tabBarInactiveBackgroundColor: "transparent",
         tabBarLabelStyle: {
           fontSize: 10,
-          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+          marginBottom: Platform.OS === "ios" ? 0 : 4,
         },
         tabBarIconStyle: {
           marginTop: 4,
@@ -268,18 +264,15 @@ export default function AppNavigator() {
 
     let timeoutId: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('Auth check timeout')), AUTH_CHECK_TIMEOUT);
+      timeoutId = setTimeout(() => reject(new Error("Auth check timeout")), AUTH_CHECK_TIMEOUT);
     });
 
     try {
-      await Promise.race([
-        checkAuthState(),
-        timeoutPromise
-      ]);
+      await Promise.race([checkAuthState(), timeoutPromise]);
       setIsInitializing(false);
     } catch (error) {
-      logNavigationState('Auth initialization failed', error);
-      setInitError('Unable to verify authentication status. Please try again.');
+      logNavigationState("Auth initialization failed", error);
+      setInitError("Unable to verify authentication status. Please try again.");
       setIsInitializing(false);
     } finally {
       // Clear the timeout to prevent memory leaks and unhandled rejections
@@ -290,14 +283,14 @@ export default function AppNavigator() {
   }, [checkAuthState]);
 
   useEffect(() => {
-    logNavigationState('Mount', { isAuthenticated, hasUser: !!user });
+    logNavigationState("Mount", { isAuthenticated, hasUser: !!user });
     initializeAuth();
   }, []);
 
   // Consolidated state logging
   useEffect(() => {
     if (!isInitializing) {
-      logNavigationState('State Update', {
+      logNavigationState("State Update", {
         isAuthenticated,
         isLoading,
         hasUser: !!user,
@@ -305,16 +298,16 @@ export default function AppNavigator() {
         isOnboarded: user?.isOnboarded,
       });
     }
-  }, [isAuthenticated, isLoading, user, isInitializing])
+  }, [isAuthenticated, isLoading, user, isInitializing]);
 
   // Show loading screen during initialization
   if (isInitializing || isLoading) {
-    logNavigationState('Loading', { isInitializing, isLoading });
+    logNavigationState("Loading", { isInitializing, isLoading });
     return (
       <View style={{ flex: 1, backgroundColor: "black", alignItems: "center", justifyContent: "center" }}>
         <LoadingSpinner size={48} color="#1D9BF0" />
-        <Text style={{ color: '#666', marginTop: 16, fontSize: 14 }}>
-          {isInitializing ? 'Initializing...' : 'Loading...'}
+        <Text style={{ color: "#666", marginTop: 16, fontSize: 14 }}>
+          {isInitializing ? "Initializing..." : "Loading..."}
         </Text>
       </View>
     );
@@ -324,11 +317,7 @@ export default function AppNavigator() {
   if (initError) {
     return (
       <View style={{ flex: 1, backgroundColor: "black", padding: 20 }}>
-        <ErrorState
-          message={initError}
-          onRetry={initializeAuth}
-          type="auth"
-        />
+        <ErrorState message={initError} onRetry={initializeAuth} type="auth" />
       </View>
     );
   }
@@ -336,15 +325,11 @@ export default function AppNavigator() {
   // Determine which stack to show with simplified logic
   const shouldShowAuth = !isAuthenticated || (user && !user.isOnboarded);
 
-  logNavigationState('Navigation Decision', {
+  logNavigationState("Navigation Decision", {
     shouldShowAuth,
     currentAuthRoute,
-    reason: !isAuthenticated
-      ? 'not_authenticated'
-      : user && !user.isOnboarded
-        ? 'needs_onboarding'
-        : 'authenticated',
-  })
+    reason: !isAuthenticated ? "not_authenticated" : user && !user.isOnboarded ? "needs_onboarding" : "authenticated",
+  });
 
   return (
     <NavigationContainer
@@ -381,11 +366,11 @@ export default function AppNavigator() {
       }}
       fallback={<View style={{ flex: 1, backgroundColor: "#000000" }} />}
       onReady={() => {
-        logNavigationState('Container Ready', { timestamp: Date.now() });
+        logNavigationState("Container Ready", { timestamp: Date.now() });
       }}
       onStateChange={(state) => {
         if (state?.routes && state?.index !== undefined) {
-          logNavigationState('Route Changed', state.routes[state.index]?.name);
+          logNavigationState("Route Changed", state.routes[state.index]?.name);
         }
       }}
     >

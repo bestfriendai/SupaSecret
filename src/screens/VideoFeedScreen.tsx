@@ -14,7 +14,7 @@ import { useDataIntegrityMonitor } from "../hooks/useDataIntegrityMonitor";
 function VideoFeedScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [error, setError] = React.useState<string | null>(null);
-  const validator = createScreenValidator('VideoFeedScreen');
+  const validator = createScreenValidator("VideoFeedScreen");
 
   // Monitor data integrity for key uniqueness issues
   const { totalConfessions, videoConfessions } = useDataIntegrityMonitor();
@@ -22,14 +22,14 @@ function VideoFeedScreen() {
   // Handle navigation focus for cleanup
   useFocusEffect(
     React.useCallback(() => {
-      validator.log('Screen focused');
+      validator.log("Screen focused");
       setError(null); // Clear any previous errors on focus
 
       return () => {
         // Cleanup when navigating away
-        validator.log('Navigating away');
+        validator.log("Navigating away");
       };
-    }, [validator])
+    }, [validator]),
   );
 
   // Show error state if there's an error
@@ -49,33 +49,33 @@ function VideoFeedScreen() {
 
   const handleClose = useCallback(() => {
     try {
-      validator.log('Closing video feed');
+      validator.log("Closing video feed");
       if (navigation.canGoBack()) {
         navigation.goBack();
       } else {
-        validator.warn('Cannot go back, navigating to Home');
-        navigation.navigate('MainTabs');
+        validator.warn("Cannot go back, navigating to Home");
+        navigation.navigate("MainTabs");
       }
     } catch (navError) {
-      validator.error('Navigation failed:', navError);
+      validator.error("Navigation failed:", navError);
       // Force navigate to home as fallback
-      navigation.navigate('MainTabs');
+      navigation.navigate("MainTabs");
     }
   }, [navigation, validator]);
 
-  const handleError = useCallback((err: any) => {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to load videos';
-    validator.error('Video list error:', err);
-    setError(errorMessage);
-  }, [validator]);
+  const handleError = useCallback(
+    (err: any) => {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load videos";
+      validator.error("Video list error:", err);
+      setError(errorMessage);
+    },
+    [validator],
+  );
 
   // Render the video list directly - it handles its own loading state
   return (
     <View className="flex-1 bg-black">
-      <OptimizedVideoList
-        onClose={handleClose}
-        onError={handleError}
-      />
+      <OptimizedVideoList onClose={handleClose} onError={handleError} />
     </View>
   );
 }

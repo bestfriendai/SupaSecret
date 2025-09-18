@@ -15,23 +15,14 @@ function HashtagItemComponent({ item, onPress }: Props) {
   // Memoize calculated values
   const normalizedPercentage = useMemo(
     () => Math.max(0, Math.min(item.percentage / PROGRESS_MAX_PERCENT, 1)),
-    [item.percentage]
+    [item.percentage],
   );
 
-  const percentageText = useMemo(
-    () => `${(normalizedPercentage * 100).toFixed(1)}%`,
-    [normalizedPercentage]
-  );
+  const percentageText = useMemo(() => `${(normalizedPercentage * 100).toFixed(1)}%`, [normalizedPercentage]);
 
-  const progressWidth = useMemo(
-    () => `${Math.round(normalizedPercentage * 100)}%` as const,
-    [normalizedPercentage]
-  );
+  const progressWidth = useMemo(() => `${Math.round(normalizedPercentage * 100)}%` as const, [normalizedPercentage]);
 
-  const mentionText = useMemo(
-    () => `${item.count} ${item.count === 1 ? "mention" : "mentions"}`,
-    [item.count]
-  );
+  const mentionText = useMemo(() => `${item.count} ${item.count === 1 ? "mention" : "mentions"}`, [item.count]);
 
   // Stable callback
   const handlePress = useCallback(() => onPress(item.hashtag), [onPress, item.hashtag]);
@@ -39,7 +30,7 @@ function HashtagItemComponent({ item, onPress }: Props) {
   // Memoize accessibility props
   const a11yProps = useMemo(
     () => getButtonA11yProps(`Hashtag ${item.hashtag}`, `Tap to search ${item.hashtag}`),
-    [item.hashtag]
+    [item.hashtag],
   );
 
   // Memoize styles
@@ -53,27 +44,18 @@ function HashtagItemComponent({ item, onPress }: Props) {
       borderRadius: 12,
       marginBottom: 8,
     }),
-    []
+    [],
   );
 
-  const hashtagTextStyle = useMemo<TextStyle>(
-    () => ({ color: "#fff", fontSize: 16, fontWeight: "600" }),
-    []
-  );
+  const hashtagTextStyle = useMemo<TextStyle>(() => ({ color: "#fff", fontSize: 16, fontWeight: "600" }), []);
 
-  const mentionTextStyle = useMemo<TextStyle>(
-    () => ({ color: "#9CA3AF", fontSize: 13 }),
-    []
-  );
+  const mentionTextStyle = useMemo<TextStyle>(() => ({ color: "#9CA3AF", fontSize: 13 }), []);
 
-  const percentageTextStyle = useMemo<TextStyle>(
-    () => ({ color: "#60A5FA", fontSize: 14, fontWeight: "700" }),
-    []
-  );
+  const percentageTextStyle = useMemo<TextStyle>(() => ({ color: "#60A5FA", fontSize: 14, fontWeight: "700" }), []);
 
   const progressBarStyle = useMemo<ViewStyle>(
     () => ({ width: 64, height: 8, backgroundColor: "#1F2937", borderRadius: 99, marginTop: 6 }),
-    []
+    [],
   );
 
   const progressFillStyle = useMemo<ViewStyle>(
@@ -83,15 +65,11 @@ function HashtagItemComponent({ item, onPress }: Props) {
       borderRadius: 99,
       width: progressWidth,
     }),
-    [progressWidth]
+    [progressWidth],
   );
 
   return (
-    <Pressable
-      onPress={handlePress}
-      {...a11yProps}
-      style={containerStyle}
-    >
+    <Pressable onPress={handlePress} {...a11yProps} style={containerStyle}>
       <View style={{ flex: 1 }}>
         <Text style={hashtagTextStyle}>{item.hashtag}</Text>
         <Text style={mentionTextStyle}>{mentionText}</Text>

@@ -210,14 +210,12 @@ export function translateSupabaseError(code?: string): string | undefined {
  */
 export const getScreenSpecificMessage = (error: StandardError, screenName: string): string => {
   // Import screen error messages
-  const { getScreenErrorMessage } = require('./screenErrorMessages');
+  const { getScreenErrorMessage } = require("./screenErrorMessages");
 
   const screenError = getScreenErrorMessage(error, screenName);
   if (screenError.message !== error.message) {
     // Include suggestion if available
-    return screenError.suggestion
-      ? `${screenError.message} ${screenError.suggestion}`
-      : screenError.message;
+    return screenError.suggestion ? `${screenError.message} ${screenError.suggestion}` : screenError.message;
   }
 
   // Fall back to generic user-friendly message

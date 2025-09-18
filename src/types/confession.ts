@@ -6,7 +6,9 @@ export interface Confession {
   transcription?: string | null;
   timestamp: number;
   isAnonymous: boolean;
-  likes?: number | null;
+  likes: number;
+  views: number;
+  sessionId?: string | null;
   isLiked?: boolean | null;
   // Video processing fields
   faceBlurApplied?: boolean;
@@ -14,7 +16,6 @@ export interface Confession {
   processed?: boolean;
   // Video metadata
   duration?: number;
-  views?: number;
 }
 
 // Database schema representation (snake_case)
@@ -27,6 +28,8 @@ export interface DatabaseConfession {
   created_at: string;
   is_anonymous: boolean;
   likes: number;
+  views: number;
+  session_id?: string | null;
   user_id?: string | null;
 }
 
@@ -38,6 +41,7 @@ export interface VideoAnalytics {
   watch_progress: number; // 0-1 representing how much of the video was watched
   total_duration?: number; // Total video duration in seconds
   watch_sessions?: number; // Number of times the video was played
+  sessions: number; // Number of viewing sessions
 }
 
 export interface UserPreferences {

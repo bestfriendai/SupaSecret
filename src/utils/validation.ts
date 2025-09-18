@@ -170,17 +170,15 @@ export const validators = {
       }
 
       // Check if it's a valid file object (React Native or web)
-      if (typeof value === 'object' && (value.uri || value.path || value.name)) {
-        const fileName = value.name || value.uri || value.path || '';
-        const validExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.3gp', '.webm'];
-        const hasValidExtension = validExtensions.some(ext =>
-          fileName.toLowerCase().includes(ext)
-        );
+      if (typeof value === "object" && (value.uri || value.path || value.name)) {
+        const fileName = value.name || value.uri || value.path || "";
+        const validExtensions = [".mp4", ".mov", ".avi", ".mkv", ".m4v", ".3gp", ".webm"];
+        const hasValidExtension = validExtensions.some((ext) => fileName.toLowerCase().includes(ext));
 
         if (!hasValidExtension) {
           return {
             isValid: false,
-            error: `Unsupported video format. Please use: ${validExtensions.join(', ')}`
+            error: `Unsupported video format. Please use: ${validExtensions.join(", ")}`,
           };
         }
 
@@ -188,7 +186,7 @@ export const validators = {
       }
 
       // Check if it's a URL
-      if (typeof value === 'string' && /^https?:\/\//.test(value)) {
+      if (typeof value === "string" && /^https?:\/\//.test(value)) {
         return { isValid: true };
       }
 
@@ -219,20 +217,18 @@ export const validators = {
     },
   }),
 
-  videoFormat: (supportedFormats: string[] = ['mp4', 'mov', 'avi'], message?: string): ValidationRule<string> => ({
+  videoFormat: (supportedFormats: string[] = ["mp4", "mov", "avi"], message?: string): ValidationRule<string> => ({
     validate: (value) => {
-      if (typeof value !== 'string') {
+      if (typeof value !== "string") {
         return { isValid: false, error: "Invalid video format" };
       }
 
       const format = value.toLowerCase();
-      const isSupported = supportedFormats.some(fmt => format.includes(fmt));
+      const isSupported = supportedFormats.some((fmt) => format.includes(fmt));
 
       return {
         isValid: isSupported,
-        error: !isSupported
-          ? message || `Unsupported format. Supported: ${supportedFormats.join(', ')}`
-          : undefined,
+        error: !isSupported ? message || `Unsupported format. Supported: ${supportedFormats.join(", ")}` : undefined,
       };
     },
   }),
@@ -303,8 +299,8 @@ export function validateObject<T extends Record<string, unknown>>(
  * Video processing options validation
  */
 export interface VideoProcessingOptions {
-  quality?: 'low' | 'medium' | 'high';
-  voiceEffect?: 'none' | 'robot' | 'whisper' | 'deep';
+  quality?: "low" | "medium" | "high";
+  voiceEffect?: "none" | "robot" | "whisper" | "deep";
   transcriptionEnabled?: boolean;
   backgroundMusic?: boolean;
   filters?: string[];
@@ -315,36 +311,36 @@ export function validateVideoProcessingOptions(options: VideoProcessingOptions):
   const warnings: string[] = [];
 
   // Validate quality setting
-  if (options.quality && !['low', 'medium', 'high'].includes(options.quality)) {
-    errors.push('Invalid quality setting. Must be low, medium, or high.');
+  if (options.quality && !["low", "medium", "high"].includes(options.quality)) {
+    errors.push("Invalid quality setting. Must be low, medium, or high.");
   }
 
   // Validate voice effect
-  if (options.voiceEffect && !['none', 'robot', 'whisper', 'deep'].includes(options.voiceEffect)) {
-    errors.push('Invalid voice effect. Must be none, robot, whisper, or deep.');
+  if (options.voiceEffect && !["none", "robot", "whisper", "deep"].includes(options.voiceEffect)) {
+    errors.push("Invalid voice effect. Must be none, robot, whisper, or deep.");
   }
 
   // Validate filters
   if (options.filters && Array.isArray(options.filters)) {
-    const validFilters = ['blur', 'vintage', 'noir', 'bright', 'contrast'];
-    const invalidFilters = options.filters.filter(filter => !validFilters.includes(filter));
+    const validFilters = ["blur", "vintage", "noir", "bright", "contrast"];
+    const invalidFilters = options.filters.filter((filter) => !validFilters.includes(filter));
     if (invalidFilters.length > 0) {
-      errors.push(`Invalid filters: ${invalidFilters.join(', ')}. Valid options: ${validFilters.join(', ')}`);
+      errors.push(`Invalid filters: ${invalidFilters.join(", ")}. Valid options: ${validFilters.join(", ")}`);
     }
 
     if (options.filters.length > 3) {
-      warnings.push('Using more than 3 filters may significantly slow down processing.');
+      warnings.push("Using more than 3 filters may significantly slow down processing.");
     }
   }
 
   // Environment-specific validations
-  if (typeof __DEV__ !== 'undefined') {
-    if (options.quality === 'high' && options.voiceEffect && options.voiceEffect !== 'none') {
-      warnings.push('High quality with voice effects may take longer to process in development.');
+  if (typeof __DEV__ !== "undefined") {
+    if (options.quality === "high" && options.voiceEffect && options.voiceEffect !== "none") {
+      warnings.push("High quality with voice effects may take longer to process in development.");
     }
 
-    if (options.transcriptionEnabled && options.voiceEffect && options.voiceEffect !== 'none') {
-      warnings.push('Transcription works best without heavy voice effects.');
+    if (options.transcriptionEnabled && options.voiceEffect && options.voiceEffect !== "none") {
+      warnings.push("Transcription works best without heavy voice effects.");
     }
   }
 
@@ -359,8 +355,7 @@ export function validateVideoProcessingOptions(options: VideoProcessingOptions):
  * Comprehensive video validation
  */
 export const videoValidation = {
-  videoFile: (file: any): ValidationResult =>
-    validateField(file, [validators.videoFile()]),
+  videoFile: (file: any): ValidationResult => validateField(file, [validators.videoFile()]),
 
   videoDuration: (durationSeconds: number, maxDuration: number = 60): ValidationResult =>
     validateField(durationSeconds, [validators.videoDuration(maxDuration)]),
@@ -368,26 +363,29 @@ export const videoValidation = {
   videoSize: (sizeBytes: number, maxSizeMB: number = 100): ValidationResult =>
     validateField(sizeBytes, [validators.videoSize(maxSizeMB)]),
 
-  videoFormat: (format: string, supportedFormats: string[] = ['mp4', 'mov', 'avi']): ValidationResult =>
+  videoFormat: (format: string, supportedFormats: string[] = ["mp4", "mov", "avi"]): ValidationResult =>
     validateField(format, [validators.videoFormat(supportedFormats)]),
 
   // Combined video validation for complete video objects
-  completeVideo: (video: {
-    file?: any;
-    duration?: number;
-    size?: number;
-    format?: string;
-  }, options?: {
-    maxDuration?: number;
-    maxSizeMB?: number;
-    supportedFormats?: string[];
-  }): ValidationResult => {
+  completeVideo: (
+    video: {
+      file?: any;
+      duration?: number;
+      size?: number;
+      format?: string;
+    },
+    options?: {
+      maxDuration?: number;
+      maxSizeMB?: number;
+      supportedFormats?: string[];
+    },
+  ): ValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
 
     const maxDuration = options?.maxDuration ?? 60;
     const maxSizeMB = options?.maxSizeMB ?? 100;
-    const supportedFormats = options?.supportedFormats ?? ['mp4', 'mov', 'avi'];
+    const supportedFormats = options?.supportedFormats ?? ["mp4", "mov", "avi"];
 
     // Validate file if provided
     if (video.file) {
@@ -398,7 +396,7 @@ export const videoValidation = {
     }
 
     // Validate duration if provided
-    if (typeof video.duration === 'number') {
+    if (typeof video.duration === "number") {
       const durationResult = videoValidation.videoDuration(video.duration, maxDuration);
       if (!durationResult.isValid && durationResult.error) {
         errors.push(durationResult.error);
@@ -406,7 +404,7 @@ export const videoValidation = {
 
       // Duration warnings
       if (video.duration < 3) {
-        warnings.push('Very short videos may not provide enough context.');
+        warnings.push("Very short videos may not provide enough context.");
       }
       if (video.duration > maxDuration * 0.8) {
         warnings.push(`Video is close to the ${maxDuration}s limit.`);
@@ -414,7 +412,7 @@ export const videoValidation = {
     }
 
     // Validate size if provided
-    if (typeof video.size === 'number') {
+    if (typeof video.size === "number") {
       const sizeResult = videoValidation.videoSize(video.size, maxSizeMB);
       if (!sizeResult.isValid && sizeResult.error) {
         errors.push(sizeResult.error);
@@ -461,13 +459,11 @@ export const confessionValidation = {
       const warnings: string[] = result.warnings || [];
 
       // Check for video-related keywords that might indicate user wants to upload video
-      const videoKeywords = ['video', 'recording', 'clip', 'footage', 'camera'];
-      const hasVideoKeywords = videoKeywords.some(keyword =>
-        content.toLowerCase().includes(keyword)
-      );
+      const videoKeywords = ["video", "recording", "clip", "footage", "camera"];
+      const hasVideoKeywords = videoKeywords.some((keyword) => content.toLowerCase().includes(keyword));
 
       if (hasVideoKeywords && content.length < 50) {
-        warnings.push('Consider adding more context if you\'re planning to include a video.');
+        warnings.push("Consider adding more context if you're planning to include a video.");
       }
 
       return {
@@ -496,7 +492,7 @@ export const confessionValidation = {
   // Combined confession validation with optional video
   complete: (data: {
     content: string;
-    type: 'text' | 'video';
+    type: "text" | "video";
     video?: {
       file?: any;
       duration?: number;
@@ -509,7 +505,7 @@ export const confessionValidation = {
     const warnings: string[] = [];
 
     // Validate content
-    const contentResult = confessionValidation.content(data.content, data.type === 'video');
+    const contentResult = confessionValidation.content(data.content, data.type === "video");
     if (!contentResult.isValid && contentResult.error) {
       errors.push(contentResult.error);
     }
@@ -518,9 +514,9 @@ export const confessionValidation = {
     }
 
     // Validate video if provided
-    if (data.type === 'video') {
+    if (data.type === "video") {
       if (!data.video || !data.video.file) {
-        errors.push('Video file is required for video confessions.');
+        errors.push("Video file is required for video confessions.");
       } else {
         const videoResult = videoValidation.completeVideo(data.video);
         if (!videoResult.isValid && videoResult.error) {

@@ -10,22 +10,22 @@
  * - Automatic Expo Go fallbacks
  */
 
-import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import * as VideoThumbnails from 'expo-video-thumbnails';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import { isExpoGo, hasVideoProcessing } from '../utils/environmentDetector';
+import { Platform } from "react-native";
+import * as FileSystem from "expo-file-system";
+import * as VideoThumbnails from "expo-video-thumbnails";
+import { VideoView, useVideoPlayer } from "expo-video";
+import { isExpoGo, hasVideoProcessing } from "../utils/environmentDetector";
 
 // Vision Camera v4 types
 export interface VisionCameraConfig {
-  device?: 'front' | 'back';
+  device?: "front" | "back";
   format?: any;
   fps?: number;
   videoHdr?: boolean;
   photoHdr?: boolean;
   lowLightBoost?: boolean;
-  videoStabilizationMode?: 'off' | 'standard' | 'cinematic' | 'cinematic-extended' | 'auto';
-  torch?: 'off' | 'on';
+  videoStabilizationMode?: "off" | "standard" | "cinematic" | "cinematic-extended" | "auto";
+  torch?: "off" | "on";
   zoom?: number;
   exposure?: number;
 }
@@ -40,13 +40,13 @@ let Worklets: any = null;
 
 const loadVisionCamera = async () => {
   if (isExpoGo()) {
-    console.log('📱 Vision Camera not available in Expo Go - using expo-camera fallback');
+    console.log("📱 Vision Camera not available in Expo Go - using expo-camera fallback");
     return false;
   }
 
   try {
     // Load react-native-vision-camera v4
-    const visionCameraModule = await import('react-native-vision-camera');
+    const visionCameraModule = await import("react-native-vision-camera");
     Camera = visionCameraModule.Camera;
     useCameraDevice = visionCameraModule.useCameraDevice;
     useCameraFormat = visionCameraModule.useCameraFormat;
@@ -54,35 +54,35 @@ const loadVisionCamera = async () => {
 
     // Load Skia integration if available
     try {
-      const skiaModule = await import('@shopify/react-native-skia');
+      const skiaModule = await import("@shopify/react-native-skia");
       // Check if useSkiaFrameProcessor exists in the module
-      if ('useSkiaFrameProcessor' in skiaModule) {
+      if ("useSkiaFrameProcessor" in skiaModule) {
         useSkiaFrameProcessor = skiaModule.useSkiaFrameProcessor;
       } else {
-        console.log('⚠️ Skia frame processor not available in this version');
+        console.log("⚠️ Skia frame processor not available in this version");
       }
     } catch {
-      console.log('⚠️ Skia not available for advanced effects');
+      console.log("⚠️ Skia not available for advanced effects");
     }
 
     // Load worklets
     try {
-      const workletsModule = await import('react-native-worklets');
+      const workletsModule = await import("react-native-worklets");
       Worklets = workletsModule;
     } catch {
       // Fallback to worklets-core for Vision Camera compatibility
       try {
-        const workletsCore = await import('react-native-worklets-core');
+        const workletsCore = await import("react-native-worklets-core");
         Worklets = workletsCore;
       } catch {
-        console.log('⚠️ Worklets not available');
+        console.log("⚠️ Worklets not available");
       }
     }
 
-    console.log('✅ Vision Camera v4 loaded successfully');
+    console.log("✅ Vision Camera v4 loaded successfully");
     return true;
   } catch (error) {
-    console.log('⚠️ Vision Camera not available - using fallback');
+    console.log("⚠️ Vision Camera not available - using fallback");
     return false;
   }
 };
@@ -151,15 +151,15 @@ export class VisionCameraProcessor {
    * Compatible with Reanimated v4 worklets
    */
   createFrameProcessor(processFrame: (frame: any) => void) {
-    'worklet';
+    "worklet";
 
     if (!this.isVisionCameraAvailable || !useFrameProcessor) {
-      console.log('Frame processors not available');
+      console.log("Frame processors not available");
       return null;
     }
 
     return useFrameProcessor((frame: any) => {
-      'worklet';
+      "worklet";
       processFrame(frame);
     }, []);
   }
@@ -168,15 +168,15 @@ export class VisionCameraProcessor {
    * Create a Skia frame processor for advanced drawing
    */
   createSkiaFrameProcessor(draw: (canvas: any, frame: any) => void) {
-    'worklet';
+    "worklet";
 
     if (!useSkiaFrameProcessor) {
-      console.log('Skia frame processors not available');
+      console.log("Skia frame processors not available");
       return null;
     }
 
     return useSkiaFrameProcessor((frame: any, canvas: any) => {
-      'worklet';
+      "worklet";
       draw(canvas, frame);
     }, []);
   }
@@ -185,13 +185,13 @@ export class VisionCameraProcessor {
    * Apply face blur effect using ML Kit
    */
   createFaceBlurProcessor() {
-    'worklet';
+    "worklet";
 
     return this.createFrameProcessor((frame) => {
-      'worklet';
+      "worklet";
       // Face detection would happen here with ML Kit integration
       // This is a placeholder for the actual implementation
-      console.log('Processing frame for face blur');
+      console.log("Processing frame for face blur");
     });
   }
 
@@ -204,10 +204,10 @@ export class VisionCameraProcessor {
       onRecordingStarted?: () => void;
       onRecordingFinished?: (video: any) => void;
       onRecordingError?: (error: any) => void;
-    } = {}
+    } = {},
   ): Promise<void> {
     if (!camera || !this.isVisionCameraAvailable) {
-      console.warn('Vision Camera not available for recording');
+      console.warn("Vision Camera not available for recording");
       return;
     }
 
@@ -216,11 +216,11 @@ export class VisionCameraProcessor {
         onRecordingStarted: options.onRecordingStarted,
         onRecordingFinished: options.onRecordingFinished,
         onRecordingError: options.onRecordingError,
-        videoCodec: 'h264',
-        videoBitRate: 'high',
+        videoCodec: "h264",
+        videoBitRate: "high",
       });
     } catch (error) {
-      console.error('Recording error:', error);
+      console.error("Recording error:", error);
       options.onRecordingError?.(error);
     }
   }
@@ -236,7 +236,7 @@ export class VisionCameraProcessor {
     try {
       await camera.stopRecording();
     } catch (error) {
-      console.error('Stop recording error:', error);
+      console.error("Stop recording error:", error);
     }
   }
 
@@ -245,19 +245,19 @@ export class VisionCameraProcessor {
    */
   async takePhoto(camera: any, options: any = {}): Promise<any> {
     if (!camera || !this.isVisionCameraAvailable) {
-      console.warn('Vision Camera not available for photo capture');
+      console.warn("Vision Camera not available for photo capture");
       return null;
     }
 
     try {
       const photo = await camera.takePhoto({
         ...options,
-        qualityPrioritization: 'quality',
+        qualityPrioritization: "quality",
         enableAutoStabilization: true,
       });
       return photo;
     } catch (error) {
-      console.error('Photo capture error:', error);
+      console.error("Photo capture error:", error);
       return null;
     }
   }
@@ -271,7 +271,7 @@ export class VisionCameraProcessor {
       blur?: boolean;
       compress?: boolean;
       trim?: { start: number; end: number };
-    } = {}
+    } = {},
   ): Promise<{ uri: string; thumbnail?: string }> {
     // Generate thumbnail
     let thumbnail: string | undefined;
@@ -282,7 +282,7 @@ export class VisionCameraProcessor {
       });
       thumbnail = uri;
     } catch (error) {
-      console.warn('Thumbnail generation failed:', error);
+      console.warn("Thumbnail generation failed:", error);
     }
 
     // In Expo Go or without FFmpeg, return original
@@ -295,22 +295,19 @@ export class VisionCameraProcessor {
 
     // Process with FFmpeg in development builds
     // This would integrate with ModernVideoProcessor for full processing
-    const { videoProcessor } = await import('./ModernVideoProcessor');
+    const { videoProcessor } = await import("./ModernVideoProcessor");
 
     try {
-      const processed = await videoProcessor.processVideo(
-        videoUri,
-        {
-          quality: options.compress ? 'medium' : 'high',
-        }
-      );
+      const processed = await videoProcessor.processVideo(videoUri, {
+        quality: options.compress ? "medium" : "high",
+      });
 
       return {
         uri: processed.uri,
         thumbnail: processed.thumbnail || thumbnail,
       };
     } catch (error) {
-      console.error('Video processing error:', error);
+      console.error("Video processing error:", error);
       return {
         uri: videoUri,
         thumbnail,
@@ -331,9 +328,9 @@ export class VisionCameraProcessor {
     }
 
     return {
-      back: useCameraDevice('back'),
-      front: useCameraDevice('front'),
-      external: useCameraDevice('external'),
+      back: useCameraDevice("back"),
+      front: useCameraDevice("front"),
+      external: useCameraDevice("external"),
     };
   }
 
@@ -348,9 +345,9 @@ export class VisionCameraProcessor {
     return useCameraFormat(device, [
       { fps: targetFps },
       { videoAspectRatio: 16 / 9 },
-      { videoResolution: 'max' },
+      { videoResolution: "max" },
       { photoAspectRatio: 16 / 9 },
-      { photoResolution: 'max' },
+      { photoResolution: "max" },
     ]);
   }
 
@@ -358,7 +355,7 @@ export class VisionCameraProcessor {
    * Check camera permissions
    */
   async requestPermissions(): Promise<boolean> {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       return true; // Web handles permissions differently
     }
 
@@ -367,18 +364,15 @@ export class VisionCameraProcessor {
         const cameraPermission = await Camera.requestCameraPermission();
         const microphonePermission = await Camera.requestMicrophonePermission();
 
-        return (
-          cameraPermission === 'granted' &&
-          microphonePermission === 'granted'
-        );
+        return cameraPermission === "granted" && microphonePermission === "granted";
       }
 
       // Fallback to expo-camera permissions
-      const { Camera: ExpoCamera } = await import('expo-camera');
+      const { Camera: ExpoCamera } = await import("expo-camera");
       const { status } = await ExpoCamera.requestCameraPermissionsAsync();
-      return status === 'granted';
+      return status === "granted";
     } catch (error) {
-      console.error('Permission request error:', error);
+      console.error("Permission request error:", error);
       return false;
     }
   }

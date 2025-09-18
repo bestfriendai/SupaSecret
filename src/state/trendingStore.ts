@@ -16,7 +16,7 @@ const simpleHash = (str: string): string => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
   return hash.toString();
@@ -213,7 +213,7 @@ export const useTrendingStore = create<TrendingState>()(
               }));
             } catch (normalizationError) {
               if (__DEV__) {
-                console.error('Failed to normalize trending secrets from RPC:', normalizationError);
+                console.error("Failed to normalize trending secrets from RPC:", normalizationError);
               }
               // Fallback to basic processing
               secrets = (functionData as any[]).map((item: any) => ({
@@ -226,6 +226,7 @@ export const useTrendingStore = create<TrendingState>()(
                   timestamp: new Date(item.created_at).getTime(),
                   isAnonymous: item.is_anonymous,
                   likes: item.likes,
+                  views: item.views || 0,
                   isLiked: false,
                 },
                 engagementScore: parseFloat(item.engagement_score),
@@ -274,14 +275,17 @@ export const useTrendingStore = create<TrendingState>()(
                     ...confession,
                     isLiked: false,
                   },
-                  engagementScore: calculateEngagementScore(originalRow?.likes || 0, originalRow?.created_at || new Date().toISOString()),
+                  engagementScore: calculateEngagementScore(
+                    originalRow?.likes || 0,
+                    originalRow?.created_at || new Date().toISOString(),
+                  ),
                 };
               })
               .sort((a, b) => b.engagementScore - a.engagementScore)
               .slice(0, limit);
           } catch (normalizationError) {
             if (__DEV__) {
-              console.error('Failed to normalize trending secrets fallback:', normalizationError);
+              console.error("Failed to normalize trending secrets fallback:", normalizationError);
             }
             // Fallback to basic processing
             secrets = (confessions || [])
@@ -295,6 +299,7 @@ export const useTrendingStore = create<TrendingState>()(
                   timestamp: new Date(confession.created_at).getTime(),
                   isAnonymous: confession.is_anonymous,
                   likes: confession.likes,
+                  views: confession.views || 0,
                   isLiked: false,
                 },
                 engagementScore: calculateEngagementScore(confession.likes, confession.created_at),
@@ -332,10 +337,10 @@ export const useTrendingStore = create<TrendingState>()(
             let results: Confession[] = [];
             try {
               results = await normalizeConfessions(functionData as any[]);
-              results = results.map(confession => ({ ...confession, isLiked: false }));
+              results = results.map((confession) => ({ ...confession, isLiked: false }));
             } catch (normalizationError) {
               if (__DEV__) {
-                console.error('Failed to normalize hashtag search results from RPC:', normalizationError);
+                console.error("Failed to normalize hashtag search results from RPC:", normalizationError);
               }
               // Fallback to basic processing
               results = (functionData as any[]).map((item: any) => ({
@@ -347,6 +352,7 @@ export const useTrendingStore = create<TrendingState>()(
                 timestamp: new Date(item.created_at).getTime(),
                 isAnonymous: item.is_anonymous,
                 likes: item.likes,
+                views: item.views || 0,
                 isLiked: false,
               }));
             }
@@ -384,10 +390,10 @@ export const useTrendingStore = create<TrendingState>()(
             });
 
             results = await normalizeConfessions(filteredConfessions);
-            results = results.map(confession => ({ ...confession, isLiked: false }));
+            results = results.map((confession) => ({ ...confession, isLiked: false }));
           } catch (normalizationError) {
             if (__DEV__) {
-              console.error('Failed to normalize hashtag search results fallback:', normalizationError);
+              console.error("Failed to normalize hashtag search results fallback:", normalizationError);
             }
             // Fallback to basic processing
             results = (confessions || [])
@@ -406,6 +412,7 @@ export const useTrendingStore = create<TrendingState>()(
                 timestamp: new Date(confession.created_at).getTime(),
                 isAnonymous: confession.is_anonymous,
                 likes: confession.likes,
+                views: confession.views || 0,
                 isLiked: false,
               }));
           }

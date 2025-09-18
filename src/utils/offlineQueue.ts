@@ -118,7 +118,7 @@ class OfflineQueueManager {
     [OFFLINE_ACTIONS.LIKE_REPLY]: { maxRetries: 3, priority: 3 },
     [OFFLINE_ACTIONS.UNLIKE_REPLY]: { maxRetries: 3, priority: 3 },
     [OFFLINE_ACTIONS.MARK_NOTIFICATION_READ]: { maxRetries: 2, priority: 1 },
-  } as const
+  } as const;
 
   constructor() {
     this.initialize();
@@ -209,7 +209,7 @@ class OfflineQueueManager {
         targetStore?: string;
         metadata?: Record<string, unknown>;
       };
-    }
+    },
   ): Promise<string> {
     const action: OfflineAction = {
       id: generateUniqueId(),
@@ -224,8 +224,8 @@ class OfflineQueueManager {
     };
 
     // Insert action in priority order (higher priority first)
-    const insertIndex = this.queue.findIndex((existingAction) =>
-      (existingAction.priority || 0) < (action.priority || 0)
+    const insertIndex = this.queue.findIndex(
+      (existingAction) => (existingAction.priority || 0) < (action.priority || 0),
     );
 
     if (insertIndex === -1) {
@@ -310,7 +310,7 @@ class OfflineQueueManager {
           // Remove if error is not retryable or max retries exceeded
           if (!isRetryable || this.queue[actionIndex].retryCount >= action.maxRetries) {
             if (__DEV__) {
-              const reason = !isRetryable ? 'non-retryable error' : 'max retries exceeded';
+              const reason = !isRetryable ? "non-retryable error" : "max retries exceeded";
               console.warn(`❌ Removing action ${action.type} due to ${reason}:`, error);
             }
             this.queue.splice(actionIndex, 1);
@@ -324,8 +324,8 @@ class OfflineQueueManager {
             }
 
             // Longer delays for network-related errors
-            const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
-            if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+            const errorMessage = error instanceof Error ? error.message.toLowerCase() : "";
+            if (errorMessage.includes("network") || errorMessage.includes("connection")) {
               baseDelay = this.BASE_DELAY_MS * 2;
             }
 
@@ -384,42 +384,44 @@ class OfflineQueueManager {
 
     // Non-retryable errors (validation, auth, etc.)
     const nonRetryablePatterns = [
-      'invalid processing options',
-      'unsupported video format',
-      'video size must be less than',
-      'video must be between',
-      'please enter your confession',
-      'too short',
-      'too long',
-      'video file is required',
-      'user not authenticated',
-      'unauthorized',
-      'forbidden',
-      'not found',
-      'conflict',
-      'duplicate',
-      'unique constraint',
+      "invalid processing options",
+      "unsupported video format",
+      "video size must be less than",
+      "video must be between",
+      "please enter your confession",
+      "too short",
+      "too long",
+      "video file is required",
+      "user not authenticated",
+      "unauthorized",
+      "forbidden",
+      "not found",
+      "conflict",
+      "duplicate",
+      "unique constraint",
     ];
 
-    if (nonRetryablePatterns.some(pattern => lowerMessage.includes(pattern))) {
+    if (nonRetryablePatterns.some((pattern) => lowerMessage.includes(pattern))) {
       return false;
     }
 
     // Retryable errors (network, temporary server issues)
     const retryablePatterns = [
-      'network',
-      'connection',
-      'timeout',
-      'server error',
-      'internal server error',
-      'bad gateway',
-      'service unavailable',
-      'gateway timeout',
-      'temporarily unavailable',
+      "network",
+      "connection",
+      "timeout",
+      "server error",
+      "internal server error",
+      "bad gateway",
+      "service unavailable",
+      "gateway timeout",
+      "temporarily unavailable",
     ];
 
-    return retryablePatterns.some(pattern => lowerMessage.includes(pattern)) ||
-           lowerMessage.includes('5') && lowerMessage.includes('error'); // 5xx errors
+    return (
+      retryablePatterns.some((pattern) => lowerMessage.includes(pattern)) ||
+      (lowerMessage.includes("5") && lowerMessage.includes("error"))
+    ); // 5xx errors
   }
 
   /**

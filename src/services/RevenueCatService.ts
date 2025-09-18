@@ -265,7 +265,10 @@ export class RevenueCatService {
         await this.syncSubscriptionStatus(customerInfo);
       }
 
-      return { customerInfo: customerInfo || ({} as RevenueCatCustomerInfo), productIdentifier: productIdentifier || "" };
+      return {
+        customerInfo: customerInfo || ({} as RevenueCatCustomerInfo),
+        productIdentifier: productIdentifier || "",
+      };
     } catch (error) {
       if (__DEV__) {
         console.error("Purchase failed:", error);

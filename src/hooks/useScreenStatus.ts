@@ -1,6 +1,6 @@
-import { useCallback, useRef } from 'react';
-import { useLoadingStates } from './useLoadingStates';
-import { getUserFriendlyMessage, getScreenSpecificMessage, StandardError } from '../utils/errorHandling';
+import { useCallback, useRef } from "react";
+import { useLoadingStates } from "./useLoadingStates";
+import { getUserFriendlyMessage, getScreenSpecificMessage, StandardError } from "../utils/errorHandling";
 
 interface ScreenStatusOptions {
   screenName: string;
@@ -20,7 +20,7 @@ interface ScreenStatus {
       onSuccess?: (result: T) => void;
       onError?: (error: any) => void;
       errorContext?: string;
-    }
+    },
   ) => Promise<T | null>;
   retry: () => void;
 }
@@ -42,98 +42,107 @@ export const useScreenStatus = ({
   // Get the primary error for this screen
   const errorMessage = screenState.error;
 
-  const setLoading = useCallback((loading: boolean) => {
-    if (loading) {
-      setLoadingState(`${screenName}_main`, true);
+  const setLoading = useCallback(
+    (loading: boolean) => {
+      if (loading) {
+        setLoadingState(`${screenName}_main`, true);
 
-      // Set timeout for long-running operations
-      if (loadingTimeout > 0) {
-        timeoutRef.current = setTimeout(() => {
-          setLoadingState(`${screenName}_main`, false);
-          setErrorState(
-            `${screenName}_main`,
-            'This operation is taking longer than expected. Please try again.'
-          );
-        }, loadingTimeout);
+        // Set timeout for long-running operations
+        if (loadingTimeout > 0) {
+          timeoutRef.current = setTimeout(() => {
+            setLoadingState(`${screenName}_main`, false);
+            setErrorState(`${screenName}_main`, "This operation is taking longer than expected. Please try again.");
+          }, loadingTimeout);
+        }
+      } else {
+        setLoadingState(`${screenName}_main`, false);
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = undefined;
+        }
       }
-    } else {
-      setLoadingState(`${screenName}_main`, false);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = undefined;
+    },
+    [screenName, setLoadingState, setErrorState, loadingTimeout],
+  );
+
+  const setError = useCallback(
+    (error: any) => {
+      if (!error) {
+        setErrorState(`${screenName}_main`, null);
+        return;
       }
-    }
-  }, [screenName, setLoadingState, setErrorState, loadingTimeout]);
 
-  const setError = useCallback((error: any) => {
-    if (!error) {
-      setErrorState(`${screenName}_main`, null);
-      return;
-    }
+      let errorMessage: string;
 
-    let errorMessage: string;
+      // Convert error to StandardError format if needed
+      const standardError: StandardError = {
+        code: error?.code || "UNKNOWN_ERROR",
+        message: error?.message || String(error),
+        details: error?.details,
+        statusCode: error?.statusCode,
+      };
 
-    // Convert error to StandardError format if needed
-    const standardError: StandardError = {
-      code: error?.code || 'UNKNOWN_ERROR',
-      message: error?.message || String(error),
-      details: error?.details,
-      statusCode: error?.statusCode,
-    };
+      // Get screen-specific error message
+      errorMessage = getScreenSpecificMessage(standardError, screenName);
 
-    // Get screen-specific error message
-    errorMessage = getScreenSpecificMessage(standardError, screenName);
+      // Fallback to general user-friendly message if no screen-specific message
+      if (errorMessage === standardError.message) {
+        errorMessage = getUserFriendlyMessage(standardError);
+      }
 
-    // Fallback to general user-friendly message if no screen-specific message
-    if (errorMessage === standardError.message) {
-      errorMessage = getUserFriendlyMessage(standardError);
-    }
-
-    setErrorState(`${screenName}_main`, errorMessage);
-  }, [screenName, setErrorState]);
+      setErrorState(`${screenName}_main`, errorMessage);
+    },
+    [screenName, setErrorState],
+  );
 
   const clearErrorWrapper = useCallback(() => {
     setErrorState(`${screenName}_main`, null);
   }, [screenName, setErrorState]);
 
-  const executeWithLoading = useCallback(async <T,>(
-    asyncFn: () => Promise<T>,
-    options?: {
-      onSuccess?: (result: T) => void;
-      onError?: (error: any) => void;
-      errorContext?: string;
-    }
-  ): Promise<T | null> => {
-    // Store for retry functionality
-    lastAsyncFnRef.current = asyncFn;
-    lastOptionsRef.current = options;
+  const executeWithLoading = useCallback(
+    async <T>(
+      asyncFn: () => Promise<T>,
+      options?: {
+        onSuccess?: (result: T) => void;
+        onError?: (error: any) => void;
+        errorContext?: string;
+      },
+    ): Promise<T | null> => {
+      // Store for retry functionality
+      lastAsyncFnRef.current = asyncFn;
+      lastOptionsRef.current = options;
 
-    setLoading(true);
-    clearErrorWrapper();
+      setLoading(true);
+      clearErrorWrapper();
 
-    try {
-      const result = await asyncFn();
-      setLoading(false);
-      options?.onSuccess?.(result);
-      return result;
-    } catch (error) {
-      setLoading(false);
+      try {
+        const result = await asyncFn();
+        setLoading(false);
+        options?.onSuccess?.(result);
+        return result;
+      } catch (error) {
+        setLoading(false);
 
-      // Add context to error if provided
-      const contextualError = options?.errorContext
-        ? { ...(typeof error === 'object' && error !== null ? error : { message: String(error) }), context: options.errorContext }
-        : error;
+        // Add context to error if provided
+        const contextualError = options?.errorContext
+          ? {
+              ...(typeof error === "object" && error !== null ? error : { message: String(error) }),
+              context: options.errorContext,
+            }
+          : error;
 
-      setError(contextualError);
-      options?.onError?.(error);
+        setError(contextualError);
+        options?.onError?.(error);
 
-      if (__DEV__) {
-        console.error(`[${screenName}] Error:`, error);
+        if (__DEV__) {
+          console.error(`[${screenName}] Error:`, error);
+        }
+
+        return null;
       }
-
-      return null;
-    }
-  }, [screenName, setLoading, setError, clearErrorWrapper]);
+    },
+    [screenName, setLoading, setError, clearErrorWrapper],
+  );
 
   const retry = useCallback(() => {
     if (!enableRetry || !lastAsyncFnRef.current) {
@@ -156,13 +165,10 @@ export const useScreenStatus = ({
 };
 
 // Helper hook for screens that need multiple loading states
-export const useMultipleScreenStatus = (
-  screenName: string,
-  operations: string[]
-): Record<string, ScreenStatus> => {
+export const useMultipleScreenStatus = (screenName: string, operations: string[]): Record<string, ScreenStatus> => {
   const statuses: Record<string, ScreenStatus> = {};
 
-  operations.forEach(operation => {
+  operations.forEach((operation) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     statuses[operation] = useScreenStatus({
       screenName: `${screenName}_${operation}`,

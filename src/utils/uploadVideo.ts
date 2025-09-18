@@ -198,7 +198,7 @@ export const downloadProcessedVideo = async (
     onProgress?.(50, "Saving video locally...");
 
     // Save to local filesystem
-    const localUri = `${FileSystem.cacheDirectory}processed_${Date.now()}.mp4`;
+    const localUri = `${FileSystem.Paths.cache.uri}processed_${Date.now()}.mp4`;
     const arrayBuffer = await videoData.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 

@@ -107,7 +107,7 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
                   typeof playerRef.player.play === "function"
                 ) {
                   const playPromise = playerRef.player.play();
-                  if (playPromise && typeof playPromise.catch === 'function') {
+                  if (playPromise && typeof playPromise.catch === "function") {
                     playPromise.catch((error: any) => {
                       if (__DEV__) console.warn(`🎥 Failed to resume video ${id}:`, error);
                     });

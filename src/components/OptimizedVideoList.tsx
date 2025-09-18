@@ -35,19 +35,19 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
 
     // Validate for duplicates and dedupe if necessary
     if (filtered.length > 0) {
-      const ids = filtered.map(c => c.id);
+      const ids = filtered.map((c) => c.id);
       const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
 
       if (duplicates.length > 0) {
         if (__DEV__) {
-          console.warn('OptimizedVideoList: Duplicate confession IDs detected:', duplicates);
+          console.warn("OptimizedVideoList: Duplicate confession IDs detected:", duplicates);
         }
         // Dedupe by ID using Map
-        const uniqueConfessions = Array.from(
-          new Map(filtered.map(item => [item.id, item])).values()
-        );
+        const uniqueConfessions = Array.from(new Map(filtered.map((item) => [item.id, item])).values());
         if (__DEV__) {
-          console.log(`OptimizedVideoList: Deduplicated ${filtered.length - uniqueConfessions.length} duplicate confessions`);
+          console.log(
+            `OptimizedVideoList: Deduplicated ${filtered.length - uniqueConfessions.length} duplicate confessions`,
+          );
         }
         return uniqueConfessions;
       }
@@ -101,16 +101,18 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
     const loadData = async () => {
       try {
         if (__DEV__) {
-          console.log('OptimizedVideoList: Loading confessions...');
+          console.log("OptimizedVideoList: Loading confessions...");
         }
         // Always try to load fresh data when the video tab is accessed
         await loadConfessions();
         if (__DEV__) {
-          console.log(`OptimizedVideoList: Loaded ${confessions.length} total confessions, ${videoConfessions.length} video confessions`);
+          console.log(
+            `OptimizedVideoList: Loaded ${confessions.length} total confessions, ${videoConfessions.length} video confessions`,
+          );
         }
       } catch (error) {
         if (__DEV__) {
-          console.error('OptimizedVideoList: Failed to load confessions:', error);
+          console.error("OptimizedVideoList: Failed to load confessions:", error);
         }
         onError?.(error);
       }
@@ -133,7 +135,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
 
   // Enhanced viewability changes with intelligent preloading
   const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: Array<{ item: Confession; isViewable: boolean; index: number | null }> }) => {
+    ({ viewableItems }: { viewableItems: { item: Confession; isViewable: boolean; index: number | null }[] }) => {
       const first = viewableItems.find((v) => v.isViewable && v.index !== null) || viewableItems[0];
       if (first && first.index !== null) {
         const newIndex = first.index;
@@ -144,7 +146,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
         if (Math.abs(scrollVelocity) > VELOCITY_THRESHOLD) {
           const direction = scrollVelocity > 0 ? 1 : -1;
           for (let i = 1; i <= PRELOAD_BUFFER; i++) {
-            const preloadIndex = newIndex + (i * direction);
+            const preloadIndex = newIndex + i * direction;
             if (preloadIndex >= 0 && preloadIndex < videoConfessions.length) {
               preloadedIndexes.current.add(preloadIndex);
             }
@@ -212,7 +214,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
     (confessionId: string) => {
       try {
         // Pause all videos when opening comments
-        const currentPlayer = videoConfessions.findIndex(v => v.id === confessionId);
+        const currentPlayer = videoConfessions.findIndex((v) => v.id === confessionId);
         if (currentPlayer >= 0) {
           // Explicitly pause all videos to prevent background playback
           pauseAllVideos();
@@ -232,16 +234,19 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   );
 
   // Handle share press
-  const handleSharePress = useCallback((confessionId: string, confessionText: string) => {
-    try {
-      setCurrentVideoId(confessionId);
-      setCurrentVideoText(confessionText);
-      shareSheetRef.current?.present();
-    } catch (error) {
-      onError?.(error);
-      console.error("Failed to open share:", error);
-    }
-  }, [onError]);
+  const handleSharePress = useCallback(
+    (confessionId: string, confessionText: string) => {
+      try {
+        setCurrentVideoId(confessionId);
+        setCurrentVideoText(confessionText);
+        shareSheetRef.current?.present();
+      } catch (error) {
+        onError?.(error);
+        console.error("Failed to open share:", error);
+      }
+    },
+    [onError],
+  );
 
   // Handle save press
   const handleSavePress = useCallback(
@@ -275,8 +280,16 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           console.warn(`OptimizedVideoList: Invalid item at index ${index}:`, item);
         }
         return (
-          <View style={{ height: screenHeight, width: screenWidth, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ color: '#999', fontSize: 16 }}>Invalid video data</Text>
+          <View
+            style={{
+              height: screenHeight,
+              width: screenWidth,
+              backgroundColor: "black",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#999", fontSize: 16 }}>Invalid video data</Text>
           </View>
         );
       }
@@ -306,18 +319,27 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
         </View>
       );
     },
-    [onClose, currentIndex, isFocused, isScrolling, handleCommentPress, handleSharePress, handleSavePress, handleReportPress],
+    [
+      onClose,
+      currentIndex,
+      isFocused,
+      isScrolling,
+      handleCommentPress,
+      handleSharePress,
+      handleSavePress,
+      handleReportPress,
+    ],
   );
 
   const keyExtractor = useCallback((item: Confession, index: number) => {
     // Ensure unique key: prefer id, fallback to index (but warn if no id)
     if (!item?.id) {
       if (__DEV__) {
-        console.warn('OptimizedVideoList: Confession missing ID at index', index, item);
+        console.warn("OptimizedVideoList: Confession missing ID at index", index, item);
       }
       return `fallback-${index}-${Date.now()}`;
     }
-    return item.id;  // Unique UUID
+    return item.id; // Unique UUID
   }, []);
 
   // Performance tracking and cleanup
@@ -326,7 +348,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
       if (__DEV__) {
         const metrics = performanceMetrics.current;
         if (metrics.scrollEvents > 0) {
-          console.log('[OptimizedVideoList] Performance:', {
+          console.log("[OptimizedVideoList] Performance:", {
             renders: metrics.renderCount,
             scrolls: metrics.scrollEvents,
             avgVelocity: metrics.avgVelocity.toFixed(2),
@@ -338,7 +360,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
       if (preloadedIndexes.current.size > PRELOAD_BUFFER * 3) {
         const currentIdx = currentIndexRef.current;
         const newSet = new Set<number>();
-        preloadedIndexes.current.forEach(idx => {
+        preloadedIndexes.current.forEach((idx) => {
           if (Math.abs(idx - currentIdx) <= PRELOAD_BUFFER * 2) {
             newSet.add(idx);
           }
@@ -384,74 +406,65 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   return (
     <>
       <StatusBar hidden />
-        <View style={{ flex: 1, backgroundColor: "black" }}>
-          <FlashList
-            data={videoConfessions}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-            pagingEnabled={true}
-            snapToInterval={screenHeight}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            extraData={{ currentIndex, isFocused, isScrolling }}
-            onScroll={handleScroll}
-            onScrollBeginDrag={handleScrollBeginDrag}
-            onScrollEndDrag={handleScrollEndDrag}
-            showsVerticalScrollIndicator={false}
-            initialScrollIndex={initialIndex}
-            getItemType={() => "video"}
-            overrideItemLayout={(layout) => {
-              layout.span = 1;
-            }}
-            contentContainerStyle={{ backgroundColor: "black" }}
-            bounces={false}
-            scrollEventThrottle={16}
-            disableIntervalMomentum={true}
-            snapToEnd={false}
-            // FlashList v2 performance props
-          />
-        </View>
-
-        {/* Comment Bottom Sheet */}
-        <EnhancedCommentBottomSheet
-          bottomSheetModalRef={commentSheetRef}
-          confessionId={currentVideoId || ""}
-          key={currentVideoId || "empty"}
-          onDismiss={() => {
-            setModalOpen(false);
+      <View style={{ flex: 1, backgroundColor: "black" }}>
+        <FlashList
+          data={videoConfessions}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          pagingEnabled={true}
+          snapToInterval={screenHeight}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          extraData={{ currentIndex, isFocused, isScrolling }}
+          onScroll={handleScroll}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onScrollEndDrag={handleScrollEndDrag}
+          showsVerticalScrollIndicator={false}
+          initialScrollIndex={initialIndex}
+          getItemType={() => "video"}
+          overrideItemLayout={(layout) => {
+            layout.span = 1;
           }}
+          contentContainerStyle={{ backgroundColor: "black" }}
+          bounces={false}
+          scrollEventThrottle={16}
+          disableIntervalMomentum={true}
+          snapToEnd={false}
+          // FlashList v2 performance props
         />
+      </View>
 
-        {/* Share Bottom Sheet */}
-        <EnhancedShareBottomSheet
-          bottomSheetModalRef={shareSheetRef}
-          confessionId={currentVideoId || ""}
-          confessionText={currentVideoText}
-          onDismiss={() => {
-            setModalOpen(false);
-          }}
-        />
+      {/* Comment Bottom Sheet */}
+      <EnhancedCommentBottomSheet
+        bottomSheetModalRef={commentSheetRef}
+        confessionId={currentVideoId || ""}
+        key={currentVideoId || "empty"}
+      />
 
-        {/* Report Modal */}
-        <ReportModal
-          isVisible={reportModalVisible}
-          onClose={() => {
-            setReportModalVisible(false);
-            setModalOpen(false);
-          }}
-          confessionId={currentVideoId || undefined}
-          contentType="confession"
-        />
+      {/* Share Bottom Sheet */}
+      <EnhancedShareBottomSheet
+        bottomSheetModalRef={shareSheetRef}
+        confessionId={currentVideoId || ""}
+        confessionText={currentVideoText}
+      />
+
+      {/* Report Modal */}
+      <ReportModal
+        isVisible={reportModalVisible}
+        onClose={() => {
+          setReportModalVisible(false);
+          setModalOpen(false);
+        }}
+        confessionId={currentVideoId || undefined}
+        contentType="confession"
+      />
     </>
   );
 }
 
 // Memoized export with optimized comparison
 export default memo(OptimizedVideoList, (prevProps, nextProps) => {
-  return (
-    prevProps.onClose === nextProps.onClose &&
-    prevProps.initialIndex === nextProps.initialIndex
-  );
+  return prevProps.onClose === nextProps.onClose && prevProps.initialIndex === nextProps.initialIndex;
 });

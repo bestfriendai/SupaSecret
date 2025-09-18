@@ -4,33 +4,33 @@
  * Compatible with Reanimated v4 and supports Expo Go fallbacks
  */
 
-import React from 'react';
-import { Platform } from 'react-native';
-import { isExpoGo, hasVideoProcessing, environmentDetector } from '../utils/environmentDetector';
-import { videoProcessor } from './ModernVideoProcessor';
-import { getVisionCameraProcessor, VisionCameraProcessor } from './VisionCameraProcessor';
+import React from "react";
+import { Platform } from "react-native";
+import { isExpoGo, hasVideoProcessing, environmentDetector } from "../utils/environmentDetector";
+import { videoProcessor } from "./ModernVideoProcessor";
+import { getVisionCameraProcessor, VisionCameraProcessor } from "./VisionCameraProcessor";
 
 export interface UnifiedVideoCapabilities {
   recording: {
-    visionCamera: boolean;  // High-quality recording with Vision Camera v4
-    expoCamera: boolean;    // Fallback recording with Expo Camera
-    ffmpeg: boolean;        // Post-processing with FFmpeg
+    visionCamera: boolean; // High-quality recording with Vision Camera v4
+    expoCamera: boolean; // Fallback recording with Expo Camera
+    ffmpeg: boolean; // Post-processing with FFmpeg
   };
   effects: {
-    realtimeFaceBlur: boolean;  // Vision Camera frame processor
-    realtimeFilters: boolean;   // Skia integration
-    postProcessBlur: boolean;   // FFmpeg blur
-    postProcessTrim: boolean;   // FFmpeg trim
+    realtimeFaceBlur: boolean; // Vision Camera frame processor
+    realtimeFilters: boolean; // Skia integration
+    postProcessBlur: boolean; // FFmpeg blur
+    postProcessTrim: boolean; // FFmpeg trim
     postProcessCompress: boolean; // FFmpeg compression
   };
   playback: {
-    expoVideo: boolean;     // Expo Video player
-    streaming: boolean;     // HLS/DASH support
-    controls: boolean;      // Native controls
+    expoVideo: boolean; // Expo Video player
+    streaming: boolean; // HLS/DASH support
+    controls: boolean; // Native controls
   };
   animation: {
-    reanimatedV4: boolean;  // Reanimated v4 support
-    worklets: boolean;      // Worklets support
+    reanimatedV4: boolean; // Reanimated v4 support
+    worklets: boolean; // Worklets support
     gestureHandler: boolean; // Gesture support
   };
 }
@@ -76,7 +76,7 @@ export class UnifiedVideoService {
       try {
         this.visionCameraProcessor = await getVisionCameraProcessor();
       } catch (error) {
-        console.log('Vision Camera not available, using fallbacks');
+        console.log("Vision Camera not available, using fallbacks");
       }
     }
 
@@ -103,7 +103,7 @@ export class UnifiedVideoService {
       },
       effects: {
         realtimeFaceBlur: visionCameraAvailable && env.features.mlKit,
-        realtimeFilters: visionCameraAvailable && Platform.OS !== 'web',
+        realtimeFilters: visionCameraAvailable && Platform.OS !== "web",
         postProcessBlur: env.features.ffmpeg,
         postProcessTrim: env.features.ffmpeg,
         postProcessCompress: env.features.ffmpeg,
@@ -143,7 +143,7 @@ export class UnifiedVideoService {
    */
   async recordVideo(options: {
     camera?: any; // Camera ref
-    quality?: 'low' | 'medium' | 'high';
+    quality?: "low" | "medium" | "high";
     maxDuration?: number;
     onProgress?: (progress: number) => void;
     onFinished?: (video: { uri: string; duration: number }) => void;
@@ -164,7 +164,7 @@ export class UnifiedVideoService {
     }
 
     // Fallback to Expo Camera
-    console.log('Using Expo Camera fallback for recording');
+    console.log("Using Expo Camera fallback for recording");
     // Implementation would go here
   }
 
@@ -174,11 +174,11 @@ export class UnifiedVideoService {
   async processVideo(
     videoUri: string,
     options: {
-      quality?: 'low' | 'medium' | 'high';
+      quality?: "low" | "medium" | "high";
       blur?: boolean;
       trim?: { start: number; end: number };
       effects?: string[];
-    } = {}
+    } = {},
   ): Promise<{
     uri: string;
     duration: number;
@@ -188,12 +188,9 @@ export class UnifiedVideoService {
   }> {
     // Check if we can use FFmpeg
     if (this.capabilities?.effects.postProcessCompress) {
-      const processed = await videoProcessor.processVideo(
-        videoUri,
-        {
-          quality: options.quality || 'high',
-        }
-      );
+      const processed = await videoProcessor.processVideo(videoUri, {
+        quality: options.quality || "high",
+      });
 
       return {
         uri: processed.uri,
@@ -205,19 +202,19 @@ export class UnifiedVideoService {
     }
 
     // Fallback for Expo Go - minimal processing
-    console.log('Using minimal processing in Expo Go');
+    console.log("Using minimal processing in Expo Go");
 
     // Generate thumbnail at least
     let thumbnail: string | undefined;
     try {
-      const VideoThumbnails = await import('expo-video-thumbnails');
+      const VideoThumbnails = await import("expo-video-thumbnails");
       const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
         time: 0,
         quality: 0.8,
       });
       thumbnail = uri;
     } catch (error) {
-      console.warn('Thumbnail generation failed:', error);
+      console.warn("Thumbnail generation failed:", error);
     }
 
     return {
@@ -231,18 +228,18 @@ export class UnifiedVideoService {
    * Create a frame processor for real-time effects
    * Works with Reanimated v4 worklets
    */
-  createFrameProcessor(effect: 'blur' | 'filter' | 'custom', customProcessor?: (frame: any) => void) {
-    'worklet';
+  createFrameProcessor(effect: "blur" | "filter" | "custom", customProcessor?: (frame: any) => void) {
+    "worklet";
 
     if (!this.capabilities?.effects.realtimeFaceBlur) {
-      console.log('Frame processors not available');
+      console.log("Frame processors not available");
       return null;
     }
 
     switch (effect) {
-      case 'blur':
+      case "blur":
         return this.visionCameraProcessor?.createFaceBlurProcessor();
-      case 'custom':
+      case "custom":
         if (customProcessor) {
           return this.visionCameraProcessor?.createFrameProcessor(customProcessor);
         }
@@ -258,8 +255,8 @@ export class UnifiedVideoService {
   getVideoPlayer() {
     // Always use Expo Video for playback
     return {
-      VideoView: require('expo-video').VideoView,
-      useVideoPlayer: require('expo-video').useVideoPlayer,
+      VideoView: require("expo-video").VideoView,
+      useVideoPlayer: require("expo-video").useVideoPlayer,
       isExpoVideo: true,
     };
   }
@@ -274,11 +271,11 @@ export class UnifiedVideoService {
 
     // Fallback to Expo permissions
     try {
-      const { Camera } = await import('expo-camera');
+      const { Camera } = await import("expo-camera");
       const { status } = await Camera.requestCameraPermissionsAsync();
-      return status === 'granted';
+      return status === "granted";
     } catch (error) {
-      console.error('Permission request failed:', error);
+      console.error("Permission request failed:", error);
       return false;
     }
   }
@@ -288,7 +285,7 @@ export class UnifiedVideoService {
    */
   getCapabilities(): UnifiedVideoCapabilities | null {
     if (!this.initialized) {
-      console.warn('UnifiedVideoService not initialized. Call getInstance() first.');
+      console.warn("UnifiedVideoService not initialized. Call getInstance() first.");
       return null;
     }
     return this.capabilities;
@@ -298,32 +295,34 @@ export class UnifiedVideoService {
    * Log capabilities for debugging
    */
   private logCapabilities() {
-    console.log('📹 Unified Video Service Capabilities:');
-    console.log('=====================================');
-    console.log('Recording:');
-    console.log(`  Vision Camera v4: ${this.capabilities?.recording.visionCamera ? '✅' : '❌'}`);
-    console.log(`  Expo Camera: ${this.capabilities?.recording.expoCamera ? '✅' : '❌'}`);
-    console.log(`  FFmpeg: ${this.capabilities?.recording.ffmpeg ? '✅' : '❌'}`);
-    console.log('');
-    console.log('Real-time Effects:');
-    console.log(`  Face Blur: ${this.capabilities?.effects.realtimeFaceBlur ? '✅' : '❌'}`);
-    console.log(`  Filters: ${this.capabilities?.effects.realtimeFilters ? '✅' : '❌'}`);
-    console.log('');
-    console.log('Post-processing:');
-    console.log(`  Blur: ${this.capabilities?.effects.postProcessBlur ? '✅' : '❌'}`);
-    console.log(`  Trim: ${this.capabilities?.effects.postProcessTrim ? '✅' : '❌'}`);
-    console.log(`  Compress: ${this.capabilities?.effects.postProcessCompress ? '✅' : '❌'}`);
-    console.log('');
-    console.log('Animation:');
-    console.log(`  Reanimated v4: ${this.capabilities?.animation.reanimatedV4 ? '✅' : '❌'}`);
-    console.log(`  Worklets: ${this.capabilities?.animation.worklets ? '✅' : '❌'}`);
-    console.log('=====================================');
+    console.log("📹 Unified Video Service Capabilities:");
+    console.log("=====================================");
+    console.log("Recording:");
+    console.log(`  Vision Camera v4: ${this.capabilities?.recording.visionCamera ? "✅" : "❌"}`);
+    console.log(`  Expo Camera: ${this.capabilities?.recording.expoCamera ? "✅" : "❌"}`);
+    console.log(`  FFmpeg: ${this.capabilities?.recording.ffmpeg ? "✅" : "❌"}`);
+    console.log("");
+    console.log("Real-time Effects:");
+    console.log(`  Face Blur: ${this.capabilities?.effects.realtimeFaceBlur ? "✅" : "❌"}`);
+    console.log(`  Filters: ${this.capabilities?.effects.realtimeFilters ? "✅" : "❌"}`);
+    console.log("");
+    console.log("Post-processing:");
+    console.log(`  Blur: ${this.capabilities?.effects.postProcessBlur ? "✅" : "❌"}`);
+    console.log(`  Trim: ${this.capabilities?.effects.postProcessTrim ? "✅" : "❌"}`);
+    console.log(`  Compress: ${this.capabilities?.effects.postProcessCompress ? "✅" : "❌"}`);
+    console.log("");
+    console.log("Animation:");
+    console.log(`  Reanimated v4: ${this.capabilities?.animation.reanimatedV4 ? "✅" : "❌"}`);
+    console.log(`  Worklets: ${this.capabilities?.animation.worklets ? "✅" : "❌"}`);
+    console.log("=====================================");
   }
 
   /**
    * Check if a specific feature is available
    */
-  isFeatureAvailable(feature: keyof UnifiedVideoCapabilities['effects'] | keyof UnifiedVideoCapabilities['recording']): boolean {
+  isFeatureAvailable(
+    feature: keyof UnifiedVideoCapabilities["effects"] | keyof UnifiedVideoCapabilities["recording"],
+  ): boolean {
     const effects = this.capabilities?.effects as any;
     const recording = this.capabilities?.recording as any;
 
@@ -335,18 +334,18 @@ export class UnifiedVideoService {
    */
   getEnvironmentRecommendation(): string {
     if (isExpoGo()) {
-      return 'You are in Expo Go. Basic video features are available. For full features, create a development build.';
+      return "You are in Expo Go. Basic video features are available. For full features, create a development build.";
     }
 
     if (!this.capabilities?.recording.visionCamera) {
-      return 'Vision Camera not available. Using Expo Camera for recording. Consider installing Vision Camera for better quality.';
+      return "Vision Camera not available. Using Expo Camera for recording. Consider installing Vision Camera for better quality.";
     }
 
     if (!this.capabilities?.effects.postProcessCompress) {
-      return 'FFmpeg not available. Video compression and advanced processing disabled.';
+      return "FFmpeg not available. Video compression and advanced processing disabled.";
     }
 
-    return 'All video features are available! You have Vision Camera v4, FFmpeg, and Reanimated v4.';
+    return "All video features are available! You have Vision Camera v4, FFmpeg, and Reanimated v4.";
   }
 }
 
@@ -361,14 +360,14 @@ export const useVideoCapabilities = () => {
     let cancelled = false;
 
     getUnifiedVideoService()
-      .then(service => {
+      .then((service) => {
         if (!cancelled) {
           setCapabilities(service.getCapabilities());
         }
       })
-      .catch(error => {
+      .catch((error) => {
         if (!cancelled) {
-          console.error('Failed to get video capabilities:', error);
+          console.error("Failed to get video capabilities:", error);
           setCapabilities(null);
         }
       });

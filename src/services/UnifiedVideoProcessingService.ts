@@ -11,7 +11,7 @@ import { isExpoGo, hasVideoProcessing } from "../utils/environmentDetector";
 import {
   videoValidation,
   validateVideoProcessingOptions,
-  VideoProcessingOptions as ValidationVideoProcessingOptions
+  VideoProcessingOptions as ValidationVideoProcessingOptions,
 } from "../utils/validation";
 import { transcribeAudio } from "../api/transcribe-audio";
 
@@ -19,7 +19,7 @@ export enum ProcessingMode {
   LOCAL = "local",
   SERVER = "server",
   HYBRID = "hybrid",
-  FFMPEG = "ffmpeg"
+  FFMPEG = "ffmpeg",
 }
 
 export interface ProcessingJob {
@@ -27,7 +27,7 @@ export interface ProcessingJob {
   uri: string;
   options: VideoProcessingOptions;
   priority: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: "pending" | "processing" | "completed" | "failed";
   progress: number;
   message: string;
   result?: ProcessedVideo;
@@ -59,7 +59,7 @@ export interface UnifiedVideoProcessingOptions extends VideoProcessingOptions {
   priority?: number;
   fallbackToServer?: boolean;
   maxRetries?: number;
-  cacheStrategy?: 'aggressive' | 'normal' | 'bypass';
+  cacheStrategy?: "aggressive" | "normal" | "bypass";
 }
 
 class UnifiedVideoProcessingService implements IAnonymiser {
@@ -75,7 +75,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     cacheHitRate: 0,
     queueLength: 0,
     activeJobs: 0,
-    processingMode: ProcessingMode.HYBRID
+    processingMode: ProcessingMode.HYBRID,
   };
   private ffmpegAvailable: boolean | null = null;
   private processingLock = false;
@@ -123,10 +123,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     trackStoreOperation("UnifiedVideoProcessing", "initialize", Date.now() - startTime);
   }
 
-  async processVideo(
-    videoUri: string,
-    options: UnifiedVideoProcessingOptions = {}
-  ): Promise<ProcessedVideo> {
+  async processVideo(videoUri: string, options: UnifiedVideoProcessingOptions = {}): Promise<ProcessedVideo> {
     await this.initialize();
 
     const startTime = Date.now();
@@ -136,7 +133,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
       priority = 5,
       fallbackToServer = true,
       maxRetries = 2,
-      cacheStrategy = 'normal',
+      cacheStrategy = "normal",
       ...processingOptions
     } = options;
 
@@ -146,7 +143,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
       await this.validateInput(videoUri, processingOptions);
 
       // Step 2: Check cache
-      if (cacheStrategy !== 'bypass') {
+      if (cacheStrategy !== "bypass") {
         onProgress?.(5, "Checking cache...");
         const cacheKey = this.generateCacheKey(videoUri, processingOptions);
 
@@ -156,7 +153,8 @@ class UnifiedVideoProcessingService implements IAnonymiser {
           // Verify the cached file still exists
           const cachedPath = await videoCacheManager.getCachedVideo(cachedMetadata.uri);
           if (cachedPath) {
-            this.stats.cacheHitRate = (this.stats.cacheHitRate * this.stats.totalProcessed + 1) / (this.stats.totalProcessed + 1);
+            this.stats.cacheHitRate =
+              (this.stats.cacheHitRate * this.stats.totalProcessed + 1) / (this.stats.totalProcessed + 1);
             onProgress?.(100, "Using cached result");
             trackStoreOperation("UnifiedVideoProcessing", "cacheHit", Date.now() - startTime);
             return { ...cachedMetadata, uri: cachedPath };
@@ -180,9 +178,9 @@ class UnifiedVideoProcessingService implements IAnonymiser {
         uri: videoUri,
         options: processingOptions,
         priority,
-        status: 'pending',
+        status: "pending",
         progress: 0,
-        message: 'Queued for processing',
+        message: "Queued for processing",
         retries: 0,
         mode,
         fallbackToServer,
@@ -190,7 +188,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
         completionPromise,
         resolvePromise,
         rejectPromise,
-        onProgress
+        onProgress,
       };
 
       // Step 4: Add to queue or process immediately
@@ -216,9 +214,9 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     mode: ProcessingMode,
     fallbackToServer: boolean,
     maxRetries: number,
-    onProgress?: (progress: number, message: string) => void
+    onProgress?: (progress: number, message: string) => void,
   ): Promise<ProcessedVideo> {
-    job.status = 'processing';
+    job.status = "processing";
     job.startTime = Date.now();
     this.activeJobs.set(job.id, job);
     this.stats.activeJobs = this.activeJobs.size;
@@ -266,11 +264,11 @@ class UnifiedVideoProcessingService implements IAnonymiser {
       }
 
       // Update job and stats
-      job.status = 'completed';
+      job.status = "completed";
       job.result = result;
       job.endTime = Date.now();
       job.progress = 100;
-      job.message = 'Processing complete';
+      job.message = "Processing complete";
 
       // Resolve the promise
       job.resolvePromise?.(result);
@@ -278,11 +276,12 @@ class UnifiedVideoProcessingService implements IAnonymiser {
       const processingTime = job.endTime - job.startTime!;
       this.stats.totalProcessed++;
       this.stats.averageProcessingTime =
-        (this.stats.averageProcessingTime * (this.stats.totalProcessed - 1) + processingTime) / this.stats.totalProcessed;
+        (this.stats.averageProcessingTime * (this.stats.totalProcessed - 1) + processingTime) /
+        this.stats.totalProcessed;
 
       // Cache result
       const cacheKey = this.generateCacheKey(job.uri, job.options);
-      const cachedPath = await videoCacheManager.cacheVideo(result.uri, 'high');
+      const cachedPath = await videoCacheManager.cacheVideo(result.uri, "high");
 
       // Store metadata in cache index
       this.cacheIndex.set(cacheKey, { ...result, uri: cachedPath });
@@ -292,7 +291,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
 
       return result;
     } catch (error) {
-      job.status = 'failed';
+      job.status = "failed";
       job.error = error as Error;
       job.endTime = Date.now();
       job.rejectPromise?.(error as Error);
@@ -306,11 +305,11 @@ class UnifiedVideoProcessingService implements IAnonymiser {
 
   private async processWithFFmpeg(
     job: ProcessingJob,
-    report: (progress: number, message: string) => void
+    report: (progress: number, message: string) => void,
   ): Promise<ProcessedVideo> {
     report(15, "Processing with FFmpeg...");
 
-    const processingDir = `${FileSystem.cacheDirectory}processing_${job.id}/`;
+    const processingDir = `${FileSystem.Paths.cache.uri}processing_${job.id}/`;
     await FileSystem.makeDirectoryAsync(processingDir, { intermediates: true });
 
     try {
@@ -355,7 +354,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
         duration,
         thumbnailUri,
         faceBlurApplied: job.options.enableFaceBlur || false,
-        voiceChangeApplied: voiceChanged
+        voiceChangeApplied: voiceChanged,
       };
     } finally {
       // Cleanup
@@ -365,7 +364,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
 
   private async processLocally(
     job: ProcessingJob,
-    report: (progress: number, message: string) => void
+    report: (progress: number, message: string) => void,
   ): Promise<ProcessedVideo> {
     report(15, "Processing locally...");
 
@@ -374,11 +373,11 @@ class UnifiedVideoProcessingService implements IAnonymiser {
       const processed = await videoProcessor.processVideo(
         job.uri,
         {
-          quality: job.options.quality || 'high',
+          quality: job.options.quality || "high",
           maxDuration: job.options.maxDuration,
           removeAudio: job.options.muteAudio,
         },
-        (progress) => report(progress, "Processing video...")
+        (progress) => report(progress, "Processing video..."),
       );
 
       report(50, "Video processing complete...");
@@ -386,14 +385,14 @@ class UnifiedVideoProcessingService implements IAnonymiser {
       let transcription = "";
       if (job.options.enableTranscription) {
         report(70, "Generating transcription...");
-        transcription = await this.generateTranscription(job.uri, FileSystem.cacheDirectory!);
+        transcription = await this.generateTranscription(job.uri, FileSystem.Paths.cache.uri!);
       }
 
       report(85, "Finalizing...");
 
       const result = {
         uri: processed.uri,
-        thumbnailUri: processed.thumbnail || '',
+        thumbnailUri: processed.thumbnail || "",
         duration: processed.duration,
         transcription,
         faceBlurApplied: job.options.enableFaceBlur || false,
@@ -409,24 +408,27 @@ class UnifiedVideoProcessingService implements IAnonymiser {
       report(100, "Processing complete!");
       return result;
     } catch (error) {
-      console.error('[UnifiedVideoProcessing] Local processing failed:', error);
+      console.error("[UnifiedVideoProcessing] Local processing failed:", error);
       throw error;
     }
   }
 
   private async processOnServer(
     job: ProcessingJob,
-    report: (progress: number, message: string) => void
+    report: (progress: number, message: string) => void,
   ): Promise<ProcessedVideo> {
     report(10, "Uploading to server...");
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       throw new Error("User not authenticated for server processing");
     }
 
     const upload = await uploadVideoToSupabase(job.uri, user.id, {
-      onProgress: (p: number) => report(10 + p * 0.2, "Uploading video...")
+      onProgress: (p: number) => report(10 + p * 0.2, "Uploading video..."),
     });
 
     report(30, "Processing on server...");
@@ -434,8 +436,8 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     const { data, error } = await supabase.functions.invoke("process-video", {
       body: {
         videoPath: upload.path,
-        options: job.options
-      }
+        options: job.options,
+      },
     });
 
     if (error) {
@@ -443,7 +445,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     }
 
     if (!data?.success) {
-      throw new Error(`Server processing failed: ${data?.error || 'Unknown error'}`);
+      throw new Error(`Server processing failed: ${data?.error || "Unknown error"}`);
     }
 
     report(80, "Retrieving processed video...");
@@ -458,29 +460,29 @@ class UnifiedVideoProcessingService implements IAnonymiser {
       duration: data.duration || 30,
       thumbnailUri: data.thumbnailUrl || "",
       faceBlurApplied: data.faceBlurApplied || false,
-      voiceChangeApplied: data.voiceChangeApplied || false
+      voiceChangeApplied: data.voiceChangeApplied || false,
     };
   }
 
   async preloadVideos(uris: string[], priority: number = 3): Promise<void> {
     await this.initialize();
 
-    const preloadJobs = uris.map(uri => ({
+    const preloadJobs = uris.map((uri) => ({
       id: `preload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       uri,
-      options: { quality: 'medium' as const },
+      options: { quality: "medium" as const },
       priority,
-      status: 'pending' as const,
+      status: "pending" as const,
       progress: 0,
-      message: 'Queued for preloading',
+      message: "Queued for preloading",
       retries: 0,
       mode: this.stats.processingMode,
       fallbackToServer: true,
       maxRetries: 1,
-      onProgress: undefined
+      onProgress: undefined,
     }));
 
-    preloadJobs.forEach(job => this.addToQueue(job));
+    preloadJobs.forEach((job) => this.addToQueue(job));
   }
 
   async clearCache(): Promise<void> {
@@ -491,7 +493,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
   getProcessingStats(): ProcessingStats {
     return {
       ...this.stats,
-      queueLength: this.processingQueue.length
+      queueLength: this.processingQueue.length,
     };
   }
 
@@ -511,8 +513,8 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     }
 
     const mappedOptions: ValidationVideoProcessingOptions = {
-      quality: options.quality as 'low' | 'medium' | 'high' | undefined,
-      voiceEffect: options.voiceEffect as 'none' | 'robot' | 'whisper' | 'deep' | undefined,
+      quality: options.quality as "low" | "medium" | "high" | undefined,
+      voiceEffect: options.voiceEffect as "none" | "robot" | "whisper" | "deep" | undefined,
       transcriptionEnabled: options.enableTranscription,
       backgroundMusic: false,
       filters: [],
@@ -542,11 +544,11 @@ class UnifiedVideoProcessingService implements IAnonymiser {
 
   private async waitForJobCompletion(
     job: ProcessingJob,
-    onProgress?: (progress: number, message: string) => void
+    onProgress?: (progress: number, message: string) => void,
   ): Promise<ProcessedVideo> {
     // Monitor progress with interval
     const progressInterval = setInterval(() => {
-      if (job.status === 'processing') {
+      if (job.status === "processing") {
         onProgress?.(job.progress, job.message);
       }
     }, 100);
@@ -583,7 +585,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
           job,
           job.mode || this.stats.processingMode,
           job.fallbackToServer ?? true,
-          job.maxRetries || 2
+          job.maxRetries || 2,
         );
       }
     } finally {
@@ -613,7 +615,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
   private async applyFaceBlurFFmpeg(
     videoUri: string,
     outputDir: string,
-    quality?: "high" | "medium" | "low" | "highest"
+    quality?: "high" | "medium" | "low" | "highest",
   ): Promise<string> {
     const outputUri = `${outputDir}face_blurred.mp4`;
     const inPath = this.pathForFFmpeg(videoUri);
@@ -634,13 +636,19 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     // Use safe FFmpeg args array instead of string interpolation
     const args = [
       "-y",
-      "-i", this.sanitizeFFmpegPath(inPath),
-      "-vf", `gblur=sigma=${blurSigma}`,
-      "-c:v", "libx264",
-      "-crf", crf.toString(),
-      "-preset", "veryfast",
-      "-c:a", "copy",
-      this.sanitizeFFmpegPath(outPath)
+      "-i",
+      this.sanitizeFFmpegPath(inPath),
+      "-vf",
+      `gblur=sigma=${blurSigma}`,
+      "-c:v",
+      "libx264",
+      "-crf",
+      crf.toString(),
+      "-preset",
+      "veryfast",
+      "-c:a",
+      "copy",
+      this.sanitizeFFmpegPath(outPath),
     ];
 
     const success = await this.runFFmpegSafe(args);
@@ -654,16 +662,17 @@ class UnifiedVideoProcessingService implements IAnonymiser {
   private async applyVoiceChangeFFmpeg(
     videoUri: string,
     outputDir: string,
-    effect?: "deep" | "light"
+    effect?: "deep" | "light",
   ): Promise<string | null> {
     try {
       const outputUri = `${outputDir}voice_changed.mp4`;
       const inPath = this.pathForFFmpeg(videoUri);
       const outPath = this.pathForFFmpeg(outputUri);
 
-      const audioFilter = effect === "deep"
-        ? "asetrate=44100*0.75,aresample=44100,atempo=1.2,highpass=150,lowpass=2800"
-        : "asetrate=44100*0.9,aresample=44100,atempo=1.1,highpass=200,lowpass=3200";
+      const audioFilter =
+        effect === "deep"
+          ? "asetrate=44100*0.75,aresample=44100,atempo=1.2,highpass=150,lowpass=2800"
+          : "asetrate=44100*0.9,aresample=44100,atempo=1.1,highpass=200,lowpass=3200";
 
       const cmd = `-y -i "${inPath}" -af "${audioFilter}" -c:v copy -c:a aac -b:a 128k "${outPath}"`;
 
@@ -734,7 +743,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
           }
         }
       } catch (error) {
-        console.warn('Failed to get duration with FFprobe:', error);
+        console.warn("Failed to get duration with FFprobe:", error);
       }
     }
 
@@ -761,17 +770,16 @@ class UnifiedVideoProcessingService implements IAnonymiser {
 
   private sanitizeFFmpegPath(path: string): string {
     // Remove dangerous characters and validate path
-    if (!path || typeof path !== 'string') {
-      throw new Error('Invalid path provided');
+    if (!path || typeof path !== "string") {
+      throw new Error("Invalid path provided");
     }
 
     // Remove shell metacharacters and ensure path safety
-    const sanitized = path.replace(/[;&|`$(){}\[\]<>"'\\]/g, '');
+    const sanitized = path.replace(/[;&|`$(){}\[\]<>"'\\]/g, "");
 
     // Validate that path exists within expected directories
-    if (!sanitized.includes(FileSystem.cacheDirectory!) &&
-        !sanitized.includes(FileSystem.documentDirectory!)) {
-      throw new Error('Path not in allowed directory');
+    if (!sanitized.includes(FileSystem.Paths.cache.uri!) && !sanitized.includes(FileSystem.Paths.document.uri!)) {
+      throw new Error("Path not in allowed directory");
     }
 
     return sanitized;
@@ -814,10 +822,14 @@ class UnifiedVideoProcessingService implements IAnonymiser {
 
   private qualityToCrf(quality: "high" | "medium" | "low" | "highest"): number {
     switch (quality) {
-      case "highest": return 18;
-      case "high": return 22;
-      case "low": return 30;
-      default: return 26;
+      case "highest":
+        return 18;
+      case "high":
+        return 22;
+      case "low":
+        return 30;
+      default:
+        return 26;
     }
   }
 

@@ -38,7 +38,7 @@ export const generateImage = async (
         "Prompt is required and cannot be empty",
         API_ERROR_CODES.MISSING_PARAMETER,
       );
-      handleApiError(error, "image-generation", context);
+      return handleApiError(error, "image-generation", context);
     }
 
     // Validate options
@@ -54,7 +54,7 @@ export const generateImage = async (
         "Width and height must be positive numbers",
         API_ERROR_CODES.INVALID_PARAMETER,
       );
-      handleApiError(error, "image-generation", context);
+      return handleApiError(error, "image-generation", context);
     }
 
     if (steps <= 0 || steps > 50) {
@@ -63,7 +63,7 @@ export const generateImage = async (
         "Steps must be between 1 and 50",
         API_ERROR_CODES.INVALID_PARAMETER,
       );
-      handleApiError(error, "image-generation", context);
+      return handleApiError(error, "image-generation", context);
     }
 
     return await executeApiRequest(
@@ -75,7 +75,7 @@ export const generateImage = async (
             "Image generation API key not found in environment variables",
             API_ERROR_CODES.API_KEY_NOT_FOUND,
           );
-          handleApiError(error, "image-generation", context);
+          throw error;
         }
 
         // Log request for debugging
@@ -114,7 +114,7 @@ export const generateImage = async (
             errorData,
             response.status >= 500, // Retry on server errors
           );
-          handleApiError(error, "image-generation", context);
+          return handleApiError(error, "image-generation", context);
         }
 
         const data = await response.json();

@@ -21,7 +21,7 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
-  const validator = createScreenValidator('PaywallScreen');
+  const validator = createScreenValidator("PaywallScreen");
 
   const { availablePlans, isLoading, error, loadAvailablePlans, purchaseSubscription, restorePurchases } =
     useMembershipStore();
@@ -29,9 +29,9 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   useEffect(() => {
-    validator.log('Loading available plans...');
-    loadAvailablePlans().catch(error => {
-      validator.error('Failed to load plans:', error);
+    validator.log("Loading available plans...");
+    loadAvailablePlans().catch((error) => {
+      validator.error("Failed to load plans:", error);
     });
   }, [loadAvailablePlans, validator]);
 
@@ -49,18 +49,18 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
 
   const handlePurchase = useCallback(async () => {
     if (!selectedPlan) {
-      validator.warn('No plan selected for purchase');
+      validator.warn("No plan selected for purchase");
       return;
     }
 
-    validator.log('Starting purchase for plan:', selectedPlan);
+    validator.log("Starting purchase for plan:", selectedPlan);
     impactAsync();
 
     try {
       const success = await purchaseSubscription(selectedPlan);
 
       if (success) {
-        validator.log('Purchase successful');
+        validator.log("Purchase successful");
         Alert.alert("Welcome to Plus!", "Your subscription is now active. Enjoy all premium features!", [
           {
             text: "Continue",
@@ -68,31 +68,31 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
               if (navigation.canGoBack()) {
                 navigation.goBack();
               } else {
-                (navigation as any).navigate('Home');
+                (navigation as any).navigate("Home");
               }
             },
           },
         ]);
       } else {
-        validator.warn('Purchase failed:', error);
+        validator.warn("Purchase failed:", error);
         Alert.alert("Purchase Failed", error || "Unable to complete purchase. Please try again.");
       }
     } catch (err) {
-      validator.error('Purchase error:', err);
+      validator.error("Purchase error:", err);
       Alert.alert("Purchase Error", "An unexpected error occurred. Please try again.");
     }
   }, [selectedPlan, purchaseSubscription, error, navigation, impactAsync, validator]);
 
   const handleRestore = useCallback(async () => {
-    validator.log('Starting purchase restoration');
+    validator.log("Starting purchase restoration");
     impactAsync();
 
     try {
       await restorePurchases();
-      validator.log('Restore successful');
+      validator.log("Restore successful");
       Alert.alert("Restore Complete", "Your purchases have been restored successfully.");
     } catch (err) {
-      validator.error('Restore failed:', err);
+      validator.error("Restore failed:", err);
       Alert.alert("Restore Failed", "Unable to restore purchases. Please try again.");
     }
   }, [restorePurchases, impactAsync, validator]);
@@ -142,11 +142,11 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
         >
           <Pressable
             onPress={() => {
-              validator.log('Closing paywall');
+              validator.log("Closing paywall");
               if (navigation.canGoBack()) {
                 navigation.goBack();
               } else {
-                (navigation as any).navigate('Home');
+                (navigation as any).navigate("Home");
               }
             }}
             className="w-8 h-8 items-center justify-center mb-6"

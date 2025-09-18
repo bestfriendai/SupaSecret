@@ -13,9 +13,9 @@ interface AnalyticsData {
   totalConfessions: number;
   totalHashtags: number;
   avgEngagement: number;
-  topCategories: Array<{ name: string; count: number; percentage: number }>;
+  topCategories: { name: string; count: number; percentage: number }[];
   growthRate: number;
-  peakHours: Array<{ hour: number; count: number }>;
+  peakHours: { hour: number; count: number }[];
   sentimentScore: number;
   viralityIndex: number;
 }
@@ -25,13 +25,10 @@ interface TrendingAnalyticsProps {
   onClose?: () => void;
 }
 
-export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
-  timePeriod,
-  onClose,
-}) => {
+export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod, onClose }) => {
   const { hapticsEnabled, impactAsync } = usePreferenceAwareHaptics();
   const { trendingHashtags, trendingSecrets } = useTrendingStore();
-  const videoAnalytics = useConfessionStore(state => state.videoAnalytics);
+  const videoAnalytics = useConfessionStore((state) => state.videoAnalytics);
 
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,14 +55,14 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
       // Calculate analytics
       const totalConfessions = confessionData?.length || 0;
       const totalLikes = confessionData?.reduce((sum, c) => sum + (c.likes || 0), 0) || 0;
-      
+
       // Get video analytics from store for view counts (now accessed from component scope)
-      
+
       // Calculate total views from video analytics instead of confession.views
       let totalViews = 0;
-      
+
       if (confessionData) {
-        confessionData.forEach(confession => {
+        confessionData.forEach((confession) => {
           // Get analytics for this confession
           const analytics = videoAnalytics[confession.id];
           if (analytics && analytics.sessions) {
@@ -77,13 +74,13 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
           }
         });
       }
-      
+
       const avgEngagement = totalConfessions > 0 ? (totalLikes + totalViews) / totalConfessions : 0;
 
       // Extract hashtags and categorize
       const hashtagCounts = new Map<string, number>();
       const hourCounts = new Array(24).fill(0);
-      
+
       confessionData?.forEach((confession) => {
         // Extract hashtags
         const hashtags = confession.content.match(/#[\w\u00c0-\u024f\u1e00-\u1eff]+/gi) || [];
@@ -124,9 +121,9 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
 
       // Calculate virality index
       const viralityIndex = Math.min(
-        (totalLikes / Math.max(totalConfessions, 1)) * 
-        (topCategories.length > 0 ? topCategories[0].percentage / 100 : 0.1),
-        1
+        (totalLikes / Math.max(totalConfessions, 1)) *
+          (topCategories.length > 0 ? topCategories[0].percentage / 100 : 0.1),
+        1,
       );
 
       setAnalytics({
@@ -139,7 +136,6 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
         sentimentScore,
         viralityIndex,
       });
-
     } catch (err) {
       console.error("Analytics loading error:", err);
       setError(err instanceof Error ? err.message : "Failed to load analytics");
@@ -152,12 +148,15 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
     loadAnalytics();
   }, [loadAnalytics]);
 
-  const handleMetricSelect = useCallback(async (metric: string) => {
-    setSelectedMetric(metric);
-    if (hapticsEnabled) {
-      await impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  }, [hapticsEnabled, impactAsync]);
+  const handleMetricSelect = useCallback(
+    async (metric: string) => {
+      setSelectedMetric(metric);
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    },
+    [hapticsEnabled, impactAsync],
+  );
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -171,10 +170,14 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
 
   const getTimePeriodLabel = (): string => {
     switch (timePeriod) {
-      case 24: return "Last 24 Hours";
-      case 168: return "Last 7 Days";
-      case 720: return "Last 30 Days";
-      default: return "Custom Period";
+      case 24:
+        return "Last 24 Hours";
+      case 168:
+        return "Last 7 Days";
+      case 720:
+        return "Last 30 Days";
+      default:
+        return "Custom Period";
     }
   };
 
@@ -258,10 +261,10 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
           <View style={styles.metricCard}>
             <Text style={styles.metricValue}>{formatPercentage(analytics.growthRate)}</Text>
             <Text style={styles.metricLabel}>Growth Rate</Text>
-            <Ionicons 
-              name={analytics.growthRate >= 0 ? "trending-up" : "trending-down"} 
-              size={20} 
-              color={analytics.growthRate >= 0 ? "#10B981" : "#EF4444"} 
+            <Ionicons
+              name={analytics.growthRate >= 0 ? "trending-up" : "trending-down"}
+              size={20}
+              color={analytics.growthRate >= 0 ? "#10B981" : "#EF4444"}
             />
           </View>
         </View>
@@ -269,16 +272,16 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
         {/* Advanced Metrics */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Advanced Metrics</Text>
-          
+
           <View style={styles.advancedMetrics}>
             <View style={styles.progressMetric}>
               <Text style={styles.progressLabel}>Sentiment Score</Text>
               <View style={styles.progressBar}>
-                <View 
+                <View
                   style={[
-                    styles.progressFill, 
-                    { width: `${analytics.sentimentScore * 100}%`, backgroundColor: "#10B981" }
-                  ]} 
+                    styles.progressFill,
+                    { width: `${analytics.sentimentScore * 100}%`, backgroundColor: "#10B981" },
+                  ]}
                 />
               </View>
               <Text style={styles.progressValue}>{formatPercentage(analytics.sentimentScore * 100)}</Text>
@@ -287,11 +290,11 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
             <View style={styles.progressMetric}>
               <Text style={styles.progressLabel}>Virality Index</Text>
               <View style={styles.progressBar}>
-                <View 
+                <View
                   style={[
-                    styles.progressFill, 
-                    { width: `${analytics.viralityIndex * 100}%`, backgroundColor: "#F59E0B" }
-                  ]} 
+                    styles.progressFill,
+                    { width: `${analytics.viralityIndex * 100}%`, backgroundColor: "#F59E0B" },
+                  ]}
                 />
               </View>
               <Text style={styles.progressValue}>{formatPercentage(analytics.viralityIndex * 100)}</Text>
@@ -314,12 +317,7 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
                 </Text>
               </View>
               <View style={styles.categoryBar}>
-                <View 
-                  style={[
-                    styles.categoryBarFill, 
-                    { width: `${category.percentage}%` }
-                  ]} 
-                />
+                <View style={[styles.categoryBarFill, { width: `${category.percentage}%` }]} />
               </View>
             </View>
           ))}
@@ -331,12 +329,8 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
           <View style={styles.peakHours}>
             {analytics.peakHours.map((peak, index) => (
               <View key={peak.hour} style={styles.peakHourItem}>
-                <Text style={styles.peakHourTime}>
-                  {peak.hour.toString().padStart(2, "0")}:00
-                </Text>
-                <Text style={styles.peakHourCount}>
-                  {formatNumber(peak.count)} secrets
-                </Text>
+                <Text style={styles.peakHourTime}>{peak.hour.toString().padStart(2, "0")}:00</Text>
+                <Text style={styles.peakHourCount}>{formatNumber(peak.count)} secrets</Text>
                 <View style={styles.peakHourBadge}>
                   <Text style={styles.peakHourRank}>#{index + 1}</Text>
                 </View>
@@ -352,20 +346,19 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({
             <View style={styles.insightItem}>
               <Ionicons name="bulb" size={16} color="#F59E0B" />
               <Text style={styles.insightText}>
-                {analytics.growthRate > 0 
+                {analytics.growthRate > 0
                   ? `Trending activity increased by ${formatPercentage(analytics.growthRate)} this period`
-                  : "Activity has stabilized compared to previous period"
-                }
+                  : "Activity has stabilized compared to previous period"}
               </Text>
             </View>
-            
+
             <View style={styles.insightItem}>
               <Ionicons name="time" size={16} color="#8B5CF6" />
               <Text style={styles.insightText}>
                 Peak activity occurs at {analytics.peakHours[0]?.hour.toString().padStart(2, "0")}:00
               </Text>
             </View>
-            
+
             <View style={styles.insightItem}>
               <Ionicons name="trending-up" size={16} color="#10B981" />
               <Text style={styles.insightText}>
