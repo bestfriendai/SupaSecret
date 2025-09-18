@@ -24,8 +24,7 @@ module.exports = function (api) {
           },
         },
       ],
-      // Reanimated plugin for v3 - must be last
-      "react-native-reanimated/plugin",
+      // Note: Reanimated plugin is automatically configured by babel-preset-expo
     ],
   };
 };
