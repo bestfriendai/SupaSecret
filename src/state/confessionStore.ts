@@ -15,7 +15,7 @@ import {
   confessionValidation,
   videoValidation
 } from "../utils/validation";
-import * as FileSystem from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();

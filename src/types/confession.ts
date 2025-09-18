@@ -79,6 +79,7 @@ export interface ConfessionState {
   updateVideoAnalytics: (id: string, analytics: Partial<VideoAnalytics>) => Promise<void>;
   loadUserPreferences: () => Promise<void>;
   updateUserPreferences: (preferences: Partial<UserPreferences>) => Promise<void>;
+  queueTempConfession: (confession: any, metadata: any) => Promise<void>;
   clearError: () => void;
 }
 

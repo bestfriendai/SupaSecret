@@ -50,6 +50,9 @@ export interface MembershipState {
   cancelSubscription: () => Promise<void>;
   hasFeature: (feature: keyof MembershipFeatures) => boolean;
   clearError: () => void;
+
+  // Alias for currentTier for backward compatibility
+  readonly membershipTier: MembershipTier;
 }
 
 // Default feature sets

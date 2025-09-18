@@ -87,10 +87,13 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
       }
 
       // Load user stats
+      const targetUserId = userId || user?.id;
+      if (!targetUserId) return;
+
       const { data: confessions } = await supabase
         .from("confessions")
         .select("id, likes, views")
-        .eq("user_id", userId || user?.id);
+        .eq("user_id", targetUserId);
 
       const totalLikes = confessions?.reduce((sum, c) => sum + (c.likes || 0), 0) || 0;
       const totalViews = confessions?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
@@ -170,10 +173,9 @@ export const EnhancedProfileScreen: React.FC<EnhancedProfileScreenProps> = ({ us
 
   const getMembershipBadge = () => {
     switch (membershipTier) {
-      case "premium":
-        return { icon: "diamond", color: "#FFD700", label: "Premium" };
-      case "pro":
-        return { icon: "star", color: "#8B5CF6", label: "Pro" };
+      case "plus":
+        return { icon: "diamond", color: "#FFD700", label: "Plus" };
+      case "free":
       default:
         return null;
     }

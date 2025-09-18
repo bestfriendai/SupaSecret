@@ -178,6 +178,11 @@ export const useMembershipStore = create<MembershipState>()(
       clearError: () => {
         set({ error: null });
       },
+
+      // Alias for currentTier for backward compatibility
+      get membershipTier() {
+        return get().currentTier;
+      },
     }),
     {
       name: "membership-storage",

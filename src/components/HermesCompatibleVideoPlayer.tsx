@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { VideoView, useVideoPlayer, useEventListener } from 'expo-video';
 import { View } from 'react-native';
 
 interface HermesCompatibleVideoPlayerProps {
@@ -160,35 +160,31 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
     };
   }, [disposePlayer]);
 
-  // Handle playback status updates
-  const handlePlaybackStatusUpdate = useCallback((status: any) => {
+  // Handle player status changes with useEventListener for proper expo-video API usage
+  useEventListener(player, 'statusChange', useCallback(({ status, error }) => {
     if (isDisposing) return;
 
     try {
-      if (status.error) {
+      if (error) {
         if (__DEV__) {
-          console.warn('Video playback error:', status.error);
+          console.warn('Video playback error:', error);
         }
-        onError?.(new Error(status.error));
+        onError?.(new Error(error.message || 'Video playback error'));
       }
-      
-      onPlaybackStatusUpdate?.(status);
-    } catch (error) {
+
+      // Create status object compatible with the existing interface
+      const statusUpdate = {
+        ...status,
+        error: error?.message || null,
+      };
+
+      onPlaybackStatusUpdate?.(statusUpdate);
+    } catch (statusError) {
       if (__DEV__) {
-        console.warn('Playback status update error:', error);
+        console.warn('Playback status update error:', statusError);
       }
     }
-  }, [onError, onPlaybackStatusUpdate, isDisposing]);
-
-  // Handle video errors
-  const handleVideoError = useCallback((error: any) => {
-    if (isDisposing) return;
-
-    if (__DEV__) {
-      console.error('Video error:', error);
-    }
-    onError?.(error);
-  }, [onError, isDisposing]);
+  }, [onError, onPlaybackStatusUpdate, isDisposing]));
 
   if (isDisposing) {
     return <View style={style} className={className} />;
@@ -198,14 +194,11 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
     <VideoView
       ref={playerRef}
       style={style}
-      className={className}
       player={player}
       allowsFullscreen={false}
       allowsPictureInPicture={false}
       showsTimecodes={false}
       requiresLinearPlayback={false}
-      onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-      onError={handleVideoError}
     />
   );
 };
