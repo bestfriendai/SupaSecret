@@ -49,7 +49,7 @@ export default function SecretDetailScreen() {
     addReply,
     toggleReplyLike,
     getRepliesForConfession,
-    isLoading: repliesLoading,
+    loading: repliesLoading,
     error: repliesError,
     clearError,
   } = useReplyStore();

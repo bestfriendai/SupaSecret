@@ -1,3 +1,5 @@
+import "react-native-gesture-handler";
+import "react-native-reanimated";
 import React, { useEffect, useState } from "react";
 import "./global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";

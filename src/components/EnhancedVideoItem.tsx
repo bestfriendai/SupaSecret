@@ -29,7 +29,7 @@ interface EnhancedVideoItemProps {
   screenFocused?: boolean; // New: explicitly pause/mute on tab blur
 }
 
-function EnhancedVideoItem({
+function EnhancedVideoItemContent({
   confession,
   isActive,
   onClose,
@@ -146,7 +146,8 @@ function EnhancedVideoItem({
                   // Check if it's a disposal-related error
                   if (
                     !pauseError?.message?.includes("NativeSharedObjectNotFoundException") &&
-                    !pauseError?.message?.includes("Unable to find the native shared object")
+                    !pauseError?.message?.includes("Unable to find the native shared object") &&
+                    !pauseError?.message?.includes("Player pause failed")
                   ) {
                     // Only log non-disposal errors in dev
                     if (__DEV__) {
@@ -156,22 +157,22 @@ function EnhancedVideoItem({
                 }
 
                 // Small delay to ensure pause completes before disposal
-                setTimeout(() => {
-                  if (!isDisposingRef.current) return;
-                  try {
-                    // Additional cleanup if available
-                    if (typeof (player as any).unload === "function") {
-                      (player as any).unload();
-                    }
-                  } catch (unloadError: any) {
-                    // Silently ignore unload errors during cleanup
-                    if (__DEV__ && !unloadError?.message?.includes("NativeSharedObject")) {
-                      console.warn(`Video unload failed for ${confession.id}:`, unloadError?.message);
-                    }
-                  } finally {
-                    isDisposingRef.current = false;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+
+                if (!isDisposingRef.current) return;
+                try {
+                  // Additional cleanup if available
+                  if (typeof (player as any).unload === "function") {
+                    (player as any).unload();
                   }
-                }, 50);
+                } catch (unloadError: any) {
+                  // Silently ignore unload errors during cleanup
+                  if (__DEV__ && !unloadError?.message?.includes("NativeSharedObject")) {
+                    console.warn(`Video unload failed for ${confession.id}:`, unloadError?.message);
+                  }
+                } finally {
+                  isDisposingRef.current = false;
+                }
               } else {
                 isDisposingRef.current = false;
               }
@@ -612,6 +613,30 @@ function EnhancedVideoItem({
       {/* Bottom Sheets */}
     </View>
   );
+}
+
+function EnhancedVideoItem(props: EnhancedVideoItemProps) {
+  const { confession } = props;
+
+  if (!confession || !confession.id) {
+    if (__DEV__) {
+      console.warn("EnhancedVideoItem: missing confession data", confession);
+    }
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#000",
+        }}
+      >
+        <Text style={{ color: "#9CA3AF", fontSize: 14 }}>Video unavailable</Text>
+      </View>
+    );
+  }
+
+  return <EnhancedVideoItemContent {...props} />;
 }
 
 // Enhanced memo comparison with granular prop checking

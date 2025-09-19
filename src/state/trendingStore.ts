@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { Confession } from "../types/confession";
 import { HashtagData, TrendingSecret } from "../utils/trending";
 import { trackStoreOperation } from "../utils/storePerformanceMonitor";
@@ -48,6 +49,11 @@ async function rpcWithRetry<T>(fn: () => Promise<{ data: T | null; error: any }>
   return { data: null as T | null, error: lastErr };
 }
 
+interface LoadTrendingOptions {
+  force?: boolean;
+  skipRealtimeInit?: boolean;
+}
+
 interface TrendingState {
   // Data
   trendingHashtags: HashtagData[];
@@ -59,18 +65,65 @@ interface TrendingState {
   isRefreshing: boolean;
   error: string | null;
   lastUpdated: number | null;
+  realtimeInitialized: boolean;
+  lastHashtagParams: { hours: number; limit: number } | null;
+  lastSecretParams: { hours: number; limit: number } | null;
 
   // Cache settings
   cacheExpiry: number; // 5 minutes in milliseconds
 
   // Actions
-  loadTrendingHashtags: (hours?: number, limit?: number) => Promise<void>;
-  loadTrendingSecrets: (hours?: number, limit?: number) => Promise<void>;
+  loadTrendingHashtags: (hours?: number, limit?: number, options?: LoadTrendingOptions) => Promise<void>;
+  loadTrendingSecrets: (hours?: number, limit?: number, options?: LoadTrendingOptions) => Promise<void>;
   searchByHashtag: (hashtag: string) => Promise<void>;
   refreshAll: (hours?: number) => Promise<void>;
   clearSearch: () => void;
   clearError: () => void;
 }
+
+let trendingRealtimeChannel: RealtimeChannel | null = null;
+let trendingRefreshTimer: NodeJS.Timeout | null = null;
+
+const initializeTrendingRealtime = (_set: (partial: Partial<TrendingState>) => void, get: () => TrendingState) => {
+  if (trendingRealtimeChannel) return;
+
+  trendingRealtimeChannel = supabase
+    .channel("trending-confessions")
+    .on("postgres_changes", { event: "*", schema: "public", table: "confessions" }, () => {
+      if (trendingRefreshTimer) return;
+
+      trendingRefreshTimer = setTimeout(async () => {
+        trendingRefreshTimer = null;
+        const state = get();
+        const { lastHashtagParams, lastSecretParams } = state;
+
+        try {
+          if (lastHashtagParams) {
+            await state.loadTrendingHashtags(lastHashtagParams.hours, lastHashtagParams.limit, {
+              force: true,
+              skipRealtimeInit: true,
+            });
+          }
+
+          if (lastSecretParams) {
+            await state.loadTrendingSecrets(lastSecretParams.hours, lastSecretParams.limit, {
+              force: true,
+              skipRealtimeInit: true,
+            });
+          }
+        } catch (error) {
+          if (__DEV__) {
+            console.warn("Trending realtime refresh failed:", error);
+          }
+        }
+      }, 1200);
+    })
+    .subscribe((status) => {
+      if (__DEV__) {
+        console.log("Trending realtime channel status:", status);
+      }
+    });
+};
 
 export const useTrendingStore = create<TrendingState>()(
   persist(
@@ -83,22 +136,36 @@ export const useTrendingStore = create<TrendingState>()(
       isRefreshing: false,
       error: null,
       lastUpdated: null,
+      realtimeInitialized: false,
+      lastHashtagParams: null,
+      lastSecretParams: null,
       cacheExpiry: 5 * 60 * 1000, // 5 minutes
 
-      loadTrendingHashtags: async (hours = 24, limit = 10) => {
+      loadTrendingHashtags: async (hours = 24, limit = 10, options: LoadTrendingOptions = {}) => {
         const state = get();
         const t0 = Date.now();
 
-        // Check cache validity
+        if (!options.skipRealtimeInit && !state.realtimeInitialized) {
+          initializeTrendingRealtime((partial) => set(partial), get);
+          set({ realtimeInitialized: true });
+        }
+
         if (
+          !options.force &&
+          state.lastHashtagParams &&
+          state.lastHashtagParams.hours === hours &&
+          state.lastHashtagParams.limit === limit &&
           state.lastUpdated &&
           Date.now() - state.lastUpdated < state.cacheExpiry &&
           state.trendingHashtags.length > 0
         ) {
-          return; // Use cached data
+          return;
         }
 
-        set({ isLoading: true, error: null });
+        set({
+          error: null,
+          ...(options.skipRealtimeInit ? {} : { isLoading: true }),
+        });
 
         try {
           // Try to use database function first
@@ -121,6 +188,7 @@ export const useTrendingStore = create<TrendingState>()(
               trendingHashtags: hashtags,
               isLoading: false,
               lastUpdated: Date.now(),
+              lastHashtagParams: { hours, limit },
             });
             return;
           }
@@ -164,6 +232,7 @@ export const useTrendingStore = create<TrendingState>()(
             trendingHashtags: hashtags,
             isLoading: false,
             lastUpdated: Date.now(),
+            lastHashtagParams: { hours, limit },
           });
           trackStoreOperation("trendingStore", "loadTrendingHashtags", Date.now() - t0);
         } catch (error) {
@@ -174,20 +243,31 @@ export const useTrendingStore = create<TrendingState>()(
         }
       },
 
-      loadTrendingSecrets: async (hours = 24, limit = 10) => {
+      loadTrendingSecrets: async (hours = 24, limit = 10, options: LoadTrendingOptions = {}) => {
         const state = get();
         const t0 = Date.now();
 
-        // Check cache validity
+        if (!options.skipRealtimeInit && !state.realtimeInitialized) {
+          initializeTrendingRealtime((partial) => set(partial), get);
+          set({ realtimeInitialized: true });
+        }
+
         if (
+          !options.force &&
+          state.lastSecretParams &&
+          state.lastSecretParams.hours === hours &&
+          state.lastSecretParams.limit === limit &&
           state.lastUpdated &&
           Date.now() - state.lastUpdated < state.cacheExpiry &&
           state.trendingSecrets.length > 0
         ) {
-          return; // Use cached data
+          return;
         }
 
-        set({ isLoading: true, error: null });
+        set({
+          error: null,
+          ...(options.skipRealtimeInit ? {} : { isLoading: true }),
+        });
 
         try {
           // Try to use database function first
@@ -237,6 +317,7 @@ export const useTrendingStore = create<TrendingState>()(
               trendingSecrets: secrets,
               isLoading: false,
               lastUpdated: Date.now(),
+              lastSecretParams: { hours, limit },
             });
             return;
           }
@@ -312,6 +393,7 @@ export const useTrendingStore = create<TrendingState>()(
             trendingSecrets: secrets,
             isLoading: false,
             lastUpdated: Date.now(),
+            lastSecretParams: { hours, limit },
           });
           trackStoreOperation("trendingStore", "loadTrendingSecrets", Date.now() - t0);
         } catch (error) {
@@ -433,7 +515,10 @@ export const useTrendingStore = create<TrendingState>()(
       refreshAll: async (hours = 24) => {
         set({ isRefreshing: true });
         try {
-          await Promise.all([get().loadTrendingHashtags(hours), get().loadTrendingSecrets(hours)]);
+          await Promise.all([
+            get().loadTrendingHashtags(hours, undefined, { force: true }),
+            get().loadTrendingSecrets(hours, undefined, { force: true }),
+          ]);
         } finally {
           set({ isRefreshing: false });
         }
@@ -455,6 +540,8 @@ export const useTrendingStore = create<TrendingState>()(
         trendingHashtags: state.trendingHashtags,
         trendingSecrets: state.trendingSecrets,
         lastUpdated: state.lastUpdated,
+        lastHashtagParams: state.lastHashtagParams,
+        lastSecretParams: state.lastSecretParams,
       }),
     },
   ),

@@ -440,7 +440,6 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
       <EnhancedCommentBottomSheet
         bottomSheetModalRef={commentSheetRef}
         confessionId={currentVideoId || ""}
-        key={currentVideoId || "empty"}
       />
 
       {/* Share Bottom Sheet */}
