@@ -1,231 +1,179 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { View, Text, Pressable, Alert, StyleSheet, Platform } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  Alert,
+  StyleSheet,
+  ActivityIndicator,
+  Switch,
+  Platform,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { CameraView } from "expo-camera";
+
 import { useConfessionStore } from "../state/confessionStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { withErrorBoundary } from "../components/ErrorBoundary";
 import { PermissionGate } from "../components/PermissionGate";
+import { useVideoRecorder } from "../hooks/useVideoRecorder";
+import { TranscriptionOverlay } from "../components/TranscriptionOverlay";
+import { ProcessedVideo } from "../services/IAnonymiser";
+import { ProcessingMode } from "../services/UnifiedVideoProcessingService";
+import { useVideoCapabilities } from "../services/UnifiedVideoService";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
-import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
-import { generateUUID } from "../utils/consolidatedUtils";
-
-// Expo Camera fallback
-import { CameraView, CameraType } from "expo-camera";
-import { useMediaPermissions } from "../hooks/useMediaPermissions";
 
 const MAX_DURATION = 60; // seconds
-const RECORDING_QUALITY = "hd"; // 'sd', 'hd', 'fhd', '4k'
 
 function VideoRecordScreen() {
   const navigation = useNavigation();
+  const queueTempConfession = useConfessionStore((state) => state.queueTempConfession);
   const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
-  const addConfession = useConfessionStore((state) => state.addConfession);
+  const capabilities = useVideoCapabilities();
 
-  // Expo Camera hooks (always called)
-  const { hasVideoPermissions, requestVideoPermissions } = useMediaPermissions();
-  const [facing, setFacing] = useState<CameraType>("back");
-  const expoCameraRef = useRef<CameraView>(null);
+  const resetRef = useRef<(() => void) | null>(null);
 
-  // Common state
-  const [camera, setCamera] = useState<any>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [visionCameraReady, setVisionCameraReady] = useState(false);
+  const [enableFaceBlur, setEnableFaceBlur] = useState(true);
+  const [enableVoiceChange, setEnableVoiceChange] = useState(true);
+  const [voiceEffect, setVoiceEffect] = useState<"deep" | "light">("deep");
+  const [uiError, setUiError] = useState<string | null>(null);
 
-  // Timer ref for recording duration
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const recordingPromiseRef = useRef<Promise<any> | null>(null);
+  const handleRecordingStart = useCallback(async () => {
+    setUiError(null);
+    if (hapticsEnabled) {
+      await notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [hapticsEnabled, notificationAsync]);
 
-  // Initialize Vision Camera if available
-  useEffect(() => {
-    const initVisionCamera = async () => {
-      if (IS_EXPO_GO) {
-        setVisionCameraReady(false);
-        return;
-      }
-
-      try {
-        const visionCamera = await import("react-native-vision-camera");
-        const { Camera: VisionCamera } = visionCamera;
-
-        // Check permissions
-        const cameraPermission = await VisionCamera.getCameraPermissionStatus();
-        if (cameraPermission !== "granted") {
-          const newPermission = await VisionCamera.requestCameraPermission();
-          if (newPermission !== "granted") {
-            setVisionCameraReady(false);
-            return;
-          }
-        }
-
-        setVisionCameraReady(true);
-      } catch (error) {
-        console.warn("Vision Camera not available:", error);
-        setVisionCameraReady(false);
-      }
-    };
-
-    initVisionCamera();
+  const handleRecorderError = useCallback((message: string) => {
+    setUiError(message);
   }, []);
 
-  // Request permissions on focus
-  useFocusEffect(
-    useCallback(() => {
-      if (!visionCameraReady && !hasVideoPermissions) {
-        requestVideoPermissions();
-      }
-      return () => {
-        // Cleanup on unfocus
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
+  const handleProcessingComplete = useCallback(
+    async (processed: ProcessedVideo) => {
+      try {
+        const confessionPayload = {
+          type: "video" as const,
+          content: "Anonymous video confession",
+          videoUri: processed.uri,
+          transcription: processed.transcription,
+          isAnonymous: true,
+          faceBlurApplied: processed.faceBlurApplied ?? enableFaceBlur,
+          voiceChangeApplied: processed.voiceChangeApplied ?? enableVoiceChange,
+          duration: processed.duration,
+        };
+
+        await queueTempConfession(confessionPayload, {
+          type: "video",
+          faceBlurApplied: processed.faceBlurApplied ?? enableFaceBlur,
+          voiceChangeApplied: processed.voiceChangeApplied ?? enableVoiceChange,
+          processingMode: IS_EXPO_GO ? "server" : "hybrid",
+          duration: processed.duration,
+        });
+
+        if (hapticsEnabled) {
+          await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
-      };
-    }, [visionCameraReady, hasVideoPermissions, requestVideoPermissions]),
+
+        resetRef.current?.();
+
+        Alert.alert(
+          "Video Queued",
+          "Your anonymized video will upload automatically when a connection is available.",
+          [
+            {
+              text: "Great",
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+      } catch (error) {
+        console.error("Failed to queue processed confession:", error);
+        const message =
+          error instanceof Error ? error.message : "Failed to queue video for upload. Please try again.";
+        setUiError(message);
+        Alert.alert("Upload Failed", message);
+      }
+    },
+    [
+      enableFaceBlur,
+      enableVoiceChange,
+      hapticsEnabled,
+      impactAsync,
+      navigation,
+      queueTempConfession,
+      resetRef,
+    ],
   );
 
-  const startRecording = async () => {
-    if (isRecording) return;
+  const {
+    state,
+    controls,
+    data,
+    hasPermissions,
+    requestPermissions,
+    error: recorderError,
+  } = useVideoRecorder({
+    maxDuration: MAX_DURATION,
+    quality: "high",
+    enableFaceBlur,
+    enableVoiceChange,
+    enableLiveCaptions: true,
+    voiceEffect,
+    processingMode: IS_EXPO_GO ? ProcessingMode.SERVER : ProcessingMode.HYBRID,
+    onRecordingStart: handleRecordingStart,
+    onProcessingComplete: handleProcessingComplete,
+    onError: handleRecorderError,
+  });
 
-    try {
-      setError(null);
-      setIsRecording(true);
-      setRecordingDuration(0);
+  const { startRecording, stopRecording, toggleCamera, cleanup } = controls;
 
-      // Haptic feedback
-      if (hapticsEnabled) {
-        await notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-
-      // Start duration timer
-      timerRef.current = setInterval(() => {
-        setRecordingDuration((prev) => {
-          const newDuration = prev + 1;
-          if (newDuration >= MAX_DURATION) {
-            // Clear interval immediately when max duration reached
-            if (timerRef.current) {
-              clearInterval(timerRef.current);
-              timerRef.current = null;
-            }
-            stopRecording();
-            return prev;
-          }
-          return newDuration;
-        });
-      }, 1000);
-
-      // Use Expo Camera for recording
-      if (expoCameraRef.current) {
-        const recordingOptions: any = { maxDuration: MAX_DURATION };
-        if (Platform.OS === "ios") {
-          recordingOptions.codec = "avc1";
-        }
-
-        recordingPromiseRef.current = expoCameraRef.current.recordAsync(recordingOptions);
-        const video = await recordingPromiseRef.current;
-
-        if (video && video.uri) {
-          await handleRecordingComplete(video.uri);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to start recording:", error);
-      setError("Failed to start recording. Please check permissions.");
-      setIsRecording(false);
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!isRecording) return;
-
-    try {
-      if (expoCameraRef.current) {
-        expoCameraRef.current.stopRecording();
-      }
-
-      if (hapticsEnabled) {
-        await impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
-    } catch (error) {
-      console.error("Failed to stop recording:", error);
-      setError("Failed to stop recording.");
-    } finally {
-      setIsRecording(false);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-  };
-
-  const handleRecordingComplete = async (videoPath: string) => {
-    try {
-      // Add to offline queue for processing
-      const tempId = generateUUID();
-      offlineQueue.enqueue(OFFLINE_ACTIONS.CREATE_CONFESSION, {
-        tempId,
-        confession: {
-          type: "video",
-          content: "Anonymous video confession",
-          videoUri: videoPath,
-          isAnonymous: true,
-        },
-      });
-
-      Alert.alert(
-        "Recording Complete!",
-        `Video recorded successfully and queued for processing (${tempId.slice(0, 8)}...)`,
-        [
-          {
-            text: "Record Another",
-            onPress: () => {
-              // Reset for another recording
-              setRecordingDuration(0);
-              setError(null);
-            },
-          },
-          {
-            text: "Done",
-            onPress: () => navigation.goBack(),
-          },
-        ],
-      );
-    } catch (error) {
-      console.error("Failed to handle recording:", error);
-      setError("Failed to process recording.");
-    }
-  };
-
-  const toggleCameraFacing = () => {
-    // Toggle for Expo Camera
-    setFacing((current) => (current === "back" ? "front" : "back"));
-
-    if (hapticsEnabled) {
-      impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  };
-
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, []);
+    resetRef.current = controls.reset;
+  }, [controls.reset]);
 
-  // Permission check
-  const hasPermissions = hasVideoPermissions;
+  useEffect(() => {
+    if (recorderError) {
+      setUiError(recorderError);
+    }
+  }, [recorderError]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        cleanup();
+      };
+    }, [cleanup]),
+  );
+
+  const capabilitySummary = useMemo(() => {
+    if (!capabilities) {
+      return "Checking camera capabilities...";
+    }
+
+    if (capabilities.recording.visionCamera && capabilities.effects.realtimeFaceBlur) {
+      return "Vision Camera + FFmpeg available";
+    }
+
+    if (capabilities.recording.visionCamera) {
+      return "Vision Camera available (face blur via post-processing)";
+    }
+
+    return "Using Expo Camera fallback";
+  }, [capabilities]);
+
+  const toggleVoiceEffect = useCallback(() => {
+    setVoiceEffect((prev) => (prev === "deep" ? "light" : "deep"));
+  }, []);
 
   if (!hasPermissions) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>Camera permission required</Text>
-          <Pressable style={styles.button} onPress={requestVideoPermissions}>
+          <Text style={styles.permissionText}>Camera and microphone permissions are required.</Text>
+          <Pressable style={styles.button} onPress={requestPermissions}>
             <Text style={styles.buttonText}>Grant Permission</Text>
           </Pressable>
         </View>
@@ -233,46 +181,99 @@ function VideoRecordScreen() {
     );
   }
 
+  const isRecording = state.isRecording;
+  const processing = state.isProcessing;
+  const errorMessage = uiError || state.error;
+
   return (
     <PermissionGate permissions={["camera", "microphone"]}>
       <SafeAreaView style={styles.container}>
-        {/* Camera View */}
-        <CameraView ref={expoCameraRef} style={styles.camera} facing={facing} />
+        <CameraView
+          ref={data.cameraRef}
+          style={styles.camera}
+          facing={data.facing}
+          mode="video"
+          active={!processing}
+          videoQuality="1080p"
+          animateShutter={false}
+        />
 
-        {/* Controls Overlay */}
+        <TranscriptionOverlay
+          isRecording={isRecording}
+          transcriptionText={data.liveTranscription}
+          onTranscriptionUpdate={() => {}}
+        />
+
+        {processing && (
+          <View style={styles.processingOverlay}>
+            <ActivityIndicator size="large" color="#1D9BF0" />
+            <Text style={styles.processingLabel}>
+              Processing {Math.round(state.processingProgress)}%
+            </Text>
+            {state.processingStatus ? <Text style={styles.processingStatus}>{state.processingStatus}</Text> : null}
+          </View>
+        )}
+
         <View style={styles.controlsOverlay}>
-          {/* Top Controls */}
           <View style={styles.topControls}>
-            <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="white" />
+            <Pressable onPress={() => navigation.goBack()} style={styles.iconButton} accessibilityRole="button">
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </Pressable>
 
-            <Pressable onPress={toggleCameraFacing} style={styles.switchButton}>
-              <Ionicons name="camera-reverse" size={24} color="white" />
-            </Pressable>
+            <View style={styles.statusPill}>
+              <View
+                style={[
+                  styles.statusIndicator,
+                  { backgroundColor: capabilities?.recording.visionCamera ? "#22C55E" : "#F59E0B" },
+                ]}
+              />
+              <Text style={styles.statusText}>{capabilitySummary}</Text>
+            </View>
 
-            {isRecording && (
-              <View style={styles.recordingIndicator}>
-                <View style={styles.recordingDot} />
-                <Text style={styles.recordingText}>
-                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, "0")}
-                </Text>
-              </View>
-            )}
+            <Pressable onPress={toggleCamera} style={styles.iconButton} accessibilityRole="button">
+              <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />
+            </Pressable>
           </View>
 
-          {/* Bottom Controls */}
           <View style={styles.bottomControls}>
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            <View style={styles.togglesRow}>
+              <View style={styles.toggleItem}>
+                <Text style={styles.toggleLabel}>Face blur</Text>
+                <Switch
+                  value={enableFaceBlur}
+                  onValueChange={setEnableFaceBlur}
+                  thumbColor={enableFaceBlur ? "#1D9BF0" : "#374151"}
+                  trackColor={{ false: "#1F2937", true: "#1D9BF0" }}
+                />
+              </View>
+              <View style={styles.toggleItem}>
+                <Text style={styles.toggleLabel}>Voice mod</Text>
+                <Switch
+                  value={enableVoiceChange}
+                  onValueChange={setEnableVoiceChange}
+                  thumbColor={enableVoiceChange ? "#1D9BF0" : "#374151"}
+                  trackColor={{ false: "#1F2937", true: "#1D9BF0" }}
+                />
+              </View>
+              <Pressable onPress={toggleVoiceEffect} style={styles.voiceButton} accessibilityRole="button">
+                <Text style={styles.voiceButtonText}>{voiceEffect === "deep" ? "Deep" : "Light"} voice</Text>
+              </Pressable>
+            </View>
+
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
             <Pressable
               onPress={isRecording ? stopRecording : startRecording}
               style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
+              accessibilityRole="button"
+              accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
             >
-              <Text style={styles.recordButtonText}>{isRecording ? "Stop" : `Record (${MAX_DURATION}s max)`}</Text>
+              <Text style={styles.recordButtonText}>{isRecording ? "Stop" : "Record"}</Text>
             </Pressable>
 
-            <Text style={styles.infoText}>{visionCameraReady ? "Vision Camera Ready" : "Using Expo Camera"}</Text>
+            <Text style={styles.timerText}>
+              {Math.floor(state.recordingTime / 60)}:{(state.recordingTime % 60).toString().padStart(2, "0")}
+            </Text>
           </View>
         </View>
       </SafeAreaView>
@@ -283,7 +284,7 @@ function VideoRecordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "black",
+    backgroundColor: "#000000",
   },
   camera: {
     flex: 1,
@@ -295,107 +296,152 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: "space-between",
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 32,
   },
   topControls: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 50,
+    marginTop: Platform.OS === "ios" ? 12 : 24,
   },
-  backButton: {
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 25,
-    width: 50,
-    height: 50,
+  iconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,0,0,0.55)",
     justifyContent: "center",
     alignItems: "center",
   },
-  switchButton: {
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 25,
-    width: 50,
-    height: 50,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  recordingIndicator: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,0,0,0.8)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
   },
-  recordingDot: {
+  statusIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "white",
     marginRight: 8,
   },
-  recordingText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "bold",
+  statusText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
   },
   bottomControls: {
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     alignItems: "center",
-    paddingBottom: 50,
   },
-  errorText: {
-    color: "red",
-    fontSize: 14,
-    marginBottom: 10,
-    textAlign: "center",
+  togglesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 12,
+  },
+  toggleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  toggleLabel: {
+    color: "#F9FAFB",
+    fontSize: 13,
+    fontWeight: "500",
+    marginRight: 8,
+  },
+  voiceButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "rgba(29,155,240,0.15)",
+  },
+  voiceButtonText: {
+    color: "#1D9BF0",
+    fontSize: 12,
+    fontWeight: "600",
   },
   recordButton: {
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 30,
-    minWidth: 120,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 32,
+    minWidth: 140,
     alignItems: "center",
     marginBottom: 10,
   },
   recordButtonInactive: {
-    backgroundColor: "red",
+    backgroundColor: "#DC2626",
   },
   recordButtonActive: {
-    backgroundColor: "darkred",
+    backgroundColor: "#991B1B",
   },
   recordButtonText: {
-    color: "white",
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
-  infoText: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 12,
+  timerText: {
+    color: "#E5E7EB",
+    fontSize: 14,
+    fontVariant: ["tabular-nums"],
+  },
+  errorText: {
+    color: "#F87171",
     textAlign: "center",
+    marginBottom: 8,
+    fontSize: 13,
+  },
+  processingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.65)",
+    paddingHorizontal: 24,
+  },
+  processingLabel: {
+    color: "#FFFFFF",
+    marginTop: 12,
+    fontWeight: "600",
+  },
+  processingStatus: {
+    color: "#D1D5DB",
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 4,
   },
   permissionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 32,
   },
   permissionText: {
-    color: "white",
-    fontSize: 18,
+    color: "#F9FAFB",
+    fontSize: 16,
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
   button: {
     backgroundColor: "#1D9BF0",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
   },
   buttonText: {
-    color: "white",
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
 });
 
-export default withErrorBoundary(VideoRecordScreen);
+export default VideoRecordScreen;

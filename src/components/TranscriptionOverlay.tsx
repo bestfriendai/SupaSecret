@@ -6,26 +6,27 @@ import { View, Text, Animated } from "react-native";
 interface TranscriptionOverlayProps {
   isRecording: boolean;
   onTranscriptionUpdate?: (text: string) => void;
+  transcriptionText?: string;
 }
 
-export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({ isRecording, onTranscriptionUpdate }) => {
+export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({
+  isRecording,
+  onTranscriptionUpdate,
+  transcriptionText,
+}) => {
   const [transcription, setTranscription] = useState("");
   const [isListening, setIsListening] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const transcriptionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Demo mode - simulate speech recognition
-    if (__DEV__) {
-      console.log("🎯 Demo: Speech recognition simulation setup");
-    }
-
-    return () => {
-      if (__DEV__) {
-        console.log("🎯 Demo: Speech recognition cleanup");
+    if (transcriptionText !== undefined) {
+      setTranscription(transcriptionText);
+      if (transcriptionText) {
+        onTranscriptionUpdate?.(transcriptionText);
       }
-    };
-  }, [onTranscriptionUpdate]);
+    }
+  }, [transcriptionText, onTranscriptionUpdate]);
 
   useEffect(() => {
     let fadeAnimation: Animated.CompositeAnimation | null = null;
@@ -67,12 +68,22 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({ isRe
   }, [isRecording]);
 
   const startListening = async () => {
+    setIsListening(true);
+
+    // When explicit transcription text is provided, simply display it and skip simulation
+    if (transcriptionText !== undefined) {
+      setTranscription(transcriptionText);
+      if (transcriptionText) {
+        onTranscriptionUpdate?.(transcriptionText);
+      }
+      return;
+    }
+
     if (__DEV__) {
       console.log("🎯 Demo: Starting speech recognition simulation");
     }
-    setIsListening(true);
 
-    // Simulate transcription updates
+    // Simulate transcription updates for Expo Go/demo environments
     const demoTexts = [
       "This is my anonymous confession...",
       "I have something to share...",
@@ -88,7 +99,6 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({ isRe
         onTranscriptionUpdate?.(currentText);
         textIndex++;
       } else {
-        // Clear interval when demo text is exhausted
         if (transcriptionIntervalRef.current) {
           clearInterval(transcriptionIntervalRef.current);
           transcriptionIntervalRef.current = null;
@@ -96,7 +106,6 @@ export const TranscriptionOverlay: React.FC<TranscriptionOverlayProps> = ({ isRe
       }
     }, 2000);
 
-    // Store interval for cleanup
     transcriptionIntervalRef.current = interval;
   };
 

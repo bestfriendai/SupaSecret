@@ -501,5 +501,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
     recordingTime,
     hasPermissions: hasVideoPermissions,
     error,
+    requestPermissions: requestVideoPermissions,
+    permissionState,
   };
 };

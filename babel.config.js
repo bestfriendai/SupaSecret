@@ -15,6 +15,7 @@ module.exports = function (api) {
           },
         },
       ],
+      "react-native-worklets/plugin", // Required for bottom-sheet v5
     ],
   };
 };

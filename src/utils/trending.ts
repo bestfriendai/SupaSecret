@@ -65,13 +65,15 @@ export const getTrendingHashtags = (confessions: Confession[], hours: number = 2
  */
 export const calculateEngagementScore = (confession: Confession): number => {
   const likes = confession.likes || 0;
+  const views = (confession.views as number | undefined) || 0;
   const hoursOld = (Date.now() - confession.timestamp) / (1000 * 60 * 60);
 
   // Decay factor: newer posts get higher scores
   const decayFactor = Math.exp(-hoursOld / 24); // Half-life of 24 hours
 
   // Base score from likes, with time decay
-  return likes * decayFactor;
+  const weightedInteractions = likes + views * 0.15;
+  return weightedInteractions * decayFactor;
 };
 
 /**
