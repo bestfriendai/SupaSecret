@@ -185,40 +185,44 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
 
   // Enhanced video source with quality selection and fallback logic
   const activeSource = useMemo(() => {
-    if (!videos.length) {
+    if (!videos.length || activeIndex < 0 || activeIndex >= videos.length) {
       return FALLBACK_VIDEOS[fallbackVideoIndex.current % FALLBACK_VIDEOS.length];
     }
 
-    const video = videos[activeIndex] as any;
-    if (!video?.videoUri) {
+    const video = videos[activeIndex];
+    if (!video || typeof video !== 'object') {
+      return FALLBACK_VIDEOS[fallbackVideoIndex.current % FALLBACK_VIDEOS.length];
+    }
+
+    if (!video.videoUri || typeof video.videoUri !== 'string') {
       return FALLBACK_VIDEOS[fallbackVideoIndex.current % FALLBACK_VIDEOS.length];
     }
 
     // Check if we've had errors with this video before
     const playerState = videoPlayersRef.current.get(video.id);
-    if (playerState?.error && playerState.retryCount >= MAX_RETRY_ATTEMPTS) {
-      // Use fallback video for this slot
+    if (playerState?.error && (playerState.retryCount || 0) >= MAX_RETRY_ATTEMPTS) {
+      fallbackVideoIndex.current++;
       return FALLBACK_VIDEOS[fallbackVideoIndex.current % FALLBACK_VIDEOS.length];
     }
 
     // Use selectedVideoUri if available (from quality selection)
-    if (video.selectedVideoUri) {
+    if (video.selectedVideoUri && typeof video.selectedVideoUri === 'string') {
       return video.selectedVideoUri;
     }
 
     // Use quality-optimized URI if available
-    if (video.qualityMetadata?.selectedQuality && video.videoVariants) {
+    if (video.qualityMetadata?.selectedQuality && Array.isArray(video.videoVariants)) {
       const selectedVariant = video.videoVariants.find(
-        (v: any) => v.quality === video.qualityMetadata.selectedQuality
+        (v: any) => v && typeof v === 'object' && v.quality === video.qualityMetadata.selectedQuality
       );
-      if (selectedVariant?.uri) {
+      if (selectedVariant?.uri && typeof selectedVariant.uri === 'string') {
         return selectedVariant.uri;
       }
     }
 
     // Check for cached quality selection
     const cachedQuality = qualitySelectionCache.current.get(video.videoUri);
-    if (cachedQuality?.selectedUri) {
+    if (cachedQuality?.selectedUri && typeof cachedQuality.selectedUri === 'string') {
       return cachedQuality.selectedUri;
     }
 
@@ -444,34 +448,24 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     return () => clearInterval(interval);
   }, [videos.length]);
 
-  // Retry wrapper for video operations
+  // Simple retry wrapper for video operations
   const retryVideoOperation = useCallback(async (
     operation: () => void | Promise<void>,
-    config?: Partial<RetryConfig>
+    maxRetries = 3
   ): Promise<void> => {
-    const retryConfig: RetryConfig = {
-      maxRetries: config?.maxRetries ?? 3,
-      initialDelay: config?.initialDelay ?? 1000,
-      maxDelay: config?.maxDelay ?? 10000,
-      backoffFactor: config?.backoffFactor ?? 2,
-      shouldRetry: (error) => {
-        const errorStr = String(error);
-        return !errorStr.includes("disposed") && !errorStr.includes("released");
-      },
-    };
-
-    const retryableOp = createRetryableOperation(
-      async () => {
+    let attempt = 0;
+    while (attempt < maxRetries) {
+      try {
         await operation();
-        return { success: true };
-      },
-      retryConfig
-    );
-
-    try {
-      await retryableOp();
-    } catch (error) {
-      console.warn("Video operation failed after retries:", error);
+        return;
+      } catch (error) {
+        attempt++;
+        if (attempt >= maxRetries) {
+          console.warn("Video operation failed after retries:", error);
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
     }
   }, []);
 
@@ -511,7 +505,16 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
           append ? Promise.resolve([]) : VideoDataService.fetchTrendingVideos(24, 10),
         ]);
 
-        const combined = [...(trending || []), ...(confessions || [])].filter(item => item?.videoUri);
+        // Ensure both arrays are valid before spreading
+        const safeConfessions = Array.isArray(confessions) ? confessions : [];
+        const safeTrending = Array.isArray(trending) ? trending : [];
+
+        const combined = [...safeTrending, ...safeConfessions].filter(item =>
+          item &&
+          typeof item === 'object' &&
+          item.id &&
+          item.videoUri
+        );
 
         if (combined.length > 0) {
           circuitBreaker.current.recordSuccess();
@@ -528,12 +531,14 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
 
     try {
       const result = await loadVideos();
-      return result.result as VideoLoadResult;
+      return result;
     } catch (error) {
       const videoError = new VideoLoadError(
-        VideoErrorCode.LOAD_FAILED,
         `Failed to load videos: ${error}`,
-        VideoErrorSeverity.ERROR
+        {
+          code: VideoErrorCode.LOAD_FAILED,
+          severity: VideoErrorSeverity.ERROR
+        }
       );
 
       // Comment 6: Use VideoErrorRecoveryService for load errors
@@ -702,7 +707,7 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     try {
       const result = await hydrateVideosWithRetry(isRefresh, append);
 
-      if (result.success) {
+      if (result.success && result.videos) {
         setVideos((prevVideos) => {
           const dedupedMap = new Map<string, Confession>();
 
@@ -715,10 +720,13 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
             }
           }
 
-          for (const item of result.videos) {
-            if (item?.id) {
-              dedupedMap.set(item.id, item);
-            }
+          // Ensure result.videos is always an array of valid objects
+          const videosToProcess = Array.isArray(result.videos) 
+            ? result.videos.filter(item => item && typeof item === 'object' && item.id) 
+            : [];
+          
+          for (const item of videosToProcess) {
+            dedupedMap.set(item.id, item);
           }
 
           const combined = Array.from(dedupedMap.values());
@@ -755,7 +763,6 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
           code: result.error.code,
           message: result.error.message,
           timestamp: Date.now(),
-          debugInfo: result.error.debugInfo
         };
 
         const friendlyError = VideoErrorMessages.getUserFriendlyError(
@@ -966,9 +973,7 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
       const isItemActive = index === activeIndex && isFocused;
       const shouldPreload = Math.abs(index - activeIndex) <= preloadOffset;
 
-      // Check if we should use fallback for this video
-      const playerState = videoPlayersRef.current.get(item.id);
-      const useFallback = playerState?.error && playerState.retryCount >= MAX_RETRY_ATTEMPTS;
+      // Note: Fallback logic handled internally by video components
 
       return (
         <TikTokVideoItem
@@ -985,39 +990,15 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
           onSingleTap={handleSingleTap}
           onDoubleTap={handleDoubleTap}
           networkStatus={networkStatus}
-          useFallbackVideo={useFallback}
-          onVideoError={(error) => handlePlayerError(error, item.id)}
         />
       );
     },
-    [activeIndex, isFocused, isPlaying, muted, onClose, registerLikeHandler, videoPlayer, progressY, handleSingleTap, handleDoubleTap, networkStatus, handlePlayerError, preloadOffset],
+    [activeIndex, isFocused, isPlaying, muted, onClose, registerLikeHandler, videoPlayer, progressY, handleSingleTap, handleDoubleTap, networkStatus, preloadOffset],
   );
-
-  const loadingOpacity = useAnimatedStyle(() => ({
-    opacity: withTiming(isLoading ? 1 : 0, { duration: 300 }),
-  }));
 
   const errorOpacity = useAnimatedStyle(() => ({
     opacity: withTiming(error && !videos.length ? 1 : 0, { duration: 300 }),
   }));
-
-  const renderRetryButton = () => {
-    const canRetry = circuitBreaker.current.canAttempt();
-
-    return (
-      <Pressable
-        style={[styles.retryButton, !canRetry && styles.retryButtonDisabled]}
-        onPress={canRetry ? handleRefresh : undefined}
-        disabled={!canRetry}
-        accessibilityRole="button"
-        accessibilityLabel={canRetry ? "Retry loading videos" : "Please wait before retrying"}
-      >
-        <Text style={styles.retryText}>
-          {canRetry ? "Retry" : "Please wait..."}
-        </Text>
-      </Pressable>
-    );
-  };
 
   if (isLoading && !videos.length) {
     return (
@@ -1048,47 +1029,49 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
           showErrorIndicator={true}
           showNetworkStatus={!networkStatus}
         />
-        <Animated.View style={[styles.centeredContainer, errorOpacity]}>
-          <StatusBar hidden />
-          <Ionicons
-            name={userFriendlyError?.context === "network" ? "cloud-offline-outline" : "alert-circle-outline"}
-            size={48}
-            color={userFriendlyError?.severity === "critical" ? "#ff3333" : "#ff6666"}
-          />
-          <Text style={styles.errorTitle}>{userFriendlyError?.title || "Oops!"}</Text>
-          <Text style={styles.centeredText}>{userFriendlyError?.message || error}</Text>
+        <View style={styles.centeredContainer}>
+          <Animated.View style={errorOpacity}>
+            <StatusBar hidden />
+            <Ionicons
+              name={userFriendlyError?.context === "network" ? "cloud-offline-outline" : "alert-circle-outline"}
+              size={48}
+              color={userFriendlyError?.severity === "critical" ? "#ff3333" : "#ff6666"}
+            />
+            <Text style={styles.errorTitle}>{userFriendlyError?.title || "Oops!"}</Text>
+            <Text style={styles.centeredText}>{userFriendlyError?.message || error}</Text>
 
-          {userFriendlyError?.retryStrategy.shouldRetry && (
-            <Pressable
-              style={[styles.primaryButton]}
-              onPress={handleRefresh}
-              accessibilityRole="button"
-              accessibilityLabel={userFriendlyError.actionText}
-            >
-              <Text style={styles.primaryButtonText}>
-                {userFriendlyError.actionText || "Retry"}
+            {userFriendlyError?.retryStrategy.shouldRetry && (
+              <Pressable
+                style={[styles.primaryButton]}
+                onPress={handleRefresh}
+                accessibilityRole="button"
+                accessibilityLabel={userFriendlyError.actionText}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {userFriendlyError.actionText || "Retry"}
+                </Text>
+              </Pressable>
+            )}
+
+            {userFriendlyError?.secondaryActionText && (
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => {}}
+                accessibilityRole="button"
+              >
+                <Text style={styles.secondaryButtonText}>
+                  {userFriendlyError.secondaryActionText}
+                </Text>
+              </Pressable>
+            )}
+
+            {userFriendlyError?.retryStrategy.explanation && (
+              <Text style={styles.retryExplanation}>
+                {userFriendlyError.retryStrategy.explanation}
               </Text>
-            </Pressable>
-          )}
-
-          {userFriendlyError?.secondaryActionText && (
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={() => {}}
-              accessibilityRole="button"
-            >
-              <Text style={styles.secondaryButtonText}>
-                {userFriendlyError.secondaryActionText}
-              </Text>
-            </Pressable>
-          )}
-
-          {userFriendlyError?.retryStrategy.explanation && (
-            <Text style={styles.retryExplanation}>
-              {userFriendlyError.retryStrategy.explanation}
-            </Text>
-          )}
-        </Animated.View>
+            )}
+          </Animated.View>
+        </View>
         <NetworkStatusIndicator
           position="top"
           persistentMode={true}
@@ -1120,7 +1103,6 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
               data={videos}
               renderItem={renderItem}
               keyExtractor={(item) => item.id}
-              estimatedItemSize={SCREEN_HEIGHT}
               onViewableItemsChanged={handleViewableItemsChangedRef.current}
               viewabilityConfig={viewabilityConfig}
               pagingEnabled
@@ -1129,9 +1111,6 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
               decelerationRate="fast"
               showsVerticalScrollIndicator={false}
               removeClippedSubviews
-              windowSize={5}
-              initialNumToRender={2}
-              maxToRenderPerBatch={2}
               refreshControl={
                 <RefreshControl
                   tintColor="#ffffff"

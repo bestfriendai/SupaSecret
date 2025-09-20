@@ -106,7 +106,14 @@ const COMPLETION_THRESHOLD = 0.8; // 80% viewed = completed
 const cacheStore = new Map<string, { data: Confession[]; timestamp: number; qualityOptimized?: boolean }>();
 const analyticsCache = new Map<string, { data: VideoAnalytics; timestamp: number }>();
 const eventQueue = new Map<string, VideoEvent[]>();
-const qualitySelectionCache = new Map<string, { quality: string; variants: any[]; timestamp: number }>();
+const qualitySelectionCache = new Map<string, {
+  quality: string;
+  selectedUri: string;
+  variants: any[];
+  deviceTier: string;
+  networkQuality: string;
+  timestamp: number;
+}>();
 const deviceTierCache = { tier: null as DevicePerformanceTier | null, timestamp: 0 };
 const activeSessions = new Map<string, VideoSession>();
 const watchTimeTrackers = new Map<string, { startTime: number; totalTime: number }>();
@@ -163,29 +170,46 @@ const sanitizeVideoUri = (uri?: string | null): string | null => {
 const prepareVideoResults = async (confessions: Confession[], applyQualitySelection = false): Promise<Confession[]> => {
   const results: Confession[] = [];
 
+  // Ensure confessions is a valid array
+  if (!Array.isArray(confessions)) {
+    console.warn('prepareVideoResults: confessions is not an array:', confessions);
+    return results;
+  }
+
   for (const confession of confessions) {
+    // Add null/undefined check for confession object
+    if (!confession || typeof confession !== 'object') {
+      console.warn('prepareVideoResults: invalid confession object:', confession);
+      continue;
+    }
+
     const sanitizedUri = sanitizeVideoUri(confession.videoUri);
     if (sanitizedUri) {
       let finalConfession = { ...confession, videoUri: sanitizedUri };
 
       // Apply quality selection if enabled
       if (applyQualitySelection) {
-        const qualityResult = await getOrSelectVideoQuality(sanitizedUri);
-        if (qualityResult) {
-          // Add quality metadata to confession without overwriting original URI
-          finalConfession = {
-            ...finalConfession,
-            videoUri: sanitizedUri, // Keep original URI
-            originalVideoUri: sanitizedUri,
-            selectedVideoUri: qualityResult.selectedUri || sanitizedUri,
-            videoQuality: qualityResult.quality,
-            videoVariants: qualityResult.variants,
-            qualityMetadata: {
-              deviceTier: qualityResult.deviceTier,
-              networkQuality: qualityResult.networkQuality,
-              selectedQuality: qualityResult.quality,
-            },
-          } as any;
+        try {
+          const qualityResult = await getOrSelectVideoQuality(sanitizedUri);
+          if (qualityResult) {
+            // Add quality metadata to confession without overwriting original URI
+            finalConfession = {
+              ...finalConfession,
+              videoUri: sanitizedUri, // Keep original URI
+              originalVideoUri: sanitizedUri,
+              selectedVideoUri: qualityResult.selectedUri || sanitizedUri,
+              videoQuality: qualityResult.quality,
+              videoVariants: qualityResult.variants,
+              qualityMetadata: {
+                deviceTier: qualityResult.deviceTier,
+                networkQuality: qualityResult.networkQuality,
+                selectedQuality: qualityResult.quality,
+              },
+            } as any;
+          }
+        } catch (error) {
+          console.warn('prepareVideoResults: quality selection failed for', sanitizedUri, error);
+          // Continue with basic confession without quality metadata
         }
       }
 
@@ -198,7 +222,14 @@ const prepareVideoResults = async (confessions: Confession[], applyQualitySelect
 /**
  * Get cached quality selection or select new quality for video
  */
-const getOrSelectVideoQuality = async (uri: string) => {
+const getOrSelectVideoQuality = async (uri: string): Promise<{
+  quality: string;
+  selectedUri: string;
+  variants: any[];
+  deviceTier: string;
+  networkQuality: string;
+  timestamp: number;
+} | null> => {
   // Check cache first
   const cached = qualitySelectionCache.get(uri);
   if (cached && Date.now() - cached.timestamp < 300000) { // 5 minute cache
@@ -357,7 +388,8 @@ export class VideoDataService {
       return playable;
     } catch (error) {
       console.error("VideoDataService.fetchVideoConfessions failed", error);
-      return handleFetchFailure("VideoDataService.fetchVideoConfessions", cacheKey);
+      const fallback = handleFetchFailure("VideoDataService.fetchVideoConfessions", cacheKey);
+      return Array.isArray(fallback) ? fallback : [];
     }
   }
 
@@ -402,7 +434,8 @@ export class VideoDataService {
       return sliced;
     } catch (error) {
       console.error("VideoDataService.fetchTrendingVideos failed", error);
-      return handleFetchFailure("VideoDataService.fetchTrendingVideos", cacheKey);
+      const fallback = handleFetchFailure("VideoDataService.fetchTrendingVideos", cacheKey);
+      return Array.isArray(fallback) ? fallback : [];
     }
   }
 
@@ -531,6 +564,30 @@ export class VideoDataService {
         console.warn("VideoDataService.updateVideoViews failed", error);
       }
       return null;
+    }
+  }
+
+  /**
+   * Get comment count for a video confession.
+   */
+  static async getCommentCount(videoId: string): Promise<number> {
+    if (!videoId) {
+      return 0;
+    }
+
+    try {
+      const { count, error } = await supabase
+        .from("replies")
+        .select("*", { count: "exact", head: true })
+        .eq("confession_id", videoId);
+
+      if (error) throw error;
+      return count || 0;
+    } catch (error) {
+      if (__DEV__) {
+        console.warn("VideoDataService.getCommentCount failed", error);
+      }
+      return 0;
     }
   }
 
