@@ -3,6 +3,20 @@ export interface Confession {
   type: "text" | "video";
   content: string;
   videoUri?: string | null;
+  originalVideoUri?: string | null;
+  selectedVideoUri?: string | null;
+  videoQuality?: '360p' | '720p' | '1080p';
+  videoVariants?: Array<{
+    quality: '360p' | '720p' | '1080p';
+    uri: string;
+    width?: number;
+    height?: number;
+  }>;
+  qualityMetadata?: {
+    deviceTier?: string;
+    networkQuality?: string;
+    selectedQuality?: '360p' | '720p' | '1080p';
+  };
   transcription?: string | null;
   timestamp: number;
   isAnonymous: boolean;

@@ -935,8 +935,8 @@ const EnhancedCommentBottomSheet = React.memo(
           backgroundStyle={{ backgroundColor: '#1A1A1A' }}
           handleIndicatorStyle={{ backgroundColor: '#666' }}
         >
-          <BottomSheetView className="flex-1 items-center justify-center">
-            <Text className="text-gray-500 text-base">No confession selected</Text>
+          <BottomSheetView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#6B7280', fontSize: 16 }}>No confession selected</Text>
           </BottomSheetView>
         </BottomSheetModal>
       );
@@ -954,7 +954,7 @@ const EnhancedCommentBottomSheet = React.memo(
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
       >
-        <BottomSheetView className="flex-1">
+        <BottomSheetView style={{ flex: 1 }}>
           <BottomSheetFlatList
             ref={flatListRef}
             data={listData}

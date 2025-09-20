@@ -706,11 +706,9 @@ export const useReplyStore = create<ReplyState>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
 
-          // Comment reactions table not yet implemented
-          const error = null;
-          // await supabase
-          //   .from("comment_reactions")
-          //   .insert({ reply_id: replyId, user_id: user.id, type });
+          const { error } = await supabase
+            .from("comment_reactions")
+            .insert({ reply_id: replyId, user_id: user.id, type });
 
           if (error) throw error;
 
@@ -748,14 +746,12 @@ export const useReplyStore = create<ReplyState>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
 
-          // Comment reactions table not yet implemented
-          const error = null;
-          // await supabase
-          //   .from("comment_reactions")
-          //   .delete()
-          //   .eq("reply_id", replyId)
-          //   .eq("user_id", user.id)
-          //   .eq("type", type);
+          const { error } = await supabase
+            .from("comment_reactions")
+            .delete()
+            .eq("reply_id", replyId)
+            .eq("user_id", user.id)
+            .eq("type", type);
 
           if (error) throw error;
 

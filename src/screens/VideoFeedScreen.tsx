@@ -5,7 +5,7 @@ import { CompositeNavigationProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
-import TikTokVideoFeed from "../components/TikTokVideoFeed";
+import OptimizedTikTokVideoFeed from "../components/OptimizedTikTokVideoFeed";
 import { withErrorBoundary } from "../components/ErrorBoundary";
 import { createScreenValidator } from "../utils/screenValidation";
 import type { RootStackParamList, TabParamList } from "../navigation/AppNavigator";
@@ -49,7 +49,7 @@ function VideoFeedScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <TikTokVideoFeed onClose={handleClose} />
+      <OptimizedTikTokVideoFeed onClose={handleClose} />
     </View>
   );
 }
