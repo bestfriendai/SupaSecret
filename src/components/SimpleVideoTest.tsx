@@ -28,7 +28,7 @@ export const SimpleVideoTest: React.FC = () => {
         <VideoView 
           style={styles.video} 
           player={player} 
-          allowsFullscreen={false}
+          fullscreenOptions={{ enabled: false }}
           nativeControls={true}
         />
       ) : (

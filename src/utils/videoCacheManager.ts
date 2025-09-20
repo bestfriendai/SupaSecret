@@ -1,5 +1,9 @@
 import * as FileSystem from "expo-file-system";
 import { LRUCache } from "./lruCache";
+import { videoQualitySelector } from "../services/VideoQualitySelector";
+import { videoPerformanceConfig, DevicePerformanceTier, NetworkQualityTier } from "../config/videoPerformance";
+import NetInfo from '@react-native-community/netinfo';
+import { environmentDetector } from "./environmentDetector";
 
 interface CacheEntry {
   uri: string;
@@ -13,6 +17,10 @@ interface CacheEntry {
   quality?: "high" | "medium" | "low";
   contentType?: "thumbnail" | "preview" | "full";
   compressionRatio?: number;
+  videoQuality?: '360p' | '720p' | '1080p';
+  networkQuality?: NetworkQualityTier;
+  deviceTier?: DevicePerformanceTier;
+  variantUris?: Map<string, string>;
 }
 
 interface CacheConfig {
@@ -42,7 +50,7 @@ class VideoCacheManager {
     idleCleanupInterval: 30000, // 30 seconds
   };
   private currentCacheSize = 0;
-  private cacheDir = `${FileSystem.Paths.cache.uri}video_cache/`;
+  private cacheDir = `${FileSystem.cacheDirectory}video_cache/`;
   private isCleaningUp = false;
   private viewingPatterns: Map<string, number[]> = new Map();
   private cacheHitRate = 0;
@@ -51,6 +59,11 @@ class VideoCacheManager {
   private idleCleanupTimer?: ReturnType<typeof setInterval>;
   private memoryMonitorTimer?: ReturnType<typeof setInterval>;
   private cachePartitions: Map<string, Map<string, CacheEntry>> = new Map();
+  private deviceTier: DevicePerformanceTier = DevicePerformanceTier.MID;
+  private networkQuality: NetworkQualityTier = NetworkQualityTier.FAIR;
+  private qualityVariantCache: Map<string, Map<string, string>> = new Map();
+  private bandwidthAdaptiveDownloading = true;
+  private networkListener: any = null;
 
   constructor(config?: Partial<CacheConfig>) {
     this.config = { ...this.config, ...config };
@@ -63,17 +76,22 @@ class VideoCacheManager {
       getSizeOf: (entry) => entry.size,
     });
 
-    // Initialize cache partitions
+    // Initialize cache partitions with quality-aware partitioning
     this.cachePartitions.set("thumbnail", new Map());
     this.cachePartitions.set("preview", new Map());
     this.cachePartitions.set("full", new Map());
+    this.cachePartitions.set("low_quality", new Map());
+    this.cachePartitions.set("medium_quality", new Map());
+    this.cachePartitions.set("high_quality", new Map());
 
     this.initializeCache();
     this.startBackgroundTasks();
+    this.initializeDeviceAndNetwork();
   }
 
   async initialize() {
     await this.initializeCache();
+    await this.initializeDeviceAndNetwork();
   }
 
   private async initializeCache() {
@@ -84,9 +102,9 @@ class VideoCacheManager {
         await FileSystem.makeDirectoryAsync(this.cacheDir, { intermediates: true });
       }
 
-      // Create partition directories
+      // Create partition directories including quality-based partitions
       if (this.config.cachePartitioning) {
-        for (const partition of ["thumbnail", "preview", "full"]) {
+        for (const partition of ["thumbnail", "preview", "full", "low_quality", "medium_quality", "high_quality"]) {
           const partitionDir = `${this.cacheDir}${partition}/`;
           const partitionInfo = await FileSystem.getInfoAsync(partitionDir);
           if (!partitionInfo.exists) {
@@ -115,8 +133,15 @@ class VideoCacheManager {
         const cacheData = JSON.parse(indexContent);
 
         for (const [key, entry] of Object.entries(cacheData)) {
-          this.cache.set(key, entry as CacheEntry);
-          this.currentCacheSize += (entry as CacheEntry).size;
+          const cacheEntry = entry as any;
+
+          // Restore Map from array if present
+          if (cacheEntry.variantUris && Array.isArray(cacheEntry.variantUris)) {
+            cacheEntry.variantUris = new Map(cacheEntry.variantUris);
+          }
+
+          this.cache.set(key, cacheEntry as CacheEntry);
+          this.currentCacheSize += cacheEntry.size;
         }
       }
     } catch (error) {
@@ -127,7 +152,17 @@ class VideoCacheManager {
   private async saveCacheIndex() {
     try {
       const indexPath = `${this.cacheDir}index.json`;
-      const cacheData = Object.fromEntries(this.cache);
+      const cacheData: Record<string, any> = {};
+
+      for (const [key, entry] of this.cache) {
+        // Convert Map to array for serialization
+        const serializedEntry = {
+          ...entry,
+          variantUris: entry.variantUris ? Array.from(entry.variantUris.entries()) : undefined
+        };
+        cacheData[key] = serializedEntry;
+      }
+
       await FileSystem.writeAsStringAsync(indexPath, JSON.stringify(cacheData));
     } catch (error) {
       console.error("Failed to save cache index:", error);
@@ -148,6 +183,18 @@ class VideoCacheManager {
   private async handleEviction(key: string, entry: CacheEntry) {
     try {
       await FileSystem.deleteAsync(entry.localPath, { idempotent: true });
+
+      // Also evict quality variants if they exist
+      if (entry.variantUris) {
+        for (const [quality, variantPath] of entry.variantUris) {
+          try {
+            await FileSystem.deleteAsync(variantPath, { idempotent: true });
+          } catch (error) {
+            console.error(`Failed to evict variant ${quality}:`, error);
+          }
+        }
+      }
+
       this.cache.delete(key);
       this.currentCacheSize -= entry.size;
 
@@ -174,10 +221,11 @@ class VideoCacheManager {
   }
 
   private async smartEviction() {
-    const targetSize = this.config.maxCacheSize * 0.7; // Target 70% capacity
+    const perfConfig = videoPerformanceConfig.getCacheConfig();
+    const targetSize = perfConfig.maxCacheSize * 0.7; // Target 70% capacity based on device tier
     const entries = Array.from(this.cache.entries());
 
-    // Sort by priority and access patterns
+    // Sort by priority, quality, and access patterns
     const sortedEntries = entries.sort(([, a], [, b]) => {
       // Priority-based sorting
       const priorityWeight = { high: 3, normal: 2, low: 1 };
@@ -186,6 +234,16 @@ class VideoCacheManager {
 
       if (aPriority !== bPriority) {
         return bPriority - aPriority; // Higher priority first (keep)
+      }
+
+      // Quality-based sorting (keep higher quality for high-tier devices)
+      if (this.deviceTier === DevicePerformanceTier.HIGH && a.videoQuality && b.videoQuality) {
+        const qualityOrder = { '1080p': 3, '720p': 2, '360p': 1 };
+        const aQuality = qualityOrder[a.videoQuality] || 0;
+        const bQuality = qualityOrder[b.videoQuality] || 0;
+        if (aQuality !== bQuality) {
+          return bQuality - aQuality;
+        }
       }
 
       // Calculate normalized recency score (0-1, where 1 is most recent)
@@ -210,13 +268,43 @@ class VideoCacheManager {
     for (const [key, entry] of sortedEntries) {
       if (this.currentCacheSize <= targetSize) break;
 
+      // Evict lower quality variants first for popular videos
+      if (entry.variantUris && entry.accessCount > 5) {
+        const variants = Array.from(entry.variantUris.entries());
+        for (const [quality, path] of variants) {
+          if (quality === '360p' && this.deviceTier !== DevicePerformanceTier.LOW) {
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(path);
+              if (fileInfo.exists) {
+                await FileSystem.deleteAsync(path, { idempotent: true });
+                entry.variantUris.delete(quality);
+                this.currentCacheSize -= (fileInfo as any).size || 0;
+              }
+            } catch (error) {
+              console.error('Failed to evict quality variant:', error);
+            }
+          }
+        }
+      }
+
+      if (this.currentCacheSize <= targetSize) break;
       await this.handleEviction(key, entry);
     }
   }
 
   async getCachedVideo(uri: string, priority: "high" | "normal" | "low" = "normal"): Promise<string | null> {
-    const cacheKey = this.generateCacheKey(uri);
-    const entry = this.cache.get(cacheKey);
+    // First check if we have the original URI cached
+    const originalKey = this.generateCacheKey(uri);
+    let entry = this.cache.get(originalKey);
+
+    // If not found, check if we should use a quality variant
+    if (!entry) {
+      const qualityResult = await videoQualitySelector.selectVideoQuality(uri);
+      const targetQuality = qualityResult.selectedQuality;
+      const qualityUri = videoQualitySelector.getQualityForUri(uri, targetQuality);
+      const qualityKey = this.generateCacheKey(qualityUri);
+      entry = this.cache.get(qualityKey);
+    }
 
     this.totalRequests++;
 
@@ -227,6 +315,8 @@ class VideoCacheManager {
       entry.lastAccessTime = now;
       entry.accessCount++;
       entry.priority = priority; // Update priority based on current usage
+      entry.deviceTier = this.deviceTier;
+      entry.networkQuality = this.networkQuality;
 
       // Track hit rate
       this.totalHits++;
@@ -237,10 +327,29 @@ class VideoCacheManager {
         this.updateViewingPattern(uri, now);
       }
 
-      this.cache.set(cacheKey, entry);
-      this.lruCache.set(cacheKey, entry);
+      // Update existing entry, don't create duplicate under new key
+      const existingKey = Array.from(this.cache.entries())
+        .find(([_, e]) => e.localPath === entry!.localPath)?.[0];
 
-      // Verify file still exists
+      if (existingKey) {
+        this.cache.set(existingKey, entry);
+        this.lruCache.set(existingKey, entry);
+      } else {
+        const cacheKey = this.generateCacheKey(uri);
+        this.cache.set(cacheKey, entry);
+        this.lruCache.set(cacheKey, entry);
+      }
+
+      // Check for quality variant if available
+      if (entry.variantUris && entry.variantUris.has(targetQuality)) {
+        const variantPath = entry.variantUris.get(targetQuality)!;
+        const variantInfo = await FileSystem.getInfoAsync(variantPath);
+        if (variantInfo.exists) {
+          return variantPath;
+        }
+      }
+
+      // Verify original file still exists
       const fileInfo = await FileSystem.getInfoAsync(entry.localPath);
       if (fileInfo.exists) {
         // Trigger cleanup if we're approaching capacity
@@ -264,52 +373,163 @@ class VideoCacheManager {
   }
 
   async cacheVideo(uri: string, priority: "high" | "normal" | "low" = "normal"): Promise<string> {
-    const cacheKey = this.generateCacheKey(uri);
-    const existingEntry = await this.getCachedVideo(uri, priority);
+    // Get quality selection for this video
+    const qualityResult = await videoQualitySelector.selectVideoQuality(uri);
+    const targetQuality = qualityResult.selectedQuality;
+    const variants = qualityResult.variants;
+
+    // Use quality-specific URI if available
+    const targetUri = variants.find(v => v.quality === targetQuality)?.uri || uri;
+    const cacheKey = this.generateCacheKey(targetUri);
+    const existingEntry = await this.getCachedVideo(targetUri, priority);
 
     if (existingEntry) {
       return existingEntry;
     }
 
     try {
-      const fileName = `${cacheKey}.mp4`;
-      const localPath = `${this.cacheDir}${fileName}`;
+      const fileName = `${cacheKey}_${targetQuality}.mp4`;
+      const qualityPartition = this.getQualityPartition(targetQuality);
+      const localPath = `${this.cacheDir}${qualityPartition}/${fileName}`;
 
-      // Download the video
-      const downloadResult = await FileSystem.downloadAsync(uri, localPath);
+      // Apply bandwidth-adaptive downloading
+      if (this.bandwidthAdaptiveDownloading && this.networkQuality === NetworkQualityTier.POOR) {
+        // Use lower quality for poor networks
+        const fallbackUri = variants.find(v => v.quality === '360p')?.uri || targetUri;
+        const downloadResult = await FileSystem.downloadAsync(fallbackUri, localPath);
+
+        if (downloadResult.status === 200) {
+          return await this.processCachedVideo(fallbackUri, localPath, priority, '360p', qualityResult);
+        }
+      }
+
+      // Download the video with retry logic for quality fallback
+      let downloadResult = await FileSystem.downloadAsync(targetUri, localPath);
+
+      if (downloadResult.status !== 200 && qualityResult.fallbackQuality) {
+        // Try fallback quality
+        const fallbackUri = variants.find(v => v.quality === qualityResult.fallbackQuality)?.uri || uri;
+        downloadResult = await FileSystem.downloadAsync(fallbackUri, localPath);
+      }
 
       if (downloadResult.status === 200) {
-        const fileInfo = await FileSystem.getInfoAsync(localPath);
-        const fileSize = fileInfo.exists && !fileInfo.isDirectory ? (fileInfo as any).size || 0 : 0;
-
-        // Check if we need to evict old entries
-        if (this.currentCacheSize + fileSize > this.config.maxCacheSize) {
-          await this.evictLeastRecentlyUsed();
-        }
-
-        // Add to cache
-        const entry: CacheEntry = {
-          uri,
-          localPath,
-          timestamp: Date.now(),
-          size: fileSize,
-          accessCount: 1,
-          priority,
-          lastAccessTime: Date.now(),
-        };
-
-        this.cache.set(cacheKey, entry);
-        this.lruCache.set(cacheKey, entry);
-        this.currentCacheSize += fileSize;
-        await this.saveCacheIndex();
-
-        return localPath;
+        return await this.processCachedVideo(targetUri, localPath, priority, targetQuality, qualityResult);
       } else {
         throw new Error(`Download failed with status: ${downloadResult.status}`);
       }
     } catch (error) {
       console.error("Failed to cache video:", error);
       return uri; // Return original URI as fallback
+    }
+  }
+
+  private async processCachedVideo(
+    uri: string,
+    localPath: string,
+    priority: "high" | "normal" | "low",
+    quality: '360p' | '720p' | '1080p',
+    qualityResult: any
+  ): Promise<string> {
+    const fileInfo = await FileSystem.getInfoAsync(localPath);
+    const fileSize = fileInfo.exists && !fileInfo.isDirectory ? (fileInfo as any).size || 0 : 0;
+
+    // Check if we need to evict old entries
+    if (this.currentCacheSize + fileSize > this.config.maxCacheSize) {
+      await this.evictLeastRecentlyUsed();
+    }
+
+    const cacheKey = this.generateCacheKey(uri);
+
+    // Add to cache with quality information
+    const entry: CacheEntry = {
+      uri,
+      localPath,
+      timestamp: Date.now(),
+      size: fileSize,
+      accessCount: 1,
+      priority,
+      lastAccessTime: Date.now(),
+      videoQuality: quality,
+      deviceTier: this.deviceTier,
+      networkQuality: this.networkQuality,
+      variantUris: new Map(),
+    };
+
+    // Store quality variants if caching multiple qualities
+    if (videoPerformanceConfig.shouldEnableFeature('multiQualityCaching')) {
+      for (const variant of qualityResult.variants) {
+        if (variant.quality !== quality) {
+          // Queue background caching of other variants
+          this.cacheQualityVariant(uri, variant.quality, variant.uri, cacheKey);
+        }
+      }
+    }
+
+    this.cache.set(cacheKey, entry);
+    this.lruCache.set(cacheKey, entry);
+    this.currentCacheSize += fileSize;
+    await this.saveCacheIndex();
+
+    return localPath;
+  }
+
+  private getQualityPartition(quality: '360p' | '720p' | '1080p'): string {
+    const qualityMap = {
+      '360p': 'low_quality',
+      '720p': 'medium_quality',
+      '1080p': 'high_quality'
+    };
+    return qualityMap[quality] || 'medium_quality';
+  }
+
+  private async cacheQualityVariant(
+    originalUri: string,
+    quality: '360p' | '720p' | '1080p',
+    variantUri: string,
+    parentCacheKey: string
+  ): Promise<void> {
+    try {
+      const variantKey = `${parentCacheKey}_${quality}`;
+      const fileName = `${variantKey}.mp4`;
+      const qualityPartition = this.getQualityPartition(quality);
+      const localPath = `${this.cacheDir}${qualityPartition}/${fileName}`;
+
+      // Use background queue for variant caching
+      import('../services/VideoBackgroundQueue').then(({ videoBackgroundQueue, JobType, JobPriority }) => {
+        videoBackgroundQueue.enqueueJob(
+          JobType.QUALITY_VARIANT_GENERATION,
+          {
+            originalUri,
+            quality,
+            variantUri,
+            parentCacheKey,
+            localPath
+          },
+          JobPriority.LOW,
+          {
+            onComplete: async (result) => {
+              if (result.success) {
+                try {
+                  const downloadResult = await FileSystem.downloadAsync(variantUri, localPath);
+                  if (downloadResult.status === 200) {
+                    const entry = this.cache.get(parentCacheKey);
+                    if (entry && entry.variantUris) {
+                      entry.variantUris.set(quality, localPath);
+                      this.cache.set(parentCacheKey, entry);
+                    }
+                  }
+                } catch (error) {
+                  console.error(`Failed to cache quality variant ${quality}:`, error);
+                }
+              }
+            }
+          }
+        );
+      }).catch(error => {
+        console.error('Failed to load background queue:', error);
+      });
+    } catch (error) {
+      console.error('Failed to queue quality variant caching:', error);
     }
   }
 
@@ -329,17 +549,43 @@ class VideoCacheManager {
   }
 
   private startBackgroundTasks() {
-    // Start idle cleanup
-    if (this.config.idleCleanupInterval > 0) {
+    // Clear any existing timers/listeners first
+    this.clearBackgroundTasks();
+
+    // Start idle cleanup with device-aware intervals
+    const perfConfig = videoPerformanceConfig.getCacheConfig();
+    const cleanupInterval = perfConfig.cleanupInterval;
+
+    if (cleanupInterval > 0) {
       this.idleCleanupTimer = setInterval(() => {
         this.performIdleCleanup();
-      }, this.config.idleCleanupInterval);
+      }, cleanupInterval);
     }
 
     // Start memory pressure monitoring
     this.memoryMonitorTimer = setInterval(() => {
       this.checkMemoryPressure();
     }, 5000); // Check every 5 seconds
+
+    // Start network monitoring for adaptive caching
+    this.networkListener = NetInfo.addEventListener(state => {
+      this.handleNetworkChange(state);
+    });
+  }
+
+  private clearBackgroundTasks() {
+    if (this.idleCleanupTimer) {
+      clearInterval(this.idleCleanupTimer);
+      this.idleCleanupTimer = undefined;
+    }
+    if (this.memoryMonitorTimer) {
+      clearInterval(this.memoryMonitorTimer);
+      this.memoryMonitorTimer = undefined;
+    }
+    if (this.networkListener) {
+      this.networkListener();
+      this.networkListener = null;
+    }
   }
 
   private async performIdleCleanup() {
@@ -366,13 +612,48 @@ class VideoCacheManager {
   }
 
   private async checkMemoryPressure() {
-    // Simplified memory check - in production use actual memory APIs
-    const memoryUsageRatio = this.currentCacheSize / this.config.maxCacheSize;
+    // Get actual memory info from environment detector
+    const memoryInfo = await environmentDetector.getMemoryInfo();
+    const memoryPressure = memoryInfo.usedMemory / memoryInfo.totalMemory;
 
-    if (memoryUsageRatio > this.config.memoryPressureThreshold) {
-      // Reduce cache size under memory pressure
-      await this.reduceCache(0.5); // Reduce to 50% of max size
+    // Use device-aware memory pressure thresholds
+    const perfConfig = videoPerformanceConfig.getCacheConfig();
+
+    if (memoryPressure > perfConfig.memoryPressureThreshold) {
+      // Progressive cache degradation based on device tier
+      const reductionRatio = this.deviceTier === DevicePerformanceTier.LOW ? 0.3 : 0.5;
+      await this.reduceCache(reductionRatio);
+
+      // Reduce quality variants under pressure
+      if (memoryPressure > 0.9) {
+        await this.evictQualityVariants();
+      }
     }
+  }
+
+  private async evictQualityVariants(): Promise<void> {
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.variantUris && entry.variantUris.size > 0) {
+        // Keep only the most appropriate quality for current conditions
+        const targetQuality = await this.getOptimalQualityForCurrentConditions();
+
+        for (const [quality, path] of entry.variantUris) {
+          if (quality !== targetQuality) {
+            try {
+              await FileSystem.deleteAsync(path, { idempotent: true });
+              entry.variantUris.delete(quality);
+            } catch (error) {
+              console.error(`Failed to evict quality variant ${quality}:`, error);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private async getOptimalQualityForCurrentConditions(): Promise<'360p' | '720p' | '1080p'> {
+    const qualitySelection = videoPerformanceConfig.getQualitySelection();
+    return qualitySelection.quality as '360p' | '720p' | '1080p';
   }
 
   private async reduceCache(targetRatio: number) {
@@ -523,13 +804,42 @@ class VideoCacheManager {
   }
 
   /**
-   * Preload videos with priority support
+   * Preload videos with device-aware and network-aware support
    */
   async preloadVideos(uris: string[], priority: "high" | "normal" | "low" = "normal"): Promise<void> {
+    // Get device-specific preload configuration
+    const preloadProfile = videoPerformanceConfig.getPreloadProfile();
+    const maxConcurrent = preloadProfile.maxConcurrentPreloads;
+    const preloadWindow = Math.min(uris.length, preloadProfile.preloadWindowSize);
+
+    // Filter URIs based on preload window
+    const urisToPreload = uris.slice(0, preloadWindow);
+
+    // Apply network-aware preloading
+    if (this.networkQuality === NetworkQualityTier.POOR) {
+      // Reduce preload for poor networks
+      const reducedUris = urisToPreload.slice(0, Math.ceil(preloadWindow / 2));
+      return this.preloadVideosWithConcurrency(reducedUris, priority, Math.max(1, maxConcurrent / 2));
+    }
+
+    // Check if aggressive preloading is enabled for this device tier
+    if (videoPerformanceConfig.shouldEnableFeature('aggressivePreloading')) {
+      // Preload with higher concurrency for high-tier devices
+      return this.preloadVideosWithConcurrency(urisToPreload, priority, maxConcurrent * 2);
+    }
+
+    return this.preloadVideosWithConcurrency(urisToPreload, priority, maxConcurrent);
+  }
+
+  private async preloadVideosWithConcurrency(
+    uris: string[],
+    priority: "high" | "normal" | "low",
+    concurrency: number
+  ): Promise<void> {
     // Limit concurrent preloads to prevent overwhelming the system
     const chunks = [];
-    for (let i = 0; i < uris.length; i += this.config.preloadLimit) {
-      chunks.push(uris.slice(i, i + this.config.preloadLimit));
+    for (let i = 0; i < uris.length; i += concurrency) {
+      chunks.push(uris.slice(i, i + concurrency));
     }
 
     for (const chunk of chunks) {
@@ -544,13 +854,26 @@ class VideoCacheManager {
   }
 
   /**
-   * Update cache configuration
+   * Update cache configuration with device-aware settings
    */
-  updateConfig(newConfig: Partial<CacheConfig>): void {
-    this.config = { ...this.config, ...newConfig };
+  updateConfig(newConfig?: Partial<CacheConfig>): void {
+    // Get device-specific configuration
+    const perfConfig = videoPerformanceConfig.getCacheConfig();
+
+    // Merge device-specific config with provided config
+    this.config = {
+      ...this.config,
+      maxCacheSize: perfConfig.maxCacheSize,
+      cleanupThreshold: perfConfig.memoryPressureThreshold,
+      ...newConfig
+    };
+
+    // Clear and restart background tasks with new config
+    this.clearBackgroundTasks();
+    this.startBackgroundTasks();
 
     // Update LRU cache limits
-    if (newConfig.maxEntries || newConfig.maxCacheSize) {
+    if (newConfig?.maxEntries || newConfig?.maxCacheSize) {
       // Note: LRUCache doesn't support dynamic config updates
       // In a real implementation, you might need to recreate the cache
       console.warn("Cache config updated, consider restarting the cache for full effect");
@@ -582,14 +905,122 @@ class VideoCacheManager {
    * Cleanup on destroy
    */
   destroy() {
-    if (this.idleCleanupTimer) {
-      clearInterval(this.idleCleanupTimer);
-    }
-    if (this.memoryMonitorTimer) {
-      clearInterval(this.memoryMonitorTimer);
-    }
+    this.clearBackgroundTasks();
     this.saveViewingPatterns();
     this.saveCacheIndex();
+  }
+
+  /**
+   * Initialize device and network detection
+   */
+  private async initializeDeviceAndNetwork(): Promise<void> {
+    try {
+      // Detect device tier
+      const deviceInfo = await environmentDetector.getDeviceInfo();
+      const memoryInfo = await environmentDetector.getMemoryInfo();
+
+      const totalMemoryGB = memoryInfo.totalMemory / (1024 * 1024 * 1024);
+      if (totalMemoryGB >= 6) {
+        this.deviceTier = DevicePerformanceTier.HIGH;
+      } else if (totalMemoryGB >= 4) {
+        this.deviceTier = DevicePerformanceTier.MID;
+      } else {
+        this.deviceTier = DevicePerformanceTier.LOW;
+      }
+
+      videoPerformanceConfig.setDeviceTier(this.deviceTier);
+
+      // Detect initial network quality
+      const netInfo = await NetInfo.fetch();
+      this.updateNetworkQuality(netInfo);
+
+      // Update cache config based on device tier
+      this.updateConfig();
+    } catch (error) {
+      console.error('Failed to initialize device and network detection:', error);
+    }
+  }
+
+  /**
+   * Handle network changes
+   */
+  private handleNetworkChange(state: any): void {
+    this.updateNetworkQuality(state);
+
+    // Adjust cache strategy based on network change
+    if (this.networkQuality === NetworkQualityTier.POOR) {
+      // Reduce cleanup interval on poor networks
+      if (this.idleCleanupTimer) {
+        clearInterval(this.idleCleanupTimer);
+        this.idleCleanupTimer = setInterval(() => {
+          this.performIdleCleanup();
+        }, 60000); // Faster cleanup on poor networks
+      }
+    }
+  }
+
+  /**
+   * Update network quality based on connection info
+   */
+  private updateNetworkQuality(state: any): void {
+    if (!state.isConnected) {
+      this.networkQuality = NetworkQualityTier.POOR;
+      return;
+    }
+
+    const type = state.type?.toLowerCase();
+    const effectiveType = state.details?.cellularGeneration?.toLowerCase() || type;
+
+    if (effectiveType === 'wifi' || effectiveType === '5g') {
+      this.networkQuality = NetworkQualityTier.EXCELLENT;
+    } else if (effectiveType === '4g') {
+      this.networkQuality = NetworkQualityTier.GOOD;
+    } else if (effectiveType === '3g') {
+      this.networkQuality = NetworkQualityTier.FAIR;
+    } else {
+      this.networkQuality = NetworkQualityTier.POOR;
+    }
+
+    videoPerformanceConfig.setNetworkQuality(this.networkQuality);
+  }
+
+  /**
+   * Get device-aware cache statistics
+   */
+  getDeviceAwareCacheStats(): any {
+    const baseStats = this.getCacheStats();
+    return {
+      ...baseStats,
+      deviceTier: this.deviceTier,
+      networkQuality: this.networkQuality,
+      qualityVariants: this.getQualityVariantStats(),
+      adaptiveSettings: {
+        currentPreloadLimit: videoPerformanceConfig.getPreloadProfile().maxConcurrentPreloads,
+        currentMemoryLimit: videoPerformanceConfig.getPreloadProfile().memoryLimit,
+        currentCleanupInterval: videoPerformanceConfig.getCacheConfig().cleanupInterval,
+      }
+    };
+  }
+
+  private getQualityVariantStats(): any {
+    let variantCount = 0;
+    let variantSize = 0;
+    const qualityDistribution: Record<string, number> = {};
+
+    for (const entry of this.cache.values()) {
+      if (entry.variantUris) {
+        variantCount += entry.variantUris.size;
+        for (const quality of entry.variantUris.keys()) {
+          qualityDistribution[quality] = (qualityDistribution[quality] || 0) + 1;
+        }
+      }
+    }
+
+    return {
+      count: variantCount,
+      size: variantSize,
+      distribution: qualityDistribution
+    };
   }
 }
 

@@ -210,8 +210,8 @@ export function isProcessingMode(value: unknown): value is ProcessingMode {
 
 export function isProcessedVideo(value: unknown): value is ProcessedVideo {
   if (!value || typeof value !== "object") return false;
-  const v = value as any;
-  return typeof v.uri === "string" && typeof v.duration === "number";
+  const v = value as Partial<ProcessedVideo>;
+  return typeof v?.uri === "string" && typeof v?.duration === "number";
 }
 
 // ============================================

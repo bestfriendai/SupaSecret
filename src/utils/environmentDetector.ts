@@ -211,6 +211,62 @@ class EnvironmentDetector {
   }
 
   /**
+   * Get device information
+   */
+  async getDeviceInfo(): Promise<{
+    deviceType: string;
+    platform: string;
+    platformVersion: string;
+    isDevice: boolean;
+    modelName?: string;
+  }> {
+    const info = this.getEnvironmentInfo();
+    return {
+      deviceType: info.deviceType,
+      platform: info.platform,
+      platformVersion: info.platformVersion,
+      isDevice: info.isDevice,
+      modelName: Device.modelName || 'Unknown',
+    };
+  }
+
+  /**
+   * Get memory information
+   */
+  async getMemoryInfo(): Promise<{
+    totalMemory: number;
+    availableMemory: number;
+  }> {
+    // Default values for React Native environments
+    let totalMemory = 4 * 1024 * 1024 * 1024; // 4GB default
+    let availableMemory = totalMemory * 0.7; // Assume 70% available
+
+    try {
+      // Try to get actual memory info if available
+      if (Device.totalMemory) {
+        totalMemory = Device.totalMemory;
+      }
+
+      // Estimate available memory based on device type
+      const info = this.getEnvironmentInfo();
+      if (info.deviceType === 'phone') {
+        totalMemory = Math.max(totalMemory, 2 * 1024 * 1024 * 1024); // At least 2GB
+      } else if (info.deviceType === 'tablet') {
+        totalMemory = Math.max(totalMemory, 3 * 1024 * 1024 * 1024); // At least 3GB
+      }
+
+      availableMemory = totalMemory * 0.7;
+    } catch (error) {
+      console.warn('Failed to get memory info, using defaults:', error);
+    }
+
+    return {
+      totalMemory,
+      availableMemory,
+    };
+  }
+
+  /**
    * Reset cached information
    */
   resetCache(): void {

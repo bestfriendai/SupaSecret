@@ -7,6 +7,8 @@ import {
   Platform,
   ActivityIndicator,
   AccessibilityInfo,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -32,6 +34,8 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import EnhancedCommentBottomSheet from './EnhancedCommentBottomSheet';
 import EnhancedShareBottomSheet from './EnhancedShareBottomSheet';
 import ReportModal from './ReportModal';
+import { VideoInteractionType } from '../types/videoInteractions';
+import { normalizeVideoError, VideoErrorCode, VideoInteractionError } from '../types/videoErrors';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -42,7 +46,7 @@ interface VideoInteractionOverlayProps {
   onShare?: () => void;
   onSave?: (isSaved: boolean) => void;
   onReport?: () => void;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
   isVisible?: boolean;
   onViewUpdate?: () => void;
 }
@@ -238,11 +242,23 @@ export default function VideoInteractionOverlay({
       onLike?.(newLikedState);
       announceAction(newLikedState ? 'Liked' : 'Unliked');
       setLikeState({ isLoading: false, error: null });
-    } catch (error) {
-      console.error('Error toggling like:', error);
+    } catch (e: unknown) {
+      const err = normalizeVideoError(e);
+      console.error('Error toggling like:', err);
+
+      // Revert optimistic update
       setIsLiked(!newLikedState);
       setLikeCount((prev: number) => !newLikedState ? prev + 1 : Math.max(0, prev - 1));
-      setLikeState({ isLoading: false, error: 'Failed to update like' });
+
+      // Set error message based on error type
+      let errorMessage = err.message;
+      if (err.code === VideoErrorCode.NetworkError) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (err.code === VideoErrorCode.RateLimitExceeded) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      }
+
+      setLikeState({ isLoading: false, error: errorMessage });
     }
   }, [user?.id, isLiked, confession.id, likeState.isLoading, toggleLike, onLike, triggerHaptic, announceAction]);
 
@@ -287,7 +303,7 @@ export default function VideoInteractionOverlay({
 
     // Track share interaction
     VideoDataService.trackVideoEvent(confession.id, {
-      type: 'share' as any,
+      type: VideoInteractionType.Share,
       timestamp: Date.now()
     });
 
@@ -327,7 +343,7 @@ export default function VideoInteractionOverlay({
 
       // Track save interaction
       VideoDataService.trackVideoEvent(confession.id, {
-        type: 'save' as any,
+        type: VideoInteractionType.Save,
         timestamp: Date.now(),
         metadata: { saved: newSavedState }
       });
@@ -335,10 +351,36 @@ export default function VideoInteractionOverlay({
       onSave?.(newSavedState);
       announceAction(newSavedState ? 'Saved' : 'Unsaved');
       setSaveState({ isLoading: false, error: null });
-    } catch (error) {
-      console.error('Error toggling save:', error);
+    } catch (e: unknown) {
+      const err = normalizeVideoError(e);
+      console.error('Error toggling save:', err);
+
+      // Revert optimistic update
       setIsSaved(!newSavedState);
-      setSaveState({ isLoading: false, error: 'Failed to update save' });
+
+      // Set error message based on error type
+      let errorMessage = err.message;
+      if (err.code === VideoErrorCode.NetworkError) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (err.code === VideoErrorCode.PermissionDenied) {
+        errorMessage = 'Permission denied. Please check your account settings.';
+      } else if (err.code === VideoErrorCode.RateLimitExceeded) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      }
+
+      setSaveState({ isLoading: false, error: errorMessage });
+
+      // Track error for analytics
+      VideoDataService.trackVideoEvent(confession.id, {
+        type: VideoInteractionType.Save,
+        timestamp: Date.now(),
+        metadata: {
+          saved: newSavedState,
+          error: true,
+          errorCode: err.code,
+          errorMessage: err.message
+        }
+      });
     }
   }, [user?.id, isSaved, confession.id, saveState.isLoading, saveConfession, unsaveConfession, onSave, triggerHaptic, announceAction]);
 
@@ -436,7 +478,7 @@ export default function VideoInteractionOverlay({
         <ActivityIndicator size="small" color="#fff" />
       ) : (
         <Ionicons
-          name={icon as any}
+          name={icon as keyof typeof Ionicons.glyphMap}
           size={28}
           color={isActive ? '#ff4458' : '#fff'}
         />

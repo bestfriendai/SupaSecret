@@ -15,7 +15,6 @@ export type Database = {
           id: string;
           is_anonymous: boolean;
           likes: number;
-          session_id: string | null;
           transcription: string | null;
           type: string;
           updated_at: string | null;
@@ -35,7 +34,6 @@ export type Database = {
           id?: string;
           is_anonymous?: boolean;
           likes?: number;
-          session_id?: string | null;
           transcription?: string | null;
           type: string;
           updated_at?: string | null;
@@ -55,7 +53,6 @@ export type Database = {
           id?: string;
           is_anonymous?: boolean;
           likes?: number;
-          session_id?: string | null;
           transcription?: string | null;
           type?: string;
           updated_at?: string | null;
@@ -430,7 +427,6 @@ export type Database = {
           confession_id: string;
           interactions: number | null;
           last_watched: string | null;
-          session_id: string | null;
           updated_at: string | null;
           watch_time: number | null;
         };
@@ -439,7 +435,6 @@ export type Database = {
           confession_id: string;
           interactions?: number | null;
           last_watched?: string | null;
-          session_id?: string | null;
           updated_at?: string | null;
           watch_time?: number | null;
         };
@@ -448,7 +443,6 @@ export type Database = {
           confession_id?: string;
           interactions?: number | null;
           last_watched?: string | null;
-          session_id?: string | null;
           updated_at?: string | null;
           watch_time?: number | null;
         };
@@ -557,6 +551,8 @@ export type Database = {
           type: string;
           user_id: string;
           video_uri: string;
+          video_url: string;
+          views: number;
         }[];
       };
       get_unread_notification_count: {
@@ -567,12 +563,36 @@ export type Database = {
         Args: { target_user_id: string };
         Returns: string;
       };
+      gtrgm_compress: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
+      gtrgm_decompress: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
+      gtrgm_in: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
+      gtrgm_options: {
+        Args: { "": unknown };
+        Returns: undefined;
+      };
+      gtrgm_out: {
+        Args: { "": unknown };
+        Returns: unknown;
+      };
       has_active_membership: {
         Args: { required_tier?: string; target_user_id: string };
         Returns: boolean;
       };
+      increment_video_views: {
+        Args: { confession_uuid: string };
+        Returns: boolean;
+      };
       search_confessions_by_hashtag: {
-        Args: { search_hashtag: string };
+        Args: { limit_count?: number; search_hashtag: string };
         Returns: {
           content: string;
           created_at: string;
@@ -583,7 +603,21 @@ export type Database = {
           type: string;
           user_id: string;
           video_uri: string;
+          video_url: string;
+          views: number;
         }[];
+      };
+      set_limit: {
+        Args: { "": number };
+        Returns: number;
+      };
+      show_limit: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      show_trgm: {
+        Args: { "": string };
+        Returns: string[];
       };
       toggle_confession_like: {
         Args: { confession_uuid: string };

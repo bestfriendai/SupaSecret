@@ -271,3 +271,21 @@ export const createApiRetry = (options: RetryOptions = {}) => {
 
   return <T>(operation: () => Promise<T>) => withRetry(operation, apiOptions);
 };
+
+// Additional exports for video retry functionality
+export interface RetryConfig {
+  maxAttempts: number;
+  backoffMs: number[];
+  onRetry?: (attempt: number) => void;
+}
+
+export function createRetryableOperation<T>(
+  operation: () => Promise<T>,
+  config: RetryConfig
+): Promise<T> {
+  return withRetry(operation, {
+    maxAttempts: config.maxAttempts,
+    initialDelay: config.backoffMs[0] || 1000,
+    onRetry: (error, attempt, delay) => config.onRetry?.(attempt)
+  });
+}
