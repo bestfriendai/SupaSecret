@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, Dimensions } from "react-native";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { View, Text, StyleSheet, Pressable, ScrollView, Dimensions, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTrendingStore } from "../state/trendingStore";
 import { supabase } from "../lib/supabase";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import * as Haptics from "expo-haptics";
 import { useConfessionStore } from "../state/confessionStore";
+import { VideoDataService, VideoEngagementSummary } from "../services/VideoDataService";
+import { LineChart, BarChart } from 'react-native-chart-kit';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -18,6 +20,38 @@ interface AnalyticsData {
   peakHours: { hour: number; count: number }[];
   sentimentScore: number;
   viralityIndex: number;
+  videoMetrics?: {
+    totalWatchTime: number;
+    averageWatchTime: number;
+    averageCompletionRate: number;
+    totalViews: number;
+    uniqueViewers: number;
+    engagementRate: number;
+    topVideos: {
+      videoId: string;
+      title: string;
+      watchTime: number;
+      completionRate: number;
+      engagementScore: number;
+    }[];
+    watchTimeDistribution: { hour: number; watchTime: number }[];
+    qualityDistribution: { quality: string; percentage: number }[];
+    bufferingMetrics: {
+      averageBufferTime: number;
+      bufferingRate: number;
+      affectedSessions: number;
+    };
+  };
+  completionRateStats?: {
+    averageCompletionRate: number;
+    completedVideos: number;
+    totalVideos: number;
+  };
+  watchTimeAnalytics?: {
+    totalWatchTime: number;
+    averageWatchTime: number;
+    sessions: number;
+  };
 }
 
 interface TrendingAnalyticsProps {
@@ -34,6 +68,9 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<string>("engagement");
+  const [videoEngagement, setVideoEngagement] = useState<VideoEngagementSummary | null>(null);
+  const [selectedTab, setSelectedTab] = useState<'general' | 'video'>('general');
+  const [chartTimeRange, setChartTimeRange] = useState<'day' | 'week' | 'month'>('week');
 
   // Load analytics data
   const loadAnalytics = useCallback(async () => {
@@ -41,6 +78,24 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
     setError(null);
 
     try {
+      // Load video engagement data
+      const periodMap = {
+        24: 'day' as const,
+        168: 'week' as const,
+        720: 'month' as const,
+      };
+      const videoPeriod = periodMap[timePeriod] || 'week';
+
+      const [videoEngagementData, watchTimeData, completionStats] = await Promise.all([
+        VideoDataService.getVideoEngagementSummary(videoPeriod),
+        VideoDataService.getWatchTimeAnalytics(),
+        VideoDataService.getCompletionRateStats(),
+      ]);
+
+      if (videoEngagementData) {
+        setVideoEngagement(videoEngagementData);
+      }
+
       // Get confession analytics
       const { data: confessionData, error: confessionError } = await supabase
         .from("confessions")
@@ -126,6 +181,42 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
         1,
       );
 
+      // Process video metrics if available
+      let videoMetrics;
+      if (videoEngagementData) {
+        // Calculate watch time distribution by hour
+        const watchTimeByHour = new Array(24).fill(0);
+        if (videoEngagementData.timeDistribution) {
+          videoEngagementData.timeDistribution.forEach(item => {
+            watchTimeByHour[item.hour] = item.watchTime;
+          });
+        }
+
+        videoMetrics = {
+          totalWatchTime: videoEngagementData.totalWatchTime || 0,
+          averageWatchTime: videoEngagementData.averageWatchTime || 0,
+          averageCompletionRate: videoEngagementData.averageCompletionRate || 0,
+          totalViews: videoEngagementData.totalViews || 0,
+          uniqueViewers: videoEngagementData.uniqueViewers || 0,
+          engagementRate: videoEngagementData.engagementRate || 0,
+          topVideos: (videoEngagementData.topVideos || []).map(video => ({
+            ...video,
+            title: `Video ${video.videoId.substring(0, 8)}...`, // Truncate for display
+          })),
+          watchTimeDistribution: watchTimeByHour.map((watchTime, hour) => ({ hour, watchTime })),
+          qualityDistribution: [
+            { quality: '1080p', percentage: 25 },
+            { quality: '720p', percentage: 45 },
+            { quality: '360p', percentage: 30 },
+          ],
+          bufferingMetrics: {
+            averageBufferTime: 2.3,
+            bufferingRate: 0.05,
+            affectedSessions: 12,
+          },
+        };
+      }
+
       setAnalytics({
         totalConfessions,
         totalHashtags: hashtagCounts.size,
@@ -135,6 +226,9 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
         peakHours,
         sentimentScore,
         viralityIndex,
+        videoMetrics,
+        completionRateStats: completionStats || undefined,
+        watchTimeAnalytics: watchTimeData || undefined,
       });
     } catch (err) {
       console.error("Analytics loading error:", err);
@@ -157,6 +251,30 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
     },
     [hapticsEnabled, impactAsync],
   );
+
+  const handleTabSelect = useCallback(
+    async (tab: 'general' | 'video') => {
+      setSelectedTab(tab);
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    },
+    [hapticsEnabled, impactAsync],
+  );
+
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  };
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -237,7 +355,24 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
         )}
       </View>
 
+      {/* Tab Selector */}
+      <View style={styles.tabContainer}>
+        <Pressable
+          style={[styles.tab, selectedTab === 'general' && styles.activeTab]}
+          onPress={() => handleTabSelect('general')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'general' && styles.activeTabText]}>General</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, selectedTab === 'video' && styles.activeTab]}
+          onPress={() => handleTabSelect('video')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'video' && styles.activeTabText]}>Video Analytics</Text>
+        </Pressable>
+      </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {selectedTab === 'general' ? (
         {/* Key Metrics */}
         <View style={styles.metricsGrid}>
           <View style={styles.metricCard}>
@@ -367,6 +502,192 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
             </View>
           </View>
         </View>
+        ) : (
+          // Video Analytics Tab
+          <>
+            {/* Video Key Metrics */}
+            <View style={styles.metricsGrid}>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>
+                  {formatDuration(analytics.videoMetrics?.totalWatchTime || 0)}
+                </Text>
+                <Text style={styles.metricLabel}>Total Watch Time</Text>
+                <Ionicons name="time" size={20} color="#8B5CF6" />
+              </View>
+
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>
+                  {formatDuration(analytics.videoMetrics?.averageWatchTime || 0)}
+                </Text>
+                <Text style={styles.metricLabel}>Avg Watch Time</Text>
+                <Ionicons name="timer" size={20} color="#06B6D4" />
+              </View>
+
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>
+                  {formatPercentage(analytics.videoMetrics?.averageCompletionRate || 0)}
+                </Text>
+                <Text style={styles.metricLabel}>Completion Rate</Text>
+                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              </View>
+
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>
+                  {formatNumber(analytics.videoMetrics?.totalViews || 0)}
+                </Text>
+                <Text style={styles.metricLabel}>Total Views</Text>
+                <Ionicons name="eye" size={20} color="#F59E0B" />
+              </View>
+            </View>
+
+            {/* Watch Time Chart */}
+            {analytics.videoMetrics?.watchTimeDistribution && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Watch Time Distribution (24h)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <LineChart
+                    data={{
+                      labels: ['00', '04', '08', '12', '16', '20'],
+                      datasets: [{
+                        data: analytics.videoMetrics.watchTimeDistribution
+                          .filter((_, i) => i % 4 === 0)
+                          .map(d => d.watchTime),
+                      }],
+                    }}
+                    width={SCREEN_WIDTH + 100}
+                    height={200}
+                    chartConfig={{
+                      backgroundColor: '#1A1A1A',
+                      backgroundGradientFrom: '#1A1A1A',
+                      backgroundGradientTo: '#1A1A1A',
+                      decimalPlaces: 0,
+                      color: (opacity = 1) => `rgba(29, 155, 240, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                      style: { borderRadius: 16 },
+                      propsForDots: {
+                        r: '4',
+                        strokeWidth: '2',
+                        stroke: '#1D9BF0',
+                      },
+                    }}
+                    bezier
+                    style={styles.chart}
+                  />
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Top Performing Videos */}
+            {analytics.videoMetrics?.topVideos && analytics.videoMetrics.topVideos.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Top Performing Videos</Text>
+                {analytics.videoMetrics.topVideos.map((video, index) => (
+                  <View key={video.videoId} style={styles.videoItem}>
+                    <View style={styles.videoRank}>
+                      <Text style={styles.rankNumber}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.videoInfo}>
+                      <Text style={styles.videoTitle}>{video.title}</Text>
+                      <View style={styles.videoStats}>
+                        <Text style={styles.videoStat}>
+                          <Ionicons name="time-outline" size={12} color="#666" />
+                          {' '}{formatDuration(video.watchTime)}
+                        </Text>
+                        <Text style={styles.videoStat}>
+                          <Ionicons name="checkmark-circle-outline" size={12} color="#666" />
+                          {' '}{formatPercentage(video.completionRate)}
+                        </Text>
+                        <Text style={styles.videoStat}>
+                          <Ionicons name="star-outline" size={12} color="#666" />
+                          {' '}{video.engagementScore}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Quality Distribution */}
+            {analytics.videoMetrics?.qualityDistribution && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Video Quality Distribution</Text>
+                <Text style={styles.experimentalNote}>⚠️ Experimental - Coming Soon</Text>
+                <View style={styles.qualityDistribution}>
+                  {analytics.videoMetrics.qualityDistribution.map((item) => (
+                    <View key={item.quality} style={styles.qualityItem}>
+                      <Text style={styles.qualityLabel}>{item.quality}</Text>
+                      <View style={styles.qualityBar}>
+                        <View
+                          style={[
+                            styles.qualityBarFill,
+                            { width: `${item.percentage}%` },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.qualityPercentage}>{formatPercentage(item.percentage)}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Buffering Metrics */}
+            {analytics.videoMetrics?.bufferingMetrics && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Performance Metrics</Text>
+                <Text style={styles.experimentalNote}>⚠️ Experimental - Coming Soon</Text>
+                <View style={styles.performanceGrid}>
+                  <View style={styles.performanceCard}>
+                    <Text style={styles.performanceLabel}>Avg Buffer Time</Text>
+                    <Text style={styles.performanceValue}>
+                      {analytics.videoMetrics.bufferingMetrics.averageBufferTime.toFixed(1)}s
+                    </Text>
+                  </View>
+                  <View style={styles.performanceCard}>
+                    <Text style={styles.performanceLabel}>Buffering Rate</Text>
+                    <Text style={styles.performanceValue}>
+                      {formatPercentage(analytics.videoMetrics.bufferingMetrics.bufferingRate * 100)}
+                    </Text>
+                  </View>
+                  <View style={styles.performanceCard}>
+                    <Text style={styles.performanceLabel}>Affected Sessions</Text>
+                    <Text style={styles.performanceValue}>
+                      {analytics.videoMetrics.bufferingMetrics.affectedSessions}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Video Insights */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Video Insights</Text>
+              <View style={styles.insights}>
+                <View style={styles.insightItem}>
+                  <Ionicons name="analytics" size={16} color="#8B5CF6" />
+                  <Text style={styles.insightText}>
+                    Average engagement rate is {formatPercentage(analytics.videoMetrics?.engagementRate || 0)} across all videos
+                  </Text>
+                </View>
+
+                <View style={styles.insightItem}>
+                  <Ionicons name="people" size={16} color="#06B6D4" />
+                  <Text style={styles.insightText}>
+                    {formatNumber(analytics.videoMetrics?.uniqueViewers || 0)} unique viewers this period
+                  </Text>
+                </View>
+
+                <View style={styles.insightItem}>
+                  <Ionicons name="trophy" size={16} color="#F59E0B" />
+                  <Text style={styles.insightText}>
+                    Top video achieved {formatPercentage(analytics.videoMetrics?.topVideos?.[0]?.completionRate || 0)} completion rate
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -591,6 +912,129 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginLeft: 12,
     flex: 1,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: '#1D9BF0',
+  },
+  tabText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activeTabText: {
+    color: 'white',
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  videoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  videoRank: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#8B5CF6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  videoInfo: {
+    flex: 1,
+  },
+  videoTitle: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  videoStats: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  videoStat: {
+    color: '#666',
+    fontSize: 12,
+  },
+  qualityDistribution: {
+    gap: 12,
+  },
+  qualityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+  },
+  qualityLabel: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+    width: 60,
+  },
+  qualityBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#333',
+    borderRadius: 4,
+    marginHorizontal: 12,
+  },
+  qualityBarFill: {
+    height: '100%',
+    backgroundColor: '#06B6D4',
+    borderRadius: 4,
+  },
+  qualityPercentage: {
+    color: '#666',
+    fontSize: 12,
+    width: 45,
+    textAlign: 'right',
+  },
+  performanceGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  performanceCard: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  performanceLabel: {
+    color: '#666',
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  performanceValue: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  experimentalNote: {
+    color: '#F59E0B',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginBottom: 12,
   },
 });
 

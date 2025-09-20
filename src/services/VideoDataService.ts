@@ -1,8 +1,17 @@
 import type { PostgrestError } from "@supabase/supabase-js";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, AppStateStatus } from 'react-native';
 
 import { supabase } from "../lib/supabase";
 import type { Confession } from "../types/confession";
 import { normalizeConfessions } from "../utils/confessionNormalizer";
+import { videoQualitySelector } from "./VideoQualitySelector";
+import { videoPerformanceConfig, DevicePerformanceTier } from "../config/videoPerformance";
+import { videoCacheManager } from "../utils/videoCacheManager";
+import { environmentDetector } from "../utils/environmentDetector";
+import { generateUniqueId } from "../utils/consolidatedUtils";
+import { consentStore } from "../state/consentStore";
+import { offlineQueue } from "../lib/offlineQueue";
 
 interface TrendingHashtag {
   hashtag: string;
@@ -18,20 +27,66 @@ export interface VideoMetricUpdate {
 
 export interface VideoAnalytics {
   videoId: string;
+  sessionId: string;
   watchTime: number;
   completionRate: number;
+  engagementScore: number;
   interactions: {
     likes: number;
     comments: number;
     shares: number;
     saves: number;
   };
+  qualityStats?: {
+    selectedQuality: '360p' | '720p' | '1080p';
+    qualitySwitches: number;
+    bufferingTime: number;
+  };
+  bufferingEvents: number;
+  seekCount: number;
+  averageViewDuration: number;
+  sessionStartTime: number;
+  sessionEndTime?: number;
+  lastWatchedPosition: number;
 }
 
 export interface VideoEvent {
-  type: 'play' | 'pause' | 'seek' | 'complete' | 'like' | 'unlike' | 'comment' | 'share' | 'save';
+  type: 'play' | 'pause' | 'seek' | 'complete' | 'like' | 'unlike' | 'comment' | 'share' | 'save' |
+        'buffer_start' | 'buffer_end' | 'quality_change' | 'volume_change' | 'fullscreen_toggle' |
+        'session_start' | 'session_end' | 'error' | 'resume' | 'impression';
   timestamp: number;
+  sessionId: string;
   metadata?: Record<string, any>;
+}
+
+export interface VideoSession {
+  sessionId: string;
+  videoId: string;
+  startTime: number;
+  endTime?: number;
+  watchTime: number;
+  events: VideoEvent[];
+  isActive: boolean;
+}
+
+export interface VideoEngagementSummary {
+  totalWatchTime: number;
+  averageWatchTime: number;
+  averageCompletionRate: number;
+  totalViews: number;
+  uniqueViewers: number;
+  engagementRate: number;
+  topVideos: {
+    videoId: string;
+    watchTime: number;
+    completionRate: number;
+    engagementScore: number;
+  }[];
+  timeDistribution: {
+    hour: number;
+    views: number;
+    watchTime: number;
+  }[];
 }
 
 type SupabaseOperation<T> = () => Promise<{ data: T | null; error: PostgrestError | null }>;
@@ -42,10 +97,22 @@ const RETRY_BASE_DELAY_MS = 250;
 const VIDEO_CONFESSIONS_PREFIX = "video-confessions";
 const TRENDING_VIDEOS_PREFIX = "trending-videos";
 const ANALYTICS_CACHE_PREFIX = "video-analytics";
+const EVENT_QUEUE_KEY = '@video_analytics_event_queue';
+const SESSIONS_KEY = '@video_analytics_sessions';
+const BATCH_UPLOAD_INTERVAL = 30000; // 30 seconds
+const BATCH_SIZE = 50;
+const COMPLETION_THRESHOLD = 0.8; // 80% viewed = completed
 
-const cacheStore = new Map<string, { data: Confession[]; timestamp: number }>();
+const cacheStore = new Map<string, { data: Confession[]; timestamp: number; qualityOptimized?: boolean }>();
 const analyticsCache = new Map<string, { data: VideoAnalytics; timestamp: number }>();
 const eventQueue = new Map<string, VideoEvent[]>();
+const qualitySelectionCache = new Map<string, { quality: string; variants: any[]; timestamp: number }>();
+const deviceTierCache = { tier: null as DevicePerformanceTier | null, timestamp: 0 };
+const activeSessions = new Map<string, VideoSession>();
+const watchTimeTrackers = new Map<string, { startTime: number; totalTime: number }>();
+
+let batchUploadTimer: NodeJS.Timeout | null = null;
+let appState: AppStateStatus = 'active';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -93,14 +160,104 @@ const sanitizeVideoUri = (uri?: string | null): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const prepareVideoResults = (confessions: Confession[]): Confession[] =>
-  confessions.reduce<Confession[]>((acc, confession) => {
+const prepareVideoResults = async (confessions: Confession[], applyQualitySelection = false): Promise<Confession[]> => {
+  const results: Confession[] = [];
+
+  for (const confession of confessions) {
     const sanitizedUri = sanitizeVideoUri(confession.videoUri);
     if (sanitizedUri) {
-      acc.push({ ...confession, videoUri: sanitizedUri });
+      let finalConfession = { ...confession, videoUri: sanitizedUri };
+
+      // Apply quality selection if enabled
+      if (applyQualitySelection) {
+        const qualityResult = await getOrSelectVideoQuality(sanitizedUri);
+        if (qualityResult) {
+          // Add quality metadata to confession without overwriting original URI
+          finalConfession = {
+            ...finalConfession,
+            videoUri: sanitizedUri, // Keep original URI
+            originalVideoUri: sanitizedUri,
+            selectedVideoUri: qualityResult.selectedUri || sanitizedUri,
+            videoQuality: qualityResult.quality,
+            videoVariants: qualityResult.variants,
+            qualityMetadata: {
+              deviceTier: qualityResult.deviceTier,
+              networkQuality: qualityResult.networkQuality,
+              selectedQuality: qualityResult.quality,
+            },
+          } as any;
+        }
+      }
+
+      results.push(finalConfession);
     }
-    return acc;
-  }, []);
+  }
+  return results;
+};
+
+/**
+ * Get cached quality selection or select new quality for video
+ */
+const getOrSelectVideoQuality = async (uri: string) => {
+  // Check cache first
+  const cached = qualitySelectionCache.get(uri);
+  if (cached && Date.now() - cached.timestamp < 300000) { // 5 minute cache
+    return cached;
+  }
+
+  try {
+    const qualityResult = await videoQualitySelector.selectVideoQuality(uri);
+    const selectedVariant = qualityResult.variants.find(v => v.quality === qualityResult.selectedQuality);
+
+    const result = {
+      quality: qualityResult.selectedQuality,
+      selectedUri: selectedVariant?.uri || uri,
+      variants: qualityResult.variants,
+      deviceTier: qualityResult.deviceTier,
+      networkQuality: qualityResult.networkProfile.quality,
+      timestamp: Date.now(),
+    };
+
+    qualitySelectionCache.set(uri, result);
+    return result;
+  } catch (error) {
+    console.error('Failed to select video quality:', error);
+    return null;
+  }
+};
+
+/**
+ * Get device tier with caching
+ */
+const getDeviceTier = async (): Promise<DevicePerformanceTier> => {
+  if (deviceTierCache.tier && Date.now() - deviceTierCache.timestamp < 600000) { // 10 minute cache
+    return deviceTierCache.tier;
+  }
+
+  try {
+    const deviceInfo = await environmentDetector.getDeviceInfo();
+    const memoryInfo = await environmentDetector.getMemoryInfo();
+    const totalMemoryGB = memoryInfo.totalMemory / (1024 * 1024 * 1024);
+
+    let tier: DevicePerformanceTier;
+    if (totalMemoryGB >= 6) {
+      tier = DevicePerformanceTier.HIGH;
+    } else if (totalMemoryGB >= 4) {
+      tier = DevicePerformanceTier.MID;
+    } else {
+      tier = DevicePerformanceTier.LOW;
+    }
+
+    deviceTierCache.tier = tier;
+    deviceTierCache.timestamp = Date.now();
+    videoPerformanceConfig.setDeviceTier(tier);
+
+    return tier;
+  } catch (error) {
+    console.error('Failed to detect device tier:', error);
+    return DevicePerformanceTier.MID;
+  }
+};
 
 const executeWithRetry = async <T>(operationName: string, operation: SupabaseOperation<T>): Promise<T | null> => {
   let attempt = 0;
@@ -140,13 +297,27 @@ const handleFetchFailure = (context: string, cacheKey: string): Confession[] => 
  */
 export class VideoDataService {
   /**
-   * Fetch video confessions from the database with caching and retry support.
+   * Fetch video confessions with intelligent quality selection and device-aware pagination.
    */
-  static async fetchVideoConfessions(limit: number = 20): Promise<Confession[]> {
-    const safeLimit = Math.max(1, Math.min(Math.floor(limit), 200));
-    const cacheKey = buildCacheKey(VIDEO_CONFESSIONS_PREFIX, { limit: safeLimit });
+  static async fetchVideoConfessions(limit: number = 20, enableQualitySelection = true): Promise<Confession[]> {
+    // Adjust limit based on device tier
+    const deviceTier = await getDeviceTier();
+    const tierMultipliers = {
+      [DevicePerformanceTier.HIGH]: 1.0,
+      [DevicePerformanceTier.MID]: 0.75,
+      [DevicePerformanceTier.LOW]: 0.5,
+    };
+    const multiplier = tierMultipliers[deviceTier] ?? 0.75; // Default to MID tier multiplier
+    const adjustedLimit = Math.ceil(limit * multiplier);
+    const safeLimit = Math.max(1, Math.min(Math.floor(adjustedLimit), 200));
+
+    const cacheKey = buildCacheKey(VIDEO_CONFESSIONS_PREFIX, { limit: safeLimit, tier: deviceTier });
     const cached = getCachedList(cacheKey);
     if (cached) {
+      // Trigger background quality optimization for cached results
+      if (enableQualitySelection && !cacheStore.get(cacheKey)?.qualityOptimized) {
+        VideoDataService.optimizeQualityInBackground(cached);
+      }
       return cached;
     }
 
@@ -157,7 +328,7 @@ export class VideoDataService {
           await supabase
             .from("confessions")
             .select(
-              "id,type,content,video_uri,video_url,transcription,created_at,is_anonymous,likes,views",
+              "id,type,content,video_uri,video_url,video_quality,transcription,created_at,is_anonymous,likes,views",
             )
             .eq("type", "video")
             .or("video_uri.not.is.null,video_url.not.is.null")
@@ -166,10 +337,21 @@ export class VideoDataService {
       );
 
       const normalized = await normalizeConfessions(confessions ?? []);
-      const playable = prepareVideoResults(normalized);
+      const playable = await prepareVideoResults(normalized, enableQualitySelection);
 
       if (playable.length) {
         setCachedList(cacheKey, playable);
+
+        // Mark as quality optimized if quality selection was applied
+        if (enableQualitySelection) {
+          const entry = cacheStore.get(cacheKey);
+          if (entry) {
+            entry.qualityOptimized = true;
+          }
+        }
+
+        // Trigger intelligent preloading based on device capabilities
+        VideoDataService.intelligentPreload(playable);
       }
 
       return playable;
@@ -180,12 +362,13 @@ export class VideoDataService {
   }
 
   /**
-   * Fetch trending video confessions with caching.
+   * Fetch trending videos with quality selection and device optimization.
    */
-  static async fetchTrendingVideos(hoursBack: number = 24, limit: number = 10): Promise<Confession[]> {
+  static async fetchTrendingVideos(hoursBack: number = 24, limit: number = 10, enableQualitySelection = true): Promise<Confession[]> {
+    const deviceTier = await getDeviceTier();
     const safeLimit = Math.max(1, Math.min(Math.floor(limit), 100));
     const safeHours = Math.max(1, Math.min(Math.floor(hoursBack), 168));
-    const cacheKey = buildCacheKey(TRENDING_VIDEOS_PREFIX, { limit: safeLimit, hoursBack: safeHours });
+    const cacheKey = buildCacheKey(TRENDING_VIDEOS_PREFIX, { limit: safeLimit, hoursBack: safeHours, tier: deviceTier });
     const cached = getCachedList(cacheKey);
     if (cached) {
       return cached;
@@ -202,13 +385,21 @@ export class VideoDataService {
       );
 
       const normalized = await normalizeConfessions(trendingData ?? []);
-      const playable = prepareVideoResults(normalized).slice(0, safeLimit);
+      const playable = await prepareVideoResults(normalized, enableQualitySelection);
+      const sliced = playable.slice(0, safeLimit);
 
-      if (playable.length) {
-        setCachedList(cacheKey, playable);
+      if (sliced.length) {
+        setCachedList(cacheKey, sliced);
+
+        // Preload trending videos more aggressively for high-tier devices
+        if (deviceTier === DevicePerformanceTier.HIGH) {
+          VideoDataService.aggressivePreload(sliced);
+        } else {
+          VideoDataService.intelligentPreload(sliced);
+        }
       }
 
-      return playable;
+      return sliced;
     } catch (error) {
       console.error("VideoDataService.fetchTrendingVideos failed", error);
       return handleFetchFailure("VideoDataService.fetchTrendingVideos", cacheKey);
@@ -262,7 +453,8 @@ export class VideoDataService {
       );
 
       const normalized = await normalizeConfessions(data ?? []);
-      return prepareVideoResults(normalized).slice(0, safeLimit);
+      const results = await prepareVideoResults(normalized, true);
+      return results.slice(0, safeLimit);
     } catch (error) {
       console.error("VideoDataService.searchVideosByHashtag failed", error);
       return [];
@@ -343,23 +535,78 @@ export class VideoDataService {
   }
 
   /**
-   * Track video interaction events for analytics.
+   * Track video interaction events for analytics with consent checking.
    */
-  static trackVideoEvent(videoId: string, event: VideoEvent): void {
+  static async trackVideoEvent(videoId: string, event: Omit<VideoEvent, 'sessionId'>): Promise<void> {
     if (!videoId || !event) return;
 
+    // Check analytics consent
+    if (!consentStore.preferences.analytics) {
+      return;
+    }
+
+    // Get or create session
+    const sessionId = VideoDataService.getOrCreateSession(videoId);
+    const fullEvent: VideoEvent = {
+      ...event,
+      sessionId,
+      metadata: { ...(event.metadata || {}), videoId },
+    };
+
+    // Add to in-memory queue
     const events = eventQueue.get(videoId) || [];
-    events.push(event);
+    events.push(fullEvent);
     eventQueue.set(videoId, events);
+
+    // Update session with the new event
+    const session = activeSessions.get(sessionId);
+    if (session) {
+      session.events.push(fullEvent);
+      await VideoDataService.persistSessionToStorage(session);
+    }
+
+    // Persist to AsyncStorage
+    await VideoDataService.persistEventToStorage(videoId, fullEvent);
+
+    // Track specific event types
+    switch (event.type) {
+      case 'play':
+      case 'resume':
+        VideoDataService.startWatchTimeTracking(videoId);
+        break;
+      case 'pause':
+      case 'complete':
+      case 'session_end':
+        const delta = VideoDataService.stopWatchTimeTracking(videoId);
+        // Update session watch time
+        if (session) {
+          session.watchTime += delta;
+          await VideoDataService.persistSessionToStorage(session);
+        }
+        break;
+      case 'buffer_start':
+        VideoDataService.trackBufferingStart(videoId);
+        break;
+      case 'buffer_end':
+        VideoDataService.trackBufferingEnd(videoId);
+        break;
+    }
 
     // Process events if queue is getting large
     if (events.length >= 10) {
-      VideoDataService.processEventQueue(videoId);
+      await VideoDataService.processEventQueue(videoId);
+    }
+
+    // Schedule batch upload if not already scheduled
+    if (!batchUploadTimer) {
+      batchUploadTimer = setTimeout(() => {
+        VideoDataService.batchUploadEvents();
+      }, BATCH_UPLOAD_INTERVAL);
     }
   }
 
   /**
-   * Process queued events for a video.
+   * Process queued events for a video with offline support.
    */
   static async processEventQueue(videoId: string): Promise<void> {
     const events = eventQueue.get(videoId);
@@ -368,13 +615,43 @@ export class VideoDataService {
     eventQueue.delete(videoId);
 
     try {
-      // In a real implementation, this would send to an analytics service
-      // For now, we'll just log the events
-      if (__DEV__) {
-        console.log(`Processing ${events.length} events for video ${videoId}`);
+      // Check consent before processing
+      if (!consentStore.preferences.analytics) {
+        return;
       }
+
+      // Calculate aggregated metrics
+      const session = activeSessions.get(events[0]?.sessionId);
+      if (session) {
+        const metrics = VideoDataService.calculateSessionMetrics(session);
+
+        // Update analytics cache
+        VideoDataService.updateAnalyticsCache(videoId, {
+          sessionId: session.sessionId,
+          watchTime: metrics.watchTime,
+          completionRate: metrics.completionRate,
+          engagementScore: metrics.engagementScore,
+          bufferingEvents: metrics.bufferingEvents,
+          seekCount: metrics.seekCount,
+          averageViewDuration: metrics.averageViewDuration,
+          sessionStartTime: session.startTime,
+          sessionEndTime: session.endTime,
+          lastWatchedPosition: metrics.lastPosition,
+        });
+      }
+
+      // Queue for upload via offline queue
+      await offlineQueue.enqueue('video.analytics.batch', {
+        videoId,
+        events,
+        sessionId: events[0]?.sessionId,
+        timestamp: Date.now(),
+      });
     } catch (error) {
       console.error("Failed to process video events", error);
+      // Re-add events to queue for retry
+      const existingEvents = eventQueue.get(videoId) || [];
+      eventQueue.set(videoId, [...events, ...existingEvents]);
     }
   }
 
@@ -395,23 +672,35 @@ export class VideoDataService {
   }
 
   /**
-   * Update analytics cache.
+   * Update analytics cache with comprehensive metrics.
    */
   static updateAnalyticsCache(videoId: string, analytics: Partial<VideoAnalytics>): void {
     const existing = VideoDataService.getCachedAnalytics(videoId);
     const updated: VideoAnalytics = {
       videoId,
+      sessionId: analytics.sessionId ?? existing?.sessionId ?? generateUniqueId(),
       watchTime: analytics.watchTime ?? existing?.watchTime ?? 0,
       completionRate: analytics.completionRate ?? existing?.completionRate ?? 0,
+      engagementScore: analytics.engagementScore ?? existing?.engagementScore ?? 0,
       interactions: {
         likes: analytics.interactions?.likes ?? existing?.interactions?.likes ?? 0,
         comments: analytics.interactions?.comments ?? existing?.interactions?.comments ?? 0,
         shares: analytics.interactions?.shares ?? existing?.interactions?.shares ?? 0,
         saves: analytics.interactions?.saves ?? existing?.interactions?.saves ?? 0,
       },
+      qualityStats: analytics.qualityStats ?? existing?.qualityStats,
+      bufferingEvents: analytics.bufferingEvents ?? existing?.bufferingEvents ?? 0,
+      seekCount: analytics.seekCount ?? existing?.seekCount ?? 0,
+      averageViewDuration: analytics.averageViewDuration ?? existing?.averageViewDuration ?? 0,
+      sessionStartTime: analytics.sessionStartTime ?? existing?.sessionStartTime ?? Date.now(),
+      sessionEndTime: analytics.sessionEndTime ?? existing?.sessionEndTime,
+      lastWatchedPosition: analytics.lastWatchedPosition ?? existing?.lastWatchedPosition ?? 0,
     };
 
     analyticsCache.set(videoId, { data: updated, timestamp: Date.now() });
+
+    // Persist to AsyncStorage for offline support
+    VideoDataService.persistAnalyticsToStorage(videoId, updated);
   }
 
   /**
@@ -458,21 +747,44 @@ export class VideoDataService {
   }
 
   /**
-   * Track video completion event.
+   * Track video completion event with configurable threshold.
    */
-  static trackVideoCompletion(videoId: string, watchTime: number, duration: number): void {
-    const completionRate = duration > 0 ? (watchTime / duration) * 100 : 0;
+  static async trackVideoCompletion(videoId: string, watchTime: number, duration: number): Promise<void> {
+    const completionRate = duration > 0 ? watchTime / duration : 0;
+    const isCompleted = completionRate >= COMPLETION_THRESHOLD;
 
-    VideoDataService.trackVideoEvent(videoId, {
-      type: 'complete',
+    await VideoDataService.trackVideoEvent(videoId, {
+      type: isCompleted ? 'complete' : 'pause',
       timestamp: Date.now(),
-      metadata: { watchTime, duration, completionRate },
+      metadata: {
+        watchTime,
+        duration,
+        completionRate: completionRate * 100,
+        threshold: COMPLETION_THRESHOLD * 100,
+        isCompleted,
+      },
+    });
+
+    // Calculate engagement score
+    const engagementScore = VideoDataService.calculateEngagementScore({
+      completionRate,
+      watchTime,
+      interactions: VideoDataService.getCachedAnalytics(videoId)?.interactions,
     });
 
     VideoDataService.updateAnalyticsCache(videoId, {
       watchTime,
-      completionRate,
+      completionRate: completionRate * 100,
+      engagementScore,
     });
+
+    // End session if completed
+    if (isCompleted) {
+      const sessionId = VideoDataService.getCurrentSessionId(videoId);
+      if (sessionId) {
+        VideoDataService.endSession(sessionId);
+      }
+    }
   }
 
   /**
@@ -485,4 +797,534 @@ export class VideoDataService {
     }
     await Promise.all(promises);
   }
+
+  /**
+   * Intelligent preloading based on device capabilities and network conditions.
+   */
+  static async intelligentPreload(confessions: Confession[]): Promise<void> {
+    try {
+      const preloadProfile = videoPerformanceConfig.getPreloadProfile();
+      const videoUris = confessions
+        .slice(0, preloadProfile.preloadWindowSize)
+        .map(c => (c as any).videoUri)
+        .filter(Boolean);
+
+      if (videoUris.length > 0) {
+        // Use device-aware preloading from cache manager
+        await videoCacheManager.preloadVideos(videoUris, 'normal');
+      }
+    } catch (error) {
+      console.error('Intelligent preload failed:', error);
+    }
+  }
+
+  /**
+   * Aggressive preloading for high-tier devices.
+   */
+  static async aggressivePreload(confessions: Confession[]): Promise<void> {
+    if (!videoPerformanceConfig.shouldEnableFeature('aggressivePreloading')) {
+      return VideoDataService.intelligentPreload(confessions);
+    }
+
+    try {
+      const videoUris = confessions
+        .slice(0, 15) // Preload more videos for high-tier devices
+        .map(c => (c as any).videoUri)
+        .filter(Boolean);
+
+      if (videoUris.length > 0) {
+        await videoCacheManager.preloadVideos(videoUris, 'high');
+      }
+    } catch (error) {
+      console.error('Aggressive preload failed:', error);
+    }
+  }
+
+  /**
+   * Optimize quality selection in background for cached videos.
+   */
+  static async optimizeQualityInBackground(confessions: Confession[]): Promise<void> {
+    try {
+      const { videoBackgroundQueue, JobType, JobPriority } = await import('./VideoBackgroundQueue');
+
+      const videoUris = confessions
+        .slice(0, 5)
+        .map(c => (c as any).videoUri)
+        .filter(Boolean);
+
+      // Enqueue quality optimization job
+      await videoBackgroundQueue.enqueueJob(
+        JobType.QUALITY_VARIANT_GENERATION,
+        {
+          videoUris,
+          batchOptimization: true
+        },
+        JobPriority.LOW,
+        {
+          onComplete: async (result) => {
+            if (result.success) {
+              // Batch select qualities
+              await videoQualitySelector.selectBatchVideoQualities(videoUris);
+            }
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Failed to enqueue background quality optimization:', error);
+    }
+  }
+
+  /**
+   * Check if quality upgrade is available for current network conditions.
+   */
+  static async checkQualityUpgrade(videoUri: string): Promise<boolean> {
+    try {
+      return await videoQualitySelector.canUpgradeQuality(videoUri);
+    } catch (error) {
+      console.error('Quality upgrade check failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get performance-optimized batch size for operations.
+   */
+  static async getOptimizedBatchSize(): Promise<number> {
+    const deviceTier = await getDeviceTier();
+    const batchSizes = {
+      [DevicePerformanceTier.HIGH]: 20,
+      [DevicePerformanceTier.MID]: 10,
+      [DevicePerformanceTier.LOW]: 5,
+    };
+    return batchSizes[deviceTier];
+  }
+
+  /**
+   * Generate or retrieve session ID for a video.
+   */
+  static getOrCreateSession(videoId: string): string {
+    // Check if active session exists
+    for (const [sessionId, session] of activeSessions.entries()) {
+      if (session.videoId === videoId && session.isActive) {
+        return sessionId;
+      }
+    }
+
+    // Create new session
+    const sessionId = generateUniqueId();
+    const session: VideoSession = {
+      sessionId,
+      videoId,
+      startTime: Date.now(),
+      watchTime: 0,
+      events: [],
+      isActive: true,
+    };
+    activeSessions.set(sessionId, session);
+
+    // Persist session
+    VideoDataService.persistSessionToStorage(session);
+
+    return sessionId;
+  }
+
+  /**
+   * Get current session ID for a video.
+   */
+  static getCurrentSessionId(videoId: string): string | null {
+    for (const [sessionId, session] of activeSessions.entries()) {
+      if (session.videoId === videoId && session.isActive) {
+        return sessionId;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * End a video session.
+   */
+  static endSession(sessionId: string): void {
+    const session = activeSessions.get(sessionId);
+    if (session) {
+      session.isActive = false;
+      session.endTime = Date.now();
+      VideoDataService.persistSessionToStorage(session);
+    }
+  }
+
+  /**
+   * Start watch time tracking.
+   */
+  static startWatchTimeTracking(videoId: string): void {
+    const tracker = watchTimeTrackers.get(videoId) || { startTime: Date.now(), totalTime: 0 };
+    tracker.startTime = Date.now();
+    watchTimeTrackers.set(videoId, tracker);
+  }
+
+  /**
+   * Stop watch time tracking.
+   */
+  static stopWatchTimeTracking(videoId: string): number {
+    const tracker = watchTimeTrackers.get(videoId);
+    if (tracker && tracker.startTime > 0) {
+      const elapsed = (Date.now() - tracker.startTime) / 1000; // Convert to seconds
+      tracker.totalTime += elapsed;
+      tracker.startTime = 0;
+      watchTimeTrackers.set(videoId, tracker);
+      return tracker.totalTime;
+    }
+    return 0;
+  }
+
+  /**
+   * Track buffering start.
+   */
+  private static bufferingStartTimes = new Map<string, number>();
+
+  static trackBufferingStart(videoId: string): void {
+    VideoDataService.bufferingStartTimes.set(videoId, Date.now());
+  }
+
+  /**
+   * Track buffering end.
+   */
+  static trackBufferingEnd(videoId: string): void {
+    const startTime = VideoDataService.bufferingStartTimes.get(videoId);
+    if (startTime) {
+      const bufferTime = Date.now() - startTime;
+      VideoDataService.bufferingStartTimes.delete(videoId);
+
+      const analytics = VideoDataService.getCachedAnalytics(videoId);
+      if (analytics) {
+        const currentBufferTime = analytics.qualityStats?.bufferingTime || 0;
+        VideoDataService.updateAnalyticsCache(videoId, {
+          qualityStats: {
+            ...analytics.qualityStats,
+            bufferingTime: currentBufferTime + bufferTime,
+          } as any,
+          bufferingEvents: (analytics.bufferingEvents || 0) + 1,
+        });
+      }
+    }
+  }
+
+  /**
+   * Calculate engagement score based on multiple factors.
+   */
+  static calculateEngagementScore(metrics: {
+    completionRate: number;
+    watchTime: number;
+    interactions?: VideoAnalytics['interactions'];
+  }): number {
+    const completionWeight = 0.4;
+    const watchTimeWeight = 0.3;
+    const interactionWeight = 0.3;
+
+    const completionScore = Math.min(metrics.completionRate, 1) * 100;
+    const watchTimeScore = Math.min(metrics.watchTime / 300, 1) * 100; // Normalize to 5 minutes
+    const interactionScore = Math.min(
+      ((metrics.interactions?.likes || 0) * 10 +
+       (metrics.interactions?.comments || 0) * 20 +
+       (metrics.interactions?.shares || 0) * 30 +
+       (metrics.interactions?.saves || 0) * 15) / 100,
+      100
+    );
+
+    return Math.round(
+      completionScore * completionWeight +
+      watchTimeScore * watchTimeWeight +
+      interactionScore * interactionWeight
+    );
+  }
+
+  /**
+   * Calculate session metrics.
+   */
+  static calculateSessionMetrics(session: VideoSession): {
+    watchTime: number;
+    completionRate: number;
+    engagementScore: number;
+    bufferingEvents: number;
+    seekCount: number;
+    averageViewDuration: number;
+    lastPosition: number;
+  } {
+    const seekEvents = session.events.filter(e => e.type === 'seek').length;
+    const bufferEvents = session.events.filter(e => e.type === 'buffer_start').length;
+    const playEvents = session.events.filter(e => e.type === 'play' || e.type === 'resume');
+
+    const watchTime = session.watchTime || 0;
+    const duration = session.events.find(e => e.metadata?.duration)?.metadata?.duration || 0;
+    const completionRate = duration > 0 ? (watchTime / duration) * 100 : 0;
+
+    const lastPositionEvent = [...session.events].reverse().find(e => e.metadata?.position !== undefined);
+    const lastPosition = lastPositionEvent?.metadata?.position || 0;
+
+    const engagementScore = VideoDataService.calculateEngagementScore({
+      completionRate: completionRate / 100,
+      watchTime,
+    });
+
+    return {
+      watchTime,
+      completionRate,
+      engagementScore,
+      bufferingEvents: bufferEvents,
+      seekCount: seekEvents,
+      averageViewDuration: playEvents.length > 0 ? watchTime / playEvents.length : 0,
+      lastPosition,
+    };
+  }
+
+  /**
+   * Persist event to AsyncStorage.
+   */
+  static async persistEventToStorage(videoId: string, event: VideoEvent): Promise<void> {
+    try {
+      const key = `${EVENT_QUEUE_KEY}_${videoId}`;
+      const stored = await AsyncStorage.getItem(key);
+      const events = stored ? JSON.parse(stored) : [];
+      events.push(event);
+
+      // Limit stored events to prevent storage bloat
+      if (events.length > 100) {
+        events.splice(0, events.length - 100);
+      }
+
+      await AsyncStorage.setItem(key, JSON.stringify(events));
+    } catch (error) {
+      console.error('Failed to persist event to storage:', error);
+    }
+  }
+
+  /**
+   * Persist session to AsyncStorage.
+   */
+  static async persistSessionToStorage(session: VideoSession): Promise<void> {
+    try {
+      const stored = await AsyncStorage.getItem(SESSIONS_KEY);
+      const sessions = stored ? JSON.parse(stored) : {};
+      sessions[session.sessionId] = session;
+
+      // Clean up old sessions (keep last 50)
+      const sessionKeys = Object.keys(sessions);
+      if (sessionKeys.length > 50) {
+        const sortedKeys = sessionKeys.sort((a, b) =>
+          (sessions[b].startTime || 0) - (sessions[a].startTime || 0)
+        );
+        sortedKeys.slice(50).forEach(key => delete sessions[key]);
+      }
+
+      await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+    } catch (error) {
+      console.error('Failed to persist session to storage:', error);
+    }
+  }
+
+  /**
+   * Persist analytics to AsyncStorage.
+   */
+  static async persistAnalyticsToStorage(videoId: string, analytics: VideoAnalytics): Promise<void> {
+    try {
+      const key = `${ANALYTICS_CACHE_PREFIX}_${videoId}`;
+      await AsyncStorage.setItem(key, JSON.stringify(analytics));
+    } catch (error) {
+      console.error('Failed to persist analytics to storage:', error);
+    }
+  }
+
+  /**
+   * Load persisted events from storage.
+   */
+  static async loadPersistedEvents(): Promise<void> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const eventKeys = keys.filter(k => k.startsWith(EVENT_QUEUE_KEY));
+
+      for (const key of eventKeys) {
+        const videoId = key.replace(`${EVENT_QUEUE_KEY}_`, '');
+        const stored = await AsyncStorage.getItem(key);
+        if (stored) {
+          const events = JSON.parse(stored);
+          eventQueue.set(videoId, events);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load persisted events:', error);
+    }
+  }
+
+  /**
+   * Clear persisted events for specific video IDs.
+   */
+  static async clearPersistedEvents(videoIds: string[]): Promise<void> {
+    try {
+      const keys = videoIds.map(id => `${EVENT_QUEUE_KEY}_${id}`);
+      await AsyncStorage.multiRemove(keys);
+
+      // Also clear from in-memory queue
+      videoIds.forEach(id => eventQueue.delete(id));
+    } catch (error) {
+      console.error('Failed to clear persisted events:', error);
+    }
+  }
+
+  /**
+   * Batch upload analytics events.
+   */
+  static async batchUploadEvents(): Promise<void> {
+    batchUploadTimer = null;
+
+    if (!consentStore.preferences.analytics) {
+      return;
+    }
+
+    const allEvents: { videoId: string; events: VideoEvent[] }[] = [];
+
+    for (const [videoId, events] of eventQueue.entries()) {
+      if (events.length > 0) {
+        allEvents.push({ videoId, events: [...events] });
+        eventQueue.delete(videoId);
+      }
+    }
+
+    if (allEvents.length === 0) return;
+
+    try {
+      // Batch events by session
+      const sessionBatches = new Map<string, VideoEvent[]>();
+      allEvents.forEach(({ events }) => {
+        events.forEach(event => {
+          const batch = sessionBatches.get(event.sessionId) || [];
+          batch.push(event);
+          sessionBatches.set(event.sessionId, batch);
+        });
+      });
+
+      // Upload each session batch
+      for (const [sessionId, events] of sessionBatches.entries()) {
+        await offlineQueue.enqueue('video.analytics.batch', {
+          sessionId,
+          events: events.slice(0, BATCH_SIZE),
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to batch upload events:', error);
+      // Re-add events to queue
+      allEvents.forEach(({ videoId, events }) => {
+        const existing = eventQueue.get(videoId) || [];
+        eventQueue.set(videoId, [...existing, ...events]);
+      });
+    }
+  }
+
+  /**
+   * Get video engagement summary for dashboard.
+   */
+  static async getVideoEngagementSummary(period: 'day' | 'week' | 'month' = 'week'): Promise<VideoEngagementSummary | null> {
+    try {
+      const { data, error } = await supabase.rpc('get_video_engagement_summary', {
+        period,
+      });
+
+      if (error) throw error;
+
+      return data as VideoEngagementSummary;
+    } catch (error) {
+      console.error('Failed to fetch video engagement summary:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get watch time analytics.
+   */
+  static async getWatchTimeAnalytics(videoId?: string): Promise<{
+    totalWatchTime: number;
+    averageWatchTime: number;
+    sessions: number;
+  } | null> {
+    try {
+      const { data, error } = await supabase.rpc('get_watch_time_analytics', {
+        video_id: videoId,
+      });
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error('Failed to fetch watch time analytics:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get completion rate statistics.
+   */
+  static async getCompletionRateStats(): Promise<{
+    averageCompletionRate: number;
+    completedVideos: number;
+    totalVideos: number;
+  } | null> {
+    try {
+      const { data, error } = await supabase.rpc('get_completion_rate_stats');
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error('Failed to fetch completion rate stats:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Initialize app state monitoring.
+   */
+  static initializeAppStateMonitoring(): void {
+    AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (appState === 'active' && nextAppState.match(/inactive|background/)) {
+        // App going to background - pause all tracking
+        for (const videoId of watchTimeTrackers.keys()) {
+          VideoDataService.stopWatchTimeTracking(videoId);
+        }
+        // Flush events
+        VideoDataService.batchUploadEvents();
+      } else if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        // App coming to foreground - load persisted events
+        VideoDataService.loadPersistedEvents();
+      }
+      appState = nextAppState;
+    });
+  }
+
+  /**
+   * Clean up resources on unmount.
+   */
+  static cleanup(): void {
+    // Clear quality selection cache
+    qualitySelectionCache.clear();
+
+    // Stop batch upload timer
+    if (batchUploadTimer) {
+      clearTimeout(batchUploadTimer);
+      batchUploadTimer = null;
+    }
+
+    // End all active sessions
+    for (const [sessionId, session] of activeSessions.entries()) {
+      if (session.isActive) {
+        VideoDataService.endSession(sessionId);
+      }
+    }
+
+    // Flush any pending events
+    VideoDataService.flushAllEvents();
+  }
 }
+
+// Initialize app state monitoring on module load
+VideoDataService.initializeAppStateMonitoring();
+// Load persisted events on startup
+VideoDataService.loadPersistedEvents();

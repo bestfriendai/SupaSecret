@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect, memo } from "react";
-import { View, Dimensions, StatusBar, NativeSyntheticEvent, NativeScrollEvent, Text } from "react-native";
+import { View, Dimensions, StatusBar, NativeSyntheticEvent, NativeScrollEvent, Text, RefreshControl, Pressable } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, FadeIn, FadeOut } from "react-native-reanimated";
 import type { Confession } from "../types/confession";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
@@ -12,6 +13,13 @@ import EnhancedVideoItem from "./EnhancedVideoItem";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
 import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
 import ReportModal from "./ReportModal";
+import VideoFeedSkeleton from "./VideoFeedSkeleton";
+import NetworkStatusIndicator from "./NetworkStatusIndicator";
+import { ErrorState } from "./ErrorState";
+import { LoadingTransitions } from "../utils/loadingTransitions";
+import { VideoErrorMessages, UserFriendlyError } from "../utils/videoErrorMessages";
+import { VideoError, VideoErrorType } from "../types/videoErrors";
+import * as Haptics from "expo-haptics";
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
 
@@ -95,25 +103,65 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   const [currentVideoText, setCurrentVideoText] = useState<string>("");
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [userFriendlyError, setUserFriendlyError] = useState<UserFriendlyError | null>(null);
+  const [retryAttempts, setRetryAttempts] = useState(0);
 
-  // Load confessions when component mounts
+  // Animated values for loading transitions
+  const scrollOffset = useSharedValue(0);
+  const loadingOpacity = useSharedValue(1);
+  const errorOpacity = useSharedValue(0);
+
+  // Load confessions with enhanced error handling
   useEffect(() => {
     const loadData = async () => {
       try {
         if (__DEV__) {
           console.log("OptimizedVideoList: Loading confessions...");
         }
+        // Trigger loading animation
+        LoadingTransitions.fadeIn(loadingOpacity);
+
         // Always try to load fresh data when the video tab is accessed
         await loadConfessions();
+
+        // Success animation
+        LoadingTransitions.fadeOut(loadingOpacity, {}, () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        });
+
         if (__DEV__) {
           console.log(
             `OptimizedVideoList: Loaded ${confessions.length} total confessions, ${videoConfessions.length} video confessions`,
           );
         }
-      } catch (error) {
+      } catch (error: any) {
         if (__DEV__) {
           console.error("OptimizedVideoList: Failed to load confessions:", error);
         }
+
+        // Create user-friendly error
+        const videoError: VideoError = {
+          type: VideoErrorType.NETWORK,
+          code: error.code || "LOAD_ERROR",
+          message: error.message || "Failed to load videos",
+          timestamp: Date.now(),
+          debugInfo: error.stack
+        };
+
+        const attemptNum = retryAttempts + 1;
+        setRetryAttempts(attemptNum);
+        const friendlyError = VideoErrorMessages.getUserFriendlyError(
+          videoError,
+          attemptNum
+        );
+
+        setUserFriendlyError(friendlyError);
+        setError(friendlyError.message);
+        LoadingTransitions.createErrorShake(errorOpacity);
+
         onError?.(error);
       }
     };
@@ -372,23 +420,58 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
     return () => clearInterval(interval);
   }, []);
 
-  // Show loading state if data is loading
+  // Show enhanced loading state
   if (isLoading && videoConfessions.length === 0) {
     return (
-      <View style={{ flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" }}>
-        <StatusBar hidden />
-        <View style={{ alignItems: "center" }}>
-          <View style={{ marginBottom: 16 }}>
-            <Ionicons name="videocam-outline" size={48} color="#666" />
-          </View>
-          <Text style={{ color: "#999", fontSize: 16 }}>Loading videos...</Text>
-        </View>
-      </View>
+      <>
+        <VideoFeedSkeleton
+          isVisible={true}
+          state="initial"
+          itemCount={3}
+          animationTiming={{ fade: 400, stagger: 120 }}
+        />
+        <NetworkStatusIndicator
+          position="top"
+          minimalMode={false}
+          autoHideDelay={5000}
+        />
+      </>
     );
   }
 
-  // Show empty state if no videos
+  // Show enhanced empty/error state
   if (!isLoading && videoConfessions.length === 0) {
+    if (error && userFriendlyError) {
+      return (
+        <>
+          <VideoFeedSkeleton
+            isVisible={true}
+            state="initial"
+            showErrorIndicator={true}
+          />
+          <ErrorState
+            type="video"
+            title={userFriendlyError.title}
+            message={userFriendlyError.message}
+            actionLabel={userFriendlyError.actionText}
+            onRetry={async () => {
+              setError(null);
+              setUserFriendlyError(null);
+              setRetryAttempts(0);
+              await loadConfessions();
+            }}
+          />
+          <NetworkStatusIndicator
+            position="top"
+            persistentMode={true}
+            onRetry={async () => {
+              await loadConfessions();
+            }}
+          />
+        </>
+      );
+    }
+
     return (
       <View style={{ flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" }}>
         <StatusBar hidden />
@@ -418,7 +501,10 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           snapToAlignment="start"
           decelerationRate="fast"
           extraData={{ currentIndex, isFocused, isScrolling }}
-          onScroll={handleScroll}
+          onScroll={(e) => {
+            handleScroll(e);
+            scrollOffset.value = e.nativeEvent.contentOffset.y;
+          }}
           onScrollBeginDrag={handleScrollBeginDrag}
           onScrollEndDrag={handleScrollEndDrag}
           showsVerticalScrollIndicator={false}
@@ -428,11 +514,51 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
             layout.span = 1;
           }}
           contentContainerStyle={{ backgroundColor: "black" }}
-          bounces={false}
+          bounces={true}
           scrollEventThrottle={16}
           disableIntervalMomentum={true}
           snapToEnd={false}
-          // FlashList v2 performance props
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={async () => {
+                setIsRefreshing(true);
+                setError(null);
+                setUserFriendlyError(null);
+                setRetryAttempts(0);
+                await loadConfessions();
+                setIsRefreshing(false);
+              }}
+              tintColor="#fff"
+              colors={["#fff"]}
+            />
+          }
+        />
+
+        {/* Loading overlay for refresh */}
+        {isRefreshing && (
+          <VideoFeedSkeleton
+            isVisible={true}
+            state="pullToRefresh"
+            itemCount={1}
+          />
+        )}
+
+        {/* Loading overlay for load more */}
+        {isLoadingMore && (
+          <VideoFeedSkeleton
+            isVisible={true}
+            state="loadMore"
+            itemCount={1}
+          />
+        )}
+
+        {/* Network status indicator */}
+        <NetworkStatusIndicator
+          position="top"
+          minimalMode={true}
+          autoHideDelay={3000}
+          scrollOffset={scrollOffset}
         />
       </View>
 

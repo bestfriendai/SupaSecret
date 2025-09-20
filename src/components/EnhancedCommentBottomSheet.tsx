@@ -644,7 +644,7 @@ const EnhancedCommentBottomSheet = React.memo(
         unsubscribeFromReplies();
         unsubscribeFromTypingIndicators();
       };
-    }, [confessionId, loadRepliesStable, subscribeToReplies, unsubscribeFromReplies, subscribeToTypingIndicators, unsubscribeFromTypingIndicators]);
+    }, [confessionId, loadRepliesStable]); // Only depend on confessionId and the memoized loadRepliesStable
 
     const handleSendComment = useCallback(async () => {
       if (!comment.trim()) return;
