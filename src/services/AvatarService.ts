@@ -40,14 +40,21 @@ export class AvatarService {
       onProgress?.(10);
 
       // Validate file size
-      const fileInfo = await FileSystem.getInfoAsync(imageUri);
-      if (!fileInfo.exists) {
-        throw new Error("Image file not found");
-      }
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(imageUri);
+        if (!fileInfo.exists) {
+          throw new Error("Image file not found");
+        }
 
-      const fileSizeMB = (fileInfo.size || 0) / (1024 * 1024);
-      if (fileSizeMB > MAX_FILE_SIZE_MB) {
-        throw new Error(`Image file too large. Maximum size is ${MAX_FILE_SIZE_MB}MB`);
+        const fileSizeMB = (fileInfo.size || 0) / (1024 * 1024);
+        if (fileSizeMB > MAX_FILE_SIZE_MB) {
+          throw new Error(`Image file is too large (${fileSizeMB.toFixed(1)}MB). Maximum size is ${MAX_FILE_SIZE_MB}MB.`);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("too large")) {
+          throw error;
+        }
+        throw new Error("Image file not found");
       }
 
       onProgress?.(20);
