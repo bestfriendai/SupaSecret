@@ -43,6 +43,10 @@ function VideoRecordScreen() {
   const [recordedVideoUri, setRecordedVideoUri] = useState<string | null>(null);
   const [isProcessingStarted, setIsProcessingStarted] = useState(false);
 
+  const handleRecorderError = useCallback((message: string) => {
+    setUiError(message);
+  }, []);
+
   const handleRecordingStart = useCallback(async () => {
     setUiError(null);
     if (hapticsEnabled) {
@@ -50,57 +54,12 @@ function VideoRecordScreen() {
     }
   }, [hapticsEnabled, notificationAsync]);
 
-  const handleRecorderError = useCallback((message: string) => {
-    setUiError(message);
-  }, []);
-
   const handleRecordingStop = useCallback((videoUri: string) => {
     console.log("Recording stopped, video saved to:", videoUri);
     setRecordedVideoUri(videoUri);
     setShowNextButton(true);
     // Don't start processing automatically - wait for user to click Next
   }, []);
-
-  const handleNextPress = useCallback(async () => {
-    if (!recordedVideoUri) {
-      setUiError("No video recorded. Please record a video first.");
-      return;
-    }
-
-    setShowNextButton(false);
-    setUiError(null);
-    setIsProcessingStarted(true);
-
-    try {
-      if (hapticsEnabled) {
-        await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-
-      // Start processing the recorded video
-      console.log("🎬 Starting video processing for:", recordedVideoUri);
-      await startProcessing();
-    } catch (error) {
-      console.error("❌ Failed to start processing:", error);
-      const message = error instanceof Error ? error.message : "Failed to start processing. Please try again.";
-      setUiError(message);
-      setShowNextButton(true); // Show the button again on error
-      setIsProcessingStarted(false);
-
-      // Show user-friendly error alert
-      Alert.alert(
-        "Processing Failed",
-        message,
-        [
-          {
-            text: "Try Again",
-            onPress: () => {
-              setUiError(null);
-            },
-          },
-        ]
-      );
-    }
-  }, [recordedVideoUri, hapticsEnabled, impactAsync, startProcessing]);
 
   const handleProcessingComplete = useCallback(
     async (processed: ProcessedVideo) => {
@@ -123,9 +82,9 @@ function VideoRecordScreen() {
 
         // Navigate to preview screen
         console.log("🚀 Attempting navigation to VideoPreview...");
-        navigation.navigate("VideoPreview" as never, {
+        navigation.navigate("VideoPreview", {
           processedVideo: processed,
-        } as never);
+        });
         console.log("✅ Navigation call completed");
       } catch (error) {
         console.error("❌ Failed to navigate to preview:", error);
@@ -193,6 +152,55 @@ function VideoRecordScreen() {
   useEffect(() => {
     resetRef.current = controls.reset;
   }, [controls.reset]);
+
+  const handleNextPress = useCallback(async () => {
+    if (!recordedVideoUri) {
+      setUiError("No video recorded. Please record a video first.");
+      return;
+    }
+
+    setShowNextButton(false);
+    setUiError(null);
+    setIsProcessingStarted(true);
+
+    try {
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      // Start processing the recorded video
+      console.log("🎬 Starting video processing for:", recordedVideoUri);
+      await startProcessing();
+    } catch (error) {
+      console.error("❌ Failed to start processing:", error);
+      const message = error instanceof Error ? error.message : "Failed to start processing. Please try again.";
+      setUiError(message);
+      setShowNextButton(true); // Show the button again on error
+      setIsProcessingStarted(false);
+
+      // Show user-friendly error alert
+      Alert.alert(
+        "Processing Failed",
+        message,
+        [
+          {
+            text: "Try Again",
+            onPress: () => {
+              setUiError(null);
+            },
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => {
+              setUiError(null);
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [recordedVideoUri, hapticsEnabled, impactAsync, startProcessing]);
 
   useEffect(() => {
     if (recorderError) {

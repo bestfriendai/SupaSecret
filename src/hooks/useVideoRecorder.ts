@@ -7,6 +7,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Platform } from "react-native";
 import { CameraView, CameraType } from "expo-camera";
+import { VideoRecording } from "expo-camera/build/Camera.types";
 import * as Audio from "expo-audio";
 import { env } from "../utils/env";
 import { useMediaPermissions } from "./useMediaPermissions";
@@ -78,23 +79,24 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
 
   // Refs
   const cameraRef = useRef<CameraView>(null);
-  const recordingRef = useRef<any>(null);
+  const recordingPromiseRef = useRef<Promise<VideoRecording> | null>(null);
+  const recordingRef = useRef<VideoRecording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRecorderRef = useRef<any | null>(null);
   const speechRecognitionRef = useRef<any>(null);
   const isRecordingRef = useRef<boolean>(false);
-  const stopRecordingRef = useRef<(() => Promise<void>) | null>(null);
 
   // State
   const [facing, setFacing] = useState<CameraType>("front");
   const [recordingTime, setRecordingTime] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   // Keep ref in sync with state
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
-  const [isPaused, setIsPaused] = useState(false);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState("");
@@ -108,6 +110,10 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   const { permissionState, requestVideoPermissions, hasVideoPermissions } = useMediaPermissions({
     autoRequest: false,
     showAlerts: true,
+  });
+
+  import("expo-camera").then(({ VideoRecording }) => {
+    // Type for VideoRecording will be available
   });
 
   // Initialize audio session for real-time effects

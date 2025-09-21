@@ -32,10 +32,12 @@ import { useGlobalVideoStore } from "../state/globalVideoStore";
 import AppHeader from "../components/AppHeader";
 import { linking } from "./linking";
 
+import { ProcessedVideo } from "../services/IAnonymiser";
+
 export type RootStackParamList = {
   MainTabs: undefined;
   VideoRecord: undefined;
-  VideoPreview: { processedVideo: any };
+  VideoPreview: { processedVideo: ProcessedVideo };
   SecretDetail: { confessionId: string };
   VideoPlayer: { confessionId: string };
   Saved: undefined;
