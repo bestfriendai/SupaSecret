@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, Pressable, Text, View, ActivityIndicator } from "react-native";
-import { VideoView, type VideoPlayer } from "expo-video";
+import { VideoView, type VideoPlayer, type VideoPlayerStatus } from "expo-video";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -63,7 +63,7 @@ export default function UnifiedVideoItem({
   onSingleTap,
   onDoubleTap,
   networkStatus = true,
-  variant = 'tiktok',
+  variant = "tiktok",
 }: VideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
 
@@ -83,6 +83,43 @@ export default function UnifiedVideoItem({
   const tapScale = useSharedValue(1);
   const muteButtonScale = useSharedValue(1);
   const closeButtonScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (!videoPlayer) {
+      return undefined;
+    }
+
+    const applyStatus = (status: VideoPlayerStatus, error?: { message?: string }) => {
+      if (status === "readyToPlay") {
+        setIsLoading(false);
+        setVideoError(false);
+      } else if (status === "loading" || status === "idle") {
+        setIsLoading(true);
+      } else if (status === "error") {
+        setIsLoading(false);
+        setVideoError(true);
+        if (__DEV__ && error?.message) {
+          console.warn("UnifiedVideoItem: Video status error", error.message);
+        }
+      }
+    };
+
+    applyStatus(videoPlayer.status as VideoPlayerStatus);
+
+    const statusSubscription = videoPlayer.addListener("statusChange", ({ status, error }: any) => {
+      applyStatus(status as VideoPlayerStatus, error);
+    });
+
+    const sourceSubscription = videoPlayer.addListener("sourceChange", () => {
+      setIsLoading(true);
+      setVideoError(false);
+    });
+
+    return () => {
+      statusSubscription.remove();
+      sourceSubscription.remove();
+    };
+  }, [videoPlayer]);
 
   const description = useMemo(() => {
     return (confession.transcription && confession.transcription.trim()) || confession.content;
@@ -120,6 +157,7 @@ export default function UnifiedVideoItem({
       }, 500);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [isActive, videoPlayer]);
 
   // Cleanup tap timeout on unmount
@@ -133,13 +171,10 @@ export default function UnifiedVideoItem({
   }, []);
 
   const triggerHeartAnimation = useCallback(() => {
-    heartOpacity.value = withSequence(
-      withTiming(1, { duration: 100 }),
-      withTiming(0, { duration: 500 })
-    );
+    heartOpacity.value = withSequence(withTiming(1, { duration: 100 }), withTiming(0, { duration: 500 }));
     heartScale.value = withSequence(
       withSpring(1.6, { damping: 10, stiffness: 200 }),
-      withTiming(0.8, { duration: 300 })
+      withTiming(0.8, { duration: 300 }),
     );
   }, [heartOpacity, heartScale]);
 
@@ -158,9 +193,9 @@ export default function UnifiedVideoItem({
 
     try {
       triggerHeartAnimation();
-      Haptics.impactAsync(
-        nextLiked ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light
-      ).catch(() => undefined);
+      Haptics.impactAsync(nextLiked ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light).catch(
+        () => undefined,
+      );
 
       if (networkStatus) {
         await toggleLike(confession.id);
@@ -184,18 +219,21 @@ export default function UnifiedVideoItem({
     }
   }, [confession.id, isLiked, toggleLike, triggerHeartAnimation, networkStatus]);
 
-  const handleLikeFromOverlay = useCallback((liked: boolean) => {
-    setIsLiked(liked);
-    setLikesCount((prev) => prev + (liked ? 1 : -1));
-    if (liked) {
-      triggerHeartAnimation();
-    }
-  }, [triggerHeartAnimation]);
+  const handleLikeFromOverlay = useCallback(
+    (liked: boolean) => {
+      setIsLiked(liked);
+      setLikesCount((prev) => prev + (liked ? 1 : -1));
+      if (liked) {
+        triggerHeartAnimation();
+      }
+    },
+    [triggerHeartAnimation],
+  );
 
   const handleMuteToggle = useCallback(() => {
     muteButtonScale.value = withSequence(
       withSpring(0.8, { damping: 15, stiffness: 400 }),
-      withSpring(1, { damping: 15, stiffness: 400 })
+      withSpring(1, { damping: 15, stiffness: 400 }),
     );
     onToggleMute();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -204,7 +242,7 @@ export default function UnifiedVideoItem({
   const handleClose = useCallback(() => {
     closeButtonScale.value = withSequence(
       withSpring(0.8, { damping: 15, stiffness: 400 }),
-      withSpring(1, { damping: 15, stiffness: 400 })
+      withSpring(1, { damping: 15, stiffness: 400 }),
     );
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     onClose?.();
@@ -268,10 +306,7 @@ export default function UnifiedVideoItem({
     .maxDuration(250)
     .maxDistance(10)
     .onStart(() => {
-      tapScale.value = withSequence(
-        withTiming(0.98, { duration: 80 }),
-        withTiming(1, { duration: 80 })
-      );
+      tapScale.value = withSequence(withTiming(0.98, { duration: 80 }), withTiming(1, { duration: 80 }));
     })
     .onEnd(() => {
       runOnJS(handleTapEvaluation)(Date.now());
@@ -285,19 +320,13 @@ export default function UnifiedVideoItem({
     if (!progressY) {
       return { opacity: 1 };
     }
-    const opacity = interpolate(
-      Math.abs(progressY.value),
-      [0, 0.1, 0.3],
-      [1, 0.8, 0.4]
-    );
+    const opacity = interpolate(Math.abs(progressY.value), [0, 0.1, 0.3], [1, 0.8, 0.4]);
     return { opacity };
   });
 
   const playPauseOverlayStyle = useAnimatedStyle(() => ({
     opacity: withTiming(isPlaying ? 0 : 1, { duration: 200 }),
-    transform: [
-      { scale: withSpring(isPlaying ? 0.8 : 1, { damping: 15, stiffness: 200 }) }
-    ],
+    transform: [{ scale: withSpring(isPlaying ? 0.8 : 1, { damping: 15, stiffness: 200 }) }],
   }));
 
   if (!videoUri) {
@@ -318,11 +347,7 @@ export default function UnifiedVideoItem({
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color="#ff6666" />
           <Text style={styles.errorText}>Failed to load video</Text>
-          <Pressable
-            style={styles.retryButton}
-            onPress={() => setVideoError(false)}
-            accessibilityRole="button"
-          >
+          <Pressable style={styles.retryButton} onPress={() => setVideoError(false)} accessibilityRole="button">
             <Text style={styles.retryText}>Try Again</Text>
           </Pressable>
         </View>
@@ -332,7 +357,7 @@ export default function UnifiedVideoItem({
 
   // Variant-specific rendering can be added here
   const renderVariantSpecificUI = () => {
-    if (variant === 'enhanced') {
+    if (variant === "enhanced") {
       // Add enhanced-specific UI elements
       return null;
     }
@@ -340,7 +365,7 @@ export default function UnifiedVideoItem({
   };
 
   return (
-    <View style={styles.container} accessibilityRole="article" accessibilityLabel="Video confession">
+    <View style={styles.container} accessibilityLabel="Video confession">
       <GestureDetector gesture={tapGesture}>
         <Animated.View style={[styles.videoWrapper, videoWrapperAnimatedStyle]}>
           {isActive && videoPlayer ? (
@@ -349,10 +374,9 @@ export default function UnifiedVideoItem({
                 player={videoPlayer}
                 style={styles.video}
                 contentFit="cover"
-                fullscreenOptions={{ enabled: false }}
+                fullscreenOptions={{ enable: false }}
                 allowsPictureInPicture={false}
                 nativeControls={false}
-                onError={() => setVideoError(true)}
               />
 
               {isLoading && (
@@ -367,10 +391,7 @@ export default function UnifiedVideoItem({
             </>
           ) : (
             <View style={styles.inactivePlaceholder}>
-              <LinearGradient
-                colors={["#1a1a1a", "#0a0a0a"]}
-                style={styles.gradientBackground}
-              />
+              <LinearGradient colors={["#1a1a1a", "#0a0a0a"]} style={styles.gradientBackground} />
               <Ionicons name="play-circle" size={56} color="#4d4d4d" />
               <Text style={styles.placeholderText}>Swipe to play</Text>
             </View>
@@ -402,7 +423,7 @@ export default function UnifiedVideoItem({
             <Text style={styles.usernameText}>{FALLBACK_USERNAME}</Text>
             {!networkStatus && (
               <View style={styles.offlineBadge}>
-                <Ionicons name="wifi-off" size={12} color="#ff6666" />
+                <Ionicons name="wifi-outline" size={12} color="#ff6666" />
               </View>
             )}
           </View>

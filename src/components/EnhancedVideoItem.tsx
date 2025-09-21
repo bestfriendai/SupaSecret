@@ -35,14 +35,13 @@ export default function EnhancedVideoItem({
   // Dev-time deprecation warning
   useEffect(() => {
     if (__DEV__) {
-      console.warn(
-        'EnhancedVideoItem is deprecated. Use UnifiedVideoItem with variant="enhanced" instead.'
-      );
+      console.warn('EnhancedVideoItem is deprecated. Use UnifiedVideoItem with variant="enhanced" instead.');
     }
   }, []);
 
   const soundEnabled = useConfessionStore((state) => state.userPreferences.sound_enabled);
-  const sourceUri = confession.videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+  const sourceUri =
+    confession.videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
   const player = useVideoPlayer(sourceUri, (p) => {
     p.loop = true;

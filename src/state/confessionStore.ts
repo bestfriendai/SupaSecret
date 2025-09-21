@@ -12,7 +12,7 @@ import { registerStoreCleanup } from "../utils/storeCleanup";
 import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 import { normalizeConfession, normalizeConfessions } from "../utils/confessionNormalizer";
 import { confessionValidation, videoValidation } from "../utils/validation";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "../utils/legacyFileSystem";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();

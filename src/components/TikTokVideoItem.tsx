@@ -28,17 +28,10 @@ export default function TikTokVideoItem(props: TikTokVideoItemProps) {
   // Dev-time deprecation warning
   useEffect(() => {
     if (__DEV__) {
-      console.warn(
-        'TikTokVideoItem is deprecated. Use UnifiedVideoItem with variant="tiktok" instead.'
-      );
+      console.warn('TikTokVideoItem is deprecated. Use UnifiedVideoItem with variant="tiktok" instead.');
     }
   }, []);
 
   // Render UnifiedVideoItem with tiktok variant
-  return (
-    <UnifiedVideoItem
-      {...props}
-      variant="tiktok"
-    />
-  );
+  return <UnifiedVideoItem {...props} variant="tiktok" />;
 }

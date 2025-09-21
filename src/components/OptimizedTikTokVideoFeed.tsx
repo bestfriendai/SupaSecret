@@ -1,15 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Dimensions, RefreshControl, StatusBar, Text, View, Pressable, AppState } from "react-native";
+import {
+  ActivityIndicator,
+  Dimensions,
+  RefreshControl,
+  StatusBar,
+  Text,
+  View,
+  Pressable,
+  AppState,
+} from "react-native";
 import { FlatList } from "react-native";
 import type { ViewToken } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  useAnimatedStyle,
-  withTiming,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, withTiming, useSharedValue } from "react-native-reanimated";
 import { useVideoPlayer, VideoPlayer } from "expo-video";
 import * as Haptics from "expo-haptics";
 
@@ -25,11 +30,7 @@ import { useConfessionStore } from "../state/confessionStore";
 import type { Confession } from "../types/confession";
 import { useVideoFeedGestures } from "../hooks/useVideoFeedGestures";
 import { isOnline, setOnline } from "../lib/offlineQueue";
-import {
-  VideoLoadError,
-  VideoErrorCode,
-  VideoErrorSeverity,
-} from "../types/videoErrors";
+import { VideoLoadError, VideoErrorCode, VideoErrorSeverity } from "../types/videoErrors";
 
 interface OptimizedTikTokVideoFeedProps {
   onClose?: () => void;
@@ -90,7 +91,7 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
     }
 
     const video = videos[activeIndex];
-    if (!video || typeof video !== 'object' || !video.videoUri) {
+    if (!video || typeof video !== "object" || !video.videoUri) {
       return FALLBACK_VIDEOS[fallbackVideoIndex.current % FALLBACK_VIDEOS.length];
     }
 
@@ -100,16 +101,16 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
   // Single video player instance
   const videoPlayer: VideoPlayer | null = useVideoPlayer(activeSource, (player) => {
     if (!player) {
-      console.log('Video player is null for source:', activeSource);
+      console.log("Video player is null for source:", activeSource);
       return;
     }
 
     try {
       player.loop = true;
       player.volume = muted ? 0 : 1;
-      console.log('Video player configured for:', activeSource);
+      console.log("Video player configured for:", activeSource);
     } catch (error) {
-      console.warn('Video player configuration error:', error);
+      console.warn("Video player configuration error:", error);
     }
   });
 
@@ -120,93 +121,93 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
   }, [videoPlayer]);
 
   // Load videos with better error handling
-  const hydrateVideos = useCallback(async (isRefresh = false, append = false) => {
-    if (loadingRef.current && !append) {
-      return;
-    }
+  const hydrateVideos = useCallback(
+    async (isRefresh = false, append = false) => {
+      if (loadingRef.current && !append) {
+        return;
+      }
 
-    loadingRef.current = true;
-    setError(null);
-    // Only show loading spinner if we don't have any videos yet
-    if (!isRefresh && !append && videos.length === 0) {
-      setIsLoading(true);
-    }
-    if (isRefresh) {
-      setIsRefreshing(true);
-    }
+      loadingRef.current = true;
+      setError(null);
+      // Only show loading spinner if we don't have any videos yet
+      if (!isRefresh && !append && videos.length === 0) {
+        setIsLoading(true);
+      }
+      if (isRefresh) {
+        setIsRefreshing(true);
+      }
 
-    try {
-      const [confessions, trending] = await Promise.all([
-        VideoDataService.fetchVideoConfessions(append ? 10 : 20),
-        append ? Promise.resolve([]) : VideoDataService.fetchTrendingVideos(24, 10),
-      ]);
+      try {
+        const [confessions, trending] = await Promise.all([
+          VideoDataService.fetchVideoConfessions(append ? 10 : 20),
+          append ? Promise.resolve([]) : VideoDataService.fetchTrendingVideos(24, 10),
+        ]);
 
-      // Ensure both arrays are valid before spreading
-      const safeConfessions = Array.isArray(confessions) ? confessions : [];
-      const safeTrending = Array.isArray(trending) ? trending : [];
-      
-      const combined = [...safeTrending, ...safeConfessions].filter(item =>
-        item &&
-        typeof item === 'object' &&
-        item.id &&
-        item.videoUri
-      );
+        // Ensure both arrays are valid before spreading
+        const safeConfessions = Array.isArray(confessions) ? confessions : [];
+        const safeTrending = Array.isArray(trending) ? trending : [];
 
-      console.log('OptimizedTikTokVideoFeed: Raw confessions:', safeConfessions.length);
-      console.log('OptimizedTikTokVideoFeed: Raw trending:', safeTrending.length);
-      console.log('OptimizedTikTokVideoFeed: Combined after filter:', combined.length);
-      console.log('OptimizedTikTokVideoFeed: Sample items:', combined.slice(0, 2));
+        const combined = [...safeTrending, ...safeConfessions].filter(
+          (item) => item && typeof item === "object" && item.id && item.videoUri,
+        );
 
-      if (combined.length > 0) {
-        setVideos((prevVideos) => {
-          const dedupedMap = new Map<string, Confession>();
+        console.log("OptimizedTikTokVideoFeed: Raw confessions:", safeConfessions.length);
+        console.log("OptimizedTikTokVideoFeed: Raw trending:", safeTrending.length);
+        console.log("OptimizedTikTokVideoFeed: Combined after filter:", combined.length);
+        console.log("OptimizedTikTokVideoFeed: Sample items:", combined.slice(0, 2));
 
-          // Add existing videos first if appending
-          if (append) {
-            for (const item of prevVideos) {
-              if (item?.id) {
-                dedupedMap.set(item.id, item);
+        if (combined.length > 0) {
+          setVideos((prevVideos) => {
+            const dedupedMap = new Map<string, Confession>();
+
+            // Add existing videos first if appending
+            if (append) {
+              for (const item of prevVideos) {
+                if (item?.id) {
+                  dedupedMap.set(item.id, item);
+                }
               }
             }
-          }
 
-          for (const item of combined) {
-            dedupedMap.set(item.id, item);
-          }
+            for (const item of combined) {
+              dedupedMap.set(item.id, item);
+            }
 
-          const result = Array.from(dedupedMap.values());
+            const result = Array.from(dedupedMap.values());
 
-          if (!append) {
-            setActiveIndex((prev) => {
-              if (isRefresh) return 0;
-              return Math.min(prev, result.length - 1);
-            });
-            setIsPlaying(false);
-          }
+            if (!append) {
+              setActiveIndex((prev) => {
+                if (isRefresh) return 0;
+                return Math.min(prev, result.length - 1);
+              });
+              setIsPlaying(false);
+            }
 
-          console.log('OptimizedTikTokVideoFeed: Successfully loaded', result.length, 'videos');
-          return result;
-        });
+            console.log("OptimizedTikTokVideoFeed: Successfully loaded", result.length, "videos");
+            return result;
+          });
 
-        VideoDataService.flushAllEvents();
-        setRetryAttempts(0); // Reset retry attempts on success
-        setError(null); // Clear any previous errors
-      } else {
-        const online = isOnline();
-        const attemptNum = retryAttempts + 1;
-        setRetryAttempts(attemptNum);
-        console.log('OptimizedTikTokVideoFeed: No videos found, online:', online);
-        setError(online ? "No videos available right now" : "No internet connection");
+          VideoDataService.flushAllEvents();
+          setRetryAttempts(0); // Reset retry attempts on success
+          setError(null); // Clear any previous errors
+        } else {
+          const online = isOnline();
+          const attemptNum = retryAttempts + 1;
+          setRetryAttempts(attemptNum);
+          console.log("OptimizedTikTokVideoFeed: No videos found, online:", online);
+          setError(online ? "No videos available right now" : "No internet connection");
+        }
+      } catch (err) {
+        console.error("OptimizedTikTokVideoFeed: failed to load videos", err);
+        setError("An unexpected error occurred. Please try again.");
+      } finally {
+        loadingRef.current = false;
+        setIsLoading(false);
+        setIsRefreshing(false);
       }
-    } catch (err) {
-      console.error("OptimizedTikTokVideoFeed: failed to load videos", err);
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      loadingRef.current = false;
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [retryAttempts]);
+    },
+    [retryAttempts],
+  );
 
   useEffect(() => {
     hydrateVideos(false);
@@ -214,7 +215,7 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
     // Add a timeout to prevent infinite loading
     const loadingTimeout = setTimeout(() => {
       if (isLoading && !videos.length) {
-        console.log('OptimizedTikTokVideoFeed: Loading timeout reached');
+        console.log("OptimizedTikTokVideoFeed: Loading timeout reached");
         setIsLoading(false);
         setError("Loading took too long. Please try again.");
       }
@@ -317,21 +318,15 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   }, [isPlaying, pausePlayer, playPlayer]);
 
-  const handleViewableItemsChangedRef = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (!viewableItems?.length) return;
+  const handleViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (!viewableItems?.length) return;
 
-      const visibleItem = viewableItems.find((item) => item.isViewable && typeof item.index === "number");
-      if (
-        visibleItem &&
-        typeof visibleItem.index === "number" &&
-        visibleItem.index !== activeIndexRef.current
-      ) {
-        setActiveIndex(visibleItem.index);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-      }
-    },
-  );
+    const visibleItem = viewableItems.find((item) => item.isViewable && typeof item.index === "number");
+    if (visibleItem && typeof visibleItem.index === "number" && visibleItem.index !== activeIndexRef.current) {
+      setActiveIndex(visibleItem.index);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    }
+  });
 
   // Handle comment press
   const handleCommentPress = useCallback(
@@ -358,30 +353,27 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
   }, []);
 
   // Handle share press
-  const handleSharePress = useCallback(
-    async (confessionId: string, confessionText: string) => {
-      try {
-        const shareUrl = generateConfessionLink(confessionId);
-        const shareMessage = generateShareMessage(confessionText, confessionId);
+  const handleSharePress = useCallback(async (confessionId: string, confessionText: string) => {
+    try {
+      const shareUrl = generateConfessionLink(confessionId);
+      const shareMessage = generateShareMessage(confessionText, confessionId);
 
-        await Share.share({
-          message: shareMessage,
-          url: shareUrl,
-        });
+      await Share.share({
+        message: shareMessage,
+        url: shareUrl,
+      });
 
-        // Track share event
-        VideoDataService.trackVideoEvent(confessionId, {
-          type: 'share',
-          timestamp: Date.now(),
-        });
+      // Track share event
+      VideoDataService.trackVideoEvent(confessionId, {
+        type: "share",
+        timestamp: Date.now(),
+      });
 
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-      } catch (error) {
-        console.error("Failed to share:", error);
-      }
-    },
-    [],
-  );
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    } catch (error) {
+      console.error("Failed to share:", error);
+    }
+  }, []);
 
   const renderItem = useCallback(
     ({ item, index }: { item: Confession; index: number }) => {
@@ -403,14 +395,32 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
         />
       );
     },
-    [activeIndex, isFocused, isPlaying, muted, onClose, videoPlayer, handleSingleTap, handleCommentPress, handleSharePress, networkStatus],
+    [
+      activeIndex,
+      isFocused,
+      isPlaying,
+      muted,
+      onClose,
+      videoPlayer,
+      handleSingleTap,
+      handleCommentPress,
+      handleSharePress,
+      networkStatus,
+    ],
   );
 
   const errorOpacity = useAnimatedStyle(() => ({
     opacity: withTiming(error && !videos.length ? 1 : 0, { duration: 300 }),
   }));
 
-  console.log('OptimizedTikTokVideoFeed render: isLoading=', isLoading, 'videos.length=', videos.length, 'error=', error);
+  console.log(
+    "OptimizedTikTokVideoFeed render: isLoading=",
+    isLoading,
+    "videos.length=",
+    videos.length,
+    "error=",
+    error,
+  );
 
   // Show loading only if we have no videos AND we're actually loading
   if (isLoading && videos.length === 0) {
@@ -444,11 +454,7 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
         />
         <Animated.View style={[styles.centeredContainer, errorOpacity]}>
           <StatusBar hidden />
-          <Ionicons
-            name="cloud-offline-outline"
-            size={48}
-            color="#ff6666"
-          />
+          <Ionicons name="cloud-offline-outline" size={48} color="#ff6666" />
           <Text style={styles.errorTitle}>Oops!</Text>
           <Text style={styles.centeredText}>{error}</Text>
           <Pressable
@@ -512,12 +518,7 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
             index,
           })}
         />
-        <NetworkStatusIndicator
-          position="top"
-          minimalMode={true}
-          autoHideDelay={3000}
-          scrollOffset={scrollOffset}
-        />
+        <NetworkStatusIndicator position="top" minimalMode={true} autoHideDelay={3000} scrollOffset={scrollOffset} />
       </View>
 
       {/* Comment Modal */}

@@ -1,13 +1,13 @@
-import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
-import { Platform } from 'react-native';
-import { environmentDetector } from '../utils/environmentDetector';
-import { healthMonitor } from '../utils/healthMonitor';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { networkProfiler } from '../utils/networkProfiler';
+import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
+import { Platform } from "react-native";
+import { environmentDetector } from "../utils/environmentDetector";
+import { healthMonitor } from "../utils/healthMonitor";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { networkProfiler } from "../utils/networkProfiler";
 
-type VideoQuality = '360p' | '720p' | '1080p';
-type NetworkQuality = 'poor' | 'fair' | 'good' | 'excellent';
-type DeviceCapabilityTier = 'low' | 'mid' | 'high';
+export type VideoQuality = "360p" | "720p" | "1080p";
+type NetworkQuality = "poor" | "fair" | "good" | "excellent";
+type DeviceCapabilityTier = "low" | "mid" | "high";
 
 interface NetworkProfile {
   bandwidth: number;
@@ -55,7 +55,7 @@ class NetworkProfiler {
       // Final fallback to estimation
       return this.estimateBandwidthFromConnection();
     } catch (error) {
-      console.error('Bandwidth measurement failed:', error);
+      console.error("Bandwidth measurement failed:", error);
       return this.estimateBandwidthFromConnection();
     }
   }
@@ -64,13 +64,13 @@ class NetworkProfiler {
     const netInfo = await NetInfo.fetch();
 
     const bandwidthMap: Record<string, number> = {
-      '2g': 0.05,
-      '3g': 0.5,
-      '4g': 5,
-      '5g': 20,
-      'wifi': 10,
-      'ethernet': 100,
-      'unknown': 2
+      "2g": 0.05,
+      "3g": 0.5,
+      "4g": 5,
+      "5g": 20,
+      wifi: 10,
+      ethernet: 100,
+      unknown: 2,
     };
 
     const type = netInfo.type.toLowerCase();
@@ -92,11 +92,11 @@ class NetworkProfiler {
         connectionType: utilityProfile.connectionType,
         stability: utilityProfile.stability,
         quality: utilityProfile.quality as NetworkQuality,
-        timestamp: utilityProfile.timestamp
+        timestamp: utilityProfile.timestamp,
       };
 
       this.lastProfile = profile;
-      this.measurementCache.set('current', profile);
+      this.measurementCache.set("current", profile);
       await this.persistProfile(profile);
 
       return profile;
@@ -113,11 +113,11 @@ class NetworkProfiler {
       connectionType: netInfo.type,
       stability,
       quality,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     this.lastProfile = profile;
-    this.measurementCache.set('current', profile);
+    this.measurementCache.set("current", profile);
     await this.persistProfile(profile);
 
     return profile;
@@ -127,9 +127,10 @@ class NetworkProfiler {
     if (this.stabilityHistory.length < 2) return 1;
 
     const mean = this.stabilityHistory.reduce((a, b) => a + b, 0) / this.stabilityHistory.length;
-    const variance = this.stabilityHistory.reduce((sum, val) => {
-      return sum + Math.pow(val - mean, 2);
-    }, 0) / this.stabilityHistory.length;
+    const variance =
+      this.stabilityHistory.reduce((sum, val) => {
+        return sum + Math.pow(val - mean, 2);
+      }, 0) / this.stabilityHistory.length;
 
     const coefficientOfVariation = Math.sqrt(variance) / mean;
     return Math.max(0, 1 - coefficientOfVariation);
@@ -138,26 +139,26 @@ class NetworkProfiler {
   private classifyNetworkQuality(bandwidth: number, stability: number): NetworkQuality {
     const adjustedBandwidth = bandwidth * stability;
 
-    if (adjustedBandwidth >= 5) return 'excellent';
-    if (adjustedBandwidth >= 2) return 'good';
-    if (adjustedBandwidth >= 0.5) return 'fair';
-    return 'poor';
+    if (adjustedBandwidth >= 5) return "excellent";
+    if (adjustedBandwidth >= 2) return "good";
+    if (adjustedBandwidth >= 0.5) return "fair";
+    return "poor";
   }
 
   private async persistProfile(profile: NetworkProfile): Promise<void> {
     try {
-      await AsyncStorage.setItem('last_network_profile', JSON.stringify(profile));
+      await AsyncStorage.setItem("last_network_profile", JSON.stringify(profile));
     } catch (error) {
-      console.error('Failed to persist network profile:', error);
+      console.error("Failed to persist network profile:", error);
     }
   }
 
   async loadPersistedProfile(): Promise<NetworkProfile | null> {
     try {
-      const stored = await AsyncStorage.getItem('last_network_profile');
+      const stored = await AsyncStorage.getItem("last_network_profile");
       return stored ? JSON.parse(stored) : null;
     } catch (error) {
-      console.error('Failed to load persisted profile:', error);
+      console.error("Failed to load persisted profile:", error);
       return null;
     }
   }
@@ -174,35 +175,43 @@ class DeviceCapabilityDetector {
     const memoryInfo = await environmentDetector.getMemoryInfo();
 
     const totalMemoryGB = memoryInfo.totalMemory / (1024 * 1024 * 1024);
-    const isTablet = deviceInfo.deviceType === 'tablet';
+    const isTablet = deviceInfo.deviceType === "tablet";
     const platform = Platform.OS;
 
     let tier: DeviceCapabilityTier;
 
-    if (platform === 'ios') {
-      const model = deviceInfo.model?.toLowerCase() || '';
+    if (platform === "ios") {
+      const model = deviceInfo.modelName?.toLowerCase() || "";
 
-      if (model.includes('iphone 14') || model.includes('iphone 15') ||
-          model.includes('ipad pro') || totalMemoryGB >= 6) {
-        tier = 'high';
-      } else if (model.includes('iphone 11') || model.includes('iphone 12') ||
-                 model.includes('iphone 13') || totalMemoryGB >= 4) {
-        tier = 'mid';
+      if (
+        model.includes("iphone 14") ||
+        model.includes("iphone 15") ||
+        model.includes("ipad pro") ||
+        totalMemoryGB >= 6
+      ) {
+        tier = "high";
+      } else if (
+        model.includes("iphone 11") ||
+        model.includes("iphone 12") ||
+        model.includes("iphone 13") ||
+        totalMemoryGB >= 4
+      ) {
+        tier = "mid";
       } else {
-        tier = 'low';
+        tier = "low";
       }
     } else {
       if (totalMemoryGB >= 8) {
-        tier = 'high';
+        tier = "high";
       } else if (totalMemoryGB >= 4) {
-        tier = 'mid';
+        tier = "mid";
       } else {
-        tier = 'low';
+        tier = "low";
       }
     }
 
-    if (isTablet && tier !== 'high') {
-      tier = 'mid';
+    if (isTablet && tier !== "high") {
+      tier = "mid";
     }
 
     this.cachedTier = tier;
@@ -213,61 +222,61 @@ class DeviceCapabilityDetector {
 
   private async persistDeviceTier(tier: DeviceCapabilityTier): Promise<void> {
     try {
-      await AsyncStorage.setItem('device_capability_tier', tier);
+      await AsyncStorage.setItem("device_capability_tier", tier);
     } catch (error) {
-      console.error('Failed to persist device tier:', error);
+      console.error("Failed to persist device tier:", error);
     }
   }
 
   async loadPersistedTier(): Promise<DeviceCapabilityTier | null> {
     try {
-      const stored = await AsyncStorage.getItem('device_capability_tier');
+      const stored = await AsyncStorage.getItem("device_capability_tier");
       return stored as DeviceCapabilityTier | null;
     } catch (error) {
-      console.error('Failed to load persisted tier:', error);
+      console.error("Failed to load persisted tier:", error);
       return null;
     }
   }
 
   getMemoryBasedQualityLimit(memoryPressure: number): VideoQuality {
-    if (memoryPressure > 0.8) return '360p';
-    if (memoryPressure > 0.6) return '720p';
-    return '1080p';
+    if (memoryPressure > 0.8) return "360p";
+    if (memoryPressure > 0.6) return "720p";
+    return "1080p";
   }
 }
 
 class QualitySelectionEngine {
   private readonly qualityMatrix: Record<DeviceCapabilityTier, Record<NetworkQuality, VideoQuality>> = {
     high: {
-      excellent: '1080p',
-      good: '1080p',
-      fair: '720p',
-      poor: '360p'
+      excellent: "1080p",
+      good: "1080p",
+      fair: "720p",
+      poor: "360p",
     },
     mid: {
-      excellent: '1080p',
-      good: '720p',
-      fair: '720p',
-      poor: '360p'
+      excellent: "1080p",
+      good: "720p",
+      fair: "720p",
+      poor: "360p",
     },
     low: {
-      excellent: '720p',
-      good: '720p',
-      fair: '360p',
-      poor: '360p'
-    }
+      excellent: "720p",
+      good: "720p",
+      fair: "360p",
+      poor: "360p",
+    },
   };
 
   private readonly bitrateMap: Record<VideoQuality, number> = {
-    '360p': 800,
-    '720p': 2500,
-    '1080p': 5000
+    "360p": 800,
+    "720p": 2500,
+    "1080p": 5000,
   };
 
   selectOptimalQuality(
     networkProfile: NetworkProfile,
     deviceTier: DeviceCapabilityTier,
-    memoryPressure?: number
+    memoryPressure?: number,
   ): VideoQuality {
     let baseQuality = this.qualityMatrix[deviceTier][networkProfile.quality];
 
@@ -285,7 +294,7 @@ class QualitySelectionEngine {
   }
 
   private downgradeQuality(current: VideoQuality, limit?: VideoQuality): VideoQuality {
-    const qualities: VideoQuality[] = ['360p', '720p', '1080p'];
+    const qualities: VideoQuality[] = ["360p", "720p", "1080p"];
     const currentIndex = qualities.indexOf(current);
     const limitIndex = limit ? qualities.indexOf(limit) : -1;
 
@@ -302,17 +311,17 @@ class QualitySelectionEngine {
 
   async generateQualityVariants(baseUri: string, selectedQuality: VideoQuality): Promise<QualityVariant[]> {
     const variants: QualityVariant[] = [];
-    const qualities: VideoQuality[] = ['360p', '720p', '1080p'];
+    const qualities: VideoQuality[] = ["360p", "720p", "1080p"];
     const selectedIndex = qualities.indexOf(selectedQuality);
 
-    const extension = baseUri.split('.').pop() || 'mp4';
-    const basePath = baseUri.substring(0, baseUri.lastIndexOf('.'));
+    const extension = baseUri.split(".").pop() || "mp4";
+    const basePath = baseUri.substring(0, baseUri.lastIndexOf("."));
 
     // Always include the original as fallback
     variants.push({
       quality: selectedQuality,
       uri: baseUri,
-      bitrate: this.bitrateMap[selectedQuality]
+      bitrate: this.bitrateMap[selectedQuality],
     });
 
     // Generate potential variant URIs and validate them
@@ -322,8 +331,8 @@ class QualitySelectionEngine {
       if (quality !== selectedQuality) {
         potentialVariants.push({
           quality,
-          uri: `${basePath}_${quality.replace('p', '')}.${extension}`,
-          bitrate: this.bitrateMap[quality]
+          uri: `${basePath}_${quality.replace("p", "")}.${extension}`,
+          bitrate: this.bitrateMap[quality],
         });
       }
     }
@@ -335,8 +344,8 @@ class QualitySelectionEngine {
         const timeout = setTimeout(() => controller.abort(), 2000); // 2 second timeout
 
         const response = await fetch(variant.uri, {
-          method: 'HEAD',
-          signal: controller.signal
+          method: "HEAD",
+          signal: controller.signal,
         });
 
         clearTimeout(timeout);
@@ -363,7 +372,7 @@ class QualitySelectionEngine {
   }
 
   selectFallbackQuality(currentQuality: VideoQuality): VideoQuality | undefined {
-    const qualities: VideoQuality[] = ['360p', '720p', '1080p'];
+    const qualities: VideoQuality[] = ["360p", "720p", "1080p"];
     const currentIndex = qualities.indexOf(currentQuality);
 
     if (currentIndex > 0) {
@@ -389,7 +398,7 @@ export class VideoQualitySelector {
   }
 
   private initializeNetworkListener(): void {
-    this.networkListener = NetInfo.addEventListener(state => {
+    this.networkListener = NetInfo.addEventListener((state) => {
       this.handleNetworkChange(state);
     });
   }
@@ -406,27 +415,21 @@ export class VideoQualitySelector {
     }
   }
 
-  async selectVideoQuality(
-    videoUri: string,
-    forceRefresh = false
-  ): Promise<QualitySelectionResult> {
+  async selectVideoQuality(videoUri: string, forceRefresh = false): Promise<QualitySelectionResult> {
     if (!forceRefresh && this.selectionCache.has(videoUri)) {
       return this.selectionCache.get(videoUri)!;
     }
 
     const [networkProfile, deviceTier] = await Promise.all([
       this.networkProfiler.getNetworkProfile(forceRefresh),
-      this.deviceDetector.detectDeviceTier()
+      this.deviceDetector.detectDeviceTier(),
     ]);
 
     const memoryInfo = await environmentDetector.getMemoryInfo();
-    const memoryPressure = memoryInfo.usedMemory / memoryInfo.totalMemory;
+    const memoryPressure =
+      (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
 
-    const selectedQuality = this.selectionEngine.selectOptimalQuality(
-      networkProfile,
-      deviceTier,
-      memoryPressure
-    );
+    const selectedQuality = this.selectionEngine.selectOptimalQuality(networkProfile, deviceTier, memoryPressure);
 
     const variants = await this.selectionEngine.generateQualityVariants(videoUri, selectedQuality);
     const fallbackQuality = this.selectionEngine.selectFallbackQuality(selectedQuality);
@@ -436,29 +439,24 @@ export class VideoQualitySelector {
       variants,
       fallbackQuality,
       networkProfile,
-      deviceTier
+      deviceTier,
     };
 
     this.selectionCache.set(videoUri, selection);
     return selection;
   }
 
-  async selectBatchVideoQualities(
-    videoUris: string[]
-  ): Promise<Map<string, QualitySelectionResult>> {
+  async selectBatchVideoQualities(videoUris: string[]): Promise<Map<string, QualitySelectionResult>> {
     const [networkProfile, deviceTier] = await Promise.all([
       this.networkProfiler.getNetworkProfile(),
-      this.deviceDetector.detectDeviceTier()
+      this.deviceDetector.detectDeviceTier(),
     ]);
 
     const memoryInfo = await environmentDetector.getMemoryInfo();
-    const memoryPressure = memoryInfo.usedMemory / memoryInfo.totalMemory;
+    const memoryPressure =
+      (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
 
-    const selectedQuality = this.selectionEngine.selectOptimalQuality(
-      networkProfile,
-      deviceTier,
-      memoryPressure
-    );
+    const selectedQuality = this.selectionEngine.selectOptimalQuality(networkProfile, deviceTier, memoryPressure);
 
     const results = new Map<string, QualitySelectionResult>();
 
@@ -471,7 +469,7 @@ export class VideoQualitySelector {
         variants,
         fallbackQuality,
         networkProfile,
-        deviceTier
+        deviceTier,
       });
     }
 
@@ -485,11 +483,7 @@ export class VideoQualitySelector {
     const currentProfile = await this.networkProfiler.getNetworkProfile();
     const currentQuality = selection.selectedQuality;
 
-    return (
-      currentProfile.quality === 'excellent' &&
-      currentQuality !== '1080p' &&
-      currentProfile.stability > 0.8
-    );
+    return currentProfile.quality === "excellent" && currentQuality !== "1080p" && currentProfile.stability > 0.8;
   }
 
   async shouldDowngradeQuality(videoUri: string): Promise<boolean> {
@@ -499,16 +493,13 @@ export class VideoQualitySelector {
     const currentProfile = await this.networkProfiler.getNetworkProfile();
     const currentQuality = selection.selectedQuality;
 
-    return (
-      currentProfile.quality === 'poor' &&
-      currentQuality !== '360p'
-    ) || currentProfile.stability < 0.3;
+    return (currentProfile.quality === "poor" && currentQuality !== "360p") || currentProfile.stability < 0.3;
   }
 
   getQualityForUri(uri: string, quality: VideoQuality): string {
-    const extension = uri.split('.').pop() || 'mp4';
-    const basePath = uri.substring(0, uri.lastIndexOf('.'));
-    return `${basePath}_${quality.replace('p', '')}.${extension}`;
+    const extension = uri.split(".").pop() || "mp4";
+    const basePath = uri.substring(0, uri.lastIndexOf("."));
+    return `${basePath}_${quality.replace("p", "")}.${extension}`;
   }
 
   cleanup(): void {

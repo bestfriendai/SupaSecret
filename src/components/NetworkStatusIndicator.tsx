@@ -1,12 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  AccessibilityInfo,
-  Platform,
-} from "react-native";
+import { View, Text, StyleSheet, Pressable, AccessibilityInfo, Platform } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -172,7 +165,7 @@ export default function NetworkStatusIndicator({
   const [isVisible, setIsVisible] = useState(false);
   const [bandwidthMbps, setBandwidthMbps] = useState<number | null>(null);
 
-  const hideTimer = useRef<NodeJS.Timeout | undefined>();
+  const hideTimer = useRef<NodeJS.Timeout | undefined>(undefined);
   const reconnectAttempts = useRef(0);
 
   const opacity = useSharedValue(0);
@@ -182,20 +175,26 @@ export default function NetworkStatusIndicator({
   const dotScale = useSharedValue(1);
   const retryRotation = useSharedValue(0);
 
-  const statusColors = useMemo(() => ({
-    online: "#10B981",
-    offline: "#EF4444",
-    poor: "#F59E0B",
-    reconnecting: "#6B7280",
-  }), []);
+  const statusColors = useMemo(
+    () => ({
+      online: "#10B981",
+      offline: "#EF4444",
+      poor: "#F59E0B",
+      reconnecting: "#6B7280",
+    }),
+    [],
+  );
 
-  const qualityIcons = useMemo(() => ({
-    excellent: "wifi",
-    good: "wifi",
-    fair: "cellular-outline",
-    poor: "cellular-outline",
-    offline: "cloud-offline",
-  }), []);
+  const qualityIcons = useMemo(
+    () => ({
+      excellent: "wifi",
+      good: "wifi",
+      fair: "cellular-outline",
+      poor: "cellular-outline",
+      offline: "cloud-offline",
+    }),
+    [],
+  );
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -258,22 +257,16 @@ export default function NetworkStatusIndicator({
 
       if (metrics.status === "poor" || metrics.status === "reconnecting") {
         pulseScale.value = withRepeat(
-          withSequence(
-            withTiming(1.05, { duration: 600 }),
-            withTiming(1, { duration: 600 })
-          ),
+          withSequence(withTiming(1.05, { duration: 600 }), withTiming(1, { duration: 600 })),
           -1,
-          false
+          false,
         );
       }
 
       dotScale.value = withRepeat(
-        withSequence(
-          withTiming(1.2, { duration: 500 }),
-          withTiming(0.8, { duration: 500 })
-        ),
+        withSequence(withTiming(1.2, { duration: 500 }), withTiming(0.8, { duration: 500 })),
         -1,
-        false
+        false,
       );
     } else {
       opacity.value = withTiming(0, { duration: 300 });
@@ -292,19 +285,12 @@ export default function NetworkStatusIndicator({
   };
 
   const startReconnectAnimation = () => {
-    retryRotation.value = withRepeat(
-      withTiming(360, { duration: 1000, easing: Easing.linear }),
-      -1,
-      false
-    );
+    retryRotation.value = withRepeat(withTiming(360, { duration: 1000, easing: Easing.linear }), -1, false);
   };
 
   const handleRetry = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    retryRotation.value = withSequence(
-      withTiming(360, { duration: 500 }),
-      withTiming(0, { duration: 0 })
-    );
+    retryRotation.value = withSequence(withTiming(360, { duration: 500 }), withTiming(0, { duration: 0 }));
     if (onRetry) onRetry();
     NetInfo.fetch();
   };
@@ -315,10 +301,7 @@ export default function NetworkStatusIndicator({
 
     return {
       opacity: opacity.value,
-      transform: [
-        { translateY: baseTranslateY - scrollAdjustment },
-        { scale: scale.value * pulseScale.value },
-      ],
+      transform: [{ translateY: baseTranslateY - scrollAdjustment }, { scale: scale.value * pulseScale.value }],
     };
   });
 
@@ -341,26 +324,9 @@ export default function NetworkStatusIndicator({
   };
 
   const renderMinimal = () => (
-    <Animated.View
-      style={[
-        styles.minimalContainer,
-        positionStyles[position],
-        animatedStyle,
-        style,
-      ]}
-    >
-      <Animated.View
-        style={[
-          styles.minimalDot,
-          { backgroundColor: statusColors[metrics.status] },
-          dotAnimatedStyle,
-        ]}
-      />
-      {metrics.status === "offline" && (
-        <Text style={[styles.minimalText, { color: theme.colors.error }]}>
-          Offline
-        </Text>
-      )}
+    <Animated.View style={[styles.minimalContainer, positionStyles[position], animatedStyle, style]}>
+      <Animated.View style={[styles.minimalDot, { backgroundColor: statusColors[metrics.status] }, dotAnimatedStyle]} />
+      {metrics.status === "offline" && <Text style={[styles.minimalText, { color: theme.colors.error }]}>Offline</Text>}
     </Animated.View>
   );
 
@@ -379,11 +345,7 @@ export default function NetworkStatusIndicator({
       <View style={styles.content}>
         <View style={styles.statusSection}>
           <Animated.View
-            style={[
-              styles.statusDot,
-              { backgroundColor: statusColors[metrics.status] },
-              dotAnimatedStyle,
-            ]}
+            style={[styles.statusDot, { backgroundColor: statusColors[metrics.status] }, dotAnimatedStyle]}
           />
           <Ionicons
             name={qualityIcons[metrics.quality] as any}
@@ -392,9 +354,7 @@ export default function NetworkStatusIndicator({
             style={styles.icon}
           />
           <View style={styles.textContainer}>
-            <Text style={[styles.statusText, { color: theme.colors.text }]}>
-              {metrics.details}
-            </Text>
+            <Text style={[styles.statusText, { color: theme.colors.text }]}>{metrics.details}</Text>
             {showBandwidth && bandwidthMbps && (
               <Text style={[styles.bandwidthText, { color: theme.colors.textSecondary }]}>
                 {bandwidthMbps.toFixed(1)} Mbps
@@ -417,12 +377,7 @@ export default function NetworkStatusIndicator({
 
       {metrics.status === "reconnecting" && (
         <View style={styles.progressBar}>
-          <Animated.View
-            style={[
-              styles.progressFill,
-              { backgroundColor: theme.colors.primary },
-            ]}
-          />
+          <Animated.View style={[styles.progressFill, { backgroundColor: theme.colors.primary }]} />
         </View>
       )}
     </Animated.View>

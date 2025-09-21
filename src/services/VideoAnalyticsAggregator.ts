@@ -1,6 +1,6 @@
-import { VideoEvent, VideoAnalytics, VideoEngagementSummary } from './VideoDataService';
-import { videoAnalyticsStorage } from '../utils/videoAnalyticsStorage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { VideoEvent, VideoAnalytics, VideoEngagementSummary } from "./VideoDataService";
+import { videoAnalyticsStorage } from "../utils/videoAnalyticsStorage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AggregatedMetrics {
   totalWatchTime: number;
@@ -55,7 +55,7 @@ interface PredictiveModel {
   confidence: number;
 }
 
-const CACHE_KEY_PREFIX = '@analytics_aggregator_cache';
+const CACHE_KEY_PREFIX = "@analytics_aggregator_cache";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export class VideoAnalyticsAggregator {
@@ -64,7 +64,10 @@ export class VideoAnalyticsAggregator {
   /**
    * Aggregate raw analytics events into meaningful metrics.
    */
-  async aggregateEvents(events: VideoEvent[], period: 'hour' | 'day' | 'week' | 'month' = 'day'): Promise<AggregatedMetrics> {
+  async aggregateEvents(
+    events: VideoEvent[],
+    period: "hour" | "day" | "week" | "month" = "day",
+  ): Promise<AggregatedMetrics> {
     const metrics: AggregatedMetrics = {
       totalWatchTime: 0,
       totalSessions: 0,
@@ -79,7 +82,7 @@ export class VideoAnalyticsAggregator {
 
     // Group events by session
     const sessionMap = new Map<string, VideoEvent[]>();
-    events.forEach(event => {
+    events.forEach((event) => {
       const sessionEvents = sessionMap.get(event.sessionId) || [];
       sessionEvents.push(event);
       sessionMap.set(event.sessionId, sessionEvents);
@@ -99,13 +102,14 @@ export class VideoAnalyticsAggregator {
       metrics.peakViewingHours.set(hour, (metrics.peakViewingHours.get(hour) || 0) + 1);
 
       // Track video performance
-      const videoId = sessionEvents[0].metadata?.videoId || 'unknown';
+      const videoId = sessionEvents[0].metadata?.videoId || "unknown";
       const videoPerf = metrics.videoPerformance.get(videoId) || this.createEmptyVideoPerformance(videoId);
 
       videoPerf.watchTime += sessionMetrics.watchTime;
       videoPerf.views++;
       videoPerf.interactions += sessionMetrics.interactions;
-      videoPerf.completionRate = ((videoPerf.completionRate * (videoPerf.views - 1)) + sessionMetrics.completionRate) / videoPerf.views;
+      videoPerf.completionRate =
+        (videoPerf.completionRate * (videoPerf.views - 1) + sessionMetrics.completionRate) / videoPerf.views;
 
       metrics.videoPerformance.set(videoId, videoPerf);
     }
@@ -115,7 +119,7 @@ export class VideoAnalyticsAggregator {
       metrics.averageWatchTime = metrics.totalWatchTime / metrics.totalSessions;
 
       // Calculate average completion rate from video performances
-      const completionRates = Array.from(metrics.videoPerformance.values()).map(v => v.completionRate);
+      const completionRates = Array.from(metrics.videoPerformance.values()).map((v) => v.completionRate);
       metrics.averageCompletionRate = completionRates.reduce((a, b) => a + b, 0) / completionRates.length;
 
       // Calculate overall engagement score
@@ -153,28 +157,28 @@ export class VideoAnalyticsAggregator {
 
     let lastPlayTime: number | null = null;
 
-    events.forEach(event => {
+    events.forEach((event) => {
       switch (event.type) {
-        case 'play':
-        case 'resume':
+        case "play":
+        case "resume":
           lastPlayTime = event.timestamp;
           break;
-        case 'pause':
-        case 'complete':
-        case 'session_end':
+        case "pause":
+        case "complete":
+        case "session_end":
           if (lastPlayTime) {
             watchTime += (event.timestamp - lastPlayTime) / 1000; // Convert to seconds
             lastPlayTime = null;
           }
-          if (event.type === 'complete') {
+          if (event.type === "complete") {
             completionRate = event.metadata?.completionRate || 100;
           }
           break;
-        case 'like':
-        case 'unlike':
-        case 'comment':
-        case 'share':
-        case 'save':
+        case "like":
+        case "unlike":
+        case "comment":
+        case "share":
+        case "save":
           interactions++;
           break;
       }
@@ -206,8 +210,8 @@ export class VideoAnalyticsAggregator {
   async analyzeUserSegments(analytics: VideoAnalytics[]): Promise<UserSegment[]> {
     const segments: UserSegment[] = [
       {
-        segmentId: 'highly-engaged',
-        name: 'Highly Engaged',
+        segmentId: "highly-engaged",
+        name: "Highly Engaged",
         criteria: {
           minWatchTime: 300, // 5 minutes
           minCompletionRate: 80,
@@ -222,8 +226,8 @@ export class VideoAnalyticsAggregator {
         },
       },
       {
-        segmentId: 'casual-viewers',
-        name: 'Casual Viewers',
+        segmentId: "casual-viewers",
+        name: "Casual Viewers",
         criteria: {
           minWatchTime: 60, // 1 minute
           minCompletionRate: 30,
@@ -238,8 +242,8 @@ export class VideoAnalyticsAggregator {
         },
       },
       {
-        segmentId: 'new-users',
-        name: 'New Users',
+        segmentId: "new-users",
+        name: "New Users",
         criteria: {
           minWatchTime: 0,
           minCompletionRate: 0,
@@ -256,17 +260,13 @@ export class VideoAnalyticsAggregator {
     ];
 
     // Segment users based on their analytics
-    analytics.forEach(userAnalytics => {
+    analytics.forEach((userAnalytics) => {
       const userId = userAnalytics.sessionId;
 
       // Determine segment
       let assignedSegment: UserSegment | null = null;
 
-      if (
-        userAnalytics.watchTime >= 300 &&
-        userAnalytics.completionRate >= 80 &&
-        userAnalytics.engagementScore >= 70
-      ) {
+      if (userAnalytics.watchTime >= 300 && userAnalytics.completionRate >= 80 && userAnalytics.engagementScore >= 70) {
         assignedSegment = segments[0]; // Highly engaged
       } else if (
         userAnalytics.watchTime >= 60 &&
@@ -288,7 +288,7 @@ export class VideoAnalyticsAggregator {
     });
 
     // Calculate segment averages
-    segments.forEach(segment => {
+    segments.forEach((segment) => {
       if (segment.metrics.totalUsers > 0) {
         segment.metrics.averageWatchTime /= segment.metrics.totalUsers;
         segment.metrics.averageCompletionRate /= segment.metrics.totalUsers;
@@ -304,7 +304,7 @@ export class VideoAnalyticsAggregator {
    */
   async identifyTrendingVideos(
     videoPerformances: VideoPerformance[],
-    timeWindow: number = 24 * 60 * 60 * 1000 // 24 hours
+    timeWindow: number = 24 * 60 * 60 * 1000, // 24 hours
   ): Promise<{
     trending: VideoPerformance[];
     rising: VideoPerformance[];
@@ -320,16 +320,20 @@ export class VideoAnalyticsAggregator {
     const trending = sorted.slice(0, 10); // Top 10 by engagement
 
     // Identify rising (improving performance)
-    const rising = sorted.filter(video => {
-      // Simplified: videos with high recent engagement
-      return video.engagementScore > 70 && video.views > 10;
-    }).slice(0, 5);
+    const rising = sorted
+      .filter((video) => {
+        // Simplified: videos with high recent engagement
+        return video.engagementScore > 70 && video.views > 10;
+      })
+      .slice(0, 5);
 
     // Identify declining (decreasing performance)
-    const declining = sorted.filter(video => {
-      // Simplified: videos with low recent engagement despite views
-      return video.engagementScore < 30 && video.views > 20;
-    }).slice(0, 5);
+    const declining = sorted
+      .filter((video) => {
+        // Simplified: videos with low recent engagement despite views
+        return video.engagementScore < 30 && video.views > 20;
+      })
+      .slice(0, 5);
 
     return { trending, rising, declining };
   }
@@ -337,12 +341,9 @@ export class VideoAnalyticsAggregator {
   /**
    * Predict video performance based on historical data.
    */
-  async predictVideoPerformance(
-    videoId: string,
-    historicalData: VideoPerformance[]
-  ): Promise<PredictiveModel> {
+  async predictVideoPerformance(videoId: string, historicalData: VideoPerformance[]): Promise<PredictiveModel> {
     // Simple linear prediction based on recent trends
-    const videoHistory = historicalData.filter(d => d.videoId === videoId);
+    const videoHistory = historicalData.filter((d) => d.videoId === videoId);
 
     if (videoHistory.length < 2) {
       return {
@@ -358,7 +359,8 @@ export class VideoAnalyticsAggregator {
     const previous = videoHistory[videoHistory.length - 2];
 
     const viewGrowthRate = (recent.views - previous.views) / Math.max(previous.views, 1);
-    const engagementGrowthRate = (recent.engagementScore - previous.engagementScore) / Math.max(previous.engagementScore, 1);
+    const engagementGrowthRate =
+      (recent.engagementScore - previous.engagementScore) / Math.max(previous.engagementScore, 1);
 
     // Predict next period
     const predictedViews = Math.round(recent.views * (1 + viewGrowthRate));
@@ -382,7 +384,7 @@ export class VideoAnalyticsAggregator {
    */
   async generateReport(
     events: VideoEvent[],
-    period: 'day' | 'week' | 'month'
+    period: "day" | "week" | "month",
   ): Promise<{
     summary: AggregatedMetrics;
     trends: TrendData[];
@@ -402,7 +404,7 @@ export class VideoAnalyticsAggregator {
       .slice(0, 10);
 
     // Analyze user segments (simplified - using mock data)
-    const mockAnalytics: VideoAnalytics[] = Array.from(summary.videoPerformance.values()).map(perf => ({
+    const mockAnalytics: VideoAnalytics[] = Array.from(summary.videoPerformance.values()).map((perf) => ({
       videoId: perf.videoId,
       sessionId: `session-${perf.videoId}`,
       watchTime: perf.watchTime,
@@ -417,7 +419,7 @@ export class VideoAnalyticsAggregator {
       bufferingEvents: 0,
       seekCount: 0,
       averageViewDuration: perf.averageViewDuration,
-      sessionStartTime: Date.now() - (24 * 60 * 60 * 1000),
+      sessionStartTime: Date.now() - 24 * 60 * 60 * 1000,
       lastWatchedPosition: 0,
     }));
     const userSegments = await this.analyzeUserSegments(mockAnalytics);
@@ -441,7 +443,7 @@ export class VideoAnalyticsAggregator {
   /**
    * Generate trend data over time.
    */
-  private generateTrendData(events: VideoEvent[], period: 'day' | 'week' | 'month'): TrendData[] {
+  private generateTrendData(events: VideoEvent[], period: "day" | "week" | "month"): TrendData[] {
     const trends: TrendData[] = [];
     const now = Date.now();
 
@@ -450,15 +452,15 @@ export class VideoAnalyticsAggregator {
     let bucketCount: number;
 
     switch (period) {
-      case 'day':
+      case "day":
         bucketSize = 60 * 60 * 1000; // 1 hour
         bucketCount = 24;
         break;
-      case 'week':
+      case "week":
         bucketSize = 24 * 60 * 60 * 1000; // 1 day
         bucketCount = 7;
         break;
-      case 'month':
+      case "month":
         bucketSize = 24 * 60 * 60 * 1000; // 1 day
         bucketCount = 30;
         break;
@@ -466,13 +468,11 @@ export class VideoAnalyticsAggregator {
 
     // Create buckets
     for (let i = 0; i < bucketCount; i++) {
-      const bucketStart = now - ((bucketCount - i) * bucketSize);
+      const bucketStart = now - (bucketCount - i) * bucketSize;
       const bucketEnd = bucketStart + bucketSize;
 
       // Count events in this bucket
-      const bucketEvents = events.filter(e =>
-        e.timestamp >= bucketStart && e.timestamp < bucketEnd
-      );
+      const bucketEvents = events.filter((e) => e.timestamp >= bucketStart && e.timestamp < bucketEnd);
 
       trends.push({
         timestamp: bucketStart,
@@ -494,12 +494,15 @@ export class VideoAnalyticsAggregator {
 
     // Also persist to AsyncStorage
     try {
-      await AsyncStorage.setItem(`${CACHE_KEY_PREFIX}_${key}`, JSON.stringify({
-        data,
-        timestamp: Date.now(),
-      }));
+      await AsyncStorage.setItem(
+        `${CACHE_KEY_PREFIX}_${key}`,
+        JSON.stringify({
+          data,
+          timestamp: Date.now(),
+        }),
+      );
     } catch (error) {
-      console.error('Failed to cache analytics result:', error);
+      console.error("Failed to cache analytics result:", error);
     }
   }
 
@@ -525,7 +528,7 @@ export class VideoAnalyticsAggregator {
         }
       }
     } catch (error) {
-      console.error('Failed to get cached analytics result:', error);
+      console.error("Failed to get cached analytics result:", error);
     }
 
     return null;
@@ -540,36 +543,33 @@ export class VideoAnalyticsAggregator {
     // Clear persistent cache
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const cacheKeys = keys.filter(k => k.startsWith(CACHE_KEY_PREFIX));
+      const cacheKeys = keys.filter((k) => k.startsWith(CACHE_KEY_PREFIX));
       await AsyncStorage.multiRemove(cacheKeys);
     } catch (error) {
-      console.error('Failed to clear analytics cache:', error);
+      console.error("Failed to clear analytics cache:", error);
     }
   }
 
   /**
    * Export analytics data in various formats.
    */
-  async exportData(
-    data: any,
-    format: 'json' | 'csv' = 'json'
-  ): Promise<string> {
-    if (format === 'json') {
+  async exportData(data: any, format: "json" | "csv" = "json"): Promise<string> {
+    if (format === "json") {
       return JSON.stringify(data, null, 2);
     }
 
     // CSV export
     if (Array.isArray(data)) {
-      const headers = Object.keys(data[0] || {}).join(',');
-      const rows = data.map(item =>
-        Object.values(item).map(v =>
-          typeof v === 'string' && v.includes(',') ? `"${v}"` : v
-        ).join(',')
+      const headers = Object.keys(data[0] || {}).join(",");
+      const rows = data.map((item) =>
+        Object.values(item)
+          .map((v) => (typeof v === "string" && v.includes(",") ? `"${v}"` : v))
+          .join(","),
       );
-      return [headers, ...rows].join('\n');
+      return [headers, ...rows].join("\n");
     }
 
-    return '';
+    return "";
   }
 }
 

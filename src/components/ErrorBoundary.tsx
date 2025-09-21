@@ -24,7 +24,7 @@ interface State {
  * and recovery mechanisms
  */
 export class ErrorBoundary extends Component<Props, State> {
-  private resetTimeoutId: NodeJS.Timeout | null = null;
+  private resetTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor(props: Props) {
     // Call super first without type annotation to avoid Hermes issues
@@ -157,7 +157,7 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.state.hasError) {
         this.resetErrorBoundary();
       }
-    }, 1000) as unknown as number;
+    }, 1000);
   };
 
   render() {

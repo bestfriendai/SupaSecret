@@ -11,7 +11,7 @@
  */
 
 import { Platform } from "react-native";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "../utils/legacyFileSystem";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { isExpoGo, hasVideoProcessing } from "../utils/environmentDetector";

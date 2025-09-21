@@ -25,11 +25,11 @@ interface SimpleVideoPlayerManager {
 export const useSimpleVideoPlayer = (videos: VideoItem[]): SimpleVideoPlayerManager => {
   const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   const userPreferences = useConfessionStore((state) => state.userPreferences);
-  
+
   // Track current video index and playing state
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentPlayingRef = useRef<number>(-1);
-  
+
   // Get current video source
   const getCurrentVideoSource = useCallback(() => {
     if (videos.length === 0) {
@@ -46,7 +46,7 @@ export const useSimpleVideoPlayer = (videos: VideoItem[]): SimpleVideoPlayerMana
 
   // Create a single video player for the current video
   const currentVideoSource = getCurrentVideoSource();
-  
+
   const videoPlayer = useVideoPlayer(currentVideoSource, (player) => {
     console.log("useSimpleVideoPlayer: Player callback called with:", player ? "valid player" : "null player");
     console.log("useSimpleVideoPlayer: Source being used:", currentVideoSource);
@@ -101,64 +101,73 @@ export const useSimpleVideoPlayer = (videos: VideoItem[]): SimpleVideoPlayerMana
   }, [videoPlayer]);
 
   // Get player for specific index (simplified - always returns current player)
-  const getPlayer = useCallback((index: number): VideoPlayer | null => {
-    if (index !== currentIndex) {
-      console.log(`useSimpleVideoPlayer: Requested index ${index} but current is ${currentIndex}`);
-      return null;
-    }
-    
-    if (!videoPlayer) {
-      console.warn("useSimpleVideoPlayer: Video player is null");
-      return null;
-    }
-    
-    return videoPlayer;
-  }, [videoPlayer, currentIndex]);
+  const getPlayer = useCallback(
+    (index: number): VideoPlayer | null => {
+      if (index !== currentIndex) {
+        console.log(`useSimpleVideoPlayer: Requested index ${index} but current is ${currentIndex}`);
+        return null;
+      }
+
+      if (!videoPlayer) {
+        console.warn("useSimpleVideoPlayer: Video player is null");
+        return null;
+      }
+
+      return videoPlayer;
+    },
+    [videoPlayer, currentIndex],
+  );
 
   // Play video at specific index
-  const playVideo = useCallback((index: number) => {
-    try {
-      // If requesting different index, update current index
-      if (index !== currentIndex) {
-        console.log(`useSimpleVideoPlayer: Switching from index ${currentIndex} to ${index}`);
-        setCurrentIndex(index);
-        return; // Player will be recreated with new source
-      }
+  const playVideo = useCallback(
+    (index: number) => {
+      try {
+        // If requesting different index, update current index
+        if (index !== currentIndex) {
+          console.log(`useSimpleVideoPlayer: Switching from index ${currentIndex} to ${index}`);
+          setCurrentIndex(index);
+          return; // Player will be recreated with new source
+        }
 
-      if (videoPlayer && typeof videoPlayer.play === "function") {
-        videoPlayer.play();
-        currentPlayingRef.current = index;
-        console.log(`useSimpleVideoPlayer: Playing video at index ${index}`);
-      } else {
-        console.warn("useSimpleVideoPlayer: Cannot play - player not available");
+        if (videoPlayer && typeof videoPlayer.play === "function") {
+          videoPlayer.play();
+          currentPlayingRef.current = index;
+          console.log(`useSimpleVideoPlayer: Playing video at index ${index}`);
+        } else {
+          console.warn("useSimpleVideoPlayer: Cannot play - player not available");
+        }
+      } catch (error: any) {
+        if (
+          !error?.message?.includes("NativeSharedObjectNotFoundException") &&
+          !error?.message?.includes("FunctionCallException")
+        ) {
+          console.warn(`useSimpleVideoPlayer: Error playing video ${index}:`, error?.message);
+        }
       }
-    } catch (error: any) {
-      if (
-        !error?.message?.includes("NativeSharedObjectNotFoundException") &&
-        !error?.message?.includes("FunctionCallException")
-      ) {
-        console.warn(`useSimpleVideoPlayer: Error playing video ${index}:`, error?.message);
-      }
-    }
-  }, [videoPlayer, currentIndex]);
+    },
+    [videoPlayer, currentIndex],
+  );
 
   // Pause video at specific index
-  const pauseVideo = useCallback((index: number) => {
-    try {
-      if (index === currentIndex && videoPlayer && typeof videoPlayer.pause === "function") {
-        videoPlayer.pause();
-        currentPlayingRef.current = -1;
-        console.log(`useSimpleVideoPlayer: Paused video at index ${index}`);
+  const pauseVideo = useCallback(
+    (index: number) => {
+      try {
+        if (index === currentIndex && videoPlayer && typeof videoPlayer.pause === "function") {
+          videoPlayer.pause();
+          currentPlayingRef.current = -1;
+          console.log(`useSimpleVideoPlayer: Paused video at index ${index}`);
+        }
+      } catch (error: any) {
+        if (
+          !error?.message?.includes("NativeSharedObjectNotFoundException") &&
+          !error?.message?.includes("FunctionCallException")
+        ) {
+          console.warn(`useSimpleVideoPlayer: Error pausing video ${index}:`, error?.message);
+        }
       }
-    } catch (error: any) {
-      if (
-        !error?.message?.includes("NativeSharedObjectNotFoundException") &&
-        !error?.message?.includes("FunctionCallException")
-      ) {
-        console.warn(`useSimpleVideoPlayer: Error pausing video ${index}:`, error?.message);
-      }
-    }
-  }, [videoPlayer, currentIndex]);
+    },
+    [videoPlayer, currentIndex],
+  );
 
   // Pause all videos
   const pauseAll = useCallback(() => {
@@ -203,19 +212,22 @@ export const useSimpleVideoPlayer = (videos: VideoItem[]): SimpleVideoPlayerMana
   }, [videoPlayer]);
 
   // Update mute state
-  const updateMuteState = useCallback((forceUnmuted?: boolean) => {
-    try {
-      if (videoPlayer) {
-        if (forceUnmuted) {
-          videoPlayer.muted = false;
-        } else {
-          videoPlayer.muted = !userPreferences.sound_enabled;
+  const updateMuteState = useCallback(
+    (forceUnmuted?: boolean) => {
+      try {
+        if (videoPlayer) {
+          if (forceUnmuted) {
+            videoPlayer.muted = false;
+          } else {
+            videoPlayer.muted = !userPreferences.sound_enabled;
+          }
         }
+      } catch (error) {
+        console.warn("useSimpleVideoPlayer: Error updating mute state:", error);
       }
-    } catch (error) {
-      console.warn("useSimpleVideoPlayer: Error updating mute state:", error);
-    }
-  }, [videoPlayer, userPreferences.sound_enabled]);
+    },
+    [videoPlayer, userPreferences.sound_enabled],
+  );
 
   // Stop all videos
   const stopAll = useCallback(() => {
@@ -233,12 +245,15 @@ export const useSimpleVideoPlayer = (videos: VideoItem[]): SimpleVideoPlayerMana
   }, [pauseAll]);
 
   // Set current index
-  const setCurrentIndexCallback = useCallback((index: number) => {
-    if (index >= 0 && index < videos.length && index !== currentIndex) {
-      console.log(`useSimpleVideoPlayer: Setting current index to ${index}`);
-      setCurrentIndex(index);
-    }
-  }, [currentIndex, videos.length]);
+  const setCurrentIndexCallback = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < videos.length && index !== currentIndex) {
+        console.log(`useSimpleVideoPlayer: Setting current index to ${index}`);
+        setCurrentIndex(index);
+      }
+    },
+    [currentIndex, videos.length],
+  );
 
   return {
     getPlayer,

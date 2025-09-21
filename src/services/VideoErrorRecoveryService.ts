@@ -140,10 +140,7 @@ export class VideoErrorRecoveryService {
   /**
    * Handle video error with automatic recovery
    */
-  async handleError(
-    error: BaseVideoError,
-    context?: Partial<ErrorContext>
-  ): Promise<RecoveryResult> {
+  async handleError(error: BaseVideoError, context?: Partial<ErrorContext>): Promise<RecoveryResult> {
     const startTime = Date.now();
     const fullContext = {
       ...extractErrorContext(error),
@@ -193,7 +190,7 @@ export class VideoErrorRecoveryService {
   private async processRecovery(
     error: BaseVideoError,
     context: ErrorContext,
-    strategy: ErrorRecoveryStrategy
+    strategy: ErrorRecoveryStrategy,
   ): Promise<RecoveryResult> {
     const startTime = Date.now();
     const recoveryKey = `${error.code}_${context.videoId || Date.now()}`;
@@ -225,7 +222,7 @@ export class VideoErrorRecoveryService {
     error: BaseVideoError,
     context: ErrorContext,
     strategy: ErrorRecoveryStrategy,
-    startTime: number
+    startTime: number,
   ): Promise<RecoveryResult> {
     const policy = this.recoveryPolicies.get(error.code);
     let attemptCount = 0;
@@ -234,17 +231,12 @@ export class VideoErrorRecoveryService {
 
     // Implement retry logic if configured
     if (strategy.retryConfig && policy) {
-      const retryOperation = createRetryableOperation(
-        async () => {
-          attemptCount++;
-          return this.attemptRecovery(error, context);
-        },
-        strategy.retryConfig
-      );
-
       try {
         const result = await Promise.race([
-          retryOperation(),
+          createRetryableOperation(async () => {
+            attemptCount++;
+            return this.attemptRecovery(error, context);
+          }, strategy.retryConfig),
           this.timeout(this.config.recoveryTimeout),
         ]);
 
@@ -278,17 +270,14 @@ export class VideoErrorRecoveryService {
       attemptCount,
       Date.now() - startTime,
       fallbackUsed,
-      userNotified
+      userNotified,
     );
   }
 
   /**
    * Attempt to recover from error
    */
-  private async attemptRecovery(
-    error: BaseVideoError,
-    context: ErrorContext
-  ): Promise<{ success: boolean }> {
+  private async attemptRecovery(error: BaseVideoError, context: ErrorContext): Promise<{ success: boolean }> {
     switch (error.code) {
       case VideoErrorCode.NETWORK_ERROR:
       case VideoErrorCode.CONNECTION_FAILED:
@@ -325,7 +314,12 @@ export class VideoErrorRecoveryService {
     // Retry the operation
     try {
       if (context.videoId) {
-        await VideoDataService.retryFailedRequest(context.videoId);
+        const retryFn = (VideoDataService as unknown as {
+          retryFailedRequest?: (videoId: string) => Promise<void>;
+        }).retryFailedRequest;
+        if (retryFn) {
+          await retryFn(context.videoId);
+        }
       }
       return { success: true };
     } catch {
@@ -348,8 +342,13 @@ export class VideoErrorRecoveryService {
 
       // Refresh video data
       if (context.videoId) {
-        await VideoDataService.refreshVideoData(context.videoId);
-        return { success: true };
+        const refreshFn = (VideoDataService as unknown as {
+          refreshVideoData?: (videoId: string) => Promise<void>;
+        }).refreshVideoData;
+        if (refreshFn) {
+          await refreshFn(context.videoId);
+          return { success: true };
+        }
       }
     } catch {
       // Fall through
@@ -393,7 +392,7 @@ export class VideoErrorRecoveryService {
     // Wait for cooldown period
     const policy = this.recoveryPolicies.get(VideoErrorCode.RATE_LIMITED);
     if (policy) {
-      await new Promise(resolve => setTimeout(resolve, policy.cooldownPeriod));
+      await new Promise((resolve) => setTimeout(resolve, policy.cooldownPeriod));
       return { success: true };
     }
 
@@ -405,7 +404,7 @@ export class VideoErrorRecoveryService {
    */
   private async attemptFallback(
     error: BaseVideoError,
-    context: ErrorContext
+    context: ErrorContext,
   ): Promise<{ success: boolean; fallbackUsed: boolean }> {
     const fallbackSource = this.getNextFallbackSource();
 
@@ -416,7 +415,12 @@ export class VideoErrorRecoveryService {
     try {
       // Load fallback source
       if (context.videoId) {
-        await VideoDataService.loadFallbackVideo(context.videoId, fallbackSource.url);
+        const fallbackFn = (VideoDataService as unknown as {
+          loadFallbackVideo?: (videoId: string, url: string) => Promise<void>;
+        }).loadFallbackVideo;
+        if (fallbackFn) {
+          await fallbackFn(context.videoId, fallbackSource.url);
+        }
       }
       return { success: true, fallbackUsed: true };
     } catch {
@@ -430,7 +434,7 @@ export class VideoErrorRecoveryService {
   private getNextFallbackSource(): FallbackSource | null {
     // Sort by priority and filter available sources
     const availableSources = this.fallbackSources
-      .filter(source => !source.isLocal || isOnline())
+      .filter((source) => !source.isLocal || isOnline())
       .sort((a, b) => a.priority - b.priority);
 
     return availableSources[0] || null;
@@ -455,11 +459,7 @@ export class VideoErrorRecoveryService {
   /**
    * Queue error for delayed processing
    */
-  private queueError(
-    error: BaseVideoError,
-    context: ErrorContext,
-    strategy: ErrorRecoveryStrategy
-  ): void {
+  private queueError(error: BaseVideoError, context: ErrorContext, strategy: ErrorRecoveryStrategy): void {
     const priority = this.calculateErrorPriority(error);
 
     this.errorQueue.push({
@@ -541,7 +541,7 @@ export class VideoErrorRecoveryService {
     const startTime = Date.now();
 
     while (!isOnline() && Date.now() - startTime < timeout) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     if (!isOnline()) {
@@ -678,7 +678,7 @@ export class VideoErrorRecoveryService {
     attemptCount: number,
     duration: number,
     fallbackUsed = false,
-    userNotified = false
+    userNotified = false,
   ): RecoveryResult {
     return {
       success,
@@ -725,9 +725,7 @@ export class VideoErrorRecoveryService {
   private cleanupOldHistory(): void {
     const cutoffTime = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
     // Comment 4: Filter by timestamp instead of duration
-    this.recoveryHistory = this.recoveryHistory.filter(
-      result => result.timestamp > cutoffTime
-    );
+    this.recoveryHistory = this.recoveryHistory.filter((result) => result.timestamp > cutoffTime);
   }
 
   /**
@@ -766,13 +764,13 @@ export class VideoErrorRecoveryService {
    * Calculate success rate for error type
    */
   private calculateSuccessRate(errorCode: VideoErrorCode): number {
-    const relevantResults = this.recoveryHistory.filter(r => r.errorCode === errorCode);
+    const relevantResults = this.recoveryHistory.filter((r) => r.errorCode === errorCode);
 
     if (relevantResults.length === 0) {
       return 0;
     }
 
-    const successCount = relevantResults.filter(r => r.success).length;
+    const successCount = relevantResults.filter((r) => r.success).length;
     return successCount / relevantResults.length;
   }
 
@@ -876,21 +874,19 @@ export class VideoErrorRecoveryService {
   getStatus(): {
     activeRecoveries: number;
     queuedErrors: number;
-    circuitBreakers: Array<{ code: VideoErrorCode; state: string }>;
+    circuitBreakers: { code: VideoErrorCode; state: string }[];
     successRate: number;
     recentErrors: number;
   } {
     // Comment 4: Check timestamp for recent errors
-    const recentErrors = this.recoveryHistory.filter(
-      r => r.timestamp > Date.now() - 5 * 60 * 1000
-    ).length;
+    const recentErrors = this.recoveryHistory.filter((r) => r.timestamp > Date.now() - 5 * 60 * 1000).length;
 
     const successRate = this.calculateOverallSuccessRate();
 
     return {
       activeRecoveries: this.activeRecoveries.size,
       queuedErrors: this.errorQueue.length,
-      circuitBreakers: Array.from(this.circuitBreakers.values()).map(b => ({
+      circuitBreakers: Array.from(this.circuitBreakers.values()).map((b) => ({
         code: b.errorCode,
         state: b.state,
       })),
@@ -907,7 +903,7 @@ export class VideoErrorRecoveryService {
       return 1;
     }
 
-    const successCount = this.recoveryHistory.filter(r => r.success).length;
+    const successCount = this.recoveryHistory.filter((r) => r.success).length;
     return successCount / this.recoveryHistory.length;
   }
 

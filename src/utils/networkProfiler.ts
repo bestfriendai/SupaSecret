@@ -1,9 +1,9 @@
-import NetInfo, { NetInfoState, NetInfoSubscription } from '@react-native-community/netinfo';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { healthMonitor } from './healthMonitor';
+import NetInfo, { NetInfoState, NetInfoSubscription } from "@react-native-community/netinfo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { healthMonitor } from "./healthMonitor";
 
-export type ConnectionType = 'wifi' | '4g' | '5g' | '3g' | '2g' | 'ethernet' | 'unknown';
-export type NetworkQuality = 'excellent' | 'good' | 'fair' | 'poor';
+export type ConnectionType = "wifi" | "4g" | "5g" | "3g" | "2g" | "ethernet" | "unknown";
+export type NetworkQuality = "excellent" | "good" | "fair" | "poor";
 
 export interface NetworkProfile {
   bandwidth: number; // Mbps
@@ -51,18 +51,18 @@ class NetworkProfiler {
     wifi: 0,
     cellular: 0,
     total: 0,
-    resetDate: Date.now()
+    resetDate: Date.now(),
   };
   private networkSubscription: NetInfoSubscription | null = null;
   private measurementInterval: NodeJS.Timeout | null = null;
   private options: Required<NetworkConditionOptions>;
-  private readonly CACHE_KEY_PREFIX = 'network_profiler_';
+  private readonly CACHE_KEY_PREFIX = "network_profiler_";
   private readonly STABILITY_WINDOW = 10;
   private readonly PATTERN_SAMPLE_THRESHOLD = 5;
   private testUrls = [
-    'https://www.gstatic.com/generate_204',
-    'https://api.github.com',
-    'https://www.cloudflare.com/cdn-cgi/trace'
+    "https://www.gstatic.com/generate_204",
+    "https://api.github.com",
+    "https://www.cloudflare.com/cdn-cgi/trace",
   ];
 
   constructor(options: NetworkConditionOptions = {}) {
@@ -71,7 +71,7 @@ class NetworkProfiler {
       enablePatternLearning: options.enablePatternLearning ?? true,
       enableDataUsageTracking: options.enableDataUsageTracking ?? true,
       measurementInterval: options.measurementInterval ?? 30000, // 30 seconds
-      historySize: options.historySize ?? 100
+      historySize: options.historySize ?? 100,
     };
 
     this.initialize();
@@ -120,7 +120,7 @@ class NetworkProfiler {
         this.currentProfile = JSON.parse(profileData);
       }
     } catch (error) {
-      console.error('Failed to load persisted network data:', error);
+      console.error("Failed to load persisted network data:", error);
     }
   }
 
@@ -144,16 +144,16 @@ class NetworkProfiler {
         latency: Infinity,
         jitter: Infinity,
         packetLoss: 100,
-        connectionType: 'unknown',
-        quality: 'poor',
+        connectionType: "unknown",
+        quality: "poor",
         stability: 0,
         timestamp: Date.now(),
-        isMetered: false
+        isMetered: false,
       };
     }
 
     // Update health monitor
-    healthMonitor.updateNetworkStatus(isConnected);
+    healthMonitor.trackInteraction("network_status", { connected: isConnected });
   }
 
   private startAdaptiveMeasurement(): void {
@@ -204,7 +204,7 @@ class NetworkProfiler {
       stability,
       timestamp: Date.now(),
       isMetered: netInfo.details?.isConnectionExpensive ?? false,
-      signalStrength: this.getSignalStrength(netInfo)
+      signalStrength: this.getSignalStrength(netInfo),
     };
 
     // Update history
@@ -212,7 +212,7 @@ class NetworkProfiler {
       bandwidth,
       latency,
       timestamp: Date.now(),
-      connectionType
+      connectionType,
     });
 
     // Learn patterns
@@ -234,24 +234,24 @@ class NetworkProfiler {
   private detectConnectionType(netInfo: NetInfoState): ConnectionType {
     const type = netInfo.type.toLowerCase();
 
-    if (type === 'wifi') return 'wifi';
-    if (type === 'ethernet') return 'ethernet';
+    if (type === "wifi") return "wifi";
+    if (type === "ethernet") return "ethernet";
 
-    if (type === 'cellular') {
+    if (type === "cellular") {
       const cellularGeneration = (netInfo.details as any)?.cellularGeneration;
 
       if (cellularGeneration) {
         const gen = cellularGeneration.toLowerCase();
-        if (gen.includes('5g')) return '5g';
-        if (gen.includes('4g') || gen.includes('lte')) return '4g';
-        if (gen.includes('3g')) return '3g';
-        if (gen.includes('2g')) return '2g';
+        if (gen.includes("5g")) return "5g";
+        if (gen.includes("4g") || gen.includes("lte")) return "4g";
+        if (gen.includes("3g")) return "3g";
+        if (gen.includes("2g")) return "2g";
       }
 
-      return '4g'; // Default to 4G for cellular
+      return "4g"; // Default to 4G for cellular
     }
 
-    return 'unknown';
+    return "unknown";
   }
 
   private async measureBandwidth(): Promise<number> {
@@ -263,12 +263,12 @@ class NetworkProfiler {
         const startTime = Date.now();
 
         const response = await fetch(url, {
-          method: 'GET',
-          cache: 'no-cache',
+          method: "GET",
+          cache: "no-cache",
           headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
         });
 
         if (response.ok) {
@@ -298,8 +298,8 @@ class NetworkProfiler {
         const startTime = Date.now();
 
         await fetch(url, {
-          method: 'HEAD',
-          cache: 'no-cache'
+          method: "HEAD",
+          cache: "no-cache",
         });
 
         const latency = Date.now() - startTime;
@@ -320,9 +320,7 @@ class NetworkProfiler {
   private calculateJitter(): number {
     if (this.measurementHistory.length < 2) return 0;
 
-    const recentLatencies = this.measurementHistory
-      .slice(-10)
-      .map(m => m.latency);
+    const recentLatencies = this.measurementHistory.slice(-10).map((m) => m.latency);
 
     if (recentLatencies.length < 2) return 0;
 
@@ -343,8 +341,8 @@ class NetworkProfiler {
     for (let i = 0; i < attempts; i++) {
       try {
         const response = await fetch(this.testUrls[0], {
-          method: 'HEAD',
-          signal: AbortSignal.timeout(1000)
+          method: "HEAD",
+          signal: AbortSignal.timeout(1000),
         });
 
         if (response.ok) {
@@ -369,9 +367,10 @@ class NetworkProfiler {
 
     // Calculate coefficient of variation
     const mean = this.stabilityHistory.reduce((a, b) => a + b, 0) / this.stabilityHistory.length;
-    const variance = this.stabilityHistory.reduce((sum, val) => {
-      return sum + Math.pow(val - mean, 2);
-    }, 0) / this.stabilityHistory.length;
+    const variance =
+      this.stabilityHistory.reduce((sum, val) => {
+        return sum + Math.pow(val - mean, 2);
+      }, 0) / this.stabilityHistory.length;
 
     const coefficientOfVariation = Math.sqrt(variance) / mean;
 
@@ -379,11 +378,7 @@ class NetworkProfiler {
     return Math.max(0, Math.min(1, 1 - coefficientOfVariation));
   }
 
-  private classifyNetworkQuality(
-    bandwidth: number,
-    latency: number,
-    stability: number
-  ): NetworkQuality {
+  private classifyNetworkQuality(bandwidth: number, latency: number, stability: number): NetworkQuality {
     // Weighted scoring
     const bandwidthScore = Math.min(1, bandwidth / 20); // 20 Mbps = perfect
     const latencyScore = Math.max(0, 1 - latency / 200); // 0ms = perfect, 200ms+ = 0
@@ -391,10 +386,10 @@ class NetworkProfiler {
 
     const totalScore = bandwidthScore * 0.4 + latencyScore * 0.3 + stabilityScore * 0.3;
 
-    if (totalScore >= 0.8) return 'excellent';
-    if (totalScore >= 0.6) return 'good';
-    if (totalScore >= 0.4) return 'fair';
-    return 'poor';
+    if (totalScore >= 0.8) return "excellent";
+    if (totalScore >= 0.6) return "good";
+    if (totalScore >= 0.4) return "fair";
+    return "poor";
   }
 
   private getSignalStrength(netInfo: NetInfoState): number | undefined {
@@ -432,7 +427,7 @@ class NetworkProfiler {
         averageBandwidth: avgBandwidth,
         averageLatency: avgLatency,
         quality: this.classifyNetworkQuality(avgBandwidth, avgLatency, profile.stability),
-        samples
+        samples,
       });
     } else {
       // Create new pattern
@@ -442,7 +437,7 @@ class NetworkProfiler {
         averageBandwidth: profile.bandwidth,
         averageLatency: profile.latency,
         quality: profile.quality,
-        samples: 1
+        samples: 1,
       });
     }
 
@@ -455,9 +450,9 @@ class NetworkProfiler {
   private trackDataUsage(connectionType: ConnectionType): void {
     const estimatedBytes = 1024; // Rough estimate per measurement
 
-    if (connectionType === 'wifi') {
+    if (connectionType === "wifi") {
       this.dataUsage.wifi += estimatedBytes;
-    } else if (['4g', '5g', '3g', '2g'].includes(connectionType)) {
+    } else if (["4g", "5g", "3g", "2g"].includes(connectionType)) {
       this.dataUsage.cellular += estimatedBytes;
     }
 
@@ -474,7 +469,7 @@ class NetworkProfiler {
       wifi: 0,
       cellular: 0,
       total: 0,
-      resetDate: Date.now()
+      resetDate: Date.now(),
     };
     this.persistDataUsage();
   }
@@ -484,13 +479,13 @@ class NetworkProfiler {
     const connectionType = this.detectConnectionType(netInfo);
 
     const bandwidthMap: Record<ConnectionType, number> = {
-      '5g': 20,
-      '4g': 10,
-      '3g': 2,
-      '2g': 0.1,
-      'wifi': 15,
-      'ethernet': 100,
-      'unknown': 5
+      "5g": 20,
+      "4g": 10,
+      "3g": 2,
+      "2g": 0.1,
+      wifi: 15,
+      ethernet: 100,
+      unknown: 5,
     };
 
     return bandwidthMap[connectionType];
@@ -498,35 +493,26 @@ class NetworkProfiler {
 
   private async persistProfile(profile: NetworkProfile): Promise<void> {
     try {
-      await AsyncStorage.setItem(
-        `${this.CACHE_KEY_PREFIX}last_profile`,
-        JSON.stringify(profile)
-      );
+      await AsyncStorage.setItem(`${this.CACHE_KEY_PREFIX}last_profile`, JSON.stringify(profile));
     } catch (error) {
-      console.error('Failed to persist network profile:', error);
+      console.error("Failed to persist network profile:", error);
     }
   }
 
   private async persistPatterns(): Promise<void> {
     try {
       const patterns = Object.fromEntries(this.networkPatterns);
-      await AsyncStorage.setItem(
-        `${this.CACHE_KEY_PREFIX}patterns`,
-        JSON.stringify(patterns)
-      );
+      await AsyncStorage.setItem(`${this.CACHE_KEY_PREFIX}patterns`, JSON.stringify(patterns));
     } catch (error) {
-      console.error('Failed to persist network patterns:', error);
+      console.error("Failed to persist network patterns:", error);
     }
   }
 
   private async persistDataUsage(): Promise<void> {
     try {
-      await AsyncStorage.setItem(
-        `${this.CACHE_KEY_PREFIX}data_usage`,
-        JSON.stringify(this.dataUsage)
-      );
+      await AsyncStorage.setItem(`${this.CACHE_KEY_PREFIX}data_usage`, JSON.stringify(this.dataUsage));
     } catch (error) {
-      console.error('Failed to persist data usage:', error);
+      console.error("Failed to persist data usage:", error);
     }
   }
 
@@ -557,15 +543,15 @@ class NetworkProfiler {
     if (!this.currentProfile) return false;
 
     // Reduce data usage on metered connections or poor quality
-    return this.currentProfile.isMetered || this.currentProfile.quality === 'poor';
+    return this.currentProfile.isMetered || this.currentProfile.quality === "poor";
   }
 
   public async testConnectivity(url?: string): Promise<boolean> {
     try {
       const testUrl = url || this.testUrls[0];
       const response = await fetch(testUrl, {
-        method: 'HEAD',
-        signal: AbortSignal.timeout(5000)
+        method: "HEAD",
+        signal: AbortSignal.timeout(5000),
       });
 
       return response.ok;

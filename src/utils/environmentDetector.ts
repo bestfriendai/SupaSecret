@@ -226,7 +226,7 @@ class EnvironmentDetector {
       platform: info.platform,
       platformVersion: info.platformVersion,
       isDevice: info.isDevice,
-      modelName: Device.modelName || 'Unknown',
+      modelName: Device.modelName || "Unknown",
     };
   }
 
@@ -249,15 +249,15 @@ class EnvironmentDetector {
 
       // Estimate available memory based on device type
       const info = this.getEnvironmentInfo();
-      if (info.deviceType === 'phone') {
+      if (info.deviceType === "phone") {
         totalMemory = Math.max(totalMemory, 2 * 1024 * 1024 * 1024); // At least 2GB
-      } else if (info.deviceType === 'tablet') {
+      } else if (info.deviceType === "tablet") {
         totalMemory = Math.max(totalMemory, 3 * 1024 * 1024 * 1024); // At least 3GB
       }
 
       availableMemory = totalMemory * 0.7;
     } catch (error) {
-      console.warn('Failed to get memory info, using defaults:', error);
+      console.warn("Failed to get memory info, using defaults:", error);
     }
 
     return {

@@ -7,7 +7,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Platform } from "react-native";
 import { CameraView, CameraType } from "expo-camera";
-import { VideoRecording } from "expo-camera/build/Camera.types";
 import * as Audio from "expo-audio";
 import { env } from "../utils/env";
 import { useMediaPermissions } from "./useMediaPermissions";
@@ -79,8 +78,8 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
 
   // Refs
   const cameraRef = useRef<CameraView>(null);
-  const recordingPromiseRef = useRef<Promise<VideoRecording> | null>(null);
-  const recordingRef = useRef<VideoRecording | null>(null);
+  const recordingPromiseRef = useRef<Promise<{ uri: string }> | null>(null);
+  const recordingRef = useRef<any | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRecorderRef = useRef<any | null>(null);
   const speechRecognitionRef = useRef<any>(null);
@@ -112,10 +111,6 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
     showAlerts: true,
   });
 
-  import("expo-camera").then(({ VideoRecording }) => {
-    // Type for VideoRecording will be available
-  });
-
   // Initialize audio session for real-time effects
   useEffect(() => {
     const initializeAudio = async () => {
@@ -142,19 +137,11 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   useEffect(() => {
     if (isRecording && !isPaused) {
       timerRef.current = setInterval(() => {
-        setRecordingTime((prev) => {
-          if (prev >= maxDuration) {
-            stopRecordingRef.current?.();
-            return prev;
-          }
-          return prev + 1;
-        });
+        setRecordingTime((prev) => prev + 1);
       }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
 
     return () => {
@@ -162,7 +149,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
         clearInterval(timerRef.current);
       }
     };
-  }, [isRecording, isPaused, maxDuration]);
+  }, [isRecording, isPaused]);
 
   // Auto-stop recording when max duration reached
   useEffect(() => {
@@ -170,6 +157,32 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       stopRecordingRef.current?.();
     }
   }, [recordingTime, maxDuration, isRecording]);
+
+  const handleRecordingComplete = useCallback(
+    async (videoUri: string) => {
+      try {
+        console.log("🎬 Recording completed:", videoUri);
+        setRecordedVideoUri(videoUri);
+        onRecordingStop?.(videoUri);
+
+        // Always call onRecordingStop callback regardless of autoProcessAfterRecording
+        // This ensures the UI can show the "Next" button
+        if (onRecordingStop) {
+          onRecordingStop(videoUri);
+        }
+
+        // Only start processing automatically if enabled
+        if (autoProcessAfterRecording) {
+          await startVideoProcessing(videoUri);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to handle recording completion";
+        setError(errorMessage);
+        onError?.(errorMessage);
+      }
+    },
+    [onRecordingStop, autoProcessAfterRecording, onError],
+  );
 
   // Initialize speech recognition for live captions (if supported)
   useEffect(() => {
@@ -215,7 +228,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
         startLiveTranscription();
       }
 
-      // Start recording
+      // Start recording asynchronously
       setIsRecording(true);
       setRecordingTime(0);
       setIsPaused(false);
@@ -223,19 +236,10 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       onRecordingStart?.();
 
       console.log("🎬 Starting camera recording...");
-      const video = await cameraRef.current.recordAsync({
+      // Type assertion to handle potential undefined return
+      recordingPromiseRef.current = cameraRef.current.recordAsync({
         maxDuration,
-      });
-
-      console.log("🎬 Recording finished:", video);
-      setIsRecording(false);
-
-      if (video && video.uri) {
-        await handleRecordingComplete(video.uri);
-      } else {
-        console.warn("⚠️ No video URI received from recording");
-        setError("Recording failed - no video file created");
-      }
+      }) as Promise<{ uri: string }>;
     } catch (error) {
       console.error("❌ Recording error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to start recording";
@@ -243,28 +247,32 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       onError?.(errorMessage);
       setIsRecording(false);
       setRecordingTime(0);
+      recordingPromiseRef.current = null;
     }
   }, [
     cameraRef,
     isRecording,
+    hasVideoPermissions,
     requestVideoPermissions,
     maxDuration,
-    quality,
     enableLiveCaptions,
     onRecordingStart,
     onError,
   ]);
 
   const stopRecording = useCallback(async () => {
-    if (!cameraRef.current || !isRecording) return;
+    if (!cameraRef.current || !isRecording || !recordingPromiseRef.current) return;
 
     try {
       setIsRecording(false);
       setIsPaused(false);
 
-      if (recordingRef.current) {
-        await cameraRef.current.stopRecording();
-      }
+      // Stop the recording
+      cameraRef.current.stopRecording();
+
+      // Wait for the promise to resolve
+      const video = await recordingPromiseRef.current;
+      recordingPromiseRef.current = null;
 
       // Stop live transcription
       stopLiveTranscription();
@@ -273,14 +281,25 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+
+      console.log("🎬 Recording stopped:", video);
+      if (video?.uri) {
+        await handleRecordingComplete(video.uri);
+      } else {
+        console.warn("⚠️ No video URI received from recording");
+        setError("Recording failed - no video file created");
+      }
     } catch (error) {
+      console.error("❌ Stop recording error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to stop recording";
       setError(errorMessage);
       onError?.(errorMessage);
+      recordingPromiseRef.current = null;
     }
-  }, [cameraRef, isRecording, onError]);
+  }, [cameraRef, isRecording, onError, handleRecordingComplete]);
 
-  // Keep stopRecording ref in sync
+  // Refs for async operations
+  const stopRecordingRef = useRef<typeof stopRecording>(() => Promise.resolve());
   useEffect(() => {
     stopRecordingRef.current = stopRecording;
   }, [stopRecording]);
@@ -314,26 +333,6 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       console.warn("Failed to resume recording:", error);
     }
   }, [isRecording, isPaused]);
-
-  const handleRecordingComplete = useCallback(
-    async (videoUri: string) => {
-      try {
-        console.log("🎬 Recording completed:", videoUri);
-        setRecordedVideoUri(videoUri);
-        onRecordingStop?.(videoUri);
-
-        // Only start processing automatically if enabled
-        if (autoProcessAfterRecording) {
-          await startVideoProcessing(videoUri);
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to handle recording completion";
-        setError(errorMessage);
-        onError?.(errorMessage);
-      }
-    },
-    [onRecordingStop, autoProcessAfterRecording, onError],
-  );
 
   const startVideoProcessing = useCallback(
     async (videoUri?: string) => {
@@ -391,7 +390,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
                 transcription: "Transcription not available in Expo Go",
                 faceBlurApplied: enableFaceBlur,
                 voiceChangeApplied: enableVoiceChange,
-              };
+              } as ProcessedVideo;
             }
           }
         } else {
@@ -420,7 +419,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
         console.error("❌ Error details:", {
           message: error instanceof Error ? error.message : "Unknown error",
           stack: error instanceof Error ? error.stack : undefined,
-          error
+          error,
         });
         const errorMessage = error instanceof Error ? error.message : "Video processing failed";
         setError(errorMessage);
@@ -436,7 +435,6 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       }
     },
     [
-      onRecordingStop,
       enableFaceBlur,
       enableVoiceChange,
       quality,
@@ -444,6 +442,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
       processingMode,
       onProcessingComplete,
       onError,
+      recordedVideoUri,
     ],
   );
 

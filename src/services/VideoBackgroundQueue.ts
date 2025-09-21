@@ -1,26 +1,26 @@
-import { UnifiedVideoProcessingService, VideoProcessingJob } from './UnifiedVideoProcessingService';
-import { offlineQueue } from '../lib/offlineQueue';
-import { videoPerformanceConfig, DevicePerformanceTier, BackgroundProcessingConfig } from '../config/videoPerformance';
-import { environmentDetector } from '../utils/environmentDetector';
-import { AppState, AppStateStatus } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { unifiedVideoProcessingService } from "./UnifiedVideoProcessingService";
+import { offlineQueue } from "../lib/offlineQueue";
+import { videoPerformanceConfig, DevicePerformanceTier, BackgroundProcessingConfig } from "../config/videoPerformance";
+import { environmentDetector } from "../utils/environmentDetector";
+import { AppState, AppStateStatus } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export enum JobPriority {
   CRITICAL = 5,
   HIGH = 4,
   NORMAL = 3,
   LOW = 2,
-  IDLE = 1
+  IDLE = 1,
 }
 
 export enum JobType {
-  QUALITY_VARIANT_GENERATION = 'quality_variant_generation',
-  VIDEO_PRELOADING = 'video_preloading',
-  CACHE_OPTIMIZATION = 'cache_optimization',
-  THUMBNAIL_GENERATION = 'thumbnail_generation',
-  VIDEO_TRANSCODING = 'video_transcoding',
-  METADATA_EXTRACTION = 'metadata_extraction',
-  CLEANUP = 'cleanup'
+  QUALITY_VARIANT_GENERATION = "quality_variant_generation",
+  VIDEO_PRELOADING = "video_preloading",
+  CACHE_OPTIMIZATION = "cache_optimization",
+  THUMBNAIL_GENERATION = "thumbnail_generation",
+  VIDEO_TRANSCODING = "video_transcoding",
+  METADATA_EXTRACTION = "metadata_extraction",
+  CLEANUP = "cleanup",
 }
 
 export interface BackgroundJob {
@@ -28,7 +28,7 @@ export interface BackgroundJob {
   type: JobType;
   priority: JobPriority;
   data: any;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   createdAt: number;
   startedAt?: number;
   completedAt?: number;
@@ -68,15 +68,14 @@ class VideoBackgroundQueue {
   private isPaused = false;
   private memoryMonitorInterval?: NodeJS.Timeout;
   private appStateSubscription?: any;
-  private currentAppState: AppStateStatus = 'active';
+  private currentAppState: AppStateStatus = "active";
   private jobIdCounter = 0;
-  private videoProcessingService: UnifiedVideoProcessingService;
+  private videoProcessingService = unifiedVideoProcessingService;
   private deviceTier: DevicePerformanceTier = DevicePerformanceTier.MID;
   private jobListeners: Map<string, (result: JobResult) => void> = new Map();
   private progressCallbacks: Map<string, (progress: number) => void> = new Map();
 
   constructor(config?: Partial<QueueConfig>) {
-    this.videoProcessingService = new UnifiedVideoProcessingService();
     this.config = this.getDefaultConfig();
 
     if (config) {
@@ -97,7 +96,7 @@ class VideoBackgroundQueue {
       idleThreshold: backgroundConfig.idleThreshold,
       batchSize: backgroundConfig.batchSize,
       persistJobs: true,
-      autoResume: true
+      autoResume: true,
     };
   }
 
@@ -138,7 +137,7 @@ class VideoBackgroundQueue {
 
       videoPerformanceConfig.setDeviceTier(this.deviceTier);
     } catch (error) {
-      console.error('Failed to detect device tier:', error);
+      console.error("Failed to detect device tier:", error);
     }
   }
 
@@ -154,7 +153,8 @@ class VideoBackgroundQueue {
   private startMemoryMonitoring(): void {
     this.memoryMonitorInterval = setInterval(async () => {
       const memoryInfo = await environmentDetector.getMemoryInfo();
-      const memoryUsage = memoryInfo.usedMemory / memoryInfo.totalMemory;
+      const memoryUsage =
+        (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
 
       if (memoryUsage > this.config.memoryThreshold) {
         // Pause processing if memory pressure is high
@@ -167,9 +167,9 @@ class VideoBackgroundQueue {
   }
 
   private startAppStateMonitoring(): void {
-    this.appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
-      const wasBackground = this.currentAppState === 'background';
-      const isBackground = nextAppState === 'background';
+    this.appStateSubscription = AppState.addEventListener("change", (nextAppState) => {
+      const wasBackground = this.currentAppState === "background";
+      const isBackground = nextAppState === "background";
 
       this.currentAppState = nextAppState;
 
@@ -185,7 +185,7 @@ class VideoBackgroundQueue {
 
   private pauseForMemoryPressure(): void {
     if (!this.isPaused) {
-      console.log('[BackgroundQueue] Pausing due to memory pressure');
+      console.log("[BackgroundQueue] Pausing due to memory pressure");
       this.isPaused = true;
 
       // Cancel low priority jobs
@@ -229,7 +229,7 @@ class VideoBackgroundQueue {
       maxRetries?: number;
       onProgress?: (progress: number) => void;
       onComplete?: (result: JobResult) => void;
-    }
+    },
   ): Promise<string> {
     // Check queue limits
     if (this.queue.size >= this.config.jobQueueLimit) {
@@ -243,10 +243,10 @@ class VideoBackgroundQueue {
       type,
       priority,
       data,
-      status: 'pending',
+      status: "pending",
       createdAt: Date.now(),
       retryCount: 0,
-      maxRetries: options?.maxRetries ?? 3
+      maxRetries: options?.maxRetries ?? 3,
     };
 
     this.queue.set(jobId, job);
@@ -272,17 +272,11 @@ class VideoBackgroundQueue {
     return jobId;
   }
 
-  public async enqueueBatch(
-    jobs: Array<{ type: JobType; data: any; priority?: JobPriority }>
-  ): Promise<string[]> {
+  public async enqueueBatch(jobs: { type: JobType; data: any; priority?: JobPriority }[]): Promise<string[]> {
     const jobIds: string[] = [];
 
     for (const jobData of jobs) {
-      const jobId = await this.enqueueJob(
-        jobData.type,
-        jobData.data,
-        jobData.priority
-      );
+      const jobId = await this.enqueueJob(jobData.type, jobData.data, jobData.priority);
       jobIds.push(jobId);
     }
 
@@ -363,13 +357,13 @@ class VideoBackgroundQueue {
   }
 
   private async processJob(job: BackgroundJob): Promise<void> {
-    job.status = 'processing';
+    job.status = "processing";
     job.startedAt = Date.now();
 
     try {
       const result = await this.executeJob(job);
 
-      job.status = 'completed';
+      job.status = "completed";
       job.completedAt = Date.now();
       job.result = result.data;
 
@@ -388,18 +382,21 @@ class VideoBackgroundQueue {
 
       if (job.retryCount < job.maxRetries) {
         // Retry job with exponential backoff
-        setTimeout(() => {
-          job.status = 'pending';
-          this.queue.set(job.id, job);
-          this.processingJobs.delete(job.id);
+        setTimeout(
+          () => {
+            job.status = "pending";
+            this.queue.set(job.id, job);
+            this.processingJobs.delete(job.id);
 
-          if (!this.isProcessing) {
-            this.startProcessing();
-          }
-        }, Math.pow(2, job.retryCount) * 1000);
+            if (!this.isProcessing) {
+              this.startProcessing();
+            }
+          },
+          Math.pow(2, job.retryCount) * 1000,
+        );
       } else {
         // Job failed permanently
-        job.status = 'failed';
+        job.status = "failed";
         job.completedAt = Date.now();
 
         this.processingJobs.delete(job.id);
@@ -407,7 +404,7 @@ class VideoBackgroundQueue {
 
         this.notifyJobComplete(job.id, {
           success: false,
-          error: job.error
+          error: job.error,
         });
       }
     }
@@ -415,7 +412,8 @@ class VideoBackgroundQueue {
 
   private async executeJob(job: BackgroundJob): Promise<JobResult> {
     const startTime = Date.now();
-    const startMemory = (await environmentDetector.getMemoryInfo()).usedMemory;
+    const startInfo = await environmentDetector.getMemoryInfo();
+    const startMemory = startInfo.totalMemory - startInfo.availableMemory;
 
     try {
       let result: any;
@@ -453,58 +451,48 @@ class VideoBackgroundQueue {
           throw new Error(`Unknown job type: ${job.type}`);
       }
 
-      const endMemory = (await environmentDetector.getMemoryInfo()).usedMemory;
+      const endInfo = await environmentDetector.getMemoryInfo();
+      const endMemory = endInfo.totalMemory - endInfo.availableMemory;
 
       return {
         success: true,
         data: result,
         duration: Date.now() - startTime,
-        memoryUsed: endMemory - startMemory
+        memoryUsed: endMemory - startMemory,
       };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
 
   private async generateQualityVariants(data: any): Promise<any> {
     // Use UnifiedVideoProcessingService for quality variant generation
-    const job: VideoProcessingJob = {
-      id: `variant_${Date.now()}`,
-      videoId: data.videoId,
-      uri: data.uri,
-      type: 'optimize',
-      priority: 'normal',
-      status: 'pending',
-      createdAt: Date.now(),
-      retryCount: 0
-    };
-
-    return await this.videoProcessingService.processVideo(job);
+    return await this.videoProcessingService.processVideo(data.uri, data.options || {});
   }
 
   private async preloadVideos(data: any): Promise<any> {
     const { uris, priority } = data;
 
     // Import videoCacheManager dynamically to avoid circular dependency
-    const { videoCacheManager } = await import('../utils/videoCacheManager');
+    const { videoCacheManager } = await import("../utils/videoCacheManager");
 
-    await videoCacheManager.preloadVideos(uris, priority || 'normal');
+    await videoCacheManager.preloadVideos(uris, priority || "normal");
 
     return { preloadedCount: uris.length };
   }
 
   private async optimizeCache(data: any): Promise<any> {
-    const { videoCacheManager } = await import('../utils/videoCacheManager');
+    const { videoCacheManager } = await import("../utils/videoCacheManager");
 
     const result = await videoCacheManager.forceCleanup();
 
     return {
       removedCount: result.removedCount,
-      freedSpace: result.freedSpace
+      freedSpace: result.freedSpace,
     };
   }
 
@@ -515,38 +503,16 @@ class VideoBackgroundQueue {
   }
 
   private async transcodeVideo(data: any): Promise<any> {
-    const job: VideoProcessingJob = {
-      id: `transcode_${Date.now()}`,
-      videoId: data.videoId,
-      uri: data.uri,
-      type: 'transcode',
-      priority: 'low',
-      status: 'pending',
-      createdAt: Date.now(),
-      retryCount: 0
-    };
-
-    return await this.videoProcessingService.processVideo(job);
+    return await this.videoProcessingService.processVideo(data.uri, data.options || {});
   }
 
   private async extractMetadata(data: any): Promise<any> {
-    const job: VideoProcessingJob = {
-      id: `metadata_${Date.now()}`,
-      videoId: data.videoId,
-      uri: data.uri,
-      type: 'generateThumbnail',
-      priority: 'normal',
-      status: 'pending',
-      createdAt: Date.now(),
-      retryCount: 0
-    };
-
-    return await this.videoProcessingService.processVideo(job);
+    return await this.videoProcessingService.processVideo(data.uri, data.options || {});
   }
 
   private async performCleanup(data: any): Promise<any> {
     // Clean up old completed jobs
-    const cutoffTime = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
+    const cutoffTime = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
     let cleanedCount = 0;
 
     for (const [id, job] of this.completedJobs) {
@@ -585,8 +551,9 @@ class VideoBackgroundQueue {
   private cleanupCompletedJobs(): void {
     // Keep only recent completed jobs (last 100)
     if (this.completedJobs.size > 100) {
-      const sortedJobs = Array.from(this.completedJobs.entries())
-        .sort((a, b) => (b[1].completedAt || 0) - (a[1].completedAt || 0));
+      const sortedJobs = Array.from(this.completedJobs.entries()).sort(
+        (a, b) => (b[1].completedAt || 0) - (a[1].completedAt || 0),
+      );
 
       this.completedJobs.clear();
 
@@ -600,9 +567,9 @@ class VideoBackgroundQueue {
     try {
       const jobs = await this.loadPersistedJobsData();
       jobs[job.id] = job;
-      await AsyncStorage.setItem('background_jobs', JSON.stringify(jobs));
+      await AsyncStorage.setItem("background_jobs", JSON.stringify(jobs));
     } catch (error) {
-      console.error('Failed to persist job:', error);
+      console.error("Failed to persist job:", error);
     }
   }
 
@@ -611,19 +578,19 @@ class VideoBackgroundQueue {
       const jobs = await this.loadPersistedJobsData();
 
       for (const job of Object.values(jobs)) {
-        if (job.status === 'pending' || (job.status === 'processing' && job.retryCount < job.maxRetries)) {
-          job.status = 'pending';
+        if (job.status === "pending" || (job.status === "processing" && job.retryCount < job.maxRetries)) {
+          job.status = "pending";
           this.queue.set(job.id, job);
         }
       }
     } catch (error) {
-      console.error('Failed to load persisted jobs:', error);
+      console.error("Failed to load persisted jobs:", error);
     }
   }
 
   private async loadPersistedJobsData(): Promise<Record<string, BackgroundJob>> {
     try {
-      const data = await AsyncStorage.getItem('background_jobs');
+      const data = await AsyncStorage.getItem("background_jobs");
       return data ? JSON.parse(data) : {};
     } catch {
       return {};
@@ -634,13 +601,13 @@ class VideoBackgroundQueue {
     // Check if job is in queue
     if (this.queue.has(jobId)) {
       const job = this.queue.get(jobId)!;
-      job.status = 'cancelled';
+      job.status = "cancelled";
       this.queue.delete(jobId);
       this.completedJobs.set(jobId, job);
 
       this.notifyJobComplete(jobId, {
         success: false,
-        error: 'Job cancelled'
+        error: "Job cancelled",
       });
 
       return true;
@@ -656,10 +623,7 @@ class VideoBackgroundQueue {
   }
 
   public getJobStatus(jobId: string): BackgroundJob | null {
-    return this.queue.get(jobId) ||
-           this.processingJobs.get(jobId) ||
-           this.completedJobs.get(jobId) ||
-           null;
+    return this.queue.get(jobId) || this.processingJobs.get(jobId) || this.completedJobs.get(jobId) || null;
   }
 
   public getQueueStats(): {
@@ -674,9 +638,9 @@ class VideoBackgroundQueue {
     let completedCount = 0;
 
     for (const job of this.completedJobs.values()) {
-      if (job.status === 'failed') {
+      if (job.status === "failed") {
         failedCount++;
-      } else if (job.status === 'completed') {
+      } else if (job.status === "completed") {
         completedCount++;
       }
     }
@@ -687,7 +651,7 @@ class VideoBackgroundQueue {
       completed: completedCount,
       failed: failedCount,
       queueSize: this.config.jobQueueLimit,
-      processingCapacity: this.config.maxConcurrentJobs
+      processingCapacity: this.config.maxConcurrentJobs,
     };
   }
 
@@ -711,7 +675,7 @@ class VideoBackgroundQueue {
 
     // Clear persisted jobs
     if (this.config.persistJobs) {
-      await AsyncStorage.removeItem('background_jobs');
+      await AsyncStorage.removeItem("background_jobs");
     }
   }
 

@@ -1,16 +1,16 @@
-import { Platform } from 'react-native';
+import { Platform } from "react-native";
 
 export enum DevicePerformanceTier {
-  LOW = 'low',
-  MID = 'mid',
-  HIGH = 'high'
+  LOW = "low",
+  MID = "mid",
+  HIGH = "high",
 }
 
 export enum NetworkQualityTier {
-  POOR = 'poor',
-  FAIR = 'fair',
-  GOOD = 'good',
-  EXCELLENT = 'excellent'
+  POOR = "poor",
+  FAIR = "fair",
+  GOOD = "good",
+  EXCELLENT = "excellent",
 }
 
 export interface PreloadProfile {
@@ -26,7 +26,7 @@ export interface PreloadProfile {
 export interface CacheManagementConfig {
   cleanupInterval: number;
   memoryPressureThreshold: number;
-  evictionStrategy: 'lru' | 'lfu' | 'hybrid';
+  evictionStrategy: "lru" | "lfu" | "hybrid";
   maxCacheSize: number;
   partitionSizes: {
     low: number;
@@ -61,22 +61,22 @@ export interface QualitySelectionMatrix {
 
 const deviceTierThresholds = {
   ios: {
-    high: { memory: 6 * 1024 * 1024 * 1024, models: ['iphone 14', 'iphone 15', 'ipad pro'] },
-    mid: { memory: 4 * 1024 * 1024 * 1024, models: ['iphone 11', 'iphone 12', 'iphone 13'] },
-    low: { memory: 0, models: [] }
+    high: { memory: 6 * 1024 * 1024 * 1024, models: ["iphone 14", "iphone 15", "ipad pro"] },
+    mid: { memory: 4 * 1024 * 1024 * 1024, models: ["iphone 11", "iphone 12", "iphone 13"] },
+    low: { memory: 0, models: [] },
   },
   android: {
     high: { memory: 8 * 1024 * 1024 * 1024, cpuCores: 8 },
     mid: { memory: 4 * 1024 * 1024 * 1024, cpuCores: 6 },
-    low: { memory: 0, cpuCores: 4 }
-  }
+    low: { memory: 0, cpuCores: 4 },
+  },
 };
 
 const networkQualityThresholds = {
   excellent: { bandwidth: 5, latency: 20, jitter: 5 },
   good: { bandwidth: 2, latency: 50, jitter: 10 },
   fair: { bandwidth: 0.5, latency: 100, jitter: 20 },
-  poor: { bandwidth: 0, latency: Infinity, jitter: Infinity }
+  poor: { bandwidth: 0, latency: Infinity, jitter: Infinity },
 };
 
 const preloadProfiles: Record<DevicePerformanceTier, PreloadProfile> = {
@@ -87,7 +87,7 @@ const preloadProfiles: Record<DevicePerformanceTier, PreloadProfile> = {
     cachePartitionSize: 1024 * 1024 * 1024,
     backgroundQueueLimit: 20,
     cleanupInterval: 300000,
-    downloadConcurrency: 3
+    downloadConcurrency: 3,
   },
   [DevicePerformanceTier.MID]: {
     maxConcurrentPreloads: 3,
@@ -96,7 +96,7 @@ const preloadProfiles: Record<DevicePerformanceTier, PreloadProfile> = {
     cachePartitionSize: 512 * 1024 * 1024,
     backgroundQueueLimit: 10,
     cleanupInterval: 180000,
-    downloadConcurrency: 2
+    downloadConcurrency: 2,
   },
   [DevicePerformanceTier.LOW]: {
     maxConcurrentPreloads: 1,
@@ -105,59 +105,59 @@ const preloadProfiles: Record<DevicePerformanceTier, PreloadProfile> = {
     cachePartitionSize: 256 * 1024 * 1024,
     backgroundQueueLimit: 5,
     cleanupInterval: 120000,
-    downloadConcurrency: 1
-  }
+    downloadConcurrency: 1,
+  },
 };
 
 const cacheManagementConfigs: Record<DevicePerformanceTier, CacheManagementConfig> = {
   [DevicePerformanceTier.HIGH]: {
     cleanupInterval: 300000,
     memoryPressureThreshold: 0.8,
-    evictionStrategy: 'hybrid',
+    evictionStrategy: "hybrid",
     maxCacheSize: 2048 * 1024 * 1024,
     partitionSizes: {
       low: 512 * 1024 * 1024,
       medium: 768 * 1024 * 1024,
-      high: 768 * 1024 * 1024
+      high: 768 * 1024 * 1024,
     },
     qualityVariantLimits: {
       popular: 3,
       regular: 2,
-      cold: 1
-    }
+      cold: 1,
+    },
   },
   [DevicePerformanceTier.MID]: {
     cleanupInterval: 180000,
     memoryPressureThreshold: 0.7,
-    evictionStrategy: 'lru',
+    evictionStrategy: "lru",
     maxCacheSize: 1024 * 1024 * 1024,
     partitionSizes: {
       low: 256 * 1024 * 1024,
       medium: 512 * 1024 * 1024,
-      high: 256 * 1024 * 1024
+      high: 256 * 1024 * 1024,
     },
     qualityVariantLimits: {
       popular: 2,
       regular: 1,
-      cold: 1
-    }
+      cold: 1,
+    },
   },
   [DevicePerformanceTier.LOW]: {
     cleanupInterval: 120000,
     memoryPressureThreshold: 0.6,
-    evictionStrategy: 'lru',
+    evictionStrategy: "lru",
     maxCacheSize: 512 * 1024 * 1024,
     partitionSizes: {
       low: 256 * 1024 * 1024,
       medium: 192 * 1024 * 1024,
-      high: 64 * 1024 * 1024
+      high: 64 * 1024 * 1024,
     },
     qualityVariantLimits: {
       popular: 1,
       regular: 1,
-      cold: 0
-    }
-  }
+      cold: 0,
+    },
+  },
 };
 
 const backgroundProcessingConfigs: Record<DevicePerformanceTier, BackgroundProcessingConfig> = {
@@ -167,7 +167,7 @@ const backgroundProcessingConfigs: Record<DevicePerformanceTier, BackgroundProce
     priorityLevels: 5,
     memoryThreshold: 0.75,
     idleThreshold: 0.3,
-    batchSize: 10
+    batchSize: 10,
   },
   [DevicePerformanceTier.MID]: {
     maxConcurrentJobs: 2,
@@ -175,7 +175,7 @@ const backgroundProcessingConfigs: Record<DevicePerformanceTier, BackgroundProce
     priorityLevels: 3,
     memoryThreshold: 0.65,
     idleThreshold: 0.5,
-    batchSize: 5
+    batchSize: 5,
   },
   [DevicePerformanceTier.LOW]: {
     maxConcurrentJobs: 1,
@@ -183,77 +183,77 @@ const backgroundProcessingConfigs: Record<DevicePerformanceTier, BackgroundProce
     priorityLevels: 2,
     memoryThreshold: 0.55,
     idleThreshold: 0.7,
-    batchSize: 3
-  }
+    batchSize: 3,
+  },
 };
 
 const qualitySelectionMatrix: QualitySelectionMatrix = {
   [DevicePerformanceTier.HIGH]: {
     [NetworkQualityTier.EXCELLENT]: {
-      quality: '1080p',
+      quality: "1080p",
       bitrate: 5000,
-      preloadAhead: 10
+      preloadAhead: 10,
     },
     [NetworkQualityTier.GOOD]: {
-      quality: '1080p',
+      quality: "1080p",
       bitrate: 4000,
-      preloadAhead: 7
+      preloadAhead: 7,
     },
     [NetworkQualityTier.FAIR]: {
-      quality: '720p',
+      quality: "720p",
       bitrate: 2500,
-      preloadAhead: 5
+      preloadAhead: 5,
     },
     [NetworkQualityTier.POOR]: {
-      quality: '360p',
+      quality: "360p",
       bitrate: 800,
-      preloadAhead: 2
-    }
+      preloadAhead: 2,
+    },
   },
   [DevicePerformanceTier.MID]: {
     [NetworkQualityTier.EXCELLENT]: {
-      quality: '1080p',
+      quality: "1080p",
       bitrate: 4000,
-      preloadAhead: 7
+      preloadAhead: 7,
     },
     [NetworkQualityTier.GOOD]: {
-      quality: '720p',
+      quality: "720p",
       bitrate: 2500,
-      preloadAhead: 5
+      preloadAhead: 5,
     },
     [NetworkQualityTier.FAIR]: {
-      quality: '720p',
+      quality: "720p",
       bitrate: 2000,
-      preloadAhead: 3
+      preloadAhead: 3,
     },
     [NetworkQualityTier.POOR]: {
-      quality: '360p',
+      quality: "360p",
       bitrate: 800,
-      preloadAhead: 1
-    }
+      preloadAhead: 1,
+    },
   },
   [DevicePerformanceTier.LOW]: {
     [NetworkQualityTier.EXCELLENT]: {
-      quality: '720p',
+      quality: "720p",
       bitrate: 2500,
-      preloadAhead: 5
+      preloadAhead: 5,
     },
     [NetworkQualityTier.GOOD]: {
-      quality: '720p',
+      quality: "720p",
       bitrate: 2000,
-      preloadAhead: 3
+      preloadAhead: 3,
     },
     [NetworkQualityTier.FAIR]: {
-      quality: '360p',
+      quality: "360p",
       bitrate: 1000,
-      preloadAhead: 2
+      preloadAhead: 2,
     },
     [NetworkQualityTier.POOR]: {
-      quality: '360p',
+      quality: "360p",
       bitrate: 600,
-      preloadAhead: 1
-    }
-  }
+      preloadAhead: 1,
+    },
+  },
 };
 
 export class VideoPerformanceConfig {
@@ -283,7 +283,7 @@ export class VideoPerformanceConfig {
     return {
       ...baseProfile,
       ...this.userPreferences,
-      ...this.applyABTestOverrides(baseProfile)
+      ...this.applyABTestOverrides(baseProfile),
     };
   }
 
@@ -294,7 +294,7 @@ export class VideoPerformanceConfig {
       return {
         ...baseConfig,
         cleanupInterval: baseConfig.cleanupInterval / 2,
-        maxCacheSize: baseConfig.maxCacheSize / 2
+        maxCacheSize: baseConfig.maxCacheSize / 2,
       };
     }
 
@@ -310,7 +310,9 @@ export class VideoPerformanceConfig {
   }
 
   getDeviceTierThresholds(): any {
-    return deviceTierThresholds[Platform.OS] || deviceTierThresholds.android;
+    const platformKey: keyof typeof deviceTierThresholds =
+      Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "android";
+    return deviceTierThresholds[platformKey];
   }
 
   getNetworkQualityThresholds(): any {
@@ -322,23 +324,23 @@ export class VideoPerformanceConfig {
       autoQualityUpgrade: {
         [DevicePerformanceTier.HIGH]: true,
         [DevicePerformanceTier.MID]: true,
-        [DevicePerformanceTier.LOW]: false
+        [DevicePerformanceTier.LOW]: false,
       },
       aggressivePreloading: {
         [DevicePerformanceTier.HIGH]: true,
         [DevicePerformanceTier.MID]: false,
-        [DevicePerformanceTier.LOW]: false
+        [DevicePerformanceTier.LOW]: false,
       },
       backgroundTranscoding: {
         [DevicePerformanceTier.HIGH]: true,
         [DevicePerformanceTier.MID]: true,
-        [DevicePerformanceTier.LOW]: false
+        [DevicePerformanceTier.LOW]: false,
       },
       multiQualityCaching: {
         [DevicePerformanceTier.HIGH]: true,
         [DevicePerformanceTier.MID]: false,
-        [DevicePerformanceTier.LOW]: false
-      }
+        [DevicePerformanceTier.LOW]: false,
+      },
     };
 
     return features[feature]?.[this.deviceTier] ?? false;
@@ -349,14 +351,12 @@ export class VideoPerformanceConfig {
 
     if (this.abTestConfig.preloadWindowMultiplier) {
       overrides.preloadWindowSize = Math.round(
-        baseProfile.preloadWindowSize * this.abTestConfig.preloadWindowMultiplier
+        baseProfile.preloadWindowSize * this.abTestConfig.preloadWindowMultiplier,
       );
     }
 
     if (this.abTestConfig.memoryLimitMultiplier) {
-      overrides.memoryLimit = Math.round(
-        baseProfile.memoryLimit * this.abTestConfig.memoryLimitMultiplier
-      );
+      overrides.memoryLimit = Math.round(baseProfile.memoryLimit * this.abTestConfig.memoryLimitMultiplier);
     }
 
     return overrides;
@@ -371,11 +371,11 @@ export class VideoPerformanceConfig {
       backgroundConfig: this.getBackgroundProcessingConfig(),
       qualitySelection: this.getQualitySelection(),
       features: {
-        autoQualityUpgrade: this.shouldEnableFeature('autoQualityUpgrade'),
-        aggressivePreloading: this.shouldEnableFeature('aggressivePreloading'),
-        backgroundTranscoding: this.shouldEnableFeature('backgroundTranscoding'),
-        multiQualityCaching: this.shouldEnableFeature('multiQualityCaching')
-      }
+        autoQualityUpgrade: this.shouldEnableFeature("autoQualityUpgrade"),
+        aggressivePreloading: this.shouldEnableFeature("aggressivePreloading"),
+        backgroundTranscoding: this.shouldEnableFeature("backgroundTranscoding"),
+        multiQualityCaching: this.shouldEnableFeature("multiQualityCaching"),
+      },
     };
   }
 }

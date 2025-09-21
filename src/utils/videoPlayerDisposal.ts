@@ -1,13 +1,5 @@
-import {
-  VideoPlayerInterface,
-  VideoPlayerState,
-  VideoPlayerCapabilities,
-} from "../types/videoPlayer";
-import {
-  VideoDisposalError,
-  VideoErrorCode,
-  VideoErrorSeverity,
-} from "../types/videoErrors";
+import { VideoPlayerInterface, VideoPlayerState, VideoPlayerCapabilities } from "../types/videoPlayer";
+import { VideoDisposalError, VideoErrorCode, VideoErrorSeverity } from "../types/videoErrors";
 import { isHermesError } from "./videoErrors";
 
 // Disposal strategy types
@@ -116,7 +108,7 @@ export class EnhancedVideoPlayerDisposal {
   async disposePlayer(
     playerId: string,
     player: VideoPlayerInterface,
-    config?: Partial<DisposalConfig>
+    config?: Partial<DisposalConfig>,
   ): Promise<DisposalResult> {
     const fullConfig = this.getFullConfig(config);
     const startTime = Date.now();
@@ -128,11 +120,7 @@ export class EnhancedVideoPlayerDisposal {
         strategy: fullConfig.strategy,
         duration: 0,
         retryCount: 0,
-        error: new VideoDisposalError(
-          VideoErrorCode.DISPOSAL_ERROR,
-          "Disposal already in progress",
-          VideoErrorSeverity.WARNING
-        ),
+        error: new VideoDisposalError("Disposal already in progress", undefined, VideoErrorSeverity.WARNING),
       };
     }
 
@@ -162,11 +150,7 @@ export class EnhancedVideoPlayerDisposal {
         strategy: fullConfig.strategy,
         duration: Date.now() - startTime,
         retryCount: disposalState.disposalAttempts,
-        error: new VideoDisposalError(
-          VideoErrorCode.DISPOSAL_FAILED,
-          `Disposal failed: ${error}`,
-          VideoErrorSeverity.ERROR
-        ),
+        error: new VideoDisposalError(`Disposal failed: ${error}`, undefined, VideoErrorSeverity.ERROR),
       };
     } finally {
       this.disposalInProgress.delete(playerId);
@@ -180,7 +164,7 @@ export class EnhancedVideoPlayerDisposal {
     playerId: string,
     player: VideoPlayerInterface,
     delay: number,
-    config?: Partial<DisposalConfig>
+    config?: Partial<DisposalConfig>,
   ): void {
     const fullConfig = this.getFullConfig({
       ...config,
@@ -203,8 +187,8 @@ export class EnhancedVideoPlayerDisposal {
    * Dispose multiple players in batch
    */
   async disposeBatch(
-    players: Array<{ playerId: string; player: VideoPlayerInterface }>,
-    config?: Partial<DisposalConfig>
+    players: { playerId: string; player: VideoPlayerInterface }[],
+    config?: Partial<DisposalConfig>,
   ): Promise<Map<string, DisposalResult>> {
     const results = new Map<string, DisposalResult>();
     const batchConfig = this.getFullConfig(config);
@@ -216,9 +200,8 @@ export class EnhancedVideoPlayerDisposal {
     for (const chunk of chunks) {
       const chunkResults = await Promise.all(
         chunk.map(({ playerId, player }) =>
-          this.disposePlayer(playerId, player, batchConfig)
-            .then(result => ({ playerId, result }))
-        )
+          this.disposePlayer(playerId, player, batchConfig).then((result) => ({ playerId, result })),
+        ),
       );
 
       chunkResults.forEach(({ playerId, result }) => {
@@ -232,10 +215,7 @@ export class EnhancedVideoPlayerDisposal {
   /**
    * Attempt disposal with the specified strategy
    */
-  private async attemptDisposal(
-    state: PlayerDisposalState,
-    config: DisposalConfig
-  ): Promise<DisposalResult> {
+  private async attemptDisposal(state: PlayerDisposalState, config: DisposalConfig): Promise<DisposalResult> {
     const startTime = Date.now();
     let retryCount = 0;
 
@@ -263,11 +243,7 @@ export class EnhancedVideoPlayerDisposal {
           // Last attempt failed, try fallback strategy
           if (config.fallbackStrategy && config.fallbackStrategy !== config.strategy) {
             try {
-              await this.applyDisposalStrategy(
-                state.player,
-                config.fallbackStrategy,
-                this.DISPOSAL_TIMEOUT_EMERGENCY
-              );
+              await this.applyDisposalStrategy(state.player, config.fallbackStrategy, this.DISPOSAL_TIMEOUT_EMERGENCY);
 
               return {
                 success: true,
@@ -283,7 +259,7 @@ export class EnhancedVideoPlayerDisposal {
         }
 
         // Wait before retry with exponential backoff
-        await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt)));
+        await new Promise((resolve) => setTimeout(resolve, 100 * Math.pow(2, attempt)));
       }
     }
 
@@ -296,7 +272,7 @@ export class EnhancedVideoPlayerDisposal {
   private async applyDisposalStrategy(
     player: VideoPlayerInterface,
     strategy: DisposalStrategy,
-    timeout: number
+    timeout: number,
   ): Promise<void> {
     switch (strategy) {
       case DisposalStrategy.GRACEFUL:
@@ -333,38 +309,32 @@ export class EnhancedVideoPlayerDisposal {
       // Don't finalize disposal for graceful strategy
     ];
 
-    await this.executeWithTimeout(
-      async () => {
-        for (const operation of operations) {
-          await operation();
-        }
-      },
-      timeout
-    );
+    await this.executeWithTimeout(async () => {
+      for (const operation of operations) {
+        await operation();
+      }
+    }, timeout);
   }
 
   /**
    * Forced disposal with aggressive cleanup
    */
   private async forcedDisposal(player: VideoPlayerInterface, timeout: number): Promise<void> {
-    await this.executeWithTimeout(
-      async () => {
-        // Try to pause first
-        try {
-          await this.pausePlayer(player);
-        } catch {}
+    await this.executeWithTimeout(async () => {
+      // Try to pause first
+      try {
+        await this.pausePlayer(player);
+      } catch {}
 
-        // Force release all resources
-        await this.forceReleaseResources(player);
+      // Force release all resources
+      await this.forceReleaseResources(player);
 
-        // Comment 5: Only clear references for FORCED/EMERGENCY or Hermes
-        if (this.isHermesRuntime) {
-          await this.clearAllReferences(player);
-        }
-        await this.finalizeDisposal(player);
-      },
-      timeout
-    );
+      // Comment 5: Only clear references for FORCED/EMERGENCY or Hermes
+      if (this.isHermesRuntime) {
+        await this.clearAllReferences(player);
+      }
+      await this.finalizeDisposal(player);
+    }, timeout);
   }
 
   /**
@@ -510,7 +480,7 @@ export class EnhancedVideoPlayerDisposal {
     // Hermes-specific verification
     if (this.isHermesRuntime) {
       // Wait for GC
-      await new Promise(resolve => setTimeout(resolve, this.MEMORY_CLEANUP_DELAY));
+      await new Promise((resolve) => setTimeout(resolve, this.MEMORY_CLEANUP_DELAY));
 
       // Check if player is still accessible
       try {
@@ -540,7 +510,7 @@ export class EnhancedVideoPlayerDisposal {
     }
 
     // Wait for cleanup
-    await new Promise(resolve => setTimeout(resolve, this.MEMORY_CLEANUP_DELAY));
+    await new Promise((resolve) => setTimeout(resolve, this.MEMORY_CLEANUP_DELAY));
 
     const afterMemory = this.getMemoryUsage();
     const freed = Math.max(0, beforeMemory - afterMemory);
@@ -567,7 +537,7 @@ export class EnhancedVideoPlayerDisposal {
     const readyItems: QueuedDisposal[] = [];
 
     // Find items ready for disposal
-    this.disposalQueue = this.disposalQueue.filter(item => {
+    this.disposalQueue = this.disposalQueue.filter((item) => {
       if (!item.scheduledTime || item.scheduledTime <= now) {
         readyItems.push(item);
         return false;
@@ -609,9 +579,7 @@ export class EnhancedVideoPlayerDisposal {
    */
   private cleanupOldMetrics(): void {
     const cutoffTime = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
-    this.memoryMetrics = this.memoryMetrics.filter(
-      metric => metric.timestamp > cutoffTime
-    );
+    this.memoryMetrics = this.memoryMetrics.filter((metric) => metric.timestamp > cutoffTime);
   }
 
   /**
@@ -634,17 +602,14 @@ export class EnhancedVideoPlayerDisposal {
   /**
    * Get or create disposal state
    */
-  private getOrCreateDisposalState(
-    playerId: string,
-    player: VideoPlayerInterface
-  ): PlayerDisposalState {
+  private getOrCreateDisposalState(playerId: string, player: VideoPlayerInterface): PlayerDisposalState {
     let state = this.disposalStates.get(playerId);
 
     if (!state) {
       state = {
         playerId,
         player,
-        state: VideoPlayerState.IDLE,
+          state: VideoPlayerState.Idle,
         disposalAttempts: 0,
         isDisposed: false,
         hermesCompatibilityMode: this.isHermesRuntime,
@@ -659,9 +624,7 @@ export class EnhancedVideoPlayerDisposal {
    * Get full disposal configuration
    */
   private getFullConfig(partial?: Partial<DisposalConfig>): DisposalConfig {
-    const defaultTimeout = this.isHermesRuntime
-      ? this.DISPOSAL_TIMEOUT_HERMES
-      : this.DISPOSAL_TIMEOUT_DEFAULT;
+    const defaultTimeout = this.isHermesRuntime ? this.DISPOSAL_TIMEOUT_HERMES : this.DISPOSAL_TIMEOUT_DEFAULT;
 
     return {
       strategy: DisposalStrategy.GRACEFUL,
@@ -695,19 +658,12 @@ export class EnhancedVideoPlayerDisposal {
   /**
    * Execute with timeout
    */
-  private async executeWithTimeout<T>(
-    operation: () => Promise<T>,
-    timeout: number
-  ): Promise<T> {
+  private async executeWithTimeout<T>(operation: () => Promise<T>, timeout: number): Promise<T> {
     return Promise.race([
       operation(),
       new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new VideoDisposalError(
-            VideoErrorCode.DISPOSAL_TIMEOUT,
-            `Operation timed out after ${timeout}ms`,
-            VideoErrorSeverity.WARNING
-          ));
+          reject(new VideoDisposalError(`Operation timed out after ${timeout}ms`, undefined, VideoErrorSeverity.WARNING));
         }, timeout);
       }),
     ]);
@@ -765,12 +721,15 @@ export class EnhancedVideoPlayerDisposal {
     averageMemoryFreed: number;
     hermesMode: boolean;
   } {
-    const totalDisposals = Array.from(this.disposalStates.values())
-      .reduce((sum, state) => sum + state.disposalAttempts, 0);
+    const totalDisposals = Array.from(this.disposalStates.values()).reduce(
+      (sum, state) => sum + state.disposalAttempts,
+      0,
+    );
 
-    const averageMemoryFreed = this.memoryMetrics.length > 0
-      ? this.memoryMetrics.reduce((sum, m) => sum + m.freed, 0) / this.memoryMetrics.length
-      : 0;
+    const averageMemoryFreed =
+      this.memoryMetrics.length > 0
+        ? this.memoryMetrics.reduce((sum, m) => sum + m.freed, 0) / this.memoryMetrics.length
+        : 0;
 
     return {
       totalDisposals,
@@ -809,7 +768,7 @@ export const videoPlayerDisposal = EnhancedVideoPlayerDisposal.getInstance();
 export async function disposeVideoPlayer(
   playerId: string,
   player: VideoPlayerInterface,
-  config?: Partial<DisposalConfig>
+  config?: Partial<DisposalConfig>,
 ): Promise<DisposalResult> {
   return videoPlayerDisposal.disposePlayer(playerId, player, config);
 }
@@ -818,14 +777,14 @@ export function scheduleVideoPlayerDisposal(
   playerId: string,
   player: VideoPlayerInterface,
   delay: number,
-  config?: Partial<DisposalConfig>
+  config?: Partial<DisposalConfig>,
 ): void {
   videoPlayerDisposal.scheduleDisposal(playerId, player, delay, config);
 }
 
 export async function disposeVideoPlayersBatch(
-  players: Array<{ playerId: string; player: VideoPlayerInterface }>,
-  config?: Partial<DisposalConfig>
+  players: { playerId: string; player: VideoPlayerInterface }[],
+  config?: Partial<DisposalConfig>,
 ): Promise<Map<string, DisposalResult>> {
   return videoPlayerDisposal.disposeBatch(players, config);
 }

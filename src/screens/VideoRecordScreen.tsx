@@ -1,20 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  Alert,
-  StyleSheet,
-  ActivityIndicator,
-  Switch,
-  Platform,
-} from "react-native";
+import { View, Text, Pressable, Alert, StyleSheet, ActivityIndicator, Switch, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { CameraView } from "expo-camera";
-
 
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { PermissionGate } from "../components/PermissionGate";
@@ -59,6 +49,9 @@ function VideoRecordScreen() {
     setRecordedVideoUri(videoUri);
     setShowNextButton(true);
     // Don't start processing automatically - wait for user to click Next
+
+    // Also update the UI error state to clear any previous errors
+    setUiError(null);
   }, []);
 
   const handleProcessingComplete = useCallback(
@@ -82,47 +75,37 @@ function VideoRecordScreen() {
 
         // Navigate to preview screen
         console.log("🚀 Attempting navigation to VideoPreview...");
-        navigation.navigate("VideoPreview", {
+        (navigation as any).navigate("VideoPreview", {
           processedVideo: processed,
         });
         console.log("✅ Navigation call completed");
       } catch (error) {
         console.error("❌ Failed to navigate to preview:", error);
-        const message =
-          error instanceof Error ? error.message : "Failed to process video. Please try again.";
+        const message = error instanceof Error ? error.message : "Failed to process video. Please try again.";
         setUiError(message);
         setIsProcessingStarted(false);
         setShowNextButton(true); // Allow user to try again
 
-        Alert.alert(
-          "Processing Failed",
-          message,
-          [
-            {
-              text: "Try Again",
-              onPress: () => {
-                setUiError(null);
-              },
+        Alert.alert("Processing Failed", message, [
+          {
+            text: "Try Again",
+            onPress: () => {
+              setUiError(null);
             },
-            {
-              text: "Cancel",
-              style: "cancel",
-              onPress: () => {
-                // Reset to initial state
-                setRecordedVideoUri(null);
-                setShowNextButton(false);
-              },
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => {
+              // Reset to initial state
+              setRecordedVideoUri(null);
+              setShowNextButton(false);
             },
-          ]
-        );
+          },
+        ]);
       }
     },
-    [
-      hapticsEnabled,
-      impactAsync,
-      navigation,
-      resetRef,
-    ],
+    [hapticsEnabled, impactAsync, navigation, resetRef],
   );
 
   const {
@@ -197,7 +180,7 @@ function VideoRecordScreen() {
             },
           },
         ],
-        { cancelable: true }
+        { cancelable: true },
       );
     }
   }, [recordedVideoUri, hapticsEnabled, impactAsync, startProcessing]);
@@ -275,9 +258,7 @@ function VideoRecordScreen() {
         {(processing || isProcessingStarted) && (
           <View style={styles.processingOverlay}>
             <ActivityIndicator size="large" color="#1D9BF0" />
-            <Text style={styles.processingLabel}>
-              Processing {Math.round(state.processingProgress)}%
-            </Text>
+            <Text style={styles.processingLabel}>Processing {Math.round(state.processingProgress)}%</Text>
             {state.processingStatus ? <Text style={styles.processingStatus}>{state.processingStatus}</Text> : null}
             {isProcessingStarted && !processing && (
               <Text style={styles.processingStatus}>Initializing processing...</Text>
@@ -389,9 +370,9 @@ function VideoRecordScreen() {
                     size: 1000000,
                     thumbnail: "test://thumbnail.jpg",
                   };
-                  navigation.navigate("VideoPreview" as never, {
+                  (navigation as any).navigate("VideoPreview", {
                     processedVideo: testVideo,
-                  } as never);
+                  });
                 }}
               >
                 <Text style={styles.testButtonText}>Test Preview</Text>

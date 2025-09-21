@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Alert, Platform } from "react-native";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "../utils/legacyFileSystem";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
 
 // Lazy load native modules to prevent Expo Go crashes

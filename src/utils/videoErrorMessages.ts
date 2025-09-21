@@ -45,7 +45,7 @@ export class VideoErrorMessages {
   static getUserFriendlyError(
     error: VideoError,
     attemptNumber: number = 1,
-    userState?: { isOffline?: boolean; isLowBandwidth?: boolean }
+    userState?: { isOffline?: boolean; isLowBandwidth?: boolean },
   ): UserFriendlyError {
     const errorKey = `${error.type}-${error.code}`;
     this.retryAttempts.set(errorKey, attemptNumber);
@@ -92,15 +92,15 @@ export class VideoErrorMessages {
         shouldRetry: true,
         maxRetries: Infinity,
         backoffMs: [1000, 2000, 5000],
-        explanation: "Will retry automatically when connection restored"
-      }
+        explanation: "Will retry automatically when connection restored",
+      },
     };
   }
 
   private static getNetworkError(
     error: VideoError,
     attemptNumber: number,
-    isLowBandwidth?: boolean
+    isLowBandwidth?: boolean,
   ): UserFriendlyError {
     if (isLowBandwidth) {
       return {
@@ -115,8 +115,8 @@ export class VideoErrorMessages {
           shouldRetry: true,
           maxRetries: 5,
           backoffMs: [500, 1000, 2000, 4000, 8000],
-          explanation: "Retrying with lower quality settings"
-        }
+          explanation: "Retrying with lower quality settings",
+        },
       };
     }
 
@@ -124,7 +124,7 @@ export class VideoErrorMessages {
       "Having trouble connecting. Let's try again!",
       "Connection hiccup. Trying once more...",
       "Network is being stubborn. One more attempt...",
-      "Connection issues persist. Last try!"
+      "Connection issues persist. Last try!",
     ];
 
     const messageIndex = Math.min(attemptNumber - 1, messages.length - 1);
@@ -141,8 +141,8 @@ export class VideoErrorMessages {
         shouldRetry: attemptNumber < 4,
         maxRetries: 4,
         backoffMs: [1000, 2000, 4000, 8000],
-        explanation: `Retry ${attemptNumber}/4 with exponential backoff`
-      }
+        explanation: `Retry ${attemptNumber}/4 with exponential backoff`,
+      },
     };
   }
 
@@ -151,9 +151,7 @@ export class VideoErrorMessages {
 
     return {
       title: "Video format issue",
-      message: isCodecIssue
-        ? "This video format isn't supported on your device"
-        : "Unable to play this video format",
+      message: isCodecIssue ? "This video format isn't supported on your device" : "Unable to play this video format",
       actionText: attemptNumber === 1 ? "Try different quality" : "Skip video",
       secondaryActionText: "Report problem",
       severity: "medium",
@@ -163,10 +161,8 @@ export class VideoErrorMessages {
         shouldRetry: attemptNumber === 1 && !isCodecIssue,
         maxRetries: 1,
         backoffMs: [500],
-        explanation: isCodecIssue
-          ? "Device doesn't support this codec"
-          : "Trying alternative format"
-      }
+        explanation: isCodecIssue ? "Device doesn't support this codec" : "Trying alternative format",
+      },
     };
   }
 
@@ -183,8 +179,8 @@ export class VideoErrorMessages {
         shouldRetry: false,
         maxRetries: 0,
         backoffMs: [],
-        explanation: "User needs to grant permissions manually"
-      }
+        explanation: "User needs to grant permissions manually",
+      },
     };
   }
 
@@ -205,8 +201,8 @@ export class VideoErrorMessages {
         shouldRetry: attemptNumber === 1,
         maxRetries: 1,
         backoffMs: [2000],
-        explanation: "Clearing memory and retrying once"
-      }
+        explanation: "Clearing memory and retrying once",
+      },
     };
   }
 
@@ -224,8 +220,8 @@ export class VideoErrorMessages {
           shouldRetry: false,
           maxRetries: 0,
           backoffMs: [],
-          explanation: "Video doesn't exist"
-        }
+          explanation: "Video doesn't exist",
+        },
       };
     }
 
@@ -242,8 +238,8 @@ export class VideoErrorMessages {
           shouldRetry: attemptNumber < 3,
           maxRetries: 3,
           backoffMs: [2000, 5000, 10000],
-          explanation: "Server error, retrying with longer delays"
-        }
+          explanation: "Server error, retrying with longer delays",
+        },
       };
     }
 
@@ -253,9 +249,7 @@ export class VideoErrorMessages {
   private static getTimeoutError(error: VideoError, attemptNumber: number): UserFriendlyError {
     return {
       title: "Taking too long",
-      message: attemptNumber === 1
-        ? "Video is taking longer than usual to load"
-        : "Still waiting for the video...",
+      message: attemptNumber === 1 ? "Video is taking longer than usual to load" : "Still waiting for the video...",
       actionText: "Keep waiting",
       secondaryActionText: "Try lower quality",
       severity: "low",
@@ -265,8 +259,8 @@ export class VideoErrorMessages {
         shouldRetry: true,
         maxRetries: 3,
         backoffMs: [0, 0, 0],
-        explanation: "Extending timeout duration"
-      }
+        explanation: "Extending timeout duration",
+      },
     };
   }
 
@@ -274,7 +268,7 @@ export class VideoErrorMessages {
     const messages = [
       "Something went wrong. Let's try that again!",
       "Still having issues. Trying a different approach...",
-      "This is tricky. One more attempt..."
+      "This is tricky. One more attempt...",
     ];
 
     return {
@@ -289,15 +283,12 @@ export class VideoErrorMessages {
         shouldRetry: attemptNumber < 3,
         maxRetries: 3,
         backoffMs: [1000, 3000, 5000],
-        explanation: "Standard retry with backoff"
-      }
+        explanation: "Standard retry with backoff",
+      },
     };
   }
 
-  static getProgressiveErrorMessage(
-    error: VideoError,
-    attemptHistory: number[]
-  ): string {
+  static getProgressiveErrorMessage(error: VideoError, attemptHistory: number[]): string {
     const totalAttempts = attemptHistory.reduce((sum, a) => sum + a, 0);
 
     if (totalAttempts === 0) {
@@ -319,7 +310,7 @@ export class VideoErrorMessages {
       hasWifi?: boolean;
       batteryLevel?: number;
       freeStorage?: number;
-    }
+    },
   ): string[] {
     const suggestions: string[] = [];
 
@@ -344,10 +335,7 @@ export class VideoErrorMessages {
     return suggestions;
   }
 
-  static async logErrorForAnalytics(
-    error: VideoError,
-    attemptNumber: number
-  ): Promise<void> {
+  static async logErrorForAnalytics(error: VideoError, attemptNumber: number): Promise<void> {
     const netInfo = await NetInfo.fetch();
 
     const analytics: ErrorAnalytics = {
@@ -387,17 +375,16 @@ export class VideoErrorMessages {
     let totalRetries = 0;
     let maxAttempts = 0;
 
-    this.errorHistory.forEach(e => {
+    this.errorHistory.forEach((e) => {
       errorCounts.set(e.errorType, (errorCounts.get(e.errorType) || 0) + 1);
       totalRetries += e.attemptNumber;
       maxAttempts = Math.max(maxAttempts, e.attemptNumber);
     });
 
-    const mostCommonError = Array.from(errorCounts.entries())
-      .sort((a, b) => b[1] - a[1])[0]?.[0];
+    const mostCommonError = Array.from(errorCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
 
     const averageRetries = totalRetries / this.errorHistory.length;
-    const successRate = 1 - (this.errorHistory.filter(e => e.attemptNumber >= 3).length / this.errorHistory.length);
+    const successRate = 1 - this.errorHistory.filter((e) => e.attemptNumber >= 3).length / this.errorHistory.length;
 
     return { mostCommonError, averageRetries, successRate };
   }
@@ -412,14 +399,11 @@ export class VideoErrorMessages {
       error.type === VideoErrorType.NETWORK ||
       error.type === VideoErrorType.TIMEOUT ||
       error.type === VideoErrorType.MEMORY ||
-      (error.type === VideoErrorType.DECODE && error.debugInfo?.includes("bitrate"))
+      (error.type === VideoErrorType.DECODE && typeof error.debugInfo === "string" && error.debugInfo.includes("bitrate"))
     );
   }
 
-  static getLocalizedMessage(
-    error: UserFriendlyError,
-    locale: string = "en"
-  ): UserFriendlyError {
+  static getLocalizedMessage(error: UserFriendlyError, locale: string = "en"): UserFriendlyError {
     return error;
   }
 }

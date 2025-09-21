@@ -185,11 +185,7 @@ export class LoadingTransitions {
     return configs[scenario];
   }
 
-  static fadeIn(
-    value: SharedValue<number>,
-    config?: TransitionConfig,
-    onComplete?: () => void
-  ): void {
+  static fadeIn(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const { duration, delay, easing } = {
       ...this.getPresetConfig("fade"),
       ...config,
@@ -205,15 +201,11 @@ export class LoadingTransitions {
           this.endPerformanceTracking(animationId);
           if (onComplete) runOnJS(onComplete)();
         }
-      })
+      }),
     );
   }
 
-  static fadeOut(
-    value: SharedValue<number>,
-    config?: TransitionConfig,
-    onComplete?: () => void
-  ): void {
+  static fadeOut(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const { duration, delay, easing } = {
       ...this.getPresetConfig("fade"),
       ...config,
@@ -223,7 +215,7 @@ export class LoadingTransitions {
       delay,
       withTiming(0, { duration, easing }, (finished) => {
         if (finished && onComplete) runOnJS(onComplete)();
-      })
+      }),
     );
   }
 
@@ -231,7 +223,7 @@ export class LoadingTransitions {
     value: SharedValue<number>,
     from: number = 100,
     config?: TransitionConfig,
-    onComplete?: () => void
+    onComplete?: () => void,
   ): void {
     const { duration, delay, easing } = {
       ...this.getPresetConfig("slide"),
@@ -243,15 +235,11 @@ export class LoadingTransitions {
       delay,
       withTiming(0, { duration, easing }, (finished) => {
         if (finished && onComplete) runOnJS(onComplete)();
-      })
+      }),
     );
   }
 
-  static scaleIn(
-    value: SharedValue<number>,
-    config?: TransitionConfig,
-    onComplete?: () => void
-  ): void {
+  static scaleIn(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const { duration, delay, springConfig } = {
       ...this.getPresetConfig("scale"),
       ...config,
@@ -262,14 +250,14 @@ export class LoadingTransitions {
       delay,
       withSpring(1, springConfig, (finished) => {
         if (finished && onComplete) runOnJS(onComplete)();
-      })
+      }),
     );
   }
 
   static createStaggeredAnimation(
     values: SharedValue<number>[],
     targetValue: number,
-    config: StaggerConfig & TransitionConfig
+    config: StaggerConfig & TransitionConfig,
   ): void {
     const {
       itemCount,
@@ -284,40 +272,25 @@ export class LoadingTransitions {
 
     items.forEach((value, index) => {
       const delay = baseDelay + index * staggerDelay;
-      value.value = withDelay(
-        delay,
-        withTiming(targetValue, { duration, easing })
-      );
+      value.value = withDelay(delay, withTiming(targetValue, { duration, easing }));
     });
   }
 
-  static createSequentialAnimation(
-    value: SharedValue<number>,
-    sequence: number[],
-    config?: TransitionConfig
-  ): void {
+  static createSequentialAnimation(value: SharedValue<number>, sequence: number[], config?: TransitionConfig): void {
     const { duration = 300, easing = Easing.linear } = config || {};
 
-    const animations = sequence.map((target) =>
-      withTiming(target, { duration: duration / sequence.length, easing })
-    );
+    const animations = sequence.map((target) => withTiming(target, { duration: duration / sequence.length, easing }));
 
     value.value = withSequence(...animations);
   }
 
-  static createLoadingPulse(
-    value: SharedValue<number>,
-    config?: TransitionConfig
-  ): () => void {
+  static createLoadingPulse(value: SharedValue<number>, config?: TransitionConfig): () => void {
     const { duration = 1000 } = config || {};
 
     value.value = withRepeat(
-      withSequence(
-        withTiming(0.6, { duration: duration / 2 }),
-        withTiming(0.3, { duration: duration / 2 })
-      ),
+      withSequence(withTiming(0.6, { duration: duration / 2 }), withTiming(0.3, { duration: duration / 2 })),
       -1,
-      false
+      false,
     );
 
     return () => cancelAnimation(value);
@@ -326,27 +299,23 @@ export class LoadingTransitions {
   static createShimmerEffect(
     translateX: SharedValue<number>,
     screenWidth: number,
-    config?: TransitionConfig
+    config?: TransitionConfig,
   ): () => void {
     const { duration = 1500 } = config || {};
 
     translateX.value = withRepeat(
       withTiming(screenWidth * 2, {
         duration,
-        easing: Easing.linear
+        easing: Easing.linear,
       }),
       -1,
-      false
+      false,
     );
 
     return () => cancelAnimation(translateX);
   }
 
-  static createErrorShake(
-    value: SharedValue<number>,
-    config?: TransitionConfig,
-    onComplete?: () => void
-  ): void {
+  static createErrorShake(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const amplitude = 10;
 
     value.value = withSequence(
@@ -359,15 +328,11 @@ export class LoadingTransitions {
           runOnJS(onComplete)();
           runOnJS(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium))();
         }
-      })
+      }),
     );
   }
 
-  static createSuccessBounce(
-    value: SharedValue<number>,
-    config?: TransitionConfig,
-    onComplete?: () => void
-  ): void {
+  static createSuccessBounce(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const { springConfig } = {
       ...this.getPresetConfig("success"),
       ...config,
@@ -421,9 +386,7 @@ export class LoadingTransitions {
     return new Map(this.performanceMetrics);
   }
 
-  static createOptimizedWorklet(
-    animationFn: () => void
-  ): void {
+  static createOptimizedWorklet(animationFn: () => void): void {
     "worklet";
     animationFn();
   }
@@ -446,10 +409,7 @@ export class LoadingTransitions {
   }
 }
 
-export function withSmartEasing(
-  value: number,
-  config: WithTimingConfig & { smart?: boolean }
-): number {
+export function withSmartEasing(value: number, config: WithTimingConfig & { smart?: boolean }): number {
   "worklet";
 
   if (config.smart && LoadingTransitions.shouldUseReducedMotion()) {
@@ -465,7 +425,7 @@ export function withSmartEasing(
 
 export function createAnimatedStyleForTransition(
   preset: TransitionPreset,
-  value: SharedValue<number>
+  value: SharedValue<number>,
 ): AnimatedStyle<any> {
   "worklet";
 
