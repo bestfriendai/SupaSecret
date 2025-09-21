@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HomeScreen from "../screens/HomeScreen";
 import CreateConfessionScreen from "../screens/CreateConfessionScreen";
 import VideoRecordScreen from "../screens/VideoRecordScreen";
+import VideoPreviewScreen from "../screens/VideoPreviewScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import MySecretsScreen from "../screens/MySecretsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -34,6 +35,7 @@ import { linking } from "./linking";
 export type RootStackParamList = {
   MainTabs: undefined;
   VideoRecord: undefined;
+  VideoPreview: { processedVideo: any };
   SecretDetail: { confessionId: string };
   VideoPlayer: { confessionId: string };
   Saved: undefined;
@@ -408,6 +410,16 @@ export default function AppNavigator() {
                 animation: "slide_from_bottom",
                 gestureEnabled: true,
                 gestureDirection: "vertical",
+              }}
+            />
+            <Stack.Screen
+              name="VideoPreview"
+              component={VideoPreviewScreen}
+              options={{
+                title: "Preview Video",
+                headerShown: true,
+                animation: "slide_from_right",
+                gestureEnabled: true,
               }}
             />
             <Stack.Screen

@@ -49,8 +49,12 @@ export const useFaceBlurProcessing = () => {
         onProgress?.(10, "Loading video for analysis...");
 
         // Check if input file exists
-        const fileInfo = await FileSystem.getInfoAsync(videoUri);
-        if (!fileInfo.exists) {
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(videoUri);
+          if (!fileInfo.exists) {
+            throw new Error("Video file not found");
+          }
+        } catch (error) {
           throw new Error("Video file not found");
         }
 

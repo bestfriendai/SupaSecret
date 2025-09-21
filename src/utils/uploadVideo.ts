@@ -38,14 +38,21 @@ export const uploadVideoAnonymously = async (videoUri: string, options: UploadOp
     onProgress?.(5, "Validating video file...");
 
     // Validate input file
-    const fileInfo = await FileSystem.getInfoAsync(videoUri);
-    if (!fileInfo.exists) {
-      throw new Error("Video file does not exist");
-    }
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(videoUri);
+      if (!fileInfo.exists) {
+        throw new Error("Video file does not exist");
+      }
 
-    if (fileInfo.size && fileInfo.size > 100 * 1024 * 1024) {
-      // 100MB limit
-      throw new Error("Video file is too large (max 100MB)");
+      if (fileInfo.size && fileInfo.size > 100 * 1024 * 1024) {
+        // 100MB limit
+        throw new Error("Video file is too large (max 100MB)");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("too large")) {
+        throw error;
+      }
+      throw new Error("Video file does not exist");
     }
 
     onProgress?.(10, "Preparing upload...");

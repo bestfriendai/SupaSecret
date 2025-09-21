@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { CameraView } from "expo-camera";
 
-import { useConfessionStore } from "../state/confessionStore";
+
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { PermissionGate } from "../components/PermissionGate";
 import { useVideoRecorder } from "../hooks/useVideoRecorder";
@@ -29,7 +29,7 @@ const MAX_DURATION = 60; // seconds
 
 function VideoRecordScreen() {
   const navigation = useNavigation();
-  const queueTempConfession = useConfessionStore((state) => state.queueTempConfession);
+
   const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
   const capabilities = useVideoCapabilities();
 
@@ -39,6 +39,9 @@ function VideoRecordScreen() {
   const [enableVoiceChange, setEnableVoiceChange] = useState(true);
   const [voiceEffect, setVoiceEffect] = useState<"deep" | "light">("deep");
   const [uiError, setUiError] = useState<string | null>(null);
+  const [showNextButton, setShowNextButton] = useState(false);
+  const [recordedVideoUri, setRecordedVideoUri] = useState<string | null>(null);
+  const [isProcessingStarted, setIsProcessingStarted] = useState(false);
 
   const handleRecordingStart = useCallback(async () => {
     setUiError(null);
@@ -51,59 +54,114 @@ function VideoRecordScreen() {
     setUiError(message);
   }, []);
 
+  const handleRecordingStop = useCallback((videoUri: string) => {
+    console.log("Recording stopped, video saved to:", videoUri);
+    setRecordedVideoUri(videoUri);
+    setShowNextButton(true);
+    // Don't start processing automatically - wait for user to click Next
+  }, []);
+
+  const handleNextPress = useCallback(async () => {
+    if (!recordedVideoUri) {
+      setUiError("No video recorded. Please record a video first.");
+      return;
+    }
+
+    setShowNextButton(false);
+    setUiError(null);
+    setIsProcessingStarted(true);
+
+    try {
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      // Start processing the recorded video
+      console.log("🎬 Starting video processing for:", recordedVideoUri);
+      await startProcessing();
+    } catch (error) {
+      console.error("❌ Failed to start processing:", error);
+      const message = error instanceof Error ? error.message : "Failed to start processing. Please try again.";
+      setUiError(message);
+      setShowNextButton(true); // Show the button again on error
+      setIsProcessingStarted(false);
+
+      // Show user-friendly error alert
+      Alert.alert(
+        "Processing Failed",
+        message,
+        [
+          {
+            text: "Try Again",
+            onPress: () => {
+              setUiError(null);
+            },
+          },
+        ]
+      );
+    }
+  }, [recordedVideoUri, hapticsEnabled, impactAsync, startProcessing]);
+
   const handleProcessingComplete = useCallback(
     async (processed: ProcessedVideo) => {
       try {
-        const confessionPayload = {
-          type: "video" as const,
-          content: "Anonymous video confession",
-          videoUri: processed.uri,
-          transcription: processed.transcription,
-          isAnonymous: true,
-          faceBlurApplied: processed.faceBlurApplied ?? enableFaceBlur,
-          voiceChangeApplied: processed.voiceChangeApplied ?? enableVoiceChange,
-          duration: processed.duration,
-        };
-
-        await queueTempConfession(confessionPayload, {
-          type: "video",
-          faceBlurApplied: processed.faceBlurApplied ?? enableFaceBlur,
-          voiceChangeApplied: processed.voiceChangeApplied ?? enableVoiceChange,
-          processingMode: IS_EXPO_GO ? "server" : "hybrid",
-          duration: processed.duration,
-        });
+        console.log("✅ Processing complete, navigating to preview:", processed);
 
         if (hapticsEnabled) {
           await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
 
         resetRef.current?.();
+        setShowNextButton(false);
+        setRecordedVideoUri(null);
+        setIsProcessingStarted(false);
+
+        // Validate processed video
+        if (!processed || !processed.uri) {
+          throw new Error("Invalid processed video data");
+        }
+
+        // Navigate to preview screen
+        console.log("🚀 Attempting navigation to VideoPreview...");
+        navigation.navigate("VideoPreview" as never, {
+          processedVideo: processed,
+        } as never);
+        console.log("✅ Navigation call completed");
+      } catch (error) {
+        console.error("❌ Failed to navigate to preview:", error);
+        const message =
+          error instanceof Error ? error.message : "Failed to process video. Please try again.";
+        setUiError(message);
+        setIsProcessingStarted(false);
+        setShowNextButton(true); // Allow user to try again
 
         Alert.alert(
-          "Video Queued",
-          "Your anonymized video will upload automatically when a connection is available.",
+          "Processing Failed",
+          message,
           [
             {
-              text: "Great",
-              onPress: () => navigation.goBack(),
+              text: "Try Again",
+              onPress: () => {
+                setUiError(null);
+              },
             },
-          ],
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => {
+                // Reset to initial state
+                setRecordedVideoUri(null);
+                setShowNextButton(false);
+              },
+            },
+          ]
         );
-      } catch (error) {
-        console.error("Failed to queue processed confession:", error);
-        const message =
-          error instanceof Error ? error.message : "Failed to queue video for upload. Please try again.";
-        setUiError(message);
-        Alert.alert("Upload Failed", message);
       }
     },
     [
-      enableFaceBlur,
-      enableVoiceChange,
       hapticsEnabled,
       impactAsync,
       navigation,
-      queueTempConfession,
       resetRef,
     ],
   );
@@ -124,11 +182,13 @@ function VideoRecordScreen() {
     voiceEffect,
     processingMode: IS_EXPO_GO ? ProcessingMode.SERVER : ProcessingMode.HYBRID,
     onRecordingStart: handleRecordingStart,
+    onRecordingStop: handleRecordingStop,
     onProcessingComplete: handleProcessingComplete,
     onError: handleRecorderError,
+    autoProcessAfterRecording: false, // Don't auto-process, wait for Next button
   });
 
-  const { startRecording, stopRecording, toggleCamera, cleanup } = controls;
+  const { startRecording, stopRecording, toggleCamera, cleanup, startProcessing } = controls;
 
   useEffect(() => {
     resetRef.current = controls.reset;
@@ -204,13 +264,35 @@ function VideoRecordScreen() {
           onTranscriptionUpdate={() => {}}
         />
 
-        {processing && (
+        {(processing || isProcessingStarted) && (
           <View style={styles.processingOverlay}>
             <ActivityIndicator size="large" color="#1D9BF0" />
             <Text style={styles.processingLabel}>
               Processing {Math.round(state.processingProgress)}%
             </Text>
             {state.processingStatus ? <Text style={styles.processingStatus}>{state.processingStatus}</Text> : null}
+            {isProcessingStarted && !processing && (
+              <Text style={styles.processingStatus}>Initializing processing...</Text>
+            )}
+          </View>
+        )}
+
+        {/* Error Overlay */}
+        {uiError && (
+          <View style={styles.errorOverlay}>
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={24} color="#EF4444" />
+              <Text style={styles.errorTitle}>Error</Text>
+              <Text style={styles.errorMessage}>{uiError}</Text>
+              <Pressable
+                style={styles.errorButton}
+                onPress={() => setUiError(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss error"
+              >
+                <Text style={styles.errorButtonText}>Dismiss</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -262,14 +344,51 @@ function VideoRecordScreen() {
 
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-            <Pressable
-              onPress={isRecording ? stopRecording : startRecording}
-              style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
-              accessibilityRole="button"
-              accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
-            >
-              <Text style={styles.recordButtonText}>{isRecording ? "Stop" : "Record"}</Text>
-            </Pressable>
+            {!showNextButton && (
+              <Pressable
+                onPress={isRecording ? stopRecording : startRecording}
+                style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
+                accessibilityRole="button"
+                accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
+              >
+                <Text style={styles.recordButtonText}>{isRecording ? "Stop" : "Record"}</Text>
+              </Pressable>
+            )}
+
+            {showNextButton && !processing && (
+              <Pressable
+                onPress={handleNextPress}
+                style={[styles.recordButton, styles.nextButton]}
+                accessibilityRole="button"
+                accessibilityLabel="Process video and continue to preview"
+              >
+                <Ionicons name="arrow-forward" size={24} color="#FFFFFF" style={styles.nextButtonIcon} />
+                <Text style={styles.recordButtonText}>Next</Text>
+              </Pressable>
+            )}
+
+            {/* Temporary test button for debugging */}
+            {__DEV__ && !isRecording && !processing && !showNextButton && (
+              <Pressable
+                style={styles.testButton}
+                onPress={() => {
+                  console.log("🧪 Testing navigation to VideoPreview...");
+                  const testVideo = {
+                    uri: "test://video.mp4",
+                    width: 1920,
+                    height: 1080,
+                    duration: 30,
+                    size: 1000000,
+                    thumbnail: "test://thumbnail.jpg",
+                  };
+                  navigation.navigate("VideoPreview" as never, {
+                    processedVideo: testVideo,
+                  } as never);
+                }}
+              >
+                <Text style={styles.testButtonText}>Test Preview</Text>
+              </Pressable>
+            )}
 
             <Text style={styles.timerText}>
               {Math.floor(state.recordingTime / 60)}:{(state.recordingTime % 60).toString().padStart(2, "0")}
@@ -386,6 +505,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
+  nextButton: {
+    backgroundColor: "#1D9BF0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  nextButtonIcon: {
+    marginRight: 4,
+  },
   timerText: {
     color: "#E5E7EB",
     fontSize: 14,
@@ -418,6 +547,63 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     marginTop: 4,
+  },
+  testButton: {
+    backgroundColor: "#1D9BF0",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  testButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  errorOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  errorContainer: {
+    backgroundColor: "#1F2937",
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
+  errorTitle: {
+    color: "#EF4444",
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    color: "#E5E7EB",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  errorButton: {
+    backgroundColor: "#1D9BF0",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  errorButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   permissionContainer: {
     flex: 1,

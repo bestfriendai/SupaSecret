@@ -97,8 +97,13 @@ class VideoCacheManager {
   private async initializeCache() {
     try {
       // Create cache directory if it doesn't exist
-      const dirInfo = await FileSystem.getInfoAsync(this.cacheDir);
-      if (!dirInfo.exists) {
+      try {
+        const dirInfo = await FileSystem.getInfoAsync(this.cacheDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(this.cacheDir, { intermediates: true });
+        }
+      } catch (error) {
+        // Directory doesn't exist, create it
         await FileSystem.makeDirectoryAsync(this.cacheDir, { intermediates: true });
       }
 
@@ -106,8 +111,13 @@ class VideoCacheManager {
       if (this.config.cachePartitioning) {
         for (const partition of ["thumbnail", "preview", "full", "low_quality", "medium_quality", "high_quality"]) {
           const partitionDir = `${this.cacheDir}${partition}/`;
-          const partitionInfo = await FileSystem.getInfoAsync(partitionDir);
-          if (!partitionInfo.exists) {
+          try {
+            const partitionInfo = await FileSystem.getInfoAsync(partitionDir);
+            if (!partitionInfo.exists) {
+              await FileSystem.makeDirectoryAsync(partitionDir, { intermediates: true });
+            }
+          } catch (error) {
+            // Directory doesn't exist, create it
             await FileSystem.makeDirectoryAsync(partitionDir, { intermediates: true });
           }
         }
@@ -126,9 +136,16 @@ class VideoCacheManager {
   private async loadCacheIndex() {
     try {
       const indexPath = `${this.cacheDir}index.json`;
-      const indexInfo = await FileSystem.getInfoAsync(indexPath);
+      let indexExists = false;
 
-      if (indexInfo.exists) {
+      try {
+        const indexInfo = await FileSystem.getInfoAsync(indexPath);
+        indexExists = indexInfo.exists;
+      } catch (error) {
+        indexExists = false;
+      }
+
+      if (indexExists) {
         const indexContent = await FileSystem.readAsStringAsync(indexPath);
         const cacheData = JSON.parse(indexContent);
 
@@ -343,15 +360,20 @@ class VideoCacheManager {
       // Check for quality variant if available
       if (entry.variantUris && entry.variantUris.has(targetQuality)) {
         const variantPath = entry.variantUris.get(targetQuality)!;
-        const variantInfo = await FileSystem.getInfoAsync(variantPath);
-        if (variantInfo.exists) {
-          return variantPath;
+        try {
+          const variantInfo = await FileSystem.getInfoAsync(variantPath);
+          if (variantInfo.exists) {
+            return variantPath;
+          }
+        } catch (error) {
+          // Variant file doesn't exist, continue to original
         }
       }
 
       // Verify original file still exists
-      const fileInfo = await FileSystem.getInfoAsync(entry.localPath);
-      if (fileInfo.exists) {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(entry.localPath);
+        if (fileInfo.exists) {
         // Trigger cleanup if we're approaching capacity
         if (this.currentCacheSize > this.config.maxCacheSize * this.config.cleanupThreshold) {
           // Don't await - run cleanup in background
@@ -360,8 +382,9 @@ class VideoCacheManager {
           });
         }
 
-        return entry.localPath;
-      } else {
+          return entry.localPath;
+        }
+      } catch (error) {
         // File was deleted externally, remove from cache
         this.cache.delete(cacheKey);
         this.lruCache.delete(cacheKey);
@@ -430,8 +453,13 @@ class VideoCacheManager {
     quality: '360p' | '720p' | '1080p',
     qualityResult: any
   ): Promise<string> {
-    const fileInfo = await FileSystem.getInfoAsync(localPath);
-    const fileSize = fileInfo.exists && !fileInfo.isDirectory ? (fileInfo as any).size || 0 : 0;
+    let fileSize = 0;
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(localPath);
+      fileSize = fileInfo.exists && !fileInfo.isDirectory ? (fileInfo as any).size || 0 : 0;
+    } catch (error) {
+      fileSize = 0;
+    }
 
     // Check if we need to evict old entries
     if (this.currentCacheSize + fileSize > this.config.maxCacheSize) {
@@ -739,9 +767,16 @@ class VideoCacheManager {
   private async loadViewingPatterns() {
     try {
       const patternsPath = `${this.cacheDir}patterns.json`;
-      const patternsInfo = await FileSystem.getInfoAsync(patternsPath);
+      let patternsExist = false;
 
-      if (patternsInfo.exists) {
+      try {
+        const patternsInfo = await FileSystem.getInfoAsync(patternsPath);
+        patternsExist = patternsInfo.exists;
+      } catch (error) {
+        patternsExist = false;
+      }
+
+      if (patternsExist) {
         const patternsContent = await FileSystem.readAsStringAsync(patternsPath);
         const patterns = JSON.parse(patternsContent);
         this.viewingPatterns = new Map(Object.entries(patterns));

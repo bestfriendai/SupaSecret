@@ -115,8 +115,12 @@ export class ModernVideoProcessor {
       onProgress?.(2);
 
       // Validate video file
-      const fileInfo = await FileSystem.getInfoAsync(videoUri);
-      if (!fileInfo.exists) {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(videoUri);
+        if (!fileInfo.exists) {
+          throw new Error("Video file does not exist");
+        }
+      } catch (error) {
         throw new Error("Video file does not exist");
       }
 
@@ -202,8 +206,12 @@ export class ModernVideoProcessor {
     onProgress?.(10);
 
     // Get video info
-    const videoInfo = await FileSystem.getInfoAsync(videoUri);
-    if (!videoInfo.exists) {
+    try {
+      const videoInfo = await FileSystem.getInfoAsync(videoUri);
+      if (!videoInfo.exists) {
+        throw new Error("Video file not found");
+      }
+    } catch (error) {
       throw new Error("Video file not found");
     }
 
@@ -518,7 +526,14 @@ export class ModernVideoProcessor {
    * Get basic video information
    */
   private async getVideoInfo(videoUri: string): Promise<ProcessedVideo> {
-    const fileInfo = await FileSystem.getInfoAsync(videoUri);
+    let fileSize = 0;
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(videoUri);
+      fileSize = (fileInfo as any).size || 0;
+    } catch (error) {
+      console.warn("Could not get file info:", error);
+    }
+
     const thumbnail = await this.generateThumbnail(videoUri);
     const metadata = await this.getVideoMetadata(videoUri);
 
@@ -527,7 +542,7 @@ export class ModernVideoProcessor {
       width: metadata.width,
       height: metadata.height,
       duration: metadata.duration,
-      size: (fileInfo as any).size || 0,
+      size: fileSize,
       thumbnail,
     };
   }

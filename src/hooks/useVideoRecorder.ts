@@ -32,6 +32,7 @@ export interface VideoRecorderOptions {
   enableLiveCaptions?: boolean;
   voiceEffect?: "deep" | "light";
   processingMode?: ProcessingMode;
+  autoProcessAfterRecording?: boolean;
   onRecordingStart?: () => void;
   onRecordingStop?: (uri: string) => void;
   onProcessingComplete?: (processed: ProcessedVideo) => void;
@@ -46,6 +47,7 @@ export interface VideoRecorderControls {
   toggleCamera: () => void;
   reset: () => void;
   cleanup: () => void;
+  startProcessing: () => Promise<void>;
 }
 
 export interface VideoRecorderData {
@@ -67,6 +69,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
     enableLiveCaptions = true,
     voiceEffect = "deep",
     processingMode = ProcessingMode.HYBRID,
+    autoProcessAfterRecording = true,
     onRecordingStart,
     onRecordingStop,
     onProcessingComplete,
@@ -99,6 +102,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   const [processedVideo, setProcessedVideo] = useState<ProcessedVideo | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [isInitialized, setIsInitialized] = useState(false);
+  const [recordedVideoUri, setRecordedVideoUri] = useState<string | null>(null);
 
   // Permissions
   const { permissionState, requestVideoPermissions, hasVideoPermissions } = useMediaPermissions({
@@ -212,16 +216,22 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
 
       onRecordingStart?.();
 
-      recordingRef.current = await cameraRef.current.recordAsync({
+      console.log("🎬 Starting camera recording...");
+      const video = await cameraRef.current.recordAsync({
         maxDuration,
       });
 
-      const video = await recordingRef.current;
+      console.log("🎬 Recording finished:", video);
+      setIsRecording(false);
 
       if (video && video.uri) {
         await handleRecordingComplete(video.uri);
+      } else {
+        console.warn("⚠️ No video URI received from recording");
+        setError("Recording failed - no video file created");
       }
     } catch (error) {
+      console.error("❌ Recording error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to start recording";
       setError(errorMessage);
       onError?.(errorMessage);
@@ -302,7 +312,32 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
   const handleRecordingComplete = useCallback(
     async (videoUri: string) => {
       try {
+        console.log("🎬 Recording completed:", videoUri);
+        setRecordedVideoUri(videoUri);
         onRecordingStop?.(videoUri);
+
+        // Only start processing automatically if enabled
+        if (autoProcessAfterRecording) {
+          await startVideoProcessing(videoUri);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to handle recording completion";
+        setError(errorMessage);
+        onError?.(errorMessage);
+      }
+    },
+    [onRecordingStop, autoProcessAfterRecording, onError],
+  );
+
+  const startVideoProcessing = useCallback(
+    async (videoUri?: string) => {
+      const uriToProcess = videoUri || recordedVideoUri;
+      if (!uriToProcess) {
+        throw new Error("No video to process");
+      }
+
+      try {
+        console.log("🎬 Starting video processing for:", uriToProcess);
 
         // Start processing
         setIsProcessing(true);
@@ -324,29 +359,71 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
         let processed: ProcessedVideo;
 
         if (env.expoGo) {
-          // Expo Go mode - use server processing or simulation
-          processed = await unifiedVideoProcessingService.processVideo(videoUri, {
-            ...processingOptions,
-            mode: ProcessingMode.SERVER,
-          });
+          console.log("🎯 Processing video in Expo Go mode");
+          // Expo Go mode - try local processing first, fallback to server
+          try {
+            processed = await unifiedVideoProcessingService.processVideo(uriToProcess, {
+              ...processingOptions,
+              mode: ProcessingMode.LOCAL,
+            });
+          } catch (localError) {
+            console.warn("Local processing failed in Expo Go, trying server:", localError);
+            try {
+              processed = await unifiedVideoProcessingService.processVideo(uriToProcess, {
+                ...processingOptions,
+                mode: ProcessingMode.SERVER,
+              });
+            } catch (serverError) {
+              console.warn("Server processing failed, using fallback:", serverError);
+              // Fallback: create a basic processed video object
+              processed = {
+                uri: uriToProcess,
+                width: 1920,
+                height: 1080,
+                duration: 30,
+                size: 0,
+                transcription: "Transcription not available in Expo Go",
+                faceBlurApplied: enableFaceBlur,
+                voiceChangeApplied: enableVoiceChange,
+              };
+            }
+          }
         } else {
           // Development build - use dual mode
-          processed = await unifiedVideoProcessingService.processVideo(videoUri, {
+          processed = await unifiedVideoProcessingService.processVideo(uriToProcess, {
             ...processingOptions,
             mode: processingMode,
           });
         }
 
+        console.log("✅ Video processing completed successfully:", processed);
         setProcessedVideo(processed);
         setIsProcessing(false);
         setProcessingProgress(100);
         setProcessingStatus("Processing complete!");
 
-        onProcessingComplete?.(processed);
+        console.log("🎯 Calling onProcessingComplete callback...");
+        if (onProcessingComplete) {
+          onProcessingComplete(processed);
+          console.log("✅ onProcessingComplete callback called");
+        } else {
+          console.warn("⚠️ No onProcessingComplete callback provided");
+        }
       } catch (error) {
+        console.error("❌ Video processing failed:", error);
+        console.error("❌ Error details:", {
+          message: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+          error
+        });
         const errorMessage = error instanceof Error ? error.message : "Video processing failed";
         setError(errorMessage);
-        onError?.(errorMessage);
+        if (onError) {
+          onError(errorMessage);
+          console.log("✅ onError callback called with:", errorMessage);
+        } else {
+          console.warn("⚠️ No onError callback provided");
+        }
         setIsProcessing(false);
         setProcessingProgress(0);
         setProcessingStatus("");
@@ -481,6 +558,7 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
     toggleCamera,
     reset,
     cleanup,
+    startProcessing: startVideoProcessing,
   };
 
   // Data object

@@ -21,8 +21,6 @@ import SimpleCommentModal from "./SimpleCommentModal";
 import { Share } from "react-native";
 import { generateConfessionLink, generateShareMessage } from "../utils/links";
 import { VideoDataService } from "../services/VideoDataService";
-import * as Haptics from "expo-haptics";
-import { VideoDataService } from "../services/VideoDataService";
 import { useConfessionStore } from "../state/confessionStore";
 import type { Confession } from "../types/confession";
 import { useVideoFeedGestures } from "../hooks/useVideoFeedGestures";
