@@ -1,6 +1,6 @@
 import type { PostgrestError } from "@supabase/supabase-js";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, AppStateStatus } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, AppStateStatus } from "react-native";
 
 import { supabase } from "../lib/supabase";
 import type { Confession } from "../types/confession";
@@ -38,7 +38,7 @@ export interface VideoAnalytics {
     saves: number;
   };
   qualityStats?: {
-    selectedQuality: '360p' | '720p' | '1080p';
+    selectedQuality: "360p" | "720p" | "1080p";
     qualitySwitches: number;
     bufferingTime: number;
   };
@@ -51,9 +51,40 @@ export interface VideoAnalytics {
 }
 
 export interface VideoEvent {
-  type: 'play' | 'pause' | 'seek' | 'complete' | 'like' | 'unlike' | 'comment' | 'share' | 'save' |
-        'buffer_start' | 'buffer_end' | 'quality_change' | 'volume_change' | 'fullscreen_toggle' |
-        'session_start' | 'session_end' | 'error' | 'resume' | 'impression';
+  type:
+    | "play"
+    | "pause"
+    | "seek"
+    | "complete"
+    | "like"
+    | "unlike"
+    | "comment"
+    | "share"
+    | "save"
+    | "buffer_start"
+    | "buffer_end"
+    | "quality_change"
+    | "volume_change"
+    | "fullscreen_toggle"
+    | "session_start"
+    | "session_end"
+    | "error"
+    | "resume"
+    | "impression"
+    | "comment_sheet_open"
+    | "comment_sheet_opened"
+    | "comment_submitted"
+    | "comment_reply_initiated"
+    | "comment_reaction_added"
+    | "comment_reaction_removed"
+    | "comment_liked"
+    | "comment_unliked"
+    | "comment_added"
+    | "comment_deleted"
+    | "comment_edited"
+    | "comments_loaded"
+    | "comments_searched"
+    | "comment_reported";
   timestamp: number;
   sessionId: string;
   metadata?: Record<string, any>;
@@ -97,8 +128,8 @@ const RETRY_BASE_DELAY_MS = 250;
 const VIDEO_CONFESSIONS_PREFIX = "video-confessions";
 const TRENDING_VIDEOS_PREFIX = "trending-videos";
 const ANALYTICS_CACHE_PREFIX = "video-analytics";
-const EVENT_QUEUE_KEY = '@video_analytics_event_queue';
-const SESSIONS_KEY = '@video_analytics_sessions';
+const EVENT_QUEUE_KEY = "@video_analytics_event_queue";
+const SESSIONS_KEY = "@video_analytics_sessions";
 const BATCH_UPLOAD_INTERVAL = 30000; // 30 seconds
 const BATCH_SIZE = 50;
 const COMPLETION_THRESHOLD = 0.8; // 80% viewed = completed
@@ -106,20 +137,23 @@ const COMPLETION_THRESHOLD = 0.8; // 80% viewed = completed
 const cacheStore = new Map<string, { data: Confession[]; timestamp: number; qualityOptimized?: boolean }>();
 const analyticsCache = new Map<string, { data: VideoAnalytics; timestamp: number }>();
 const eventQueue = new Map<string, VideoEvent[]>();
-const qualitySelectionCache = new Map<string, {
-  quality: string;
-  selectedUri: string;
-  variants: any[];
-  deviceTier: string;
-  networkQuality: string;
-  timestamp: number;
-}>();
+const qualitySelectionCache = new Map<
+  string,
+  {
+    quality: string;
+    selectedUri: string;
+    variants: any[];
+    deviceTier: string;
+    networkQuality: string;
+    timestamp: number;
+  }
+>();
 const deviceTierCache = { tier: null as DevicePerformanceTier | null, timestamp: 0 };
 const activeSessions = new Map<string, VideoSession>();
 const watchTimeTrackers = new Map<string, { startTime: number; totalTime: number }>();
 
 let batchUploadTimer: ReturnType<typeof setTimeout> | null = null;
-let appState: AppStateStatus = 'active';
+let appState: AppStateStatus = "active";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -131,7 +165,8 @@ const buildCacheKey = (prefix: string, params: Record<string, unknown>): string 
   return `${prefix}:${serialized}`;
 };
 
-const cloneConfessions = (confessions: Confession[]): Confession[] => confessions.map((confession) => ({ ...confession }));
+const cloneConfessions = (confessions: Confession[]): Confession[] =>
+  confessions.map((confession) => ({ ...confession }));
 
 const getCachedList = (key: string, allowStale = false): Confession[] | null => {
   const entry = cacheStore.get(key);
@@ -172,14 +207,14 @@ const prepareVideoResults = async (confessions: Confession[], applyQualitySelect
 
   // Ensure confessions is a valid array
   if (!Array.isArray(confessions)) {
-    console.warn('prepareVideoResults: confessions is not an array:', confessions);
+    console.warn("prepareVideoResults: confessions is not an array:", confessions);
     return results;
   }
 
   for (const confession of confessions) {
     // Add null/undefined check for confession object
-    if (!confession || typeof confession !== 'object') {
-      console.warn('prepareVideoResults: invalid confession object:', confession);
+    if (!confession || typeof confession !== "object") {
+      console.warn("prepareVideoResults: invalid confession object:", confession);
       continue;
     }
 
@@ -208,7 +243,7 @@ const prepareVideoResults = async (confessions: Confession[], applyQualitySelect
             } as any;
           }
         } catch (error) {
-          console.warn('prepareVideoResults: quality selection failed for', sanitizedUri, error);
+          console.warn("prepareVideoResults: quality selection failed for", sanitizedUri, error);
           // Continue with basic confession without quality metadata
         }
       }
@@ -222,7 +257,9 @@ const prepareVideoResults = async (confessions: Confession[], applyQualitySelect
 /**
  * Get cached quality selection or select new quality for video
  */
-const getOrSelectVideoQuality = async (uri: string): Promise<{
+const getOrSelectVideoQuality = async (
+  uri: string,
+): Promise<{
   quality: string;
   selectedUri: string;
   variants: any[];
@@ -243,13 +280,17 @@ const getOrSelectVideoQuality = async (uri: string): Promise<{
     // For now, return basic quality selection
     // In a full implementation, this would analyze available video variants
     const result = {
-      quality: deviceTier === DevicePerformanceTier.HIGH ? '1080p' :
-               deviceTier === DevicePerformanceTier.MID ? '720p' : '360p',
+      quality:
+        deviceTier === DevicePerformanceTier.HIGH
+          ? "1080p"
+          : deviceTier === DevicePerformanceTier.MID
+            ? "720p"
+            : "360p",
       selectedUri: uri,
       variants: [
-        { quality: '360p', uri: uri, width: 640, height: 360 },
-        { quality: '720p', uri: uri, width: 1280, height: 720 },
-        { quality: '1080p', uri: uri, width: 1920, height: 1080 },
+        { quality: "360p", uri: uri, width: 640, height: 360 },
+        { quality: "720p", uri: uri, width: 1280, height: 720 },
+        { quality: "1080p", uri: uri, width: 1920, height: 1080 },
       ],
       deviceTier: deviceTier.toString(),
       networkQuality,
@@ -260,7 +301,7 @@ const getOrSelectVideoQuality = async (uri: string): Promise<{
     qualitySelectionCache.set(uri, result);
     return result;
   } catch (error) {
-    console.warn('getOrSelectVideoQuality failed:', error);
+    console.warn("getOrSelectVideoQuality failed:", error);
     return null;
   }
 };
@@ -269,7 +310,8 @@ const getOrSelectVideoQuality = async (uri: string): Promise<{
  * Get device tier with caching
  */
 const getDeviceTier = async (): Promise<DevicePerformanceTier> => {
-  if (deviceTierCache.tier && Date.now() - deviceTierCache.timestamp < 600000) { // 10 minute cache
+  if (deviceTierCache.tier && Date.now() - deviceTierCache.timestamp < 600000) {
+    // 10 minute cache
     return deviceTierCache.tier;
   }
 
@@ -293,7 +335,7 @@ const getDeviceTier = async (): Promise<DevicePerformanceTier> => {
 
     return tier;
   } catch (error) {
-    console.error('Failed to detect device tier:', error);
+    console.error("Failed to detect device tier:", error);
     return DevicePerformanceTier.MID;
   }
 };
@@ -329,8 +371,6 @@ const handleFetchFailure = (context: string, cacheKey: string): Confession[] => 
   }
   return [];
 };
-
-
 
 /**
  * Service for fetching video data for the TikTok-style feed
@@ -406,11 +446,19 @@ export class VideoDataService {
   /**
    * Fetch trending videos with quality selection and device optimization.
    */
-  static async fetchTrendingVideos(hoursBack: number = 24, limit: number = 10, enableQualitySelection = true): Promise<Confession[]> {
+  static async fetchTrendingVideos(
+    hoursBack: number = 24,
+    limit: number = 10,
+    enableQualitySelection = true,
+  ): Promise<Confession[]> {
     const deviceTier = await getDeviceTier();
     const safeLimit = Math.max(1, Math.min(Math.floor(limit), 100));
     const safeHours = Math.max(1, Math.min(Math.floor(hoursBack), 168));
-    const cacheKey = buildCacheKey(TRENDING_VIDEOS_PREFIX, { limit: safeLimit, hoursBack: safeHours, tier: deviceTier });
+    const cacheKey = buildCacheKey(TRENDING_VIDEOS_PREFIX, {
+      limit: safeLimit,
+      hoursBack: safeHours,
+      tier: deviceTier,
+    });
     const cached = getCachedList(cacheKey);
     if (cached) {
       return cached;
@@ -516,16 +564,12 @@ export class VideoDataService {
     try {
       // Track the like event for analytics
       VideoDataService.trackVideoEvent(videoId, {
-        type: isLiked ? 'like' : 'unlike',
+        type: isLiked ? "like" : "unlike",
         timestamp: Date.now(),
       });
 
       // Fetch the current like count
-      const { data: confession } = await supabase
-        .from("confessions")
-        .select("likes")
-        .eq("id", videoId)
-        .single();
+      const { data: confession } = await supabase.from("confessions").select("likes").eq("id", videoId).single();
 
       invalidateCacheByPrefix(VIDEO_CONFESSIONS_PREFIX);
       invalidateCacheByPrefix(TRENDING_VIDEOS_PREFIX);
@@ -546,8 +590,10 @@ export class VideoDataService {
     }
 
     try {
-      await executeWithRetry("updateVideoViews", async () =>
-        await (supabase as any).rpc("increment_video_views", {
+      await executeWithRetry(
+        "updateVideoViews",
+        async () =>
+          await (supabase as any).rpc("increment_video_views", {
             confession_uuid: videoId,
           }),
       );
@@ -557,16 +603,12 @@ export class VideoDataService {
 
       // Track the view event
       VideoDataService.trackVideoEvent(videoId, {
-        type: 'play',
+        type: "play",
         timestamp: Date.now(),
       });
 
       // Try to fetch updated view count
-      const { data: confession } = await supabase
-        .from("confessions")
-        .select("views")
-        .eq("id", videoId)
-        .single();
+      const { data: confession } = await supabase.from("confessions").select("views").eq("id", videoId).single();
 
       return confession?.views || 0;
     } catch (error) {
@@ -603,17 +645,65 @@ export class VideoDataService {
 
   /**
    * Track video interaction events for analytics with consent checking.
+   *
+   * Supports both `trackVideoEvent(videoId, event)` and
+   * `trackVideoEvent(eventType, metadataWithConfessionId)` call patterns for backwards compatibility.
    */
-  static async trackVideoEvent(videoId: string, event: Omit<VideoEvent, 'sessionId'>): Promise<void> {
-    if (!videoId || !event) return;
+  static async trackVideoEvent(
+    arg1: string,
+    arg2: Omit<VideoEvent, "sessionId"> | Record<string, unknown>,
+  ): Promise<void> {
+    if (!arg1 || !arg2) return;
 
-    // Check analytics consent
-    const consentStore = useConsentStore.getState();
-    if (!consentStore.preferences?.analytics) {
+    // Handle legacy signature where the event type is passed first and metadata second
+    if (!("type" in arg2)) {
+      const metadata = {
+        ...(arg2 as Record<string, unknown> & {
+          confession_id?: unknown;
+          videoId?: unknown;
+          timestamp?: unknown;
+        }),
+      };
+
+      const possibleId = metadata.confession_id ?? metadata.videoId;
+      const videoId = typeof possibleId === "string" && possibleId.length > 0 ? possibleId : undefined;
+      const timestampValue =
+        typeof metadata.timestamp === "number"
+          ? (metadata.timestamp as number)
+          : Date.now();
+
+      if (!videoId) {
+        if (__DEV__) {
+          console.warn(
+            `[VideoDataService] trackVideoEvent missing videoId in metadata for event '${arg1}'. Event ignored.`,
+          );
+        }
+        return;
+      }
+
+      delete metadata.timestamp;
+
+      const event: Omit<VideoEvent, "sessionId"> = {
+        type: arg1 as VideoEvent["type"],
+        timestamp: timestampValue,
+        metadata,
+      };
+
+      await VideoDataService.trackVideoEventInternal(videoId, event);
       return;
     }
 
-    // Get or create session
+    await VideoDataService.trackVideoEventInternal(arg1, arg2 as Omit<VideoEvent, "sessionId">);
+  }
+
+  private static async trackVideoEventInternal(videoId: string, event: Omit<VideoEvent, "sessionId">): Promise<void> {
+    if (!videoId || !event) return;
+
+    const consentState = useConsentStore.getState();
+    if (!consentState.preferences?.analytics) {
+      return;
+    }
+
     const sessionId = VideoDataService.getOrCreateSession(videoId);
     const fullEvent: VideoEvent = {
       ...event,
@@ -621,51 +711,45 @@ export class VideoDataService {
       metadata: { ...(event.metadata || {}), videoId },
     };
 
-    // Add to in-memory queue
     const events = eventQueue.get(videoId) || [];
     events.push(fullEvent);
     eventQueue.set(videoId, events);
 
-    // Update session with the new event
     const session = activeSessions.get(sessionId);
     if (session) {
       session.events.push(fullEvent);
       await VideoDataService.persistSessionToStorage(session);
     }
 
-    // Persist to AsyncStorage
     await VideoDataService.persistEventToStorage(videoId, fullEvent);
 
-    // Track specific event types
     switch (event.type) {
-      case 'play':
-      case 'resume':
+      case "play":
+      case "resume":
         VideoDataService.startWatchTimeTracking(videoId);
         break;
-      case 'pause':
-      case 'complete':
-      case 'session_end':
+      case "pause":
+      case "complete":
+      case "session_end": {
         const delta = VideoDataService.stopWatchTimeTracking(videoId);
-        // Update session watch time
         if (session) {
           session.watchTime += delta;
           await VideoDataService.persistSessionToStorage(session);
         }
         break;
-      case 'buffer_start':
+      }
+      case "buffer_start":
         VideoDataService.trackBufferingStart(videoId);
         break;
-      case 'buffer_end':
+      case "buffer_end":
         VideoDataService.trackBufferingEnd(videoId);
         break;
     }
 
-    // Process events if queue is getting large
     if (events.length >= 10) {
       await VideoDataService.processEventQueue(videoId);
     }
 
-    // Schedule batch upload if not already scheduled
     if (!batchUploadTimer) {
       batchUploadTimer = setTimeout(() => {
         VideoDataService.batchUploadEvents();
@@ -710,7 +794,7 @@ export class VideoDataService {
       }
 
       // Queue for upload via offline queue
-      await offlineQueue.enqueue('video.analytics.batch', {
+      await offlineQueue.enqueue("video.analytics.batch", {
         videoId,
         events,
         sessionId: events[0]?.sessionId,
@@ -823,7 +907,7 @@ export class VideoDataService {
     const isCompleted = completionRate >= COMPLETION_THRESHOLD;
 
     await VideoDataService.trackVideoEvent(videoId, {
-      type: isCompleted ? 'complete' : 'pause',
+      type: isCompleted ? "complete" : "pause",
       timestamp: Date.now(),
       metadata: {
         watchTime,
@@ -875,15 +959,15 @@ export class VideoDataService {
       const preloadProfile = videoPerformanceConfig.getPreloadProfile();
       const videoUris = confessions
         .slice(0, preloadProfile.preloadWindowSize)
-        .map(c => (c as any).videoUri)
+        .map((c) => (c as any).videoUri)
         .filter(Boolean);
 
       if (videoUris.length > 0) {
         // Use device-aware preloading from cache manager
-        await videoCacheManager.preloadVideos(videoUris, 'normal');
+        await videoCacheManager.preloadVideos(videoUris, "normal");
       }
     } catch (error) {
-      console.error('Intelligent preload failed:', error);
+      console.error("Intelligent preload failed:", error);
     }
   }
 
@@ -891,7 +975,7 @@ export class VideoDataService {
    * Aggressive preloading for high-tier devices.
    */
   static async aggressivePreload(confessions: Confession[]): Promise<void> {
-    if (!videoPerformanceConfig.shouldEnableFeature('aggressivePreloading')) {
+    if (!videoPerformanceConfig.shouldEnableFeature("aggressivePreloading")) {
       return VideoDataService.intelligentPreload(confessions);
     }
 
@@ -902,10 +986,10 @@ export class VideoDataService {
         .filter(Boolean);
 
       if (videoUris.length > 0) {
-        await videoCacheManager.preloadVideos(videoUris, 'high');
+        await videoCacheManager.preloadVideos(videoUris, "high");
       }
     } catch (error) {
-      console.error('Aggressive preload failed:', error);
+      console.error("Aggressive preload failed:", error);
     }
   }
 
@@ -914,7 +998,7 @@ export class VideoDataService {
    */
   static async optimizeQualityInBackground(confessions: Confession[]): Promise<void> {
     try {
-      const { videoBackgroundQueue, JobType, JobPriority } = await import('./VideoBackgroundQueue');
+      const { videoBackgroundQueue, JobType, JobPriority } = await import("./VideoBackgroundQueue");
 
       const videoUris = confessions
         .slice(0, 5)
@@ -926,7 +1010,7 @@ export class VideoDataService {
         JobType.QUALITY_VARIANT_GENERATION,
         {
           videoUris,
-          batchOptimization: true
+          batchOptimization: true,
         },
         JobPriority.LOW,
         {
@@ -935,11 +1019,11 @@ export class VideoDataService {
               // Batch select qualities
               await videoQualitySelector.selectBatchVideoQualities(videoUris);
             }
-          }
-        }
+          },
+        },
       );
     } catch (error) {
-      console.error('Failed to enqueue background quality optimization:', error);
+      console.error("Failed to enqueue background quality optimization:", error);
     }
   }
 
@@ -950,7 +1034,7 @@ export class VideoDataService {
     try {
       return await videoQualitySelector.canUpgradeQuality(videoUri);
     } catch (error) {
-      console.error('Quality upgrade check failed:', error);
+      console.error("Quality upgrade check failed:", error);
       return false;
     }
   }
@@ -1083,7 +1167,7 @@ export class VideoDataService {
   static calculateEngagementScore(metrics: {
     completionRate: number;
     watchTime: number;
-    interactions?: VideoAnalytics['interactions'];
+    interactions?: VideoAnalytics["interactions"];
   }): number {
     const completionWeight = 0.4;
     const watchTimeWeight = 0.3;
@@ -1093,16 +1177,15 @@ export class VideoDataService {
     const watchTimeScore = Math.min(metrics.watchTime / 300, 1) * 100; // Normalize to 5 minutes
     const interactionScore = Math.min(
       ((metrics.interactions?.likes || 0) * 10 +
-       (metrics.interactions?.comments || 0) * 20 +
-       (metrics.interactions?.shares || 0) * 30 +
-       (metrics.interactions?.saves || 0) * 15) / 100,
-      100
+        (metrics.interactions?.comments || 0) * 20 +
+        (metrics.interactions?.shares || 0) * 30 +
+        (metrics.interactions?.saves || 0) * 15) /
+        100,
+      100,
     );
 
     return Math.round(
-      completionScore * completionWeight +
-      watchTimeScore * watchTimeWeight +
-      interactionScore * interactionWeight
+      completionScore * completionWeight + watchTimeScore * watchTimeWeight + interactionScore * interactionWeight,
     );
   }
 
@@ -1118,15 +1201,15 @@ export class VideoDataService {
     averageViewDuration: number;
     lastPosition: number;
   } {
-    const seekEvents = session.events.filter(e => e.type === 'seek').length;
-    const bufferEvents = session.events.filter(e => e.type === 'buffer_start').length;
-    const playEvents = session.events.filter(e => e.type === 'play' || e.type === 'resume');
+    const seekEvents = session.events.filter((e) => e.type === "seek").length;
+    const bufferEvents = session.events.filter((e) => e.type === "buffer_start").length;
+    const playEvents = session.events.filter((e) => e.type === "play" || e.type === "resume");
 
     const watchTime = session.watchTime || 0;
-    const duration = session.events.find(e => e.metadata?.duration)?.metadata?.duration || 0;
+    const duration = session.events.find((e) => e.metadata?.duration)?.metadata?.duration || 0;
     const completionRate = duration > 0 ? (watchTime / duration) * 100 : 0;
 
-    const lastPositionEvent = [...session.events].reverse().find(e => e.metadata?.position !== undefined);
+    const lastPositionEvent = [...session.events].reverse().find((e) => e.metadata?.position !== undefined);
     const lastPosition = lastPositionEvent?.metadata?.position || 0;
 
     const engagementScore = VideoDataService.calculateEngagementScore({
@@ -1162,7 +1245,7 @@ export class VideoDataService {
 
       await AsyncStorage.setItem(key, JSON.stringify(events));
     } catch (error) {
-      console.error('Failed to persist event to storage:', error);
+      console.error("Failed to persist event to storage:", error);
     }
   }
 
@@ -1178,15 +1261,13 @@ export class VideoDataService {
       // Clean up old sessions (keep last 50)
       const sessionKeys = Object.keys(sessions);
       if (sessionKeys.length > 50) {
-        const sortedKeys = sessionKeys.sort((a, b) =>
-          (sessions[b].startTime || 0) - (sessions[a].startTime || 0)
-        );
-        sortedKeys.slice(50).forEach(key => delete sessions[key]);
+        const sortedKeys = sessionKeys.sort((a, b) => (sessions[b].startTime || 0) - (sessions[a].startTime || 0));
+        sortedKeys.slice(50).forEach((key) => delete sessions[key]);
       }
 
       await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
     } catch (error) {
-      console.error('Failed to persist session to storage:', error);
+      console.error("Failed to persist session to storage:", error);
     }
   }
 
@@ -1198,7 +1279,7 @@ export class VideoDataService {
       const key = `${ANALYTICS_CACHE_PREFIX}_${videoId}`;
       await AsyncStorage.setItem(key, JSON.stringify(analytics));
     } catch (error) {
-      console.error('Failed to persist analytics to storage:', error);
+      console.error("Failed to persist analytics to storage:", error);
     }
   }
 
@@ -1208,10 +1289,10 @@ export class VideoDataService {
   static async loadPersistedEvents(): Promise<void> {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const eventKeys = keys.filter(k => k.startsWith(EVENT_QUEUE_KEY));
+      const eventKeys = keys.filter((k) => k.startsWith(EVENT_QUEUE_KEY));
 
       for (const key of eventKeys) {
-        const videoId = key.replace(`${EVENT_QUEUE_KEY}_`, '');
+        const videoId = key.replace(`${EVENT_QUEUE_KEY}_`, "");
         const stored = await AsyncStorage.getItem(key);
         if (stored) {
           const events = JSON.parse(stored);
@@ -1219,7 +1300,7 @@ export class VideoDataService {
         }
       }
     } catch (error) {
-      console.error('Failed to load persisted events:', error);
+      console.error("Failed to load persisted events:", error);
     }
   }
 
@@ -1228,13 +1309,13 @@ export class VideoDataService {
    */
   static async clearPersistedEvents(videoIds: string[]): Promise<void> {
     try {
-      const keys = videoIds.map(id => `${EVENT_QUEUE_KEY}_${id}`);
+      const keys = videoIds.map((id) => `${EVENT_QUEUE_KEY}_${id}`);
       await AsyncStorage.multiRemove(keys);
 
       // Also clear from in-memory queue
-      videoIds.forEach(id => eventQueue.delete(id));
+      videoIds.forEach((id) => eventQueue.delete(id));
     } catch (error) {
-      console.error('Failed to clear persisted events:', error);
+      console.error("Failed to clear persisted events:", error);
     }
   }
 
@@ -1264,7 +1345,7 @@ export class VideoDataService {
       // Batch events by session
       const sessionBatches = new Map<string, VideoEvent[]>();
       allEvents.forEach(({ events }) => {
-        events.forEach(event => {
+        events.forEach((event) => {
           const batch = sessionBatches.get(event.sessionId) || [];
           batch.push(event);
           sessionBatches.set(event.sessionId, batch);
@@ -1273,14 +1354,14 @@ export class VideoDataService {
 
       // Upload each session batch
       for (const [sessionId, events] of sessionBatches.entries()) {
-        await offlineQueue.enqueue('video.analytics.batch', {
+        await offlineQueue.enqueue("video.analytics.batch", {
           sessionId,
           events: events.slice(0, BATCH_SIZE),
           timestamp: Date.now(),
         });
       }
     } catch (error) {
-      console.error('Failed to batch upload events:', error);
+      console.error("Failed to batch upload events:", error);
       // Re-add events to queue
       allEvents.forEach(({ videoId, events }) => {
         const existing = eventQueue.get(videoId) || [];
@@ -1292,16 +1373,18 @@ export class VideoDataService {
   /**
    * Get video engagement summary for dashboard.
    */
-  static async getVideoEngagementSummary(period: 'day' | 'week' | 'month' = 'week'): Promise<VideoEngagementSummary | null> {
+  static async getVideoEngagementSummary(
+    period: "day" | "week" | "month" = "week",
+  ): Promise<VideoEngagementSummary | null> {
     try {
       // Simplified implementation - get basic video stats
-      const hoursBack = period === 'day' ? 24 : period === 'week' ? 168 : 720;
+      const hoursBack = period === "day" ? 24 : period === "week" ? 168 : 720;
 
       const { data: videos, error } = await supabase
-        .from('confessions')
-        .select('id, likes, views, created_at')
-        .eq('type', 'video')
-        .gte('created_at', new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString());
+        .from("confessions")
+        .select("id, likes, views, created_at")
+        .eq("type", "video")
+        .gte("created_at", new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString());
 
       if (error) throw error;
 
@@ -1326,7 +1409,7 @@ export class VideoDataService {
         period,
       } as VideoEngagementSummary;
     } catch (error) {
-      console.error('Failed to fetch video engagement summary:', error);
+      console.error("Failed to fetch video engagement summary:", error);
       return null;
     }
   }
@@ -1367,10 +1450,7 @@ export class VideoDataService {
   } | null> {
     try {
       // Simplified implementation - would need proper analytics tracking
-      const { data: videos, error } = await supabase
-        .from("confessions")
-        .select("id, views")
-        .eq("type", "video");
+      const { data: videos, error } = await supabase.from("confessions").select("id, views").eq("type", "video");
 
       if (error) throw error;
 
@@ -1393,15 +1473,15 @@ export class VideoDataService {
    * Initialize app state monitoring.
    */
   static initializeAppStateMonitoring(): void {
-    AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (appState === 'active' && nextAppState.match(/inactive|background/)) {
+    AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (appState === "active" && nextAppState.match(/inactive|background/)) {
         // App going to background - pause all tracking
         for (const videoId of watchTimeTrackers.keys()) {
           VideoDataService.stopWatchTimeTracking(videoId);
         }
         // Flush events
         VideoDataService.batchUploadEvents();
-      } else if (appState.match(/inactive|background/) && nextAppState === 'active') {
+      } else if (appState.match(/inactive|background/) && nextAppState === "active") {
         // App coming to foreground - load persisted events
         VideoDataService.loadPersistedEvents();
       }

@@ -62,11 +62,9 @@ export default function EnhancedShareBottomSheet({
       const shareUrl = generateConfessionLink(confessionId);
       await Clipboard.setStringAsync(shareUrl);
 
-      Alert.alert(
-        "Link Copied",
-        "Anonymous link copied to clipboard",
-        [{ text: "OK", onPress: () => bottomSheetModalRef.current?.dismiss() }]
-      );
+      Alert.alert("Link Copied", "Anonymous link copied to clipboard", [
+        { text: "OK", onPress: () => bottomSheetModalRef.current?.dismiss() },
+      ]);
 
       impactAsync();
     } catch (error) {
@@ -79,11 +77,9 @@ export default function EnhancedShareBottomSheet({
     try {
       await Clipboard.setStringAsync(confessionText);
 
-      Alert.alert(
-        "Text Copied",
-        "Confession text copied to clipboard",
-        [{ text: "OK", onPress: () => bottomSheetModalRef.current?.dismiss() }]
-      );
+      Alert.alert("Text Copied", "Confession text copied to clipboard", [
+        { text: "OK", onPress: () => bottomSheetModalRef.current?.dismiss() },
+      ]);
 
       impactAsync();
     } catch (error) {
@@ -103,15 +99,9 @@ export default function EnhancedShareBottomSheet({
   }, []);
 
   const ShareOption: React.FC<ShareOptionProps> = ({ icon, title, subtitle, onPress, color = "#1D9BF0" }) => (
-    <Pressable
-      className="flex-row items-center py-4 px-4 active:bg-gray-800/50 rounded-xl"
-      onPress={onPress}
-    >
+    <Pressable className="flex-row items-center py-4 px-4 active:bg-gray-800/50 rounded-xl" onPress={onPress}>
       <BlurView intensity={20} tint="dark" className="w-12 h-12 rounded-full items-center justify-center mr-4">
-        <View
-          className="w-10 h-10 rounded-full items-center justify-center"
-          style={{ backgroundColor: color }}
-        >
+        <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: color }}>
           <Ionicons name={icon} size={20} color="#FFFFFF" />
         </View>
       </BlurView>

@@ -53,7 +53,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
   const lastPlaybackStatusRef = useRef<any>(null);
   const bufferingStateRef = useRef(false);
   const seekDetectionRef = useRef<{ time: number; position: number } | null>(null);
-  const qualityRef = useRef<string>('auto');
+  const qualityRef = useRef<string>("auto");
   const videoDurationRef = useRef<number>(0);
   const hasStartedRef = useRef(false);
   const performanceStartRef = useRef<number>(Date.now());
@@ -76,6 +76,25 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       }
       onError?.(error as Error);
     }
+  });
+
+  const analyticsConsent = consentStore.preferences.analytics;
+  const analytics = useVideoAnalyticsTracker({
+    videoId: videoId || videoUri,
+    videoDuration: videoDurationRef.current,
+    enableDetailedTracking: trackDetailedEngagement && analyticsConsent && enableAnalytics,
+    sessionId,
+    onEngagementUpdate: (score) => {
+      if (__DEV__) {
+        console.log(`Video engagement score: ${score}`);
+      }
+    },
+    onCompletionDetected: (completionRate) => {
+      if (__DEV__) {
+        console.log(`Video completed: ${completionRate}%`);
+      }
+      onComplete?.();
+    },
   });
 
   // Handle play/pause based on active state
@@ -184,22 +203,22 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
   useEffect(() => {
     return () => {
       // Clean up analytics tracking
-      if (enableAnalytics) {
+      if (enableAnalytics && analyticsConsent) {
         analytics.cleanup();
       }
       disposePlayer();
     };
-  }, [disposePlayer, enableAnalytics, analytics]);
+  }, [disposePlayer, enableAnalytics, analytics, analyticsConsent]);
 
   // Track quality changes if supported
   useEffect(() => {
-    if (!player || !trackDetailedEngagement || !enableAnalytics) return;
+    if (!player || !trackDetailedEngagement || !enableAnalytics || !analyticsConsent) return;
 
     // expo-video doesn't expose quality directly, but we can track if it changes
     // This is a placeholder for when quality information becomes available
     const checkQuality = () => {
       // Future: Check player.quality or similar property
-      const currentQuality = 'auto'; // Default for now
+      const currentQuality = "auto"; // Default for now
       if (currentQuality !== qualityRef.current) {
         qualityRef.current = currentQuality;
         onQualityChange?.(currentQuality);
@@ -209,11 +228,11 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
 
     const qualityInterval = setInterval(checkQuality, 5000);
     return () => clearInterval(qualityInterval);
-  }, [player, trackDetailedEngagement, enableAnalytics, onQualityChange, analytics]);
+  }, [player, trackDetailedEngagement, enableAnalytics, analyticsConsent, onQualityChange, analytics]);
 
   // Track buffer events (placeholder for when expo-video exposes buffering state)
   useEffect(() => {
-    if (!player || !trackDetailedEngagement || !enableAnalytics) return;
+    if (!player || !trackDetailedEngagement || !enableAnalytics || !analyticsConsent) return;
 
     // This is a placeholder - expo-video doesn't currently expose buffering events
     // When available, implement proper buffer tracking
@@ -221,11 +240,11 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       // Future: Check player.isBuffering or similar
       const isBuffering = false; // Default for now
 
-      if (isBuffering !== bufferingStateRef.current) {
-        bufferingStateRef.current = isBuffering;
-        if (isBuffering) {
-          onBufferStart?.();
-          analytics.handleBufferStart();
+        if (isBuffering !== bufferingStateRef.current) {
+          bufferingStateRef.current = isBuffering;
+          if (isBuffering) {
+            onBufferStart?.();
+            analytics.handleBufferStart();
         } else {
           onBufferEnd?.();
           analytics.handleBufferEnd();
@@ -235,33 +254,25 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
 
     const bufferInterval = setInterval(checkBuffering, 500);
     return () => clearInterval(bufferInterval);
-  }, [player, trackDetailedEngagement, enableAnalytics, onBufferStart, onBufferEnd, analytics]);
+  }, [
+    player,
+    trackDetailedEngagement,
+    enableAnalytics,
+    analyticsConsent,
+    onBufferStart,
+    onBufferEnd,
+    analytics,
+  ]);
 
   // Track interaction events
-  const trackInteraction = useCallback((type: 'like' | 'unlike' | 'comment' | 'share' | 'save') => {
-    if (enableAnalytics && consentStore.preferences.analytics) {
-      analytics.trackInteraction(type);
-    }
-  }, [enableAnalytics, analytics]);
-
-  // Initialize video analytics tracking
-  const analytics = useVideoAnalyticsTracker({
-    videoId: videoId || videoUri,
-    videoDuration: videoDurationRef.current,
-    enableDetailedTracking: trackDetailedEngagement && consentStore.preferences.analytics,
-    sessionId,
-    onEngagementUpdate: (score) => {
-      if (__DEV__) {
-        console.log(`Video engagement score: ${score}`);
+  const trackInteraction = useCallback(
+    (type: "like" | "unlike" | "comment" | "share" | "save") => {
+      if (enableAnalytics && analyticsConsent) {
+        analytics.trackInteraction(type);
       }
     },
-    onCompletionDetected: (completionRate) => {
-      if (__DEV__) {
-        console.log(`Video completed: ${completionRate}%`);
-      }
-      onComplete?.();
-    },
-  });
+    [enableAnalytics, analyticsConsent, analytics],
+  );
 
   // Handle player status changes with enhanced analytics
   useEffect(() => {
@@ -336,7 +347,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
         onPlaybackStatusUpdate?.(currentStatus);
 
         // Send to analytics tracker if enabled
-        if (enableAnalytics && consentStore.preferences.analytics) {
+        if (enableAnalytics && analyticsConsent) {
           analytics.onPlaybackStatusUpdate(currentStatus);
         }
 
@@ -358,7 +369,19 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
     return () => {
       clearInterval(interval);
     };
-  }, [player, isDisposing, onPlaybackStatusUpdate, onError, onPlay, onPause, onSeek, onComplete, enableAnalytics, analytics]);
+  }, [
+    player,
+    isDisposing,
+    onPlaybackStatusUpdate,
+    onError,
+    onPlay,
+    onPause,
+    onSeek,
+    onComplete,
+    enableAnalytics,
+    analytics,
+    analyticsConsent,
+  ]);
 
   if (isDisposing) {
     return <View style={style} className={className} />;
@@ -369,7 +392,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       ref={playerRef}
       style={style}
       player={player}
-      fullscreenOptions={{ enabled: false }}
+      fullscreenOptions={{ enable: false }}
       allowsPictureInPicture={false}
       showsTimecodes={false}
       requiresLinearPlayback={false}

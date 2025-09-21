@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, Dimensions, StyleSheet } from "react-native";
-import { VideoView, VideoPlayer } from "expo-video";
+import { VideoView, VideoPlayer, VideoPlayerStatus } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -16,7 +16,7 @@ import * as Haptics from "expo-haptics";
 import { useConfessionStore } from "../state/confessionStore";
 import { VideoDataService } from "../services/VideoDataService";
 import type { Confession } from "../types/confession";
-import { isOnline, enqueue } from "../lib/offlineQueue";
+import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -77,6 +77,45 @@ export default function OptimizedVideoItem({
   const heartOpacity = useSharedValue(0);
   const heartScale = useSharedValue(0.5);
 
+  // Monitor player status to update loading/error state
+  useEffect(() => {
+    if (!videoPlayer) {
+      return;
+    }
+
+    const applyStatus = (status: VideoPlayerStatus, error?: { message?: string }) => {
+      if (status === "readyToPlay") {
+        setIsLoading(false);
+        setVideoError(false);
+      } else if (status === "loading" || status === "idle") {
+        setIsLoading(true);
+      } else if (status === "error") {
+        setIsLoading(false);
+        setVideoError(true);
+        if (__DEV__ && error?.message) {
+          console.warn("OptimizedVideoItem: Video status error", error.message);
+        }
+      }
+    };
+
+    // Apply current status immediately
+    applyStatus(videoPlayer.status as VideoPlayerStatus);
+
+    const statusSubscription = videoPlayer.addListener("statusChange", ({ status, error }: any) => {
+      applyStatus(status as VideoPlayerStatus, error);
+    });
+
+    const sourceSubscription = videoPlayer.addListener("sourceChange", () => {
+      setIsLoading(true);
+      setVideoError(false);
+    });
+
+    return () => {
+      statusSubscription.remove();
+      sourceSubscription.remove();
+    };
+  }, [videoPlayer]);
+
   // Track video view when it becomes active
   useEffect(() => {
     if (isActive && !viewTrackedRef.current) {
@@ -95,7 +134,7 @@ export default function OptimizedVideoItem({
         const count = await VideoDataService.getCommentCount(confession.id);
         setCommentCount(count);
       } catch (error) {
-        console.warn('Failed to load comment count:', error);
+        console.warn("Failed to load comment count:", error);
       }
     };
 
@@ -130,15 +169,13 @@ export default function OptimizedVideoItem({
     }
 
     try {
-      if (isOnline()) {
+      if (offlineQueue.getNetworkStatus()) {
         await toggleLike(confession.id);
       } else {
-        // Queue for offline processing
-        enqueue({
-          type: "TOGGLE_LIKE",
-          payload: { confessionId: confession.id },
-          timestamp: Date.now(),
-        });
+        await offlineQueue.enqueue(
+          newLikedState ? OFFLINE_ACTIONS.LIKE_CONFESSION : OFFLINE_ACTIONS.UNLIKE_CONFESSION,
+          { confessionId: confession.id },
+        );
       }
 
       // Haptic feedback
@@ -192,17 +229,6 @@ export default function OptimizedVideoItem({
   }, [handleLike, onSingleTap]);
 
   // Video loading handlers
-  const handleVideoLoad = useCallback(() => {
-    setIsLoading(false);
-    setVideoError(false);
-  }, []);
-
-  const handleVideoError = useCallback((error: any) => {
-    console.warn("Video error:", error);
-    setVideoError(true);
-    setIsLoading(false);
-  }, []);
-
   // Animated styles
   const likeButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: likeScale.value }],
@@ -224,20 +250,14 @@ export default function OptimizedVideoItem({
   return (
     <View style={styles.container}>
       {/* Video Player */}
-      <AnimatedPressable
-        style={styles.videoContainer}
-        onPress={handleDoubleTap}
-        activeOpacity={1}
-      >
+      <AnimatedPressable style={styles.videoContainer} onPress={handleDoubleTap}>
         {isActive && videoPlayer && !videoError ? (
           <VideoView
             style={styles.video}
             player={videoPlayer}
             allowsFullscreen={false}
             allowsPictureInPicture={false}
-            onLoadStart={() => setIsLoading(true)}
-            onLoad={handleVideoLoad}
-            onError={handleVideoError}
+            fullscreenOptions={{ enable: false }}
           />
         ) : (
           <View style={styles.videoPlaceholder}>
@@ -263,10 +283,7 @@ export default function OptimizedVideoItem({
         </Animated.View>
 
         {/* Video Overlay */}
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.3)", "rgba(0,0,0,0.8)"]}
-          style={styles.overlay}
-        />
+        <LinearGradient colors={["transparent", "rgba(0,0,0,0.3)", "rgba(0,0,0,0.8)"]} style={styles.overlay} />
       </AnimatedPressable>
 
       {/* Content Overlay */}
@@ -286,58 +303,48 @@ export default function OptimizedVideoItem({
             <Text style={styles.content} numberOfLines={3}>
               {confession.content}
             </Text>
-            <Text style={styles.timestamp}>
-              {formatTimestamp(confession.timestamp)}
-            </Text>
+            <Text style={styles.timestamp}>{formatTimestamp(confession.timestamp)}</Text>
           </View>
         </View>
 
         {/* Right Actions - Positioned Absolutely */}
         <View style={styles.rightActions}>
-            {/* Like Button */}
-            <AnimatedPressable style={[styles.actionButton, likeButtonStyle]} onPress={handleLike}>
-              <Ionicons
-                name={isLiked ? "heart" : "heart-outline"}
-                size={28}
-                color={isLiked ? "#ff3040" : "#ffffff"}
-              />
-              <Text style={styles.actionText}>{likesCount}</Text>
-            </AnimatedPressable>
+          {/* Like Button */}
+          <AnimatedPressable style={[styles.actionButton, likeButtonStyle]} onPress={handleLike}>
+            <Ionicons name={isLiked ? "heart" : "heart-outline"} size={28} color={isLiked ? "#ff3040" : "#ffffff"} />
+            <Text style={styles.actionText}>{likesCount}</Text>
+          </AnimatedPressable>
 
-            {/* Comment Button */}
-            <Pressable style={styles.actionButton} onPress={handleComment}>
-              <Ionicons name="chatbubble-outline" size={28} color="#ffffff" />
-              <Text style={styles.actionText}>{commentCount}</Text>
-            </Pressable>
+          {/* Comment Button */}
+          <Pressable style={styles.actionButton} onPress={handleComment}>
+            <Ionicons name="chatbubble-outline" size={28} color="#ffffff" />
+            <Text style={styles.actionText}>{commentCount}</Text>
+          </Pressable>
 
-            {/* Share Button */}
-            <Pressable style={styles.actionButton} onPress={handleShare}>
-              <Ionicons name="arrow-redo-outline" size={28} color="#ffffff" />
-              <Text style={styles.actionText}>Share</Text>
-            </Pressable>
+          {/* Share Button */}
+          <Pressable style={styles.actionButton} onPress={handleShare}>
+            <Ionicons name="arrow-redo-outline" size={28} color="#ffffff" />
+            <Text style={styles.actionText}>Share</Text>
+          </Pressable>
 
-            {/* Views */}
-            <View style={styles.actionButton}>
-              <Ionicons name="eye-outline" size={28} color="#ffffff" />
-              <Text style={styles.actionText}>{viewsCount}</Text>
-            </View>
-
-            {/* Mute Button */}
-            <Pressable style={styles.actionButton} onPress={onToggleMute}>
-              <Ionicons
-                name={muted ? "volume-mute" : "volume-high"}
-                size={28}
-                color="#ffffff"
-              />
-            </Pressable>
-
-            {/* Network Status */}
-            {!networkStatus && (
-              <View style={styles.actionButton}>
-                <Ionicons name="cloud-offline-outline" size={24} color="#ff6666" />
-              </View>
-            )}
+          {/* Views */}
+          <View style={styles.actionButton}>
+            <Ionicons name="eye-outline" size={28} color="#ffffff" />
+            <Text style={styles.actionText}>{viewsCount}</Text>
           </View>
+
+          {/* Mute Button */}
+          <Pressable style={styles.actionButton} onPress={onToggleMute}>
+            <Ionicons name={muted ? "volume-mute" : "volume-high"} size={28} color="#ffffff" />
+          </Pressable>
+
+          {/* Network Status */}
+          {!networkStatus && (
+            <View style={styles.actionButton}>
+              <Ionicons name="cloud-offline-outline" size={24} color="#ff6666" />
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );

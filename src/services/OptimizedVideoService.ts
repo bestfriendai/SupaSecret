@@ -32,9 +32,9 @@ class OptimizedVideoService {
   private readonly PRELOAD_BATCH_SIZE = 5;
   private readonly MAX_CONCURRENT_PRELOADS = 3;
   private readonly VIDEO_QUALITY_MAPPING = {
-    high: { bitrate: 2500000, resolution: '1080p' },
-    medium: { bitrate: 1500000, resolution: '720p' },
-    low: { bitrate: 800000, resolution: '480p' }
+    high: { bitrate: 2500000, resolution: "1080p" },
+    medium: { bitrate: 1500000, resolution: "720p" },
+    low: { bitrate: 800000, resolution: "480p" },
   };
 
   private constructor() {
@@ -53,8 +53,8 @@ class OptimizedVideoService {
     setInterval(() => this.cleanupCache(), this.CACHE_TTL_MS);
 
     // Monitor network status for adaptive streaming
-    if (typeof window !== 'undefined' && 'connection' in navigator) {
-      (navigator as any).connection?.addEventListener('change', () => {
+    if (typeof window !== "undefined" && "connection" in navigator) {
+      (navigator as any).connection?.addEventListener("change", () => {
         this.handleNetworkChange();
       });
     }
@@ -66,7 +66,7 @@ class OptimizedVideoService {
   async fetchOptimizedVideos(
     limit: number = 20,
     offset: number = 0,
-    forceRefresh: boolean = false
+    forceRefresh: boolean = false,
   ): Promise<Confession[]> {
     const cacheKey = `videos_${limit}_${offset}`;
 
@@ -85,8 +85,9 @@ class OptimizedVideoService {
     try {
       // Fetch from database with optimized query
       const { data, error } = await supabase
-        .from('confessions')
-        .select(`
+        .from("confessions")
+        .select(
+          `
           id,
           type,
           content,
@@ -100,10 +101,11 @@ class OptimizedVideoService {
           user_id,
           face_blur_applied,
           voice_change_applied
-        `)
-        .eq('type', 'video')
-        .not('video_uri', 'is', null)
-        .order('created_at', { ascending: false })
+        `,
+        )
+        .eq("type", "video")
+        .not("video_uri", "is", null)
+        .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (error) throw error;
@@ -119,7 +121,7 @@ class OptimizedVideoService {
 
       return optimized;
     } catch (error) {
-      console.error('OptimizedVideoService: Failed to fetch videos', error);
+      console.error("OptimizedVideoService: Failed to fetch videos", error);
 
       // Fallback to cache if available
       const fallback = this.getCachedVideos(cacheKey, true);
@@ -134,7 +136,7 @@ class OptimizedVideoService {
    * Optimize video data for better performance
    */
   private optimizeVideoData(videos: Confession[]): Confession[] {
-    return videos.map(video => ({
+    return videos.map((video) => ({
       ...video,
       // Add CDN optimization hints
       videoUri: this.optimizeVideoUrl(video.videoUri),
@@ -155,8 +157,8 @@ class OptimizedVideoService {
     const optimizedUrl = new URL(url);
 
     // Add cache-busting parameter if needed
-    if (!optimizedUrl.searchParams.has('v')) {
-      optimizedUrl.searchParams.set('v', Date.now().toString(36));
+    if (!optimizedUrl.searchParams.has("v")) {
+      optimizedUrl.searchParams.set("v", Date.now().toString(36));
     }
 
     return optimizedUrl.toString();
@@ -169,7 +171,7 @@ class OptimizedVideoService {
     if (!videoUrl) return null;
 
     // For Google Cloud Storage videos, generate thumbnail
-    if (videoUrl.includes('commondatastorage.googleapis.com')) {
+    if (videoUrl.includes("commondatastorage.googleapis.com")) {
       // Use first frame as thumbnail
       return `${videoUrl}#t=0.1`;
     }
@@ -181,26 +183,26 @@ class OptimizedVideoService {
    * Get available quality options for adaptive streaming
    */
   private getQualityOptions(videoUrl: string | null | undefined): string[] {
-    if (!videoUrl) return ['auto'];
+    if (!videoUrl) return ["auto"];
 
     // Determine available qualities based on network
     const connection = (navigator as any).connection;
     if (connection) {
       const effectiveType = connection.effectiveType;
       switch (effectiveType) {
-        case '4g':
-          return ['1080p', '720p', '480p', 'auto'];
-        case '3g':
-          return ['720p', '480p', 'auto'];
-        case '2g':
-        case 'slow-2g':
-          return ['480p', 'auto'];
+        case "4g":
+          return ["1080p", "720p", "480p", "auto"];
+        case "3g":
+          return ["720p", "480p", "auto"];
+        case "2g":
+        case "slow-2g":
+          return ["480p", "auto"];
         default:
-          return ['auto'];
+          return ["auto"];
       }
     }
 
-    return ['1080p', '720p', '480p', 'auto'];
+    return ["1080p", "720p", "480p", "auto"];
   }
 
   /**
@@ -223,7 +225,7 @@ class OptimizedVideoService {
         this.isPreloading = false;
       }, 1000); // Delay to prevent blocking main thread
     } catch (error) {
-      console.warn('Preload failed:', error);
+      console.warn("Preload failed:", error);
       this.preloadQueue.delete(cacheKey);
       this.isPreloading = false;
     }
@@ -237,7 +239,7 @@ class OptimizedVideoService {
       const fresh = await this.fetchOptimizedVideos(limit, offset, true);
       this.setCachedVideos(cacheKey, fresh);
     } catch (error) {
-      console.warn('Background refresh failed:', error);
+      console.warn("Background refresh failed:", error);
     }
   }
 
@@ -247,14 +249,14 @@ class OptimizedVideoService {
   private handleNetworkChange() {
     const connection = (navigator as any).connection;
     if (connection) {
-      console.log('Network changed:', {
+      console.log("Network changed:", {
         effectiveType: connection.effectiveType,
         downlink: connection.downlink,
-        rtt: connection.rtt
+        rtt: connection.rtt,
       });
 
       // Clear cache to force quality adjustment
-      if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
+      if (connection.effectiveType === "slow-2g" || connection.effectiveType === "2g") {
         this.videoCache.clear();
       }
     }
@@ -277,13 +279,15 @@ class OptimizedVideoService {
     // Limit cache size
     if (this.videoCache.size >= this.MAX_CACHE_SIZE) {
       const oldestKey = this.videoCache.keys().next().value;
-      this.videoCache.delete(oldestKey);
+      if (typeof oldestKey === "string") {
+        this.videoCache.delete(oldestKey);
+      }
     }
 
     this.videoCache.set(key, {
       data: videos,
       timestamp: Date.now(),
-      etag: this.generateEtag(videos)
+      etag: this.generateEtag(videos),
     });
   }
 
@@ -305,7 +309,7 @@ class OptimizedVideoService {
   }
 
   private generateEtag(videos: Confession[]): string {
-    const content = videos.map(v => v.id).join(',');
+    const content = videos.map((v) => v.id).join(",");
     return btoa(content).substring(0, 16);
   }
 
@@ -313,12 +317,12 @@ class OptimizedVideoService {
    * Prefetch video content for smoother playback
    */
   async prefetchVideo(videoUrl: string): Promise<void> {
-    if (!videoUrl || typeof window === 'undefined') return;
+    if (!videoUrl || typeof window === "undefined") return;
 
     try {
       // Create a video element to start preloading
-      const video = document.createElement('video');
-      video.preload = 'auto';
+      const video = document.createElement("video");
+      video.preload = "auto";
       video.src = videoUrl;
       video.muted = true;
 
@@ -327,11 +331,11 @@ class OptimizedVideoService {
 
       // Clean up after a delay
       setTimeout(() => {
-        video.src = '';
+        video.src = "";
         video.remove();
       }, 30000); // 30 seconds
     } catch (error) {
-      console.warn('Video prefetch failed:', error);
+      console.warn("Video prefetch failed:", error);
     }
   }
 
@@ -340,16 +344,12 @@ class OptimizedVideoService {
    */
   async getVideoAnalytics(videoId: string): Promise<any> {
     try {
-      const { data, error } = await supabase
-        .from('video_analytics')
-        .select('*')
-        .eq('video_id', videoId)
-        .single();
+      const { data, error } = await supabase.from("video_analytics").select("*").eq("video_id", videoId).single();
 
       if (error) throw error;
       return data;
     } catch (error) {
-      console.warn('Failed to get video analytics:', error);
+      console.warn("Failed to get video analytics:", error);
       return null;
     }
   }
@@ -364,18 +364,18 @@ class OptimizedVideoService {
       bufferCount?: number;
       watchTime?: number;
       completionRate?: number;
-    }
+    },
   ): Promise<void> {
     try {
       // Queue metrics for batch processing
       if (__DEV__) {
-        console.log('Video metrics:', { videoId, ...metrics });
+        console.log("Video metrics:", { videoId, ...metrics });
       }
 
       // In production, send to analytics service
       // await supabase.rpc('track_video_metrics', { video_id: videoId, ...metrics });
     } catch (error) {
-      console.warn('Failed to track video metrics:', error);
+      console.warn("Failed to track video metrics:", error);
     }
   }
 }

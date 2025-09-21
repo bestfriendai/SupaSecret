@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, Dimensions, ActivityIndicator } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, StyleSheet, Pressable, ScrollView, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTrendingStore } from "../state/trendingStore";
 import { supabase } from "../lib/supabase";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import * as Haptics from "expo-haptics";
 import { useConfessionStore } from "../state/confessionStore";
-import { VideoDataService, VideoEngagementSummary } from "../services/VideoDataService";
-import { LineChart, BarChart } from 'react-native-chart-kit';
+import { VideoDataService } from "../services/VideoDataService";
+import { LineChart } from "react-native-chart-kit";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -61,16 +61,13 @@ interface TrendingAnalyticsProps {
 
 export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod, onClose }) => {
   const { hapticsEnabled, impactAsync } = usePreferenceAwareHaptics();
-  const { trendingHashtags, trendingSecrets } = useTrendingStore();
+  useTrendingStore(); // Keep for potential future use
   const videoAnalytics = useConfessionStore((state) => state.videoAnalytics);
 
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMetric, setSelectedMetric] = useState<string>("engagement");
-  const [videoEngagement, setVideoEngagement] = useState<VideoEngagementSummary | null>(null);
-  const [selectedTab, setSelectedTab] = useState<'general' | 'video'>('general');
-  const [chartTimeRange, setChartTimeRange] = useState<'day' | 'week' | 'month'>('week');
+  const [selectedTab, setSelectedTab] = useState<"general" | "video">("general");
 
   // Load analytics data
   const loadAnalytics = useCallback(async () => {
@@ -80,21 +77,17 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
     try {
       // Load video engagement data
       const periodMap = {
-        24: 'day' as const,
-        168: 'week' as const,
-        720: 'month' as const,
+        24: "day" as const,
+        168: "week" as const,
+        720: "month" as const,
       };
-      const videoPeriod = periodMap[timePeriod] || 'week';
+      const videoPeriod = periodMap[timePeriod] || "week";
 
       const [videoEngagementData, watchTimeData, completionStats] = await Promise.all([
         VideoDataService.getVideoEngagementSummary(videoPeriod),
         VideoDataService.getWatchTimeAnalytics(),
         VideoDataService.getCompletionRateStats(),
       ]);
-
-      if (videoEngagementData) {
-        setVideoEngagement(videoEngagementData);
-      }
 
       // Get confession analytics
       const { data: confessionData, error: confessionError } = await supabase
@@ -187,7 +180,7 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
         // Calculate watch time distribution by hour
         const watchTimeByHour = new Array(24).fill(0);
         if (videoEngagementData.timeDistribution) {
-          videoEngagementData.timeDistribution.forEach(item => {
+          videoEngagementData.timeDistribution.forEach((item) => {
             watchTimeByHour[item.hour] = item.watchTime;
           });
         }
@@ -199,15 +192,15 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
           totalViews: videoEngagementData.totalViews || 0,
           uniqueViewers: videoEngagementData.uniqueViewers || 0,
           engagementRate: videoEngagementData.engagementRate || 0,
-          topVideos: (videoEngagementData.topVideos || []).map(video => ({
+          topVideos: (videoEngagementData.topVideos || []).map((video) => ({
             ...video,
             title: `Video ${video.videoId.substring(0, 8)}...`, // Truncate for display
           })),
           watchTimeDistribution: watchTimeByHour.map((watchTime, hour) => ({ hour, watchTime })),
           qualityDistribution: [
-            { quality: '1080p', percentage: 25 },
-            { quality: '720p', percentage: 45 },
-            { quality: '360p', percentage: 30 },
+            { quality: "1080p", percentage: 25 },
+            { quality: "720p", percentage: 45 },
+            { quality: "360p", percentage: 30 },
           ],
           bufferingMetrics: {
             averageBufferTime: 2.3,
@@ -242,18 +235,8 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
     loadAnalytics();
   }, [loadAnalytics]);
 
-  const handleMetricSelect = useCallback(
-    async (metric: string) => {
-      setSelectedMetric(metric);
-      if (hapticsEnabled) {
-        await impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-    },
-    [hapticsEnabled, impactAsync],
-  );
-
   const handleTabSelect = useCallback(
-    async (tab: 'general' | 'video') => {
+    async (tab: "general" | "video") => {
       setSelectedTab(tab);
       if (hapticsEnabled) {
         await impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -358,336 +341,333 @@ export const TrendingAnalytics: React.FC<TrendingAnalyticsProps> = ({ timePeriod
       {/* Tab Selector */}
       <View style={styles.tabContainer}>
         <Pressable
-          style={[styles.tab, selectedTab === 'general' && styles.activeTab]}
-          onPress={() => handleTabSelect('general')}
+          style={[styles.tab, selectedTab === "general" && styles.activeTab]}
+          onPress={() => handleTabSelect("general")}
         >
-          <Text style={[styles.tabText, selectedTab === 'general' && styles.activeTabText]}>General</Text>
+          <Text style={[styles.tabText, selectedTab === "general" && styles.activeTabText]}>General</Text>
         </Pressable>
         <Pressable
-          style={[styles.tab, selectedTab === 'video' && styles.activeTab]}
-          onPress={() => handleTabSelect('video')}
+          style={[styles.tab, selectedTab === "video" && styles.activeTab]}
+          onPress={() => handleTabSelect("video")}
         >
-          <Text style={[styles.tabText, selectedTab === 'video' && styles.activeTabText]}>Video Analytics</Text>
+          <Text style={[styles.tabText, selectedTab === "video" && styles.activeTabText]}>Video Analytics</Text>
         </Pressable>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {selectedTab === 'general' ? (
-        {/* Key Metrics */}
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{formatNumber(analytics.totalConfessions)}</Text>
-            <Text style={styles.metricLabel}>Total Secrets</Text>
-            <Ionicons name="document-text" size={20} color="#1D9BF0" />
-          </View>
+        <View>
+          {selectedTab === "general" ? (
+            <>
+              {/* Key Metrics */}
+              <View style={styles.metricsGrid}>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>{formatNumber(analytics.totalConfessions)}</Text>
+                  <Text style={styles.metricLabel}>Total Secrets</Text>
+                  <Ionicons name="document-text" size={20} color="#1D9BF0" />
+                </View>
 
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{formatNumber(analytics.totalHashtags)}</Text>
-            <Text style={styles.metricLabel}>Unique Tags</Text>
-            <Ionicons name="pricetag" size={20} color="#10B981" />
-          </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>{formatNumber(analytics.totalHashtags)}</Text>
+                  <Text style={styles.metricLabel}>Unique Tags</Text>
+                  <Ionicons name="pricetag" size={20} color="#10B981" />
+                </View>
 
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{formatNumber(analytics.avgEngagement)}</Text>
-            <Text style={styles.metricLabel}>Avg Engagement</Text>
-            <Ionicons name="heart" size={20} color="#EF4444" />
-          </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>{formatNumber(analytics.avgEngagement)}</Text>
+                  <Text style={styles.metricLabel}>Avg Engagement</Text>
+                  <Ionicons name="heart" size={20} color="#EF4444" />
+                </View>
 
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{formatPercentage(analytics.growthRate)}</Text>
-            <Text style={styles.metricLabel}>Growth Rate</Text>
-            <Ionicons
-              name={analytics.growthRate >= 0 ? "trending-up" : "trending-down"}
-              size={20}
-              color={analytics.growthRate >= 0 ? "#10B981" : "#EF4444"}
-            />
-          </View>
-        </View>
-
-        {/* Advanced Metrics */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Advanced Metrics</Text>
-
-          <View style={styles.advancedMetrics}>
-            <View style={styles.progressMetric}>
-              <Text style={styles.progressLabel}>Sentiment Score</Text>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${analytics.sentimentScore * 100}%`, backgroundColor: "#10B981" },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressValue}>{formatPercentage(analytics.sentimentScore * 100)}</Text>
-            </View>
-
-            <View style={styles.progressMetric}>
-              <Text style={styles.progressLabel}>Virality Index</Text>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${analytics.viralityIndex * 100}%`, backgroundColor: "#F59E0B" },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressValue}>{formatPercentage(analytics.viralityIndex * 100)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Top Categories */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Top Trending Categories</Text>
-          {analytics.topCategories.map((category, index) => (
-            <View key={category.name} style={styles.categoryItem}>
-              <View style={styles.categoryRank}>
-                <Text style={styles.rankNumber}>{index + 1}</Text>
-              </View>
-              <View style={styles.categoryInfo}>
-                <Text style={styles.categoryName}>{category.name}</Text>
-                <Text style={styles.categoryCount}>
-                  {formatNumber(category.count)} mentions • {formatPercentage(category.percentage)}
-                </Text>
-              </View>
-              <View style={styles.categoryBar}>
-                <View style={[styles.categoryBarFill, { width: `${category.percentage}%` }]} />
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Peak Hours */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Peak Activity Hours</Text>
-          <View style={styles.peakHours}>
-            {analytics.peakHours.map((peak, index) => (
-              <View key={peak.hour} style={styles.peakHourItem}>
-                <Text style={styles.peakHourTime}>{peak.hour.toString().padStart(2, "0")}:00</Text>
-                <Text style={styles.peakHourCount}>{formatNumber(peak.count)} secrets</Text>
-                <View style={styles.peakHourBadge}>
-                  <Text style={styles.peakHourRank}>#{index + 1}</Text>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>{formatPercentage(analytics.growthRate)}</Text>
+                  <Text style={styles.metricLabel}>Growth Rate</Text>
+                  <Ionicons
+                    name={analytics.growthRate >= 0 ? "trending-up" : "trending-down"}
+                    size={20}
+                    color={analytics.growthRate >= 0 ? "#10B981" : "#EF4444"}
+                  />
                 </View>
               </View>
-            ))}
-          </View>
-        </View>
 
-        {/* Insights */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Key Insights</Text>
-          <View style={styles.insights}>
-            <View style={styles.insightItem}>
-              <Ionicons name="bulb" size={16} color="#F59E0B" />
-              <Text style={styles.insightText}>
-                {analytics.growthRate > 0
-                  ? `Trending activity increased by ${formatPercentage(analytics.growthRate)} this period`
-                  : "Activity has stabilized compared to previous period"}
-              </Text>
-            </View>
-
-            <View style={styles.insightItem}>
-              <Ionicons name="time" size={16} color="#8B5CF6" />
-              <Text style={styles.insightText}>
-                Peak activity occurs at {analytics.peakHours[0]?.hour.toString().padStart(2, "0")}:00
-              </Text>
-            </View>
-
-            <View style={styles.insightItem}>
-              <Ionicons name="trending-up" size={16} color="#10B981" />
-              <Text style={styles.insightText}>
-                {analytics.topCategories[0]?.name || "No trending hashtag"} is the most popular topic
-              </Text>
-            </View>
-          </View>
-        </View>
-        ) : (
-          // Video Analytics Tab
-          <>
-            {/* Video Key Metrics */}
-            <View style={styles.metricsGrid}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>
-                  {formatDuration(analytics.videoMetrics?.totalWatchTime || 0)}
-                </Text>
-                <Text style={styles.metricLabel}>Total Watch Time</Text>
-                <Ionicons name="time" size={20} color="#8B5CF6" />
-              </View>
-
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>
-                  {formatDuration(analytics.videoMetrics?.averageWatchTime || 0)}
-                </Text>
-                <Text style={styles.metricLabel}>Avg Watch Time</Text>
-                <Ionicons name="timer" size={20} color="#06B6D4" />
-              </View>
-
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>
-                  {formatPercentage(analytics.videoMetrics?.averageCompletionRate || 0)}
-                </Text>
-                <Text style={styles.metricLabel}>Completion Rate</Text>
-                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-              </View>
-
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>
-                  {formatNumber(analytics.videoMetrics?.totalViews || 0)}
-                </Text>
-                <Text style={styles.metricLabel}>Total Views</Text>
-                <Ionicons name="eye" size={20} color="#F59E0B" />
-              </View>
-            </View>
-
-            {/* Watch Time Chart */}
-            {analytics.videoMetrics?.watchTimeDistribution && (
+              {/* Advanced Metrics */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Watch Time Distribution (24h)</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <LineChart
-                    data={{
-                      labels: ['00', '04', '08', '12', '16', '20'],
-                      datasets: [{
-                        data: analytics.videoMetrics.watchTimeDistribution
-                          .filter((_, i) => i % 4 === 0)
-                          .map(d => d.watchTime),
-                      }],
-                    }}
-                    width={SCREEN_WIDTH + 100}
-                    height={200}
-                    chartConfig={{
-                      backgroundColor: '#1A1A1A',
-                      backgroundGradientFrom: '#1A1A1A',
-                      backgroundGradientTo: '#1A1A1A',
-                      decimalPlaces: 0,
-                      color: (opacity = 1) => `rgba(29, 155, 240, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                      style: { borderRadius: 16 },
-                      propsForDots: {
-                        r: '4',
-                        strokeWidth: '2',
-                        stroke: '#1D9BF0',
-                      },
-                    }}
-                    bezier
-                    style={styles.chart}
-                  />
-                </ScrollView>
-              </View>
-            )}
+                <Text style={styles.sectionTitle}>Advanced Metrics</Text>
 
-            {/* Top Performing Videos */}
-            {analytics.videoMetrics?.topVideos && analytics.videoMetrics.topVideos.length > 0 && (
+                <View style={styles.advancedMetrics}>
+                  <View style={styles.progressMetric}>
+                    <Text style={styles.progressLabel}>Sentiment Score</Text>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${analytics.sentimentScore * 100}%`, backgroundColor: "#10B981" },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressValue}>{formatPercentage(analytics.sentimentScore * 100)}</Text>
+                  </View>
+
+                  <View style={styles.progressMetric}>
+                    <Text style={styles.progressLabel}>Virality Index</Text>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${analytics.viralityIndex * 100}%`, backgroundColor: "#F59E0B" },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressValue}>{formatPercentage(analytics.viralityIndex * 100)}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Top Categories */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Top Performing Videos</Text>
-                {analytics.videoMetrics.topVideos.map((video, index) => (
-                  <View key={video.videoId} style={styles.videoItem}>
-                    <View style={styles.videoRank}>
+                <Text style={styles.sectionTitle}>Top Trending Categories</Text>
+                {analytics.topCategories.map((category, index) => (
+                  <View key={category.name} style={styles.categoryItem}>
+                    <View style={styles.categoryRank}>
                       <Text style={styles.rankNumber}>{index + 1}</Text>
                     </View>
-                    <View style={styles.videoInfo}>
-                      <Text style={styles.videoTitle}>{video.title}</Text>
-                      <View style={styles.videoStats}>
-                        <Text style={styles.videoStat}>
-                          <Ionicons name="time-outline" size={12} color="#666" />
-                          {' '}{formatDuration(video.watchTime)}
-                        </Text>
-                        <Text style={styles.videoStat}>
-                          <Ionicons name="checkmark-circle-outline" size={12} color="#666" />
-                          {' '}{formatPercentage(video.completionRate)}
-                        </Text>
-                        <Text style={styles.videoStat}>
-                          <Ionicons name="star-outline" size={12} color="#666" />
-                          {' '}{video.engagementScore}
-                        </Text>
-                      </View>
+                    <View style={styles.categoryInfo}>
+                      <Text style={styles.categoryName}>{category.name}</Text>
+                      <Text style={styles.categoryCount}>
+                        {formatNumber(category.count)} mentions • {formatPercentage(category.percentage)}
+                      </Text>
+                    </View>
+                    <View style={styles.categoryBar}>
+                      <View style={[styles.categoryBarFill, { width: `${category.percentage}%` }]} />
                     </View>
                   </View>
                 ))}
               </View>
-            )}
 
-            {/* Quality Distribution */}
-            {analytics.videoMetrics?.qualityDistribution && (
+              {/* Peak Hours */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Video Quality Distribution</Text>
-                <Text style={styles.experimentalNote}>⚠️ Experimental - Coming Soon</Text>
-                <View style={styles.qualityDistribution}>
-                  {analytics.videoMetrics.qualityDistribution.map((item) => (
-                    <View key={item.quality} style={styles.qualityItem}>
-                      <Text style={styles.qualityLabel}>{item.quality}</Text>
-                      <View style={styles.qualityBar}>
-                        <View
-                          style={[
-                            styles.qualityBarFill,
-                            { width: `${item.percentage}%` },
-                          ]}
-                        />
+                <Text style={styles.sectionTitle}>Peak Activity Hours</Text>
+                <View style={styles.peakHours}>
+                  {analytics.peakHours.map((peak, index) => (
+                    <View key={peak.hour} style={styles.peakHourItem}>
+                      <Text style={styles.peakHourTime}>{peak.hour.toString().padStart(2, "0")}:00</Text>
+                      <Text style={styles.peakHourCount}>{formatNumber(peak.count)} secrets</Text>
+                      <View style={styles.peakHourBadge}>
+                        <Text style={styles.peakHourRank}>#{index + 1}</Text>
                       </View>
-                      <Text style={styles.qualityPercentage}>{formatPercentage(item.percentage)}</Text>
                     </View>
                   ))}
                 </View>
               </View>
-            )}
 
-            {/* Buffering Metrics */}
-            {analytics.videoMetrics?.bufferingMetrics && (
+              {/* Insights */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Performance Metrics</Text>
-                <Text style={styles.experimentalNote}>⚠️ Experimental - Coming Soon</Text>
-                <View style={styles.performanceGrid}>
-                  <View style={styles.performanceCard}>
-                    <Text style={styles.performanceLabel}>Avg Buffer Time</Text>
-                    <Text style={styles.performanceValue}>
-                      {analytics.videoMetrics.bufferingMetrics.averageBufferTime.toFixed(1)}s
+                <Text style={styles.sectionTitle}>Key Insights</Text>
+                <View style={styles.insights}>
+                  <View style={styles.insightItem}>
+                    <Ionicons name="bulb" size={16} color="#F59E0B" />
+                    <Text style={styles.insightText}>
+                      {analytics.growthRate > 0
+                        ? `Trending activity increased by ${formatPercentage(analytics.growthRate)} this period`
+                        : "Activity has stabilized compared to previous period"}
                     </Text>
                   </View>
-                  <View style={styles.performanceCard}>
-                    <Text style={styles.performanceLabel}>Buffering Rate</Text>
-                    <Text style={styles.performanceValue}>
-                      {formatPercentage(analytics.videoMetrics.bufferingMetrics.bufferingRate * 100)}
+
+                  <View style={styles.insightItem}>
+                    <Ionicons name="time" size={16} color="#8B5CF6" />
+                    <Text style={styles.insightText}>
+                      Peak activity occurs at {analytics.peakHours[0]?.hour.toString().padStart(2, "0")}:00
                     </Text>
                   </View>
-                  <View style={styles.performanceCard}>
-                    <Text style={styles.performanceLabel}>Affected Sessions</Text>
-                    <Text style={styles.performanceValue}>
-                      {analytics.videoMetrics.bufferingMetrics.affectedSessions}
+
+                  <View style={styles.insightItem}>
+                    <Ionicons name="trending-up" size={16} color="#10B981" />
+                    <Text style={styles.insightText}>
+                      {analytics.topCategories[0]?.name || "No trending hashtag"} is the most popular topic
                     </Text>
                   </View>
                 </View>
               </View>
-            )}
-
-            {/* Video Insights */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Video Insights</Text>
-              <View style={styles.insights}>
-                <View style={styles.insightItem}>
-                  <Ionicons name="analytics" size={16} color="#8B5CF6" />
-                  <Text style={styles.insightText}>
-                    Average engagement rate is {formatPercentage(analytics.videoMetrics?.engagementRate || 0)} across all videos
-                  </Text>
+            </>
+          ) : (
+            // Video Analytics Tab
+            <>
+              {/* Video Key Metrics */}
+              <View style={styles.metricsGrid}>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>{formatDuration(analytics.videoMetrics?.totalWatchTime || 0)}</Text>
+                  <Text style={styles.metricLabel}>Total Watch Time</Text>
+                  <Ionicons name="time" size={20} color="#8B5CF6" />
                 </View>
 
-                <View style={styles.insightItem}>
-                  <Ionicons name="people" size={16} color="#06B6D4" />
-                  <Text style={styles.insightText}>
-                    {formatNumber(analytics.videoMetrics?.uniqueViewers || 0)} unique viewers this period
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>
+                    {formatDuration(analytics.videoMetrics?.averageWatchTime || 0)}
                   </Text>
+                  <Text style={styles.metricLabel}>Avg Watch Time</Text>
+                  <Ionicons name="timer" size={20} color="#06B6D4" />
                 </View>
 
-                <View style={styles.insightItem}>
-                  <Ionicons name="trophy" size={16} color="#F59E0B" />
-                  <Text style={styles.insightText}>
-                    Top video achieved {formatPercentage(analytics.videoMetrics?.topVideos?.[0]?.completionRate || 0)} completion rate
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>
+                    {formatPercentage(analytics.videoMetrics?.averageCompletionRate || 0)}
                   </Text>
+                  <Text style={styles.metricLabel}>Completion Rate</Text>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                </View>
+
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricValue}>{formatNumber(analytics.videoMetrics?.totalViews || 0)}</Text>
+                  <Text style={styles.metricLabel}>Total Views</Text>
+                  <Ionicons name="eye" size={20} color="#F59E0B" />
                 </View>
               </View>
-            </View>
-          </>
-        )}
+
+              {/* Watch Time Chart */}
+              {analytics.videoMetrics?.watchTimeDistribution && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Watch Time Distribution (24h)</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <LineChart
+                      data={{
+                        labels: ["00", "04", "08", "12", "16", "20"],
+                        datasets: [
+                          {
+                            data: analytics.videoMetrics.watchTimeDistribution
+                              .filter((_, i) => i % 4 === 0)
+                              .map((d) => d.watchTime),
+                          },
+                        ],
+                      }}
+                      width={SCREEN_WIDTH + 100}
+                      height={200}
+                      chartConfig={{
+                        backgroundColor: "#1A1A1A",
+                        backgroundGradientFrom: "#1A1A1A",
+                        backgroundGradientTo: "#1A1A1A",
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => `rgba(29, 155, 240, ${opacity})`,
+                        labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                        style: { borderRadius: 16 },
+                        propsForDots: {
+                          r: "4",
+                          strokeWidth: "2",
+                          stroke: "#1D9BF0",
+                        },
+                      }}
+                      bezier
+                      style={styles.chart}
+                    />
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Top Performing Videos */}
+              {analytics.videoMetrics?.topVideos && analytics.videoMetrics.topVideos.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Top Performing Videos</Text>
+                  {analytics.videoMetrics.topVideos.map((video, index) => (
+                    <View key={video.videoId} style={styles.videoItem}>
+                      <View style={styles.videoRank}>
+                        <Text style={styles.rankNumber}>{index + 1}</Text>
+                      </View>
+                      <View style={styles.videoInfo}>
+                        <Text style={styles.videoTitle}>{video.title}</Text>
+                        <View style={styles.videoStats}>
+                          <Text style={styles.videoStat}>
+                            <Ionicons name="time-outline" size={12} color="#666" /> {formatDuration(video.watchTime)}
+                          </Text>
+                          <Text style={styles.videoStat}>
+                            <Ionicons name="checkmark-circle-outline" size={12} color="#666" />{" "}
+                            {formatPercentage(video.completionRate)}
+                          </Text>
+                          <Text style={styles.videoStat}>
+                            <Ionicons name="star-outline" size={12} color="#666" /> {video.engagementScore}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Quality Distribution */}
+              {analytics.videoMetrics?.qualityDistribution && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Video Quality Distribution</Text>
+                  <Text style={styles.experimentalNote}>⚠️ Experimental - Coming Soon</Text>
+                  <View style={styles.qualityDistribution}>
+                    {analytics.videoMetrics.qualityDistribution.map((item) => (
+                      <View key={item.quality} style={styles.qualityItem}>
+                        <Text style={styles.qualityLabel}>{item.quality}</Text>
+                        <View style={styles.qualityBar}>
+                          <View style={[styles.qualityBarFill, { width: `${item.percentage}%` }]} />
+                        </View>
+                        <Text style={styles.qualityPercentage}>{formatPercentage(item.percentage)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Buffering Metrics */}
+              {analytics.videoMetrics?.bufferingMetrics && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Performance Metrics</Text>
+                  <Text style={styles.experimentalNote}>⚠️ Experimental - Coming Soon</Text>
+                  <View style={styles.performanceGrid}>
+                    <View style={styles.performanceCard}>
+                      <Text style={styles.performanceLabel}>Avg Buffer Time</Text>
+                      <Text style={styles.performanceValue}>
+                        {analytics.videoMetrics.bufferingMetrics.averageBufferTime.toFixed(1)}s
+                      </Text>
+                    </View>
+                    <View style={styles.performanceCard}>
+                      <Text style={styles.performanceLabel}>Buffering Rate</Text>
+                      <Text style={styles.performanceValue}>
+                        {formatPercentage(analytics.videoMetrics.bufferingMetrics.bufferingRate * 100)}
+                      </Text>
+                    </View>
+                    <View style={styles.performanceCard}>
+                      <Text style={styles.performanceLabel}>Affected Sessions</Text>
+                      <Text style={styles.performanceValue}>
+                        {analytics.videoMetrics.bufferingMetrics.affectedSessions}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Video Insights */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Video Insights</Text>
+                <View style={styles.insights}>
+                  <View style={styles.insightItem}>
+                    <Ionicons name="analytics" size={16} color="#8B5CF6" />
+                    <Text style={styles.insightText}>
+                      Average engagement rate is {formatPercentage(analytics.videoMetrics?.engagementRate || 0)} across
+                      all videos
+                    </Text>
+                  </View>
+
+                  <View style={styles.insightItem}>
+                    <Ionicons name="people" size={16} color="#06B6D4" />
+                    <Text style={styles.insightText}>
+                      {formatNumber(analytics.videoMetrics?.uniqueViewers || 0)} unique viewers this period
+                    </Text>
+                  </View>
+
+                  <View style={styles.insightItem}>
+                    <Ionicons name="trophy" size={16} color="#F59E0B" />
+                    <Text style={styles.insightText}>
+                      Top video achieved {formatPercentage(analytics.videoMetrics?.topVideos?.[0]?.completionRate || 0)}{" "}
+                      completion rate
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -914,37 +894,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: "#333",
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#1D9BF0',
+    backgroundColor: "#1D9BF0",
   },
   tabText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   activeTabText: {
-    color: 'white',
+    color: "white",
   },
   chart: {
     marginVertical: 8,
     borderRadius: 16,
   },
   videoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A1A',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -953,87 +933,87 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#8B5CF6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#8B5CF6",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   videoInfo: {
     flex: 1,
   },
   videoTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 4,
   },
   videoStats: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
   },
   videoStat: {
-    color: '#666',
+    color: "#666",
     fontSize: 12,
   },
   qualityDistribution: {
     gap: 12,
   },
   qualityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A1A',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
   },
   qualityLabel: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     width: 60,
   },
   qualityBar: {
     flex: 1,
     height: 8,
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     borderRadius: 4,
     marginHorizontal: 12,
   },
   qualityBarFill: {
-    height: '100%',
-    backgroundColor: '#06B6D4',
+    height: "100%",
+    backgroundColor: "#06B6D4",
     borderRadius: 4,
   },
   qualityPercentage: {
-    color: '#666',
+    color: "#666",
     fontSize: 12,
     width: 45,
-    textAlign: 'right',
+    textAlign: "right",
   },
   performanceGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   performanceCard: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   performanceLabel: {
-    color: '#666',
+    color: "#666",
     fontSize: 12,
     marginBottom: 8,
   },
   performanceValue: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   experimentalNote: {
-    color: '#F59E0B',
+    color: "#F59E0B",
     fontSize: 12,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     marginBottom: 12,
   },
 });

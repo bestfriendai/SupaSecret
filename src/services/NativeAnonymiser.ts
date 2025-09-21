@@ -1,4 +1,5 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "../utils/legacyFileSystem";
+import { Directory } from "expo-file-system";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { IAnonymiser, ProcessedVideo, VideoProcessingOptions } from "./IAnonymiser";
 import { env } from "../utils/env";
@@ -156,7 +157,7 @@ class NativeAnonymiserImpl implements IAnonymiser {
   private async scanFaces(videoUri: string): Promise<{ x: number; y: number; w: number; h: number }[]> {
     // Extract frames for face detection
     const framesDir = `${tmp}frames_${Date.now()}/`;
-    await FileSystem.makeDirectoryAsync(framesDir, { intermediates: true });
+    new Directory(framesDir).create({ intermediates: true });
 
     try {
       // Extract every 30th frame (1 fps for 30fps video) as JPEGs

@@ -2,7 +2,7 @@
 // Attempts to auto-detect connectivity and flush queued tasks when back online
 
 import type { PostgrestError } from "@supabase/supabase-js";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase, withSupabaseRetry, checkSupabaseConfig } from "./supabase";
 import { consentStore } from "../state/consentStore";
 import { videoAnalyticsStorage } from "../utils/videoAnalyticsStorage";
@@ -46,10 +46,10 @@ const config: QueueConfig = {
 let online = true; // optimistic default
 let watcherStarted = false;
 let flushing = false;
-let networkType: 'wifi' | 'cellular' | 'unknown' = 'unknown';
+let networkType: "wifi" | "cellular" | "unknown" = "unknown";
 
-const QUEUE_STORAGE_KEY = '@offline_queue';
-const ANALYTICS_BATCH_KEY = '@analytics_batch';
+const QUEUE_STORAGE_KEY = "@offline_queue";
+const ANALYTICS_BATCH_KEY = "@analytics_batch";
 
 export const isOnline = () => online;
 
@@ -62,15 +62,19 @@ export const registerProcessor = (key: string, fn: Processor) => {
   processors[key] = fn;
 };
 
-export const enqueue = async (key: string, payload: any, priority: TaskPriority = TaskPriority.NORMAL): Promise<void> => {
+export const enqueue = async (
+  key: string,
+  payload: any,
+  priority: TaskPriority = TaskPriority.NORMAL,
+): Promise<void> => {
   // Check queue size limit
   if (queue.length >= config.maxQueueSize) {
     // Remove oldest low-priority tasks
-    const lowPriorityIndex = queue.findIndex(t => (t.priority || TaskPriority.NORMAL) === TaskPriority.LOW);
+    const lowPriorityIndex = queue.findIndex((t) => (t.priority || TaskPriority.NORMAL) === TaskPriority.LOW);
     if (lowPriorityIndex !== -1) {
       queue.splice(lowPriorityIndex, 1);
     } else {
-      console.warn('Queue is full, dropping new task');
+      console.warn("Queue is full, dropping new task");
       return;
     }
   }
@@ -84,7 +88,7 @@ export const enqueue = async (key: string, payload: any, priority: TaskPriority 
   };
 
   // Compress large payloads for analytics
-  if (key === 'video.analytics.batch' && payload.events?.length > config.compressionThreshold) {
+  if (key === "video.analytics.batch" && payload.events?.length > config.compressionThreshold) {
     task.payload = await compressAnalyticsPayload(payload);
     task.compressed = true;
   }
@@ -107,15 +111,15 @@ export const flush = async (): Promise<void> => {
   if (!online || flushing) return;
 
   // Check network restrictions
-  if (config.wifiOnly && networkType !== 'wifi') {
-    console.log('Waiting for WiFi connection to flush queue');
+  if (config.wifiOnly && networkType !== "wifi") {
+    console.log("Waiting for WiFi connection to flush queue");
     return;
   }
 
   flushing = true;
   try {
     // Process analytics events in batches
-    const analyticsTasks = queue.filter(t => t.key === 'video.analytics.batch');
+    const analyticsTasks = queue.filter((t) => t.key === "video.analytics.batch");
     if (analyticsTasks.length > 0) {
       await flushAnalyticsBatch(analyticsTasks);
     }
@@ -125,7 +129,7 @@ export const flush = async (): Promise<void> => {
       const task = queue.shift()!;
 
       // Skip analytics tasks already processed
-      if (task.key === 'video.analytics.batch') continue;
+      if (task.key === "video.analytics.batch") continue;
 
       const processor = processors[task.key];
       if (!processor) continue;
@@ -174,7 +178,7 @@ export const flush = async (): Promise<void> => {
 async function flushAnalyticsBatch(tasks: QueueTask[]): Promise<void> {
   if (!consentStore.preferences.analytics) {
     // Remove analytics tasks if consent not given
-    tasks.forEach(t => {
+    tasks.forEach((t) => {
       const index = queue.indexOf(t);
       if (index !== -1) queue.splice(index, 1);
     });
@@ -208,14 +212,14 @@ async function flushAnalyticsBatch(tasks: QueueTask[]): Promise<void> {
 
     // Batch by session and send
     for (const sessionId of sessionIds) {
-      const sessionEvents = allEvents.filter(e => e.sessionId === sessionId);
+      const sessionEvents = allEvents.filter((e) => e.sessionId === sessionId);
 
       // Send in chunks
       for (let i = 0; i < sessionEvents.length; i += config.batchSize) {
         const batch = sessionEvents.slice(i, i + config.batchSize);
 
         await withSupabaseRetry(async () => {
-          const { error } = await supabase.functions.invoke('video-analytics-aggregator', {
+          const { error } = await supabase.functions.invoke("video-analytics-aggregator", {
             body: {
               sessionId,
               events: batch,
@@ -230,21 +234,21 @@ async function flushAnalyticsBatch(tasks: QueueTask[]): Promise<void> {
     }
 
     // Remove processed tasks from queue
-    tasks.forEach(t => {
+    tasks.forEach((t) => {
       const index = queue.indexOf(t);
       if (index !== -1) queue.splice(index, 1);
     });
 
     // Clear from storage
     try {
-      const { VideoDataService } = await import('../services/VideoDataService');
+      const { VideoDataService } = await import("../services/VideoDataService");
       await VideoDataService.clearPersistedEvents([...videoIds]);
     } catch (error) {
-      console.error('Failed to clear persisted events:', error);
+      console.error("Failed to clear persisted events:", error);
     }
     await persistQueue();
   } catch (error) {
-    console.error('Failed to flush analytics batch:', error);
+    console.error("Failed to flush analytics batch:", error);
     // Tasks remain in queue for retry
   }
 }
@@ -263,7 +267,7 @@ export const startNetworkWatcher = async () => {
       netinfo.default.addEventListener((state: any) => {
         const wasOnline = online;
         online = !!state?.isConnected && !!state?.isInternetReachable;
-        networkType = state?.type === 'wifi' ? 'wifi' : state?.type === 'cellular' ? 'cellular' : 'unknown';
+        networkType = state?.type === "wifi" ? "wifi" : state?.type === "cellular" ? "cellular" : "unknown";
 
         if (!wasOnline && online) {
           // Coming back online - flush queue
@@ -272,7 +276,7 @@ export const startNetworkWatcher = async () => {
       });
       const initial = await netinfo.default.fetch();
       setOnline(!!initial?.isConnected && !!initial?.isInternetReachable);
-      networkType = initial?.type === 'wifi' ? 'wifi' : initial?.type === 'cellular' ? 'cellular' : 'unknown';
+      networkType = initial?.type === "wifi" ? "wifi" : initial?.type === "cellular" ? "cellular" : "unknown";
     }
   } catch {
     // Ignore watcher errors; rely on manual setOnline/flush or retries
@@ -298,13 +302,11 @@ export const getQueueStats = (): {
     [TaskPriority.LOW]: 0,
   };
 
-  queue.forEach(task => {
+  queue.forEach((task) => {
     byPriority[task.priority || TaskPriority.NORMAL]++;
   });
 
-  const oldestTask = queue.length > 0
-    ? Math.min(...queue.map(t => t.timestamp || Date.now()))
-    : null;
+  const oldestTask = queue.length > 0 ? Math.min(...queue.map((t) => t.timestamp || Date.now())) : null;
 
   return {
     queueLength: queue.length,
@@ -326,7 +328,7 @@ async function persistQueue(): Promise<void> {
   try {
     await AsyncStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
   } catch (error) {
-    console.error('Failed to persist queue:', error);
+    console.error("Failed to persist queue:", error);
   }
 }
 
@@ -339,7 +341,7 @@ async function loadPersistedQueue(): Promise<void> {
       queue.sort((a, b) => (a.priority || TaskPriority.NORMAL) - (b.priority || TaskPriority.NORMAL));
     }
   } catch (error) {
-    console.error('Failed to load persisted queue:', error);
+    console.error("Failed to load persisted queue:", error);
   }
 }
 
@@ -348,7 +350,7 @@ async function storeFailedTask(task: QueueTask): Promise<void> {
     const key = `@failed_task_${Date.now()}`;
     await AsyncStorage.setItem(key, JSON.stringify(task));
   } catch (error) {
-    console.error('Failed to store failed task:', error);
+    console.error("Failed to store failed task:", error);
   }
 }
 
@@ -410,7 +412,7 @@ registerProcessor(
     // This processor is handled specially in flushAnalyticsBatch
     // Individual processing here is a fallback
     await withSupabaseRetry(async () => {
-      const { error } = await supabase.functions.invoke('video-analytics-aggregator', {
+      const { error } = await supabase.functions.invoke("video-analytics-aggregator", {
         body: payload,
       });
 

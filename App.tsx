@@ -1,6 +1,9 @@
 import "react-native-gesture-handler";
 import "react-native-reanimated";
 import React, { useEffect, useState } from "react";
+import { AppState, Platform } from "react-native";
+import { supabase } from "./src/lib/supabase";
+import * as Linking from "expo-linking";
 import "./global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -51,6 +54,15 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    // AppState listener for session refresh
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (Platform.OS !== "web" && nextAppState === "active") {
+        supabase.auth.startAutoRefresh();
+      } else if (Platform.OS !== "web") {
+        supabase.auth.stopAutoRefresh();
+      }
+    });
+
     const initializeApp = async () => {
       try {
         if (__DEV__) {
@@ -104,8 +116,36 @@ export default function App() {
 
     initializeApp();
 
-    // Cleanup function
+    // Deep linking for auth callbacks (magic links, OAuth, etc.)
+    const handleDeepLink = async ({ url }: { url: string }) => {
+      if (url.includes("auth/callback") || url.includes("/auth/v1/verify")) {
+        const { queryParams } = Linking.parse(url);
+        if (!queryParams) return;
+        const { token_hash, type, error_description } = queryParams;
+        if (error_description) {
+          console.error("Auth error:", error_description);
+          return;
+        }
+        if (token_hash && type) {
+          const { data, error } = await supabase.auth.verifyOtp({ token_hash, type });
+          if (error) console.error("Verify OTP error:", error);
+          else console.log("Auth verified successfully");
+        }
+      }
+    };
+
+    // Add listener
+    const linkingSubscription = Linking.addEventListener("url", handleDeepLink);
+
+    // Handle initial URL
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    // Cleanup
     return () => {
+      subscription?.remove();
+      linkingSubscription?.remove();
       cleanupAuthListener();
       cleanupConfessionSubscriptions();
       cleanupNotificationSubscriptions();

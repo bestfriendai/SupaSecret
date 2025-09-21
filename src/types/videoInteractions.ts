@@ -1,17 +1,17 @@
 export enum VideoInteractionType {
-  Like = 'like',
-  Comment = 'comment',
-  Share = 'share',
-  Save = 'save',
-  Report = 'report',
-  Follow = 'follow',
-  Mute = 'mute',
-  Unmute = 'unmute',
-  PlayPause = 'play_pause',
-  Seek = 'seek',
-  VolumeChange = 'volume_change',
-  FullScreen = 'fullscreen',
-  Settings = 'settings'
+  Like = "like",
+  Comment = "comment",
+  Share = "share",
+  Save = "save",
+  Report = "report",
+  Follow = "follow",
+  Mute = "mute",
+  Unmute = "unmute",
+  PlayPause = "play_pause",
+  Seek = "seek",
+  VolumeChange = "volume_change",
+  FullScreen = "fullscreen",
+  Settings = "settings",
 }
 
 export interface VideoInteractionEvent {
@@ -69,11 +69,11 @@ export interface VideoAnimationConfig {
   transitionAnimation: {
     enabled: boolean;
     duration: number;
-    type: 'fade' | 'slide' | 'scale' | 'none';
+    type: "fade" | "slide" | "scale" | "none";
   };
   loadingAnimation: {
     enabled: boolean;
-    type: 'spinner' | 'skeleton' | 'pulse' | 'none';
+    type: "spinner" | "skeleton" | "pulse" | "none";
   };
 }
 

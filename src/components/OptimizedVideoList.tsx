@@ -1,5 +1,14 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect, memo } from "react";
-import { View, Dimensions, StatusBar, NativeSyntheticEvent, NativeScrollEvent, Text, RefreshControl, Pressable } from "react-native";
+import {
+  View,
+  Dimensions,
+  StatusBar,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Text,
+  RefreshControl,
+  Pressable,
+} from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, FadeIn, FadeOut } from "react-native-reanimated";
@@ -148,15 +157,12 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           code: error.code || "LOAD_ERROR",
           message: error.message || "Failed to load videos",
           timestamp: Date.now(),
-          debugInfo: error.stack
+          debugInfo: error.stack,
         };
 
         const attemptNum = retryAttempts + 1;
         setRetryAttempts(attemptNum);
-        const friendlyError = VideoErrorMessages.getUserFriendlyError(
-          videoError,
-          attemptNum
-        );
+        const friendlyError = VideoErrorMessages.getUserFriendlyError(videoError, attemptNum);
 
         setUserFriendlyError(friendlyError);
         setError(friendlyError.message);
@@ -430,11 +436,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
           itemCount={3}
           animationTiming={{ fade: 400, stagger: 120 }}
         />
-        <NetworkStatusIndicator
-          position="top"
-          minimalMode={false}
-          autoHideDelay={5000}
-        />
+        <NetworkStatusIndicator position="top" minimalMode={false} autoHideDelay={5000} />
       </>
     );
   }
@@ -444,11 +446,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
     if (error && userFriendlyError) {
       return (
         <>
-          <VideoFeedSkeleton
-            isVisible={true}
-            state="initial"
-            showErrorIndicator={true}
-          />
+          <VideoFeedSkeleton isVisible={true} state="initial" showErrorIndicator={true} />
           <ErrorState
             type="video"
             title={userFriendlyError.title}
@@ -536,37 +534,17 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
         />
 
         {/* Loading overlay for refresh */}
-        {isRefreshing && (
-          <VideoFeedSkeleton
-            isVisible={true}
-            state="pullToRefresh"
-            itemCount={1}
-          />
-        )}
+        {isRefreshing && <VideoFeedSkeleton isVisible={true} state="pullToRefresh" itemCount={1} />}
 
         {/* Loading overlay for load more */}
-        {isLoadingMore && (
-          <VideoFeedSkeleton
-            isVisible={true}
-            state="loadMore"
-            itemCount={1}
-          />
-        )}
+        {isLoadingMore && <VideoFeedSkeleton isVisible={true} state="loadMore" itemCount={1} />}
 
         {/* Network status indicator */}
-        <NetworkStatusIndicator
-          position="top"
-          minimalMode={true}
-          autoHideDelay={3000}
-          scrollOffset={scrollOffset}
-        />
+        <NetworkStatusIndicator position="top" minimalMode={true} autoHideDelay={3000} scrollOffset={scrollOffset} />
       </View>
 
       {/* Comment Bottom Sheet */}
-      <EnhancedCommentBottomSheet
-        bottomSheetModalRef={commentSheetRef}
-        confessionId={currentVideoId || ""}
-      />
+      <EnhancedCommentBottomSheet bottomSheetModalRef={commentSheetRef} confessionId={currentVideoId || ""} />
 
       {/* Share Bottom Sheet */}
       <EnhancedShareBottomSheet

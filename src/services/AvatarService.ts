@@ -3,7 +3,7 @@
  * Handles avatar upload, compression, and management with Supabase Storage
  */
 
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "../utils/legacyFileSystem";
 import * as ImageManipulator from "expo-image-manipulator";
 import { supabase } from "../lib/supabase";
 import { storageWithRetry } from "../utils/supabaseWithRetry";
@@ -48,7 +48,9 @@ export class AvatarService {
 
         const fileSizeMB = (fileInfo.size || 0) / (1024 * 1024);
         if (fileSizeMB > MAX_FILE_SIZE_MB) {
-          throw new Error(`Image file is too large (${fileSizeMB.toFixed(1)}MB). Maximum size is ${MAX_FILE_SIZE_MB}MB.`);
+          throw new Error(
+            `Image file is too large (${fileSizeMB.toFixed(1)}MB). Maximum size is ${MAX_FILE_SIZE_MB}MB.`,
+          );
         }
       } catch (error) {
         if (error instanceof Error && error.message.includes("too large")) {

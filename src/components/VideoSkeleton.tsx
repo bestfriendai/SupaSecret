@@ -41,14 +41,8 @@ const SkeletonItem: React.FC<SkeletonItemProps> = ({ index, layout, delay }) => 
   const scale = useSharedValue(0.95);
 
   useEffect(() => {
-    opacity.value = withDelay(
-      delay,
-      withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) })
-    );
-    scale.value = withDelay(
-      delay,
-      withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) })
-    );
+    opacity.value = withDelay(delay, withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) }));
+    scale.value = withDelay(delay, withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) }));
   }, [delay]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -143,7 +137,7 @@ export default function VideoSkeleton({
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
     return () => subscription?.remove();
   }, []);
 
@@ -153,16 +147,13 @@ export default function VideoSkeleton({
         shimmerTranslateX.value = withRepeat(
           withTiming(screenWidth * 2, { duration: 1500, easing: Easing.linear }),
           -1,
-          false
+          false,
         );
 
         pulseOpacity.value = withRepeat(
-          withSequence(
-            withTiming(0.6, { duration: 1000 }),
-            withTiming(0.3, { duration: 1000 })
-          ),
+          withSequence(withTiming(0.6, { duration: 1000 }), withTiming(0.3, { duration: 1000 })),
           -1,
-          false
+          false,
         );
       } else {
         // Simple fade for reduced motion
@@ -173,14 +164,12 @@ export default function VideoSkeleton({
       if (state === "refresh") {
         progressWidth.value = withTiming(100, {
           duration: 2000,
-          easing: Easing.out(Easing.quad)
+          easing: Easing.out(Easing.quad),
         });
       }
 
       const announceLoading = () => {
-        AccessibilityInfo.announceForAccessibility(
-          `Loading ${state === "refresh" ? "new" : ""} videos`
-        );
+        AccessibilityInfo.announceForAccessibility(`Loading ${state === "refresh" ? "new" : ""} videos`);
       };
       announceLoading();
 
@@ -231,11 +220,7 @@ export default function VideoSkeleton({
       accessibilityLabel="Loading videos"
     >
       {Platform.OS === "ios" ? (
-        <BlurView
-          intensity={layout === "tiktok" ? 20 : 10}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
-        />
+        <BlurView intensity={layout === "tiktok" ? 20 : 10} tint="dark" style={StyleSheet.absoluteFill} />
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0, 0, 0, 0.9)" }]} />
       )}
@@ -257,17 +242,9 @@ export default function VideoSkeleton({
         </Animated.View>
       )}
 
-      <View style={[
-        styles.skeletonContent,
-        layout === "list" && styles.listLayout,
-      ]}>
+      <View style={[styles.skeletonContent, layout === "list" && styles.listLayout]}>
         {Array.from({ length: calculatedItemCount }).map((_, index) => (
-          <SkeletonItem
-            key={`skeleton-${index}`}
-            index={index}
-            layout={layout}
-            delay={index * 100}
-          />
+          <SkeletonItem key={`skeleton-${index}`} index={index} layout={layout} delay={index * 100} />
         ))}
       </View>
 

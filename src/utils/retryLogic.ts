@@ -274,18 +274,29 @@ export const createApiRetry = (options: RetryOptions = {}) => {
 
 // Additional exports for video retry functionality
 export interface RetryConfig {
-  maxAttempts: number;
-  backoffMs: number[];
-  onRetry?: (attempt: number) => void;
+  maxAttempts?: number;
+  maxRetries?: number;
+  backoffMs?: number[];
+  initialDelay?: number;
+  maxDelay?: number;
+  backoffFactor?: number;
+  shouldRetry?: (error: unknown, attempt: number) => boolean;
+  onRetry?: (attempt: number, delay: number) => void;
 }
 
-export function createRetryableOperation<T>(
-  operation: () => Promise<T>,
-  config: RetryConfig
-): Promise<T> {
+export function createRetryableOperation<T>(operation: () => Promise<T>, config: RetryConfig): Promise<T> {
+  const attempts = config.maxAttempts ?? config.maxRetries ?? config.backoffMs?.length ?? 3;
+  const delays = config.backoffMs ?? [];
+  const initialDelay = config.initialDelay ?? delays[0] ?? 1000;
+  const maxDelay = config.maxDelay ?? delays[delays.length - 1] ?? Math.max(initialDelay * 4, initialDelay);
+  const backoffMultiplier = config.backoffFactor ?? 2;
+
   return withRetry(operation, {
-    maxAttempts: config.maxAttempts,
-    initialDelay: config.backoffMs[0] || 1000,
-    onRetry: (error, attempt, delay) => config.onRetry?.(attempt)
+    maxAttempts: attempts,
+    initialDelay,
+    maxDelay,
+    backoffMultiplier,
+    shouldRetry: config.shouldRetry,
+    onRetry: (error, attempt, delay) => config.onRetry?.(attempt, delay),
   });
 }

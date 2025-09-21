@@ -14,7 +14,7 @@ export default {
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
-      backgroundColor: "#000000"
+      backgroundColor: "#000000",
     },
     updates: {
       enabled: true,
@@ -84,7 +84,7 @@ export default {
       predictiveBackGestureEnabled: false,
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon-foreground.png",
-        backgroundColor: "#000000"
+        backgroundColor: "#000000",
       },
       permissions: [
         "android.permission.CAMERA",
@@ -106,8 +106,8 @@ export default {
       termsOfServiceUrl: "https://toxicconfessions.app/terms",
       supportUrl: "https://toxicconfessions.app/help",
       nonSensitive: {
-        supabaseUrl: process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL,
-        supabaseAnonKey: process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_ANON_KEY,
+        supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+        supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
       },
     },
   },

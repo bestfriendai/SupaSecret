@@ -1,8 +1,8 @@
-import type { SharedValue } from 'react-native-reanimated';
-import type { VideoPlayer } from 'expo-video';
-import type { Confession } from './confession';
+import type { SharedValue } from "react-native-reanimated";
+import type { VideoPlayer } from "expo-video";
+import type { Confession } from "./confession";
 
-export type VideoVariant = 'tiktok' | 'enhanced';
+export type VideoVariant = "tiktok" | "enhanced";
 
 export interface VideoItemProps {
   confession: Confession;

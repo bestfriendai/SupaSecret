@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Dimensions, RefreshControl, StatusBar, Text, View, Pressable, AppState } from "react-native";
+import {
+  ActivityIndicator,
+  Dimensions,
+  RefreshControl,
+  StatusBar,
+  Text,
+  View,
+  Pressable,
+  AppState,
+} from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import type { FlashListRef } from "@shopify/flash-list";
 import type { ViewToken } from "react-native";
@@ -15,7 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useVideoPlayer, VideoPlayer } from "expo-video";
 import * as Haptics from "expo-haptics";
-import NetInfo from '@react-native-community/netinfo';
+import NetInfo from "@react-native-community/netinfo";
 
 import { ErrorBoundary } from "./ErrorBoundary";
 import TikTokVideoItem from "./TikTokVideoItem";
@@ -93,7 +102,7 @@ class CircuitBreaker {
 
   constructor(
     private threshold: number,
-    private timeout: number
+    private timeout: number,
   ) {}
 
   recordFailure(): void {
@@ -157,19 +166,23 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
   const [userFriendlyError, setUserFriendlyError] = useState<UserFriendlyError | null>(null);
   const [networkStatus, setNetworkStatus] = useState(isOnline());
   const [retryAttempts, setRetryAttempts] = useState(0);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showCreatorProfile, setShowCreatorProfile] = useState(false);
+  const [videoZoom, setVideoZoom] = useState(1);
+  const [playbackSpeeds, setPlaybackSpeeds] = useState<Record<number, number>>({});
   const scrollOffset = useSharedValue(0);
   const hasInitializedScroll = useRef(false);
   const loadingRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const videoPlayersRef = useRef<Map<string, VideoPlayerState>>(new Map());
-  const cleanupTimeoutRef = useRef<NodeJS.Timeout>();
+  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const circuitBreaker = useRef(new CircuitBreaker(CIRCUIT_BREAKER_THRESHOLD, CIRCUIT_BREAKER_TIMEOUT));
   const fallbackVideoIndex = useRef(0);
 
   // Device-aware configuration
   const [deviceTier, setDeviceTier] = useState<DevicePerformanceTier>(DevicePerformanceTier.MID);
   const [networkQualityTier, setNetworkQualityTier] = useState<NetworkQualityTier>(NetworkQualityTier.FAIR);
-  const [currentVideoQuality, setCurrentVideoQuality] = useState<'360p' | '720p' | '1080p'>('720p');
+  const [currentVideoQuality, setCurrentVideoQuality] = useState<"360p" | "720p" | "1080p">("720p");
   const [preloadOffset, setPreloadOffset] = useState(DEFAULT_PRELOAD_OFFSET);
   const [maxMemoryVideos, setMaxMemoryVideos] = useState(DEFAULT_MAX_MEMORY_VIDEOS);
   const qualitySelectionCache = useRef<Map<string, any>>(new Map());
@@ -190,11 +203,11 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     }
 
     const video = videos[activeIndex];
-    if (!video || typeof video !== 'object') {
+    if (!video || typeof video !== "object") {
       return FALLBACK_VIDEOS[fallbackVideoIndex.current % FALLBACK_VIDEOS.length];
     }
 
-    if (!video.videoUri || typeof video.videoUri !== 'string') {
+    if (!video.videoUri || typeof video.videoUri !== "string") {
       return FALLBACK_VIDEOS[fallbackVideoIndex.current % FALLBACK_VIDEOS.length];
     }
 
@@ -206,23 +219,24 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     }
 
     // Use selectedVideoUri if available (from quality selection)
-    if (video.selectedVideoUri && typeof video.selectedVideoUri === 'string') {
+    if (video.selectedVideoUri && typeof video.selectedVideoUri === "string") {
       return video.selectedVideoUri;
     }
 
     // Use quality-optimized URI if available
-    if (video.qualityMetadata?.selectedQuality && Array.isArray(video.videoVariants)) {
+    const selectedQuality = video.qualityMetadata?.selectedQuality;
+    if (selectedQuality && Array.isArray(video.videoVariants)) {
       const selectedVariant = video.videoVariants.find(
-        (v: any) => v && typeof v === 'object' && v.quality === video.qualityMetadata.selectedQuality
+        (v: any) => v && typeof v === "object" && v.quality === selectedQuality,
       );
-      if (selectedVariant?.uri && typeof selectedVariant.uri === 'string') {
+      if (selectedVariant?.uri && typeof selectedVariant.uri === "string") {
         return selectedVariant.uri;
       }
     }
 
     // Check for cached quality selection
     const cachedQuality = qualitySelectionCache.current.get(video.videoUri);
-    if (cachedQuality?.selectedUri && typeof cachedQuality.selectedUri === 'string') {
+    if (cachedQuality?.selectedUri && typeof cachedQuality.selectedUri === "string") {
       return cachedQuality.selectedUri;
     }
 
@@ -273,89 +287,97 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
   }, [videoPlayer, activeIndex, videos]);
 
   // Enhanced error handling for player errors
-  const handlePlayerError = useCallback(async (error: Error, videoId?: string) => {
-    const errorCode = error.message?.includes("network")
-      ? VideoErrorCode.NETWORK_ERROR
-      : error.message?.includes("decode")
-      ? VideoErrorCode.DECODE_ERROR
-      : VideoErrorCode.PLAYBACK_STALLED;
+  const handlePlayerError = useCallback(
+    async (error: Error, videoId?: string) => {
+      const errorCode = error.message?.includes("network")
+        ? VideoErrorCode.NETWORK_ERROR
+        : error.message?.includes("decode")
+          ? VideoErrorCode.DECODE_ERROR
+          : VideoErrorCode.PLAYBACK_STALLED;
 
-    const videoError = new VideoPlaybackError(
-      errorCode,
-      `Video playback failed: ${error.message}`,
-      VideoErrorSeverity.ERROR
-    );
-
-    if (videoId) {
-      const playerState = videoPlayersRef.current.get(videoId) || {
-        player: null,
-        retryCount: 0,
-      };
-
-      // Comment 6: Use VideoErrorRecoveryService instead of local retry logic
-      const video = videos.find(v => v.id === videoId);
-      const recoveryResult = await videoErrorRecoveryService.handleError(
-        videoError,
-        {
-          videoId,
-          source: video?.videoUri,
-          networkStatus: networkStatus,
-        }
+      const videoError = new VideoPlaybackError(
+        errorCode,
+        `Video playback failed: ${error.message}`,
+        undefined,
+        VideoErrorSeverity.ERROR,
       );
 
-      if (recoveryResult.success) {
-        // Comment 9: Reset retry counter on success
-        videoPlayersRef.current.set(videoId, {
-          ...playerState,
+      if (videoId) {
+        const playerState = videoPlayersRef.current.get(videoId) || {
+          player: null,
           retryCount: 0,
-          error: undefined,
+        };
+
+        // Comment 6: Use VideoErrorRecoveryService instead of local retry logic
+        const video = videos.find((v) => v.id === videoId);
+        const recoveryResult = await videoErrorRecoveryService.handleError(videoError, {
+          videoId,
+          source: video?.videoUri ?? undefined,
+          networkStatus,
         });
-      } else {
+
+        if (recoveryResult.success) {
+          // Comment 9: Reset retry counter on success
+          videoPlayersRef.current.set(videoId, {
+            ...playerState,
+            retryCount: 0,
+            error: undefined,
+          });
+        } else {
+          const nextRetryCount = (playerState.retryCount ?? 0) + 1;
         videoPlayersRef.current.set(videoId, {
           ...playerState,
+          player: playerState.player ?? null,
           error: videoError,
-          retryCount: playerState.retryCount + 1,
+          retryCount: nextRetryCount,
           lastRetryTime: Date.now(),
         });
 
-        if (recoveryResult.fallbackUsed) {
-          fallbackVideoIndex.current++;
-        }
-      }
-    }
-
-    console.warn("Video player error:", videoError);
-  }, [videos, networkStatus]);
-
-  // Recovery mechanism for video playback
-  const recoverVideoPlayback = useCallback(async (videoId: string) => {
-    const playerState = videoPlayersRef.current.get(videoId);
-    if (!playerState) return;
-
-    const retryDelay = RETRY_DELAY_BASE * Math.pow(2, playerState.retryCount);
-
-    setTimeout(async () => {
-      try {
-        if (playerState.player) {
-          const success = await globalVideoStore.recoverPlayer(videoId);
-          if (success) {
-            // Comment 9: Reset retry count on successful recovery
-            const updatedState = videoPlayersRef.current.get(videoId);
-            if (updatedState) {
-              videoPlayersRef.current.set(videoId, {
-                ...updatedState,
-                retryCount: 0,
-                error: undefined,
-              });
-            }
-            circuitBreaker.current.recordSuccess();
+          if (recoveryResult.fallbackUsed) {
+            fallbackVideoIndex.current++;
           }
         }
-      } catch (error) {
-        console.warn(`Failed to recover video ${videoId}:`, error);
       }
-    }, retryDelay);
-  }, [globalVideoStore]);
+
+      console.warn("Video player error:", videoError);
+    },
+    [videos, networkStatus],
+  );
+
+  // Recovery mechanism for video playback
+  const recoverVideoPlayback = useCallback(
+    async (videoId: string) => {
+      const playerState = videoPlayersRef.current.get(videoId);
+      if (!playerState) return;
+
+      const currentRetryCount = playerState.retryCount ?? 0;
+      const retryDelay = RETRY_DELAY_BASE * Math.pow(2, currentRetryCount);
+
+      setTimeout(async () => {
+        try {
+          if (playerState.player) {
+            const success = await globalVideoStore.recoverPlayer(videoId);
+            if (success) {
+              // Comment 9: Reset retry count on successful recovery
+              const updatedState = videoPlayersRef.current.get(videoId);
+              if (updatedState) {
+                videoPlayersRef.current.set(videoId, {
+                  ...updatedState,
+                  player: updatedState.player ?? null,
+                  retryCount: 0,
+                  error: undefined,
+                });
+              }
+              circuitBreaker.current.recordSuccess();
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to recover video ${videoId}:`, error);
+        }
+      }, retryDelay);
+    },
+    [globalVideoStore],
+  );
 
   // Enhanced memory cleanup with progressive strategies
   const cleanupUnusedPlayers = useCallback(() => {
@@ -363,9 +385,11 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     const keepIds = new Set<string>();
 
     // Keep current and nearby videos
-    for (let i = Math.max(0, activeIndex - preloadOffset);
-         i <= Math.min(videos.length - 1, activeIndex + preloadOffset);
-         i++) {
+    for (
+      let i = Math.max(0, activeIndex - preloadOffset);
+      i <= Math.min(videos.length - 1, activeIndex + preloadOffset);
+      i++
+    ) {
       if (videos[i]) {
         keepIds.add(videos[i].id);
       }
@@ -374,11 +398,7 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     // Clean up distant players with progressive disposal
     for (const [id, playerState] of videoPlayersRef.current.entries()) {
       if (!keepIds.has(id) && playerState.player) {
-        globalVideoStore.unregisterVideoPlayer(id, {
-          type: "delayed",
-          timeout: 1000,
-          retries: 2,
-        });
+        void globalVideoStore.unregisterVideoPlayer(id);
         videoPlayersRef.current.delete(id);
       }
     }
@@ -449,39 +469,37 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
   }, [videos.length]);
 
   // Simple retry wrapper for video operations
-  const retryVideoOperation = useCallback(async (
-    operation: () => void | Promise<void>,
-    maxRetries = 3
-  ): Promise<void> => {
-    let attempt = 0;
-    while (attempt < maxRetries) {
-      try {
-        await operation();
-        return;
-      } catch (error) {
-        attempt++;
-        if (attempt >= maxRetries) {
-          console.warn("Video operation failed after retries:", error);
+  const retryVideoOperation = useCallback(
+    async (operation: () => void | Promise<void>, maxRetries = 3): Promise<void> => {
+      let attempt = 0;
+      while (attempt < maxRetries) {
+        try {
+          await operation();
           return;
+        } catch (error) {
+          attempt++;
+          if (attempt >= maxRetries) {
+            console.warn("Video operation failed after retries:", error);
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         }
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Enhanced video loading with retry logic
-  const hydrateVideosWithRetry = useCallback(async (
-    isRefresh = false,
-    append = false
-  ): Promise<VideoLoadResult> => {
+  const hydrateVideosWithRetry = useCallback(async (isRefresh = false, append = false): Promise<VideoLoadResult> => {
     if (!circuitBreaker.current.canAttempt()) {
       return {
         success: false,
         videos: [],
-        error: new VideoNetworkError(
-          VideoErrorCode.RATE_LIMITED,
+        error: new VideoPlaybackError(
+          VideoErrorCode.RateLimitExceeded,
           "Too many failed attempts. Please wait before trying again.",
-          VideoErrorSeverity.WARNING
+          undefined,
+          VideoErrorSeverity.WARNING,
         ),
         shouldRetry: false,
       };
@@ -494,60 +512,54 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
       backoffFactor: 2,
       shouldRetry: (error) => {
         const online = isOnline();
-        return online && !error.message?.includes("rate limit");
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === "string"
+              ? error
+              : undefined;
+        return online && !(message?.toLowerCase().includes("rate limit") ?? false);
       },
     };
 
-    const loadVideos = createRetryableOperation(
-      async (): Promise<VideoLoadResult> => {
-        const [confessions, trending] = await Promise.all([
-          VideoDataService.fetchVideoConfessions(append ? 10 : 20),
-          append ? Promise.resolve([]) : VideoDataService.fetchTrendingVideos(24, 10),
-        ]);
+    const loadVideos = async (): Promise<VideoLoadResult> => {
+      const [confessions, trending] = await Promise.all([
+        VideoDataService.fetchVideoConfessions(append ? 10 : 20),
+        append ? Promise.resolve([]) : VideoDataService.fetchTrendingVideos(24, 10),
+      ]);
 
-        // Ensure both arrays are valid before spreading
-        const safeConfessions = Array.isArray(confessions) ? confessions : [];
-        const safeTrending = Array.isArray(trending) ? trending : [];
+      // Ensure both arrays are valid before spreading
+      const safeConfessions = Array.isArray(confessions) ? confessions : [];
+      const safeTrending = Array.isArray(trending) ? trending : [];
 
-        const combined = [...safeTrending, ...safeConfessions].filter(item =>
-          item &&
-          typeof item === 'object' &&
-          item.id &&
-          item.videoUri
-        );
+      const combined = [...safeTrending, ...safeConfessions].filter(
+        (item) => item && typeof item === "object" && item.id && item.videoUri,
+      );
 
-        if (combined.length > 0) {
-          circuitBreaker.current.recordSuccess();
-        }
+      if (combined.length > 0) {
+        circuitBreaker.current.recordSuccess();
+      }
 
-        return {
-          success: true,
-          videos: combined,
-          shouldRetry: false,
-        };
-      },
-      retryConfig
-    );
+      return {
+        success: true,
+        videos: combined,
+        shouldRetry: false,
+      };
+    };
 
     try {
-      const result = await loadVideos();
+      const result = await createRetryableOperation(loadVideos, retryConfig);
       return result;
     } catch (error) {
-      const videoError = new VideoLoadError(
-        `Failed to load videos: ${error}`,
-        {
-          code: VideoErrorCode.LOAD_FAILED,
-          severity: VideoErrorSeverity.ERROR
-        }
-      );
+      const videoError = new VideoLoadError(`Failed to load videos: ${error}`, {
+        code: VideoErrorCode.LOAD_FAILED,
+        severity: VideoErrorSeverity.ERROR,
+      });
 
       // Comment 6: Use VideoErrorRecoveryService for load errors
-      const recoveryResult = await videoErrorRecoveryService.handleError(
-        videoError,
-        {
-          networkStatus: isOnline(),
-        }
-      );
+      const recoveryResult = await videoErrorRecoveryService.handleError(videoError, {
+        networkStatus: isOnline(),
+      });
 
       if (!recoveryResult.success) {
         circuitBreaker.current.recordFailure();
@@ -588,7 +600,7 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
       setMaxMemoryVideos(Math.min(perfProfile.preloadWindowSize * 2, 20));
 
       // Start network quality monitoring
-      networkQualityMonitor.current = NetInfo.addEventListener(state => {
+      networkQualityMonitor.current = NetInfo.addEventListener((state) => {
         handleNetworkQualityChange(state);
       });
 
@@ -596,43 +608,46 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
       const netInfo = await NetInfo.fetch();
       handleNetworkQualityChange(netInfo);
     } catch (error) {
-      console.error('Failed to initialize device and network:', error);
+      console.error("Failed to initialize device and network:", error);
     }
   }, []);
 
   // Handle network quality changes
-  const handleNetworkQualityChange = useCallback(async (state: any) => {
-    if (!state.isConnected) {
-      setNetworkQualityTier(NetworkQualityTier.POOR);
-      return;
-    }
-
-    const type = state.type?.toLowerCase();
-    const effectiveType = state.details?.cellularGeneration?.toLowerCase() || type;
-
-    let quality: NetworkQualityTier;
-    if (effectiveType === 'wifi' || effectiveType === '5g') {
-      quality = NetworkQualityTier.EXCELLENT;
-    } else if (effectiveType === '4g') {
-      quality = NetworkQualityTier.GOOD;
-    } else if (effectiveType === '3g') {
-      quality = NetworkQualityTier.FAIR;
-    } else {
-      quality = NetworkQualityTier.POOR;
-    }
-
-    setNetworkQualityTier(quality);
-    videoPerformanceConfig.setNetworkQuality(quality);
-
-    // Update quality selection for current video if network improved
-    if (quality === NetworkQualityTier.EXCELLENT && videos[activeIndex]) {
-      const video = videos[activeIndex] as any;
-      const canUpgrade = await videoQualitySelector.canUpgradeQuality(video.videoUri);
-      if (canUpgrade) {
-        await updateVideoQuality(videos[activeIndex]);
+  const handleNetworkQualityChange = useCallback(
+    async (state: any) => {
+      if (!state.isConnected) {
+        setNetworkQualityTier(NetworkQualityTier.POOR);
+        return;
       }
-    }
-  }, [activeIndex, videos]);
+
+      const type = state.type?.toLowerCase();
+      const effectiveType = state.details?.cellularGeneration?.toLowerCase() || type;
+
+      let quality: NetworkQualityTier;
+      if (effectiveType === "wifi" || effectiveType === "5g") {
+        quality = NetworkQualityTier.EXCELLENT;
+      } else if (effectiveType === "4g") {
+        quality = NetworkQualityTier.GOOD;
+      } else if (effectiveType === "3g") {
+        quality = NetworkQualityTier.FAIR;
+      } else {
+        quality = NetworkQualityTier.POOR;
+      }
+
+      setNetworkQualityTier(quality);
+      videoPerformanceConfig.setNetworkQuality(quality);
+
+      // Update quality selection for current video if network improved
+      if (quality === NetworkQualityTier.EXCELLENT && videos[activeIndex]) {
+        const video = videos[activeIndex] as any;
+        const canUpgrade = await videoQualitySelector.canUpgradeQuality(video.videoUri);
+        if (canUpgrade) {
+          await updateVideoQuality(videos[activeIndex]);
+        }
+      }
+    },
+    [activeIndex, videos],
+  );
 
   // Update video quality based on current conditions
   const updateVideoQuality = useCallback(async (video: Confession) => {
@@ -642,15 +657,15 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
 
       // Cache the quality selection
       qualitySelectionCache.current.set((video as any).videoUri, {
-        selectedUri: qualityResult.variants.find(v => v.quality === qualityResult.selectedQuality)?.uri,
+        selectedUri: qualityResult.variants.find((v) => v.quality === qualityResult.selectedQuality)?.uri,
         quality: qualityResult.selectedQuality,
         timestamp: Date.now(),
       });
 
       // Trigger re-render to use new quality
-      setVideos(prev => [...prev]);
+      setVideos((prev) => [...prev]);
     } catch (error) {
-      console.error('Failed to update video quality:', error);
+      console.error("Failed to update video quality:", error);
     }
   }, []);
 
@@ -662,17 +677,15 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     const endIdx = Math.min(videos.length, activeIndex + preloadOffset);
     const videosToPreload = videos.slice(startIdx, endIdx);
 
-    const videoUris = videosToPreload
-      .map(v => (v as any).videoUri)
-      .filter(Boolean);
+    const videoUris = videosToPreload.map((v) => (v as any).videoUri).filter(Boolean);
 
     if (videoUris.length > 0) {
       try {
         // Use device-aware preloading
-        await videoCacheManager.preloadVideos(videoUris, 'normal');
+        await videoCacheManager.preloadVideos(videoUris, "normal");
 
         // Optimize quality for preloaded videos in background
-        if (videoPerformanceConfig.shouldEnableFeature('autoQualityUpgrade')) {
+        if (videoPerformanceConfig.shouldEnableFeature("autoQualityUpgrade")) {
           setTimeout(async () => {
             for (const video of videosToPreload) {
               if (!(video as any).qualityMetadata) {
@@ -682,120 +695,122 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
           }, 2000);
         }
       } catch (error) {
-        console.error('Failed to preload videos:', error);
+        console.error("Failed to preload videos:", error);
       }
     }
   }, [videos, activeIndex, preloadOffset, deviceTier, updateVideoQuality]);
 
-  const hydrateVideos = useCallback(async (isRefresh = false, append = false) => {
-    if (loadingRef.current && !append) {
-      return;
-    }
+  const hydrateVideos = useCallback(
+    async (isRefresh = false, append = false) => {
+      if (loadingRef.current && !append) {
+        return;
+      }
 
-    loadingRef.current = true;
-    setError(null);
-    if (!isRefresh && !append) {
-      setIsLoading(true);
-    }
-    if (isRefresh) {
-      setIsRefreshing(true);
-    }
-    if (append) {
-      setIsLoadingMore(true);
-    }
+      loadingRef.current = true;
+      setError(null);
+      if (!isRefresh && !append) {
+        setIsLoading(true);
+      }
+      if (isRefresh) {
+        setIsRefreshing(true);
+      }
+      if (append) {
+        setIsLoadingMore(true);
+      }
 
-    try {
-      const result = await hydrateVideosWithRetry(isRefresh, append);
+      try {
+        const result = await hydrateVideosWithRetry(isRefresh, append);
 
-      if (result.success && result.videos) {
-        setVideos((prevVideos) => {
-          const dedupedMap = new Map<string, Confession>();
+        if (result.success && result.videos) {
+          setVideos((prevVideos) => {
+            const dedupedMap = new Map<string, Confession>();
 
-          // Add existing videos first if appending
-          if (append) {
-            for (const item of prevVideos) {
-              if (item?.id) {
-                dedupedMap.set(item.id, item);
+            // Add existing videos first if appending
+            if (append) {
+              for (const item of prevVideos) {
+                if (item?.id) {
+                  dedupedMap.set(item.id, item);
+                }
               }
             }
-          }
 
-          // Ensure result.videos is always an array of valid objects
-          const videosToProcess = Array.isArray(result.videos) 
-            ? result.videos.filter(item => item && typeof item === 'object' && item.id) 
-            : [];
-          
-          for (const item of videosToProcess) {
-            dedupedMap.set(item.id, item);
-          }
+            // Ensure result.videos is always an array of valid objects
+            const videosToProcess = Array.isArray(result.videos)
+              ? result.videos.filter((item) => item && typeof item === "object" && item.id)
+              : [];
 
-          const combined = Array.from(dedupedMap.values());
-          // Limit total videos for memory management
-          const limited = combined.slice(0, maxMemoryVideos);
-
-          if (!limited.length && !append) {
-            setActiveIndex(0);
-            return [];
-          } else {
-            if (!append) {
-              setActiveIndex((prev) => {
-                if (isRefresh) return 0;
-                return Math.min(prev, limited.length - 1);
-              });
-              setIsPlaying(false);
+            for (const item of videosToProcess) {
+              dedupedMap.set(item.id, item);
             }
-            return limited;
-          }
-        });
 
-        // Track successful load
-        VideoDataService.flushAllEvents();
-      } else if (result.error) {
-        const online = isOnline();
-        const attemptNum = retryAttempts + 1;
-        setRetryAttempts(attemptNum);
+            const combined = Array.from(dedupedMap.values());
+            // Limit total videos for memory management
+            const limited = combined.slice(0, maxMemoryVideos);
 
-        // Create VideoError from result.error
-        const videoError: VideoError = {
-          type: result.error.code === VideoErrorCode.NETWORK_ERROR ? VideoErrorType.NETWORK :
-                result.error.code === VideoErrorCode.RATE_LIMITED ? VideoErrorType.SERVER :
-                VideoErrorType.UNKNOWN,
-          code: result.error.code,
-          message: result.error.message,
-          timestamp: Date.now(),
-        };
+            if (!limited.length && !append) {
+              setActiveIndex(0);
+              return [];
+            } else {
+              if (!append) {
+                setActiveIndex((prev) => {
+                  if (isRefresh) return 0;
+                  return Math.min(prev, limited.length - 1);
+                });
+                setIsPlaying(false);
+              }
+              return limited;
+            }
+          });
 
-        const friendlyError = VideoErrorMessages.getUserFriendlyError(
-          videoError,
-          attemptNum,
-          { isOffline: !online }
-        );
+          // Track successful load
+          VideoDataService.flushAllEvents();
+        } else if (result.error) {
+          const online = isOnline();
+          const attemptNum = retryAttempts + 1;
+          setRetryAttempts(attemptNum);
 
-        setUserFriendlyError(friendlyError);
-        setError(friendlyError.message);
+          // Create VideoError from result.error
+          const videoError: VideoError = {
+            type:
+              result.error.code === VideoErrorCode.NETWORK_ERROR
+                ? VideoErrorType.NETWORK
+                : result.error.code === VideoErrorCode.RATE_LIMITED
+                  ? VideoErrorType.SERVER
+                  : VideoErrorType.UNKNOWN,
+            code: result.error.code,
+            message: result.error.message,
+            timestamp: Date.now(),
+          };
 
-        // Log error for analytics
-        VideoErrorMessages.logErrorForAnalytics(videoError, attemptNum);
+          const friendlyError = VideoErrorMessages.getUserFriendlyError(videoError, attemptNum, { isOffline: !online });
 
-        // Pause player on error
-        if (videoPlayerRef.current) {
-          try {
-            videoPlayerRef.current.pause();
-          } catch (error) {
-            // Ignore disposal errors
+          setUserFriendlyError(friendlyError);
+          setError(friendlyError.message);
+
+          // Log error for analytics
+          VideoErrorMessages.logErrorForAnalytics(videoError, attemptNum);
+
+          // Pause player on error
+          if (videoPlayerRef.current) {
+            try {
+              videoPlayerRef.current.pause();
+            } catch (error) {
+              // Ignore disposal errors
+            }
           }
         }
+      } catch (err) {
+        console.error("TikTokVideoFeed: failed to load videos", err);
+        setError("An unexpected error occurred. Please try again.");
+      } finally {
+        loadingRef.current = false;
+        setIsLoading(false);
+        setIsRefreshing(false);
+        setIsLoadingMore(false);
       }
-    } catch (err) {
-      console.error("TikTokVideoFeed: failed to load videos", err);
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      loadingRef.current = false;
-      setIsLoading(false);
-      setIsRefreshing(false);
-      setIsLoadingMore(false);
-    }
-  }, [hydrateVideosWithRetry]);
+    },
+    [hydrateVideosWithRetry],
+  );
 
   useEffect(() => {
     initializeDeviceAndNetwork();
@@ -865,9 +880,11 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     const currentVideo = videos[activeIndex];
     if (currentVideo) {
       const playerState = videoPlayersRef.current.get(currentVideo.id);
-      if (playerState?.retryCount > 0) {
+      const retryCount = playerState?.retryCount ?? 0;
+      if (playerState && retryCount > 0) {
         videoPlayersRef.current.set(currentVideo.id, {
           ...playerState,
+          player: playerState.player ?? null,
           retryCount: 0,
           error: undefined,
         });
@@ -924,49 +941,110 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
     likeHandlerRef.current = handler;
   }, []);
 
+  // Gesture handlers for advanced interactions
+  const handleSwipeUp = useCallback(() => {
+    const nextIndex = activeIndex + 1;
+    if (nextIndex < videos.length) {
+      scrollToIndex(nextIndex);
+    }
+  }, [activeIndex, videos.length]);
+
+  const handleSwipeDown = useCallback(() => {
+    if (activeIndex === 0) {
+      // Pull to refresh at top
+      handleRefresh();
+    } else {
+      const prevIndex = activeIndex - 1;
+      if (prevIndex >= 0) {
+        scrollToIndex(prevIndex);
+      }
+    }
+  }, [activeIndex, handleRefresh]);
+
+  const handleSwipeLeft = useCallback(() => {
+    setShowShareMenu(true);
+  }, []);
+
+  const handleSwipeRight = useCallback(() => {
+    setShowCreatorProfile(true);
+  }, []);
+
+  const handleLongPress = useCallback(() => {
+    // Cycle playback speed
+    setPlaybackSpeeds((prev) => ({
+      ...prev,
+      [activeIndex]: (((prev[activeIndex] || 1) * 2) % 3) + 0.5, // Cycles: 0.5, 1, 1.5, 2
+    }));
+  }, [activeIndex]);
+
+  const handlePinch = useCallback((scale: number) => {
+    setVideoZoom(scale);
+  }, []);
+
+  // Scroll to specific index
+  const scrollToIndex = useCallback((index: number) => {
+    if (flashListRef.current) {
+      flashListRef.current.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0,
+      });
+    }
+  }, []);
+
+  // Handle liking a video
+  const handleLike = useCallback(async (video: Confession) => {
+    // Use the existing like functionality from the store
+    // This would need to be implemented based on the existing like system
+    console.log("Like video:", video.id);
+  }, []);
+
   const {
     gestures: composedGestures,
     containerStyle: gestureContainerStyle,
+    overlayStyle: gestureOverlayStyle,
     resetAnimations,
+    isScrolling,
     progressY,
+    progressX,
+    pinchScale,
+    gestureState,
   } = useVideoFeedGestures({
     currentIndex: activeIndex,
     totalVideos: videos.length,
-    onRefresh: videos.length ? handleRefresh : undefined,
-    isLoading: isLoading,
+    onLongPress: handleLongPress,
+    onRefresh: handleRefresh,
+    onSwipeUp: handleSwipeUp,
+    onSwipeDown: handleSwipeDown,
+    onSwipeLeft: handleSwipeLeft,
+    onSwipeRight: handleSwipeRight,
+    onDoubleTap: handleDoubleTap,
+    onPinch: handlePinch,
+    onPlaybackSpeedChange: handleLongPress,
+    isLoading,
   });
 
   useEffect(() => {
     return () => {
       resetAnimations();
       // Cleanup all players on unmount
-      const cleanupPromises = Array.from(videoPlayersRef.current.keys()).map(id =>
-        globalVideoStore.unregisterVideoPlayer(id, {
-          type: "forced",
-          timeout: 100,
-          retries: 1,
-        })
+      const cleanupPromises = Array.from(videoPlayersRef.current.keys()).map((id) =>
+        globalVideoStore.unregisterVideoPlayer(id),
       );
       Promise.allSettled(cleanupPromises);
       videoPlayersRef.current.clear();
     };
   }, [resetAnimations, globalVideoStore]);
 
-  const handleViewableItemsChangedRef = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (!viewableItems?.length) return;
+  const handleViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (!viewableItems?.length) return;
 
-      const visibleItem = viewableItems.find((item) => item.isViewable && typeof item.index === "number");
-      if (
-        visibleItem &&
-        typeof visibleItem.index === "number" &&
-        visibleItem.index !== activeIndexRef.current
-      ) {
-        setActiveIndex(visibleItem.index);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-      }
-    },
-  );
+    const visibleItem = viewableItems.find((item) => item.isViewable && typeof item.index === "number");
+    if (visibleItem && typeof visibleItem.index === "number" && visibleItem.index !== activeIndexRef.current) {
+      setActiveIndex(visibleItem.index);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    }
+  });
 
   const renderItem = useCallback(
     ({ item, index }: { item: Confession; index: number }) => {
@@ -993,7 +1071,20 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
         />
       );
     },
-    [activeIndex, isFocused, isPlaying, muted, onClose, registerLikeHandler, videoPlayer, progressY, handleSingleTap, handleDoubleTap, networkStatus, preloadOffset],
+    [
+      activeIndex,
+      isFocused,
+      isPlaying,
+      muted,
+      onClose,
+      registerLikeHandler,
+      videoPlayer,
+      progressY,
+      handleSingleTap,
+      handleDoubleTap,
+      networkStatus,
+      preloadOffset,
+    ],
   );
 
   const errorOpacity = useAnimatedStyle(() => ({
@@ -1047,36 +1138,22 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
                 accessibilityRole="button"
                 accessibilityLabel={userFriendlyError.actionText}
               >
-                <Text style={styles.primaryButtonText}>
-                  {userFriendlyError.actionText || "Retry"}
-                </Text>
+                <Text style={styles.primaryButtonText}>{userFriendlyError.actionText || "Retry"}</Text>
               </Pressable>
             )}
 
             {userFriendlyError?.secondaryActionText && (
-              <Pressable
-                style={styles.secondaryButton}
-                onPress={() => {}}
-                accessibilityRole="button"
-              >
-                <Text style={styles.secondaryButtonText}>
-                  {userFriendlyError.secondaryActionText}
-                </Text>
+              <Pressable style={styles.secondaryButton} onPress={() => {}} accessibilityRole="button">
+                <Text style={styles.secondaryButtonText}>{userFriendlyError.secondaryActionText}</Text>
               </Pressable>
             )}
 
             {userFriendlyError?.retryStrategy.explanation && (
-              <Text style={styles.retryExplanation}>
-                {userFriendlyError.retryStrategy.explanation}
-              </Text>
+              <Text style={styles.retryExplanation}>{userFriendlyError.retryStrategy.explanation}</Text>
             )}
           </Animated.View>
         </View>
-        <NetworkStatusIndicator
-          position="top"
-          persistentMode={true}
-          onRetry={handleRefresh}
-        />
+        <NetworkStatusIndicator position="top" persistentMode={true} onRetry={handleRefresh} />
       </>
     );
   }
@@ -1129,21 +1206,9 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
               drawDistance={SCREEN_HEIGHT * 2}
             />
 
-            {isRefreshing && (
-              <VideoFeedSkeleton
-                isVisible={true}
-                state="pullToRefresh"
-                itemCount={1}
-              />
-            )}
+            {isRefreshing && <VideoFeedSkeleton isVisible={true} state="pullToRefresh" itemCount={1} />}
 
-            {isLoadingMore && (
-              <VideoFeedSkeleton
-                isVisible={true}
-                state="loadMore"
-                itemCount={1}
-              />
-            )}
+            {isLoadingMore && <VideoFeedSkeleton isVisible={true} state="loadMore" itemCount={1} />}
 
             <NetworkStatusIndicator
               position="top"

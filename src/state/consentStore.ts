@@ -218,6 +218,21 @@ export const useConsentStore = create<ConsentState>()(
   ),
 );
 
+const DEFAULT_CONSENT_PREFERENCES: ConsentPreferences = Object.freeze({
+  analytics: false,
+  advertising: false,
+  personalization: false,
+  essential: true,
+  lastUpdated: new Date(0).toISOString(),
+  version: "default",
+});
+
+export const consentStore = {
+  get preferences(): ConsentPreferences {
+    return useConsentStore.getState().preferences ?? (DEFAULT_CONSENT_PREFERENCES as ConsentPreferences);
+  },
+};
+
 // Helper functions for external use
 export const hasAnalyticsConsent = () => {
   return useConsentStore.getState().hasConsent("analytics");

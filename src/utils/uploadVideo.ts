@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "./legacyFileSystem";
 import { supabase } from "../lib/supabase";
 
 import { uploadVideoToSupabase } from "./storage";

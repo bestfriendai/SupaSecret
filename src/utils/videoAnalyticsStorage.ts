@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { VideoEvent, VideoSession, VideoAnalytics } from '../services/VideoDataService';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { VideoEvent, VideoSession, VideoAnalytics } from "../services/VideoDataService";
 
-const STORAGE_PREFIX = '@video_analytics';
+const STORAGE_PREFIX = "@video_analytics";
 const EVENTS_KEY = `${STORAGE_PREFIX}_events`;
 const SESSIONS_KEY = `${STORAGE_PREFIX}_sessions`;
 const ANALYTICS_KEY = `${STORAGE_PREFIX}_analytics`;
@@ -28,7 +28,7 @@ export interface BatchEventData {
 }
 
 class VideoAnalyticsStorage {
-  private storageVersion = '1.0.0';
+  private storageVersion = "1.0.0";
   private compressionEnabled = true;
 
   /**
@@ -49,7 +49,7 @@ class VideoAnalyticsStorage {
         await this.migrateStorage(metadata.version);
       }
     } catch (error) {
-      console.error('Failed to initialize video analytics storage:', error);
+      console.error("Failed to initialize video analytics storage:", error);
     }
   }
 
@@ -66,19 +66,20 @@ class VideoAnalyticsStorage {
       const limited = combined.slice(-MAX_EVENTS_PER_VIDEO);
 
       // Compress if threshold exceeded
-      const dataToStore = limited.length > COMPRESSION_THRESHOLD
-        ? await this.compressEvents(limited)
-        : limited;
+      const dataToStore = limited.length > COMPRESSION_THRESHOLD ? await this.compressEvents(limited) : limited;
 
-      await AsyncStorage.setItem(key, JSON.stringify({
-        events: dataToStore,
-        compressed: limited.length > COMPRESSION_THRESHOLD,
-        timestamp: Date.now(),
-      }));
+      await AsyncStorage.setItem(
+        key,
+        JSON.stringify({
+          events: dataToStore,
+          compressed: limited.length > COMPRESSION_THRESHOLD,
+          timestamp: Date.now(),
+        }),
+      );
 
       await this.updateMetadata({ eventCount: limited.length });
     } catch (error) {
-      console.error('Failed to store video events:', error);
+      console.error("Failed to store video events:", error);
       throw error;
     }
   }
@@ -101,7 +102,7 @@ class VideoAnalyticsStorage {
 
       return data.events || [];
     } catch (error) {
-      console.error('Failed to retrieve video events:', error);
+      console.error("Failed to retrieve video events:", error);
       return [];
     }
   }
@@ -111,7 +112,7 @@ class VideoAnalyticsStorage {
    */
   async storeBatchEvents(batches: BatchEventData[]): Promise<void> {
     try {
-      const operations = batches.map(batch => ({
+      const operations = batches.map((batch) => ({
         key: `${EVENTS_KEY}_${batch.videoId}`,
         value: JSON.stringify({
           events: batch.compressed ? batch.events : batch.events,
@@ -125,7 +126,7 @@ class VideoAnalyticsStorage {
       const totalEvents = batches.reduce((sum, batch) => sum + batch.events.length, 0);
       await this.updateMetadata({ eventCount: totalEvents });
     } catch (error) {
-      console.error('Failed to store batch events:', error);
+      console.error("Failed to store batch events:", error);
       throw error;
     }
   }
@@ -136,11 +137,11 @@ class VideoAnalyticsStorage {
   async getAllPendingEvents(): Promise<Map<string, VideoEvent[]>> {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const eventKeys = keys.filter(k => k.startsWith(EVENTS_KEY));
+      const eventKeys = keys.filter((k) => k.startsWith(EVENTS_KEY));
       const results = new Map<string, VideoEvent[]>();
 
       for (const key of eventKeys) {
-        const videoId = key.replace(`${EVENTS_KEY}_`, '');
+        const videoId = key.replace(`${EVENTS_KEY}_`, "");
         const events = await this.getEvents(videoId);
         if (events.length > 0) {
           results.set(videoId, events);
@@ -149,7 +150,7 @@ class VideoAnalyticsStorage {
 
       return results;
     } catch (error) {
-      console.error('Failed to retrieve pending events:', error);
+      console.error("Failed to retrieve pending events:", error);
       return new Map();
     }
   }
@@ -159,11 +160,11 @@ class VideoAnalyticsStorage {
    */
   async clearEvents(videoIds: string[]): Promise<void> {
     try {
-      const keys = videoIds.map(id => `${EVENTS_KEY}_${id}`);
+      const keys = videoIds.map((id) => `${EVENTS_KEY}_${id}`);
       await AsyncStorage.multiRemove(keys);
       await this.updateMetadata({ eventCount: 0 });
     } catch (error) {
-      console.error('Failed to clear events:', error);
+      console.error("Failed to clear events:", error);
     }
   }
 
@@ -178,16 +179,14 @@ class VideoAnalyticsStorage {
       // Limit total sessions
       const sessionIds = Object.keys(sessions);
       if (sessionIds.length > MAX_SESSIONS) {
-        const sortedIds = sessionIds.sort((a, b) =>
-          (sessions[b].startTime || 0) - (sessions[a].startTime || 0)
-        );
-        sortedIds.slice(MAX_SESSIONS).forEach(id => delete sessions[id]);
+        const sortedIds = sessionIds.sort((a, b) => (sessions[b].startTime || 0) - (sessions[a].startTime || 0));
+        sortedIds.slice(MAX_SESSIONS).forEach((id) => delete sessions[id]);
       }
 
       await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
       await this.updateMetadata({ sessionCount: Object.keys(sessions).length });
     } catch (error) {
-      console.error('Failed to store session:', error);
+      console.error("Failed to store session:", error);
     }
   }
 
@@ -199,7 +198,7 @@ class VideoAnalyticsStorage {
       const sessions = await this.getAllSessions();
       return sessions[sessionId] || null;
     } catch (error) {
-      console.error('Failed to retrieve session:', error);
+      console.error("Failed to retrieve session:", error);
       return null;
     }
   }
@@ -212,7 +211,7 @@ class VideoAnalyticsStorage {
       const stored = await AsyncStorage.getItem(SESSIONS_KEY);
       return stored ? JSON.parse(stored) : {};
     } catch (error) {
-      console.error('Failed to retrieve sessions:', error);
+      console.error("Failed to retrieve sessions:", error);
       return {};
     }
   }
@@ -223,12 +222,15 @@ class VideoAnalyticsStorage {
   async storeAnalytics(videoId: string, analytics: VideoAnalytics): Promise<void> {
     try {
       const key = `${ANALYTICS_KEY}_${videoId}`;
-      await AsyncStorage.setItem(key, JSON.stringify({
-        analytics,
-        timestamp: Date.now(),
-      }));
+      await AsyncStorage.setItem(
+        key,
+        JSON.stringify({
+          analytics,
+          timestamp: Date.now(),
+        }),
+      );
     } catch (error) {
-      console.error('Failed to store analytics:', error);
+      console.error("Failed to store analytics:", error);
     }
   }
 
@@ -245,7 +247,7 @@ class VideoAnalyticsStorage {
       const data = JSON.parse(stored);
       return data.analytics;
     } catch (error) {
-      console.error('Failed to retrieve analytics:', error);
+      console.error("Failed to retrieve analytics:", error);
       return null;
     }
   }
@@ -262,14 +264,14 @@ class VideoAnalyticsStorage {
     try {
       const metadata = await this.getMetadata();
       const keys = await AsyncStorage.getAllKeys();
-      const analyticsKeys = keys.filter(k => k.startsWith(STORAGE_PREFIX));
+      const analyticsKeys = keys.filter((k) => k.startsWith(STORAGE_PREFIX));
 
       let totalSize = 0;
       for (const key of analyticsKeys) {
         try {
           const value = await AsyncStorage.getItem(key);
           if (value) {
-            const bytes = typeof value === 'string' ? (new TextEncoder().encode(value)).length : 0;
+            const bytes = typeof value === "string" ? new TextEncoder().encode(value).length : 0;
             totalSize += bytes;
           }
         } catch (error) {
@@ -287,7 +289,7 @@ class VideoAnalyticsStorage {
         needsCleanup,
       };
     } catch (error) {
-      console.error('Failed to get storage info:', error);
+      console.error("Failed to get storage info:", error);
       return {
         sizeInMB: 0,
         eventCount: 0,
@@ -303,11 +305,11 @@ class VideoAnalyticsStorage {
   async performCleanup(): Promise<void> {
     try {
       const now = Date.now();
-      const cutoffTime = now - (CLEANUP_INTERVAL_DAYS * 24 * 60 * 60 * 1000);
+      const cutoffTime = now - CLEANUP_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
 
       // Clean up old events
       const keys = await AsyncStorage.getAllKeys();
-      const eventKeys = keys.filter(k => k.startsWith(EVENTS_KEY));
+      const eventKeys = keys.filter((k) => k.startsWith(EVENTS_KEY));
 
       for (const key of eventKeys) {
         const stored = await AsyncStorage.getItem(key);
@@ -337,7 +339,7 @@ class VideoAnalyticsStorage {
         sessionCount: Object.keys(filteredSessions).length,
       });
     } catch (error) {
-      console.error('Failed to perform cleanup:', error);
+      console.error("Failed to perform cleanup:", error);
     }
   }
 
@@ -347,11 +349,11 @@ class VideoAnalyticsStorage {
   async clearAll(): Promise<void> {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const analyticsKeys = keys.filter(k => k.startsWith(STORAGE_PREFIX));
+      const analyticsKeys = keys.filter((k) => k.startsWith(STORAGE_PREFIX));
       await AsyncStorage.multiRemove(analyticsKeys);
       await this.initializeMetadata();
     } catch (error) {
-      console.error('Failed to clear all analytics data:', error);
+      console.error("Failed to clear all analytics data:", error);
     }
   }
 
@@ -371,11 +373,11 @@ class VideoAnalyticsStorage {
 
       // Get all analytics
       const keys = await AsyncStorage.getAllKeys();
-      const analyticsKeys = keys.filter(k => k.startsWith(ANALYTICS_KEY));
+      const analyticsKeys = keys.filter((k) => k.startsWith(ANALYTICS_KEY));
       const analytics = new Map<string, VideoAnalytics>();
 
       for (const key of analyticsKeys) {
-        const videoId = key.replace(`${ANALYTICS_KEY}_`, '');
+        const videoId = key.replace(`${ANALYTICS_KEY}_`, "");
         const data = await this.getAnalytics(videoId);
         if (data) {
           analytics.set(videoId, data);
@@ -389,7 +391,7 @@ class VideoAnalyticsStorage {
         metadata,
       };
     } catch (error) {
-      console.error('Failed to export data:', error);
+      console.error("Failed to export data:", error);
       throw error;
     }
   }
@@ -420,7 +422,7 @@ class VideoAnalyticsStorage {
         sessionCount: Object.keys(data.sessions).length,
       });
     } catch (error) {
-      console.error('Failed to import data:', error);
+      console.error("Failed to import data:", error);
       throw error;
     }
   }
@@ -429,7 +431,7 @@ class VideoAnalyticsStorage {
 
   private async compressEvents(events: VideoEvent[]): Promise<any> {
     // Simple compression by removing redundant fields
-    return events.map(e => ({
+    return events.map((e) => ({
       t: e.type,
       ts: e.timestamp,
       s: e.sessionId,
@@ -438,12 +440,15 @@ class VideoAnalyticsStorage {
   }
 
   private async decompressEvents(compressed: any[]): Promise<VideoEvent[]> {
-    return compressed.map(c => ({
-      type: c.t,
-      timestamp: c.ts,
-      sessionId: c.s,
-      metadata: c.m,
-    } as VideoEvent));
+    return compressed.map(
+      (c) =>
+        ({
+          type: c.t,
+          timestamp: c.ts,
+          sessionId: c.s,
+          metadata: c.m,
+        }) as VideoEvent,
+    );
   }
 
   private async getMetadata(): Promise<StorageMetadata> {
@@ -453,7 +458,7 @@ class VideoAnalyticsStorage {
         return JSON.parse(stored);
       }
     } catch (error) {
-      console.error('Failed to get metadata:', error);
+      console.error("Failed to get metadata:", error);
     }
 
     return this.initializeMetadata();
@@ -478,7 +483,7 @@ class VideoAnalyticsStorage {
       const updated = { ...current, ...updates };
       await AsyncStorage.setItem(METADATA_KEY, JSON.stringify(updated));
     } catch (error) {
-      console.error('Failed to update metadata:', error);
+      console.error("Failed to update metadata:", error);
     }
   }
 
@@ -489,7 +494,7 @@ class VideoAnalyticsStorage {
   }
 
   private async multiSet(operations: { key: string; value: string }[]): Promise<void> {
-    const pairs = operations.map(op => [op.key, op.value] as [string, string]);
+    const pairs = operations.map((op) => [op.key, op.value] as [string, string]);
     await AsyncStorage.multiSet(pairs);
   }
 }

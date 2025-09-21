@@ -16,9 +16,7 @@ export const VideoDebugInfo: React.FC<VideoDebugInfoProps> = ({
   videoPlayer,
 }) => {
   const currentVideo =
-    currentIndex >= 0 && currentIndex < videoConfessions.length
-      ? videoConfessions[currentIndex]
-      : null;
+    currentIndex >= 0 && currentIndex < videoConfessions.length ? videoConfessions[currentIndex] : null;
 
   if (!__DEV__) {
     return null;
@@ -34,11 +32,9 @@ export const VideoDebugInfo: React.FC<VideoDebugInfoProps> = ({
       {currentVideo && (
         <>
           <Text style={styles.debugText}>Current Video:</Text>
-          <Text style={styles.debugText}>  ID: {currentVideo.id}</Text>
-          <Text style={styles.debugText}>  URI: {currentVideo.videoUri || "N/A"}</Text>
-          <Text style={styles.debugText}>
-            {`  Content: ${currentVideo.content?.substring(0, 50) || "N/A"}...`}
-          </Text>
+          <Text style={styles.debugText}> ID: {currentVideo.id}</Text>
+          <Text style={styles.debugText}> URI: {currentVideo.videoUri || "N/A"}</Text>
+          <Text style={styles.debugText}>{`  Content: ${currentVideo.content?.substring(0, 50) || "N/A"}...`}</Text>
         </>
       )}
     </View>
@@ -62,4 +58,3 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
   },
 });
-

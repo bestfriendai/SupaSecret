@@ -1,4 +1,5 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "../utils/legacyFileSystem";
+import { Directory } from "expo-file-system";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { IAnonymiser, ProcessedVideo, VideoProcessingOptions } from "./IAnonymiser";
 import { ensureSignedVideoUrl, uploadVideoToSupabase } from "../utils/storage";
@@ -62,7 +63,7 @@ export interface UnifiedVideoProcessingOptions extends VideoProcessingOptions {
   cacheStrategy?: "aggressive" | "normal" | "bypass";
 }
 
-class UnifiedVideoProcessingService implements IAnonymiser {
+export class UnifiedVideoProcessingService implements IAnonymiser {
   private static instance: UnifiedVideoProcessingService;
   private isInitialized = false;
   private processingQueue: ProcessingJob[] = [];
@@ -310,7 +311,7 @@ class UnifiedVideoProcessingService implements IAnonymiser {
     report(15, "Processing with FFmpeg...");
 
     const processingDir = `${FileSystem.Paths.cache.uri}processing_${job.id}/`;
-    await FileSystem.makeDirectoryAsync(processingDir, { intermediates: true });
+    new Directory(processingDir).create({ intermediates: true });
 
     try {
       let currentUri = job.uri;

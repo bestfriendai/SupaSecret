@@ -9,11 +9,7 @@ import {
   VideoPlayerCapabilities,
   VideoPlaybackState,
 } from "../types/videoPlayer";
-import {
-  VideoPlayerError,
-  VideoErrorCode,
-  VideoErrorSeverity,
-} from "../types/videoErrors";
+import { BaseVideoError, VideoErrorCode, VideoErrorSeverity } from "../types/videoErrors";
 import {
   disposeVideoPlayer,
   scheduleVideoPlayerDisposal,
@@ -60,11 +56,7 @@ interface GlobalVideoState {
   };
 
   // Actions
-  registerVideoPlayer: (
-    id: string,
-    player: VideoPlayerInterface,
-    capabilities?: VideoPlayerCapabilities
-  ) => void;
+  registerVideoPlayer: (id: string, player: VideoPlayerInterface, capabilities?: VideoPlayerCapabilities) => void;
   unregisterVideoPlayer: (id: string) => Promise<void>;
   pauseAllVideos: () => Promise<void>;
   resumeVideosForTab: (tabName: string) => Promise<void>;
@@ -133,7 +125,7 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
         const playerRef: VideoPlayerRef = {
           id,
           player,
-          state: VideoPlayerState.IDLE,
+          state: VideoPlayerState.Idle,
           capabilities: capabilities || {
             canPlay: true,
             canPause: true,
@@ -210,7 +202,7 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
                 timeout: 100,
               }).then(
                 () => get().updateErrorMetrics("disposal", true),
-                () => get().updateErrorMetrics("disposal", false)
+                () => get().updateErrorMetrics("disposal", false),
               );
             }
           } catch (error) {
@@ -234,25 +226,23 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
         const t0 = Date.now();
         const { videoPlayers, playersMeta } = get();
 
-        const pauseOperations = Array.from(videoPlayers.entries()).map(
-          async ([id, playerRef]) => {
-            try {
-              if (playerRef.player) {
-                if (typeof playerRef.player.pause === "function") {
-                  await playerRef.player.pause();
-                }
-                if (typeof playerRef.player.setMuted === "function") {
-                  playerRef.player.setMuted(true);
-                }
+        const pauseOperations = Array.from(videoPlayers.entries()).map(async ([id, playerRef]) => {
+          try {
+            if (playerRef.player) {
+              if (typeof playerRef.player.pause === "function") {
+                await playerRef.player.pause();
               }
-              return { id, success: true };
-            } catch (error) {
-              get().updateErrorMetrics("general", false);
-              if (__DEV__) console.warn(`🎥 Failed to pause video ${id}:`, error);
-              return { id, success: false };
+              if (typeof playerRef.player.setMuted === "function") {
+                playerRef.player.setMuted(true);
+              }
             }
+            return { id, success: true };
+          } catch (error) {
+            get().updateErrorMetrics("general", false);
+            if (__DEV__) console.warn(`🎥 Failed to pause video ${id}:`, error);
+            return { id, success: false };
           }
-        );
+        });
 
         const results = await Promise.allSettled(pauseOperations);
 
@@ -271,30 +261,28 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
         const { videoPlayers, currentTab, playersMeta } = get();
 
         if (tabName === "Videos" && currentTab === "Videos") {
-          const resumeOperations = Array.from(videoPlayers.entries()).map(
-            async ([id, playerRef]) => {
-              try {
-                if (playerRef.player && playersMeta[id]?.isPlaying) {
-                  if (typeof playerRef.player.setMuted === "function") {
-                    playerRef.player.setMuted(false);
-                  }
-                  if (typeof playerRef.player.play === "function") {
-                    await playerRef.player.play();
-                  }
+          const resumeOperations = Array.from(videoPlayers.entries()).map(async ([id, playerRef]) => {
+            try {
+              if (playerRef.player && playersMeta[id]?.isPlaying) {
+                if (typeof playerRef.player.setMuted === "function") {
+                  playerRef.player.setMuted(false);
                 }
-                return { id, success: true };
-              } catch (error) {
-                get().updateErrorMetrics("general", false);
-
-                // Attempt recovery
-                const recovered = await get().recoverPlayer(id);
-                if (!recovered && __DEV__) {
-                  console.warn(`🎥 Failed to resume video ${id}:`, error);
+                if (typeof playerRef.player.play === "function") {
+                  await playerRef.player.play();
                 }
-                return { id, success: recovered };
               }
+              return { id, success: true };
+            } catch (error) {
+              get().updateErrorMetrics("general", false);
+
+              // Attempt recovery
+              const recovered = await get().recoverPlayer(id);
+              if (!recovered && __DEV__) {
+                console.warn(`🎥 Failed to resume video ${id}:`, error);
+              }
+              return { id, success: recovered };
             }
-          );
+          });
 
           await Promise.allSettled(resumeOperations);
         }
@@ -329,13 +317,13 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
           };
 
           // Only derive state when both values are meaningful
-          if (state.currentTime !== undefined &&
-              state.duration !== undefined &&
-              state.currentTime > 0 &&
-              state.duration > 0) {
-            updatedRef.state = state.currentTime > 0
-              ? VideoPlayerState.PLAYING
-              : VideoPlayerState.IDLE;
+          if (
+            state.currentTime !== undefined &&
+            state.duration !== undefined &&
+            state.currentTime > 0 &&
+            state.duration > 0
+          ) {
+            updatedRef.state = state.currentTime > 0 ? VideoPlayerState.Playing : VideoPlayerState.Idle;
           }
 
           newPlayers.set(id, updatedRef);
@@ -375,9 +363,9 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
         }
 
         try {
-          // Attempt to reset the player
-          if (typeof playerRef.player.reset === "function") {
-            await playerRef.player.reset();
+          const playerInstance = playerRef.player as any;
+          if (typeof playerInstance?.reset === "function") {
+            await playerInstance.reset();
           }
 
           // Update recovery metrics
@@ -397,8 +385,9 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
         } catch (error) {
           get().updateErrorMetrics("recovery", false);
 
-          // Comment 3: Convert error to serializable format
-          if (error instanceof VideoPlayerError) {
+          const message = error instanceof Error ? error.message : String(error);
+
+          if (error instanceof BaseVideoError) {
             set({
               playersMeta: {
                 ...playersMeta,
@@ -406,8 +395,23 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
                   ...playersMeta[id],
                   lastError: {
                     code: error.code,
-                    message: error.message,
+                    message,
                     severity: error.severity || VideoErrorSeverity.ERROR,
+                    at: Date.now(),
+                  },
+                },
+              },
+            });
+          } else {
+            set({
+              playersMeta: {
+                ...playersMeta,
+                [id]: {
+                  ...playersMeta[id],
+                  lastError: {
+                    code: VideoErrorCode.Unknown,
+                    message,
+                    severity: VideoErrorSeverity.ERROR,
                     at: Date.now(),
                   },
                 },
@@ -464,8 +468,8 @@ export const useGlobalVideoStore = create<GlobalVideoState>()(
         errorMetrics: state.errorMetrics,
       }),
       version: 2,
-    }
-  )
+    },
+  ),
 );
 
 // Centralized cleanup registration with enhanced disposal
@@ -484,7 +488,7 @@ registerStoreCleanup("globalVideoStore", async () => {
       strategy: DisposalStrategy.FORCED,
       timeout: 100,
       retries: 1,
-    })
+    }),
   );
 
   await Promise.allSettled(disposalPromises);

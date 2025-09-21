@@ -36,54 +36,12 @@ const ERROR_PATTERNS = {
     "no internet",
     "connection failed",
   ],
-  decode: [
-    "decode",
-    "codec",
-    "unsupported format",
-    "invalid video",
-    "corrupted",
-    "malformed",
-    "ERR_VIDEO_DECODE",
-  ],
-  source: [
-    "404",
-    "403",
-    "401",
-    "not found",
-    "forbidden",
-    "unauthorized",
-    "invalid url",
-    "source not available",
-  ],
-  permission: [
-    "permission denied",
-    "not allowed",
-    "access denied",
-    "unauthorized",
-    "forbidden",
-  ],
-  rateLimit: [
-    "rate limit",
-    "too many requests",
-    "429",
-    "throttled",
-    "quota exceeded",
-  ],
-  playback: [
-    "playback",
-    "stalled",
-    "buffering",
-    "stuck",
-    "not playing",
-    "player error",
-  ],
-  memory: [
-    "out of memory",
-    "memory",
-    "allocation failed",
-    "OOM",
-    "memory leak",
-  ],
+  decode: ["decode", "codec", "unsupported format", "invalid video", "corrupted", "malformed", "ERR_VIDEO_DECODE"],
+  source: ["404", "403", "401", "not found", "forbidden", "unauthorized", "invalid url", "source not available"],
+  permission: ["permission denied", "not allowed", "access denied", "unauthorized", "forbidden"],
+  rateLimit: ["rate limit", "too many requests", "429", "throttled", "quota exceeded"],
+  playback: ["playback", "stalled", "buffering", "stuck", "not playing", "player error"],
+  memory: ["out of memory", "memory", "allocation failed", "OOM", "memory leak"],
 };
 
 // Error recovery strategies
@@ -152,10 +110,7 @@ class VideoErrorAnalyzer {
   /**
    * Create a recovery strategy based on error type and context
    */
-  static createErrorRecoveryStrategy(
-    error: BaseVideoError,
-    context?: ErrorContext
-  ): ErrorRecoveryStrategy {
+  static createErrorRecoveryStrategy(error: BaseVideoError, context?: ErrorContext): ErrorRecoveryStrategy {
     const metrics = this.getErrorMetrics(error.code);
     const severity = error.severity || VideoErrorSeverity.ERROR;
 
@@ -338,24 +293,22 @@ class VideoErrorAnalyzer {
   /**
    * Create error with context
    */
-  static createContextualError(
-    code: VideoErrorCode,
-    message: string,
-    context?: ErrorContext
-  ): BaseVideoError {
-    const ErrorClass = this.getErrorClass(code);
+  static createContextualError(code: VideoErrorCode, message: string, context?: ErrorContext): BaseVideoError {
     const severity = this.getDefaultSeverity(code);
+    const recoverable = this.isRecoverableCode(code);
+    const metadata: Record<string, unknown> | undefined = context
+      ? {
+          context,
+        }
+      : undefined;
 
-    const error = new ErrorClass(code, message, severity);
+    const error = this.instantiateError(code, message, metadata, recoverable, severity);
 
-    // Attach context
     if (context) {
       (error as any).context = context;
     }
 
-    // Update metrics
     this.recordError(error);
-
     return error;
   }
 
@@ -376,9 +329,13 @@ class VideoErrorAnalyzer {
       if (err.networkStatus !== undefined) context.networkStatus = err.networkStatus;
 
       // Add device info
+      const platformInfo = (globalThis as { Platform?: { OS?: unknown; Version?: unknown } }).Platform;
       context.deviceInfo = {
-        platform: typeof global?.Platform?.OS === "string" ? global.Platform.OS : "unknown",
-        version: typeof global?.Platform?.Version === "number" ? String(global.Platform.Version) : "unknown",
+        platform: typeof platformInfo?.OS === "string" ? (platformInfo.OS as string) : "unknown",
+        version:
+          typeof platformInfo?.Version === "number"
+            ? String(platformInfo.Version as number)
+            : "unknown",
         isHermes: this.isHermesRuntime(),
       };
 
@@ -404,7 +361,7 @@ class VideoErrorAnalyzer {
         suggestions.push(
           "Check your internet connection",
           "Try switching between Wi-Fi and mobile data",
-          "Restart the app"
+          "Restart the app",
         );
         break;
 
@@ -413,23 +370,19 @@ class VideoErrorAnalyzer {
         suggestions.push(
           "Wait for the video to buffer",
           "Try lowering video quality",
-          "Close other apps to free up resources"
+          "Close other apps to free up resources",
         );
         break;
 
       case VideoErrorCode.SOURCE_NOT_FOUND:
-        suggestions.push(
-          "This video may have been removed",
-          "Try refreshing the feed",
-          "Check back later"
-        );
+        suggestions.push("This video may have been removed", "Try refreshing the feed", "Check back later");
         break;
 
       case VideoErrorCode.RATE_LIMITED:
         suggestions.push(
           "You've made too many requests",
           "Wait a few minutes before trying again",
-          "Avoid rapid scrolling through videos"
+          "Avoid rapid scrolling through videos",
         );
         break;
 
@@ -437,7 +390,7 @@ class VideoErrorAnalyzer {
         suggestions.push(
           "Try again in a moment",
           "Restart the app if the problem persists",
-          "Contact support if this continues"
+          "Contact support if this continues",
         );
     }
 
@@ -462,8 +415,7 @@ class VideoErrorAnalyzer {
       .map(([code]) => code as VideoErrorCode);
 
     // Analyze recent trend
-    const recentErrors = Array.from(this.errorHistory.values())
-      .filter(m => now - m.lastOccurrence < recentWindow);
+    const recentErrors = Array.from(this.errorHistory.values()).filter((m) => now - m.lastOccurrence < recentWindow);
 
     const trend = this.calculateTrend(recentErrors);
 
@@ -489,7 +441,7 @@ class VideoErrorAnalyzer {
   }
 
   private static matchesPatterns(str: string, patterns: string[]): boolean {
-    return patterns.some(pattern => str.includes(pattern.toLowerCase()));
+    return patterns.some((pattern) => str.includes(pattern.toLowerCase()));
   }
 
   private static categoryToErrorCode(category: string): VideoErrorCode {
@@ -506,30 +458,70 @@ class VideoErrorAnalyzer {
     return mapping[category] || VideoErrorCode.UNKNOWN;
   }
 
-  private static getErrorClass(code: VideoErrorCode): typeof BaseVideoError {
-    if (code.includes("DISPOSAL")) return VideoDisposalError;
-    if (code.includes("NETWORK") || code.includes("CONNECTION")) return VideoNetworkError;
-    if (code.includes("LOAD")) return VideoLoadError;
-    if (code.includes("PLAYBACK") || code.includes("BUFFERING")) return VideoPlaybackError;
-    if (code.includes("PERMISSION") || code.includes("UNAUTHORIZED")) return VideoPermissionError;
-    if (code.includes("SOURCE")) return VideoSourceError;
-    return BaseVideoError;
+  private static instantiateError(
+    code: VideoErrorCode,
+    message: string,
+    metadata: Record<string, unknown> | undefined,
+    recoverable: boolean,
+    severity: VideoErrorSeverity,
+  ): BaseVideoError {
+    switch (code) {
+      case VideoErrorCode.DISPOSAL_ERROR:
+      case VideoErrorCode.DISPOSAL_FAILED:
+      case VideoErrorCode.DISPOSAL_TIMEOUT:
+        return new VideoDisposalError(message, metadata, severity);
+
+      case VideoErrorCode.NETWORK_ERROR:
+      case VideoErrorCode.CONNECTION_FAILED:
+      case VideoErrorCode.LOAD_FAILED:
+        return new VideoNetworkError(message, metadata, severity);
+
+      case VideoErrorCode.PLAYBACK_FAILED:
+      case VideoErrorCode.PLAYBACK_STALLED:
+      case VideoErrorCode.BUFFERING_TIMEOUT:
+        return new VideoPlaybackError(code, message, metadata, severity);
+
+      case VideoErrorCode.PERMISSION_DENIED:
+      case VideoErrorCode.UNAUTHORIZED:
+        return new VideoPermissionError(message, metadata);
+
+      case VideoErrorCode.SOURCE_NOT_FOUND:
+      case VideoErrorCode.SOURCE_INVALID:
+        return new VideoSourceError(code, message, metadata, severity);
+
+      default:
+        return new BaseVideoError(code, message, metadata, recoverable, severity);
+    }
   }
 
   private static getDefaultSeverity(code: VideoErrorCode): VideoErrorSeverity {
-    const criticalCodes = [
+    const criticalCodes: VideoErrorCode[] = [
       VideoErrorCode.PERMISSION_DENIED,
       VideoErrorCode.UNAUTHORIZED,
     ];
 
-    const warningCodes = [
+    const warningCodes: VideoErrorCode[] = [
       VideoErrorCode.DISPOSAL_TIMEOUT,
       VideoErrorCode.BUFFERING_TIMEOUT,
+      VideoErrorCode.DISPOSAL_ERROR,
     ];
 
     if (criticalCodes.includes(code)) return VideoErrorSeverity.CRITICAL;
     if (warningCodes.includes(code)) return VideoErrorSeverity.WARNING;
     return VideoErrorSeverity.ERROR;
+  }
+
+  private static isRecoverableCode(code: VideoErrorCode): boolean {
+    const nonRecoverable: VideoErrorCode[] = [
+      VideoErrorCode.PERMISSION_DENIED,
+      VideoErrorCode.UNAUTHORIZED,
+      VideoErrorCode.SOURCE_NOT_FOUND,
+      VideoErrorCode.SOURCE_INVALID,
+      VideoErrorCode.DISPOSAL_ERROR,
+      VideoErrorCode.DISPOSAL_FAILED,
+    ];
+
+    return !nonRecoverable.includes(code);
   }
 
   private static getErrorMetrics(code: VideoErrorCode): ErrorMetrics {
@@ -555,7 +547,7 @@ class VideoErrorAnalyzer {
     // Cleanup old cache entries if too large
     if (this.errorPatternCache.size > 1000) {
       const entriesToDelete = Array.from(this.errorPatternCache.keys()).slice(0, 500);
-      entriesToDelete.forEach(key => this.errorPatternCache.delete(key));
+      entriesToDelete.forEach((key) => this.errorPatternCache.delete(key));
     }
   }
 
@@ -583,10 +575,7 @@ class VideoErrorAnalyzer {
     return "stable";
   }
 
-  private static generateRecommendations(
-    frequentErrors: VideoErrorCode[],
-    trend: string
-  ): string[] {
+  private static generateRecommendations(frequentErrors: VideoErrorCode[], trend: string): string[] {
     const recommendations: string[] = [];
 
     if (trend === "increasing") {
@@ -612,21 +601,16 @@ class VideoErrorAnalyzer {
 // Exported functions for backward compatibility and ease of use
 export const isDisposalError = (error: unknown): boolean => {
   const code = VideoErrorAnalyzer.detectVideoErrorType(error);
-  return [
-    VideoErrorCode.DISPOSAL_ERROR,
-    VideoErrorCode.DISPOSAL_FAILED,
-    VideoErrorCode.DISPOSAL_TIMEOUT,
-  ].includes(code);
+  return [VideoErrorCode.DISPOSAL_ERROR, VideoErrorCode.DISPOSAL_FAILED, VideoErrorCode.DISPOSAL_TIMEOUT].includes(
+    code,
+  );
 };
 
 export const detectVideoErrorType = (error: unknown): VideoErrorCode => {
   return VideoErrorAnalyzer.detectVideoErrorType(error);
 };
 
-export const createErrorRecoveryStrategy = (
-  error: BaseVideoError,
-  context?: ErrorContext
-): ErrorRecoveryStrategy => {
+export const createErrorRecoveryStrategy = (error: BaseVideoError, context?: ErrorContext): ErrorRecoveryStrategy => {
   return VideoErrorAnalyzer.createErrorRecoveryStrategy(error, context);
 };
 
@@ -645,7 +629,7 @@ export const getErrorSeverity = (error: BaseVideoError): VideoErrorSeverity => {
 export const createContextualError = (
   code: VideoErrorCode,
   message: string,
-  context?: ErrorContext
+  context?: ErrorContext,
 ): BaseVideoError => {
   return VideoErrorAnalyzer.createContextualError(code, message, context);
 };
@@ -692,10 +676,10 @@ export class ErrorRateLimiter {
 
 // Error correlation utility
 export class ErrorCorrelator {
-  private errorSequences: Array<{
+  private errorSequences: {
     errors: VideoErrorCode[];
     timestamp: number;
-  }> = [];
+  }[] = [];
 
   recordError(code: VideoErrorCode): void {
     const now = Date.now();

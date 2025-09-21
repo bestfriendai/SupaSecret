@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../lib/supabase";
 
@@ -101,7 +101,6 @@ export async function uploadVideoToSupabase(
 
   const uploadOptions: any = {
     httpMethod: "POST",
-    uploadType: "BINARY_CONTENT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": contentType,

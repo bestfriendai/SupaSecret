@@ -48,26 +48,14 @@ const FeedItemSkeleton: React.FC<FeedItemSkeletonProps> = ({ index, delay, orien
   const scale = useSharedValue(0.98);
 
   useEffect(() => {
-    translateY.value = withDelay(
-      delay,
-      withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) })
-    );
-    opacity.value = withDelay(
-      delay,
-      withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) })
-    );
-    scale.value = withDelay(
-      delay,
-      withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) })
-    );
+    translateY.value = withDelay(delay, withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }));
+    opacity.value = withDelay(delay, withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) }));
+    scale.value = withDelay(delay, withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) }));
   }, [delay]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { translateY: translateY.value },
-      { scale: scale.value }
-    ],
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
   const isLandscape = orientation === "landscape";
@@ -75,11 +63,7 @@ const FeedItemSkeleton: React.FC<FeedItemSkeletonProps> = ({ index, delay, orien
   const itemWidth = isLandscape ? screenWidth * 0.6 : screenWidth;
 
   return (
-    <Animated.View style={[
-      styles.feedItem,
-      { height: itemHeight, width: itemWidth },
-      animatedStyle
-    ]}>
+    <Animated.View style={[styles.feedItem, { height: itemHeight, width: itemWidth }, animatedStyle]}>
       <View style={styles.videoBackground} />
 
       <View style={styles.videoThumbnailContainer}>
@@ -149,11 +133,7 @@ export default function VideoFeedSkeleton({
   animationTiming = {},
   onAnimationComplete,
 }: VideoFeedSkeletonProps) {
-  const {
-    fade = 300,
-    stagger = 80,
-    shimmer = 1800,
-  } = animationTiming;
+  const { fade = 300, stagger = 80, shimmer = 1800 } = animationTiming;
 
   const shimmerTranslateX = useSharedValue(-screenWidth);
   const pulseOpacity = useSharedValue(0.4);
@@ -171,7 +151,7 @@ export default function VideoFeedSkeleton({
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
     return () => subscription?.remove();
   }, []);
 
@@ -181,16 +161,13 @@ export default function VideoFeedSkeleton({
         shimmerTranslateX.value = withRepeat(
           withTiming(screenWidth * 2, { duration: shimmer, easing: Easing.linear }),
           -1,
-          false
+          false,
         );
 
         pulseOpacity.value = withRepeat(
-          withSequence(
-            withTiming(0.7, { duration: 1000 }),
-            withTiming(0.4, { duration: 1000 })
-          ),
+          withSequence(withTiming(0.7, { duration: 1000 }), withTiming(0.4, { duration: 1000 })),
           -1,
-          false
+          false,
         );
       } else {
         // Simple fade for reduced motion
@@ -199,27 +176,18 @@ export default function VideoFeedSkeleton({
       }
 
       if (state === "pullToRefresh") {
-        refreshRotation.value = withRepeat(
-          withTiming(360, { duration: 1000, easing: Easing.linear }),
-          -1,
-          false
-        );
+        refreshRotation.value = withRepeat(withTiming(360, { duration: 1000, easing: Easing.linear }), -1, false);
       }
 
       if (state === "loadMore") {
         loadMoreScale.value = withRepeat(
-          withSequence(
-            withTiming(1.2, { duration: 600 }),
-            withTiming(1, { duration: 600 })
-          ),
+          withSequence(withTiming(1.2, { duration: 600 }), withTiming(1, { duration: 600 })),
           -1,
-          false
+          false,
         );
       }
 
-      AccessibilityInfo.announceForAccessibility(
-        `Loading ${state === "pullToRefresh" ? "new" : ""} video feed`
-      );
+      AccessibilityInfo.announceForAccessibility(`Loading ${state === "pullToRefresh" ? "new" : ""} video feed`);
 
       if (onAnimationComplete) {
         const timer = setTimeout(onAnimationComplete, calculatedItemCount * stagger + fade);
@@ -275,11 +243,7 @@ export default function VideoFeedSkeleton({
       accessibilityLabel="Loading video feed"
     >
       {Platform.OS === "ios" ? (
-        <BlurView
-          intensity={15}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
-        />
+        <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0, 0, 0, 0.85)" }]} />
       )}
