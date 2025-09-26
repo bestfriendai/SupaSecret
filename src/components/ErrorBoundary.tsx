@@ -121,8 +121,7 @@ export class ErrorBoundary extends Component<Props, State> {
         userAgent: navigator.userAgent,
       };
 
-      // In a real app, you would send this to your error reporting service
-      // e.g., Sentry, Bugsnag, or custom analytics
+      // Error reporting service removed
       if (__DEV__) {
         console.log("Error Report:", errorReport);
       }

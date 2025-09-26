@@ -248,29 +248,8 @@ export class ServiceInitializer {
       return;
     }
 
-    try {
-      // Initialize Sentry if configured and available
-      if (config.SENTRY.DSN && config.SENTRY.ENVIRONMENT) {
-        try {
-          const Sentry = await import("@sentry/react-native");
-          Sentry.init({
-            dsn: config.SENTRY.DSN,
-            environment: config.SENTRY.ENVIRONMENT,
-            debug: config.SENTRY.DEBUG,
-          });
-          console.log("🚀 Sentry crash reporting initialized");
-        } catch (sentryError) {
-          console.log("📊 Sentry not available, skipping crash reporting");
-        }
-      } else {
-        console.log("📊 Sentry configuration incomplete, skipping crash reporting");
-      }
-
-      // Crashlytics removed - Firebase not needed
-    } catch (error) {
-      console.warn("Crash reporting initialization failed:", error);
-      // Don't throw error - continue without crash reporting
-    }
+    // Crash reporting removed - Sentry not needed
+    console.log("📊 Crash reporting disabled");
   }
 
   private static async initializePushNotifications(): Promise<void> {

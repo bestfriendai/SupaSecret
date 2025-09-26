@@ -85,13 +85,6 @@ export const PRODUCTION_CONFIG = {
     GOOGLE_ANALYTICS_ID: getEnvVar("EXPO_PUBLIC_GOOGLE_ANALYTICS_ID", { required: true }),
   },
 
-  // Sentry Configuration
-  SENTRY: {
-    DSN: getEnvVar("EXPO_PUBLIC_SENTRY_DSN", { required: true }),
-    ENVIRONMENT: __DEV__ ? "development" : "production",
-    DEBUG: __DEV__,
-  },
-
   // Push Notifications
   PUSH_NOTIFICATIONS: {
     // OneSignal
@@ -195,7 +188,6 @@ export const getConfig = () => {
 
   if (__DEV__) {
     // Development overrides
-    config.SENTRY.DEBUG = true;
     config.PERFORMANCE.API_TIMEOUT_MS = 10000;
     config.SECURITY.MAX_REQUESTS_PER_MINUTE = 120;
   }
@@ -249,7 +241,6 @@ export const validateProductionConfig = (): {
           "ADMOB.AD_UNITS.rewarded",
           "REVENUECAT.API_KEY",
           "ANALYTICS.GOOGLE_ANALYTICS_ID",
-          "SENTRY.DSN",
         ];
 
         if (criticalKeys.includes(currentPath)) {
@@ -271,7 +262,6 @@ export const validateProductionConfig = (): {
     "EXPO_PUBLIC_REVENUECAT_IOS_KEY",
     "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY",
     "EXPO_PUBLIC_GOOGLE_ANALYTICS_ID",
-    "EXPO_PUBLIC_SENTRY_DSN",
   ];
 
   requiredEnvVars.forEach((envVar) => {
@@ -312,8 +302,6 @@ export const isCriticalConfigValid = (): boolean => {
     !config.FEATURES.ENABLE_ADS || config.ADMOB.APP_ID !== null,
     // Analytics check
     !config.FEATURES.ENABLE_ANALYTICS || config.ANALYTICS.GOOGLE_ANALYTICS_ID !== null,
-    // Sentry check
-    !config.FEATURES.ENABLE_CRASH_REPORTING || config.SENTRY.DSN !== null,
   ];
 
   return validation.isValid && essentialChecks.every((check) => check);
@@ -372,13 +360,5 @@ export const initializeProductionConfig = (): void => {
     }
   }
 
-  // Check crash reporting configuration
-  if (config.FEATURES.ENABLE_CRASH_REPORTING) {
-    if (!config.SENTRY.DSN) {
-      console.error("❌ Crash reporting is enabled but Sentry DSN is not configured");
-      if (!__DEV__) {
-        throw new Error("Sentry DSN is required when crash reporting is enabled");
-      }
-    }
-  }
+  // Crash reporting removed - Sentry not needed
 };
