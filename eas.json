@@ -8,7 +8,7 @@
       "distribution": "internal",
       "ios": {
         "resourceClass": "m-medium",
-        "simulator": false,
+        "simulator": true,
         "buildConfiguration": "Debug"
       },
       "android": {
