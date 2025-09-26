@@ -53,7 +53,9 @@ export const PRODUCTION_CONFIG = {
       }),
       interstitial: Platform.select({
         ios: getEnvVar("EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS", { default: "ca-app-pub-9512493666273460/4444642155" }),
-        android: getEnvVar("EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID", { default: "ca-app-pub-3940256099942544/1033173712" }),
+        android: getEnvVar("EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID", {
+          default: "ca-app-pub-3940256099942544/1033173712",
+        }),
       }),
       rewarded: Platform.select({
         ios: getEnvVar("EXPO_PUBLIC_ADMOB_REWARDED_IOS", { default: "ca-app-pub-9512493666273460/5566152133" }),
@@ -81,21 +83,6 @@ export const PRODUCTION_CONFIG = {
   ANALYTICS: {
     // Google Analytics
     GOOGLE_ANALYTICS_ID: getEnvVar("EXPO_PUBLIC_GOOGLE_ANALYTICS_ID", { required: true }),
-
-    // Firebase Analytics (optional - only if environment variables are provided)
-    FIREBASE_CONFIG: getEnvVar("EXPO_PUBLIC_FIREBASE_API_KEY")
-      ? {
-          apiKey: getEnvVar("EXPO_PUBLIC_FIREBASE_API_KEY", { required: true }),
-          authDomain: getEnvVar("EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN", { required: true }),
-          projectId: getEnvVar("EXPO_PUBLIC_FIREBASE_PROJECT_ID", { required: true }),
-          storageBucket: getEnvVar("EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET", { required: true }),
-          messagingSenderId: getEnvVar("EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID", { required: true }),
-          appId: Platform.select({
-            ios: getEnvVar("EXPO_PUBLIC_FIREBASE_APP_ID_IOS", { required: true }),
-            android: getEnvVar("EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID", { required: true }),
-          }),
-        }
-      : null,
   },
 
   // Sentry Configuration
@@ -109,9 +96,6 @@ export const PRODUCTION_CONFIG = {
   PUSH_NOTIFICATIONS: {
     // OneSignal
     ONESIGNAL_APP_ID: getEnvVar("EXPO_PUBLIC_ONESIGNAL_APP_ID", { required: false }),
-
-    // Firebase Cloud Messaging
-    FCM_SENDER_ID: getEnvVar("EXPO_PUBLIC_FCM_SENDER_ID", { required: false }),
   },
 
   // External APIs
