@@ -210,23 +210,7 @@ export const validateRevenueCatConfig = (): EnvValidationResult => {
   return { ok: true, issues };
 };
 
-export const validateFirebaseConfig = (): EnvValidationResult => {
-  const issues: EnvValidationIssue[] = [];
-  const keys: (keyof OptionalEnvVars)[] = [
-    "EXPO_PUBLIC_FIREBASE_API_KEY",
-    "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN",
-    "EXPO_PUBLIC_FIREBASE_PROJECT_ID",
-    "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET",
-    "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-    "EXPO_PUBLIC_FIREBASE_APP_ID_IOS",
-    "EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID",
-  ];
-  keys.forEach((k) => {
-    const v = getEnvVarWithFallback(k);
-    if (v) issues.push(...validateEnvVarFormat(k, v));
-  });
-  return { ok: true, issues };
-};
+// Firebase validation removed - not needed
 
 export const validateAIServiceConfig = (): EnvValidationResult => {
   const issues: EnvValidationIssue[] = [];
@@ -243,7 +227,6 @@ export const generateValidationReport = () => {
     ["Supabase", validateSupabaseConfig()],
     ["AdMob", validateAdMobConfig()],
     ["RevenueCat", validateRevenueCatConfig()],
-    ["Firebase", validateFirebaseConfig()],
     ["AI", validateAIServiceConfig()],
   ] as const;
 

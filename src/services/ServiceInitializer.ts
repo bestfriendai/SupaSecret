@@ -233,18 +233,7 @@ export class ServiceInitializer {
     }
 
     try {
-      // Initialize Firebase Analytics if configured and available
-      if (config.ANALYTICS.FIREBASE_CONFIG) {
-        try {
-          // Dynamic import with error handling for missing package
-          const analyticsModule = await import("@react-native-firebase/analytics");
-          const analytics = analyticsModule.default;
-          await analytics().setAnalyticsCollectionEnabled(true);
-          console.log("🚀 Firebase Analytics initialized");
-        } catch (firebaseError) {
-          console.log("📊 Firebase Analytics not available, skipping");
-        }
-      }
+      // Analytics initialization removed - Firebase not needed
 
       // Initialize other analytics services as needed
       console.log("🚀 Analytics services initialized");
@@ -277,15 +266,7 @@ export class ServiceInitializer {
         console.log("📊 Sentry configuration incomplete, skipping crash reporting");
       }
 
-      // Initialize Firebase Crashlytics if available
-      try {
-        const crashlyticsModule = await import("@react-native-firebase/crashlytics");
-        const crashlytics = crashlyticsModule.default;
-        await crashlytics().setCrashlyticsCollectionEnabled(true);
-        console.log("🚀 Firebase Crashlytics initialized");
-      } catch (firebaseError) {
-        console.log("📊 Firebase Crashlytics not available, skipping");
-      }
+      // Crashlytics removed - Firebase not needed
     } catch (error) {
       console.warn("Crash reporting initialization failed:", error);
       // Don't throw error - continue without crash reporting
