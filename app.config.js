@@ -1,20 +1,14 @@
-require("dotenv").config();
+require("dotenv").config({ override: true });
 
 module.exports = {
-  "react-native-google-mobile-ads": {
-    android_app_id: "ca-app-pub-3940256099942544~3347511713",
-    ios_app_id: "ca-app-pub-9512493666273460~9888540524",
-    delay_app_measurement_init: true,
-    optimize_initialization: true,
-    optimize_ad_loading: true,
-    user_tracking_usage_description: "This identifier will be used to deliver personalized ads to you."
-  },
   expo: {
     name: "Toxic Confessions",
     slug: "toxic-confessions",
     scheme: "toxicconfessions",
     version: "1.0.0",
-    runtimeVersion: "1.0.0",
+    runtimeVersion: {
+      policy: "sdkVersion"
+    },
     orientation: "portrait",
     userInterfaceStyle: "light",
     newArchEnabled: true,
@@ -25,8 +19,7 @@ module.exports = {
       backgroundColor: "#000000",
     },
     updates: {
-      enabled: true,
-      url: "https://u.expo.dev/91978f09-79c1-45ae-8271-3e6b48dc88e1",
+      enabled: false,
     },
     plugins: [
       [
