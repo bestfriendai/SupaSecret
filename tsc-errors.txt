@@ -1,4 +1,0 @@
-App.tsx(130,67): error TS2322: Type 'string | string[]' is not assignable to type 'string'.
-  Type 'string[]' is not assignable to type 'string'.
-App.tsx(130,79): error TS2322: Type 'string | string[]' is not assignable to type 'MobileOtpType | EmailOtpType'.
-  Type 'string' is not assignable to type 'MobileOtpType | EmailOtpType'.
