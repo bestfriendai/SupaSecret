@@ -79,7 +79,7 @@ export default function UnifiedVideoItem({
   const heartScale = useSharedValue(0.5);
   const heartOpacity = useSharedValue(0);
   const lastTapTime = useSharedValue(0);
-  const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tapScale = useSharedValue(1);
   const muteButtonScale = useSharedValue(1);
   const closeButtonScale = useSharedValue(1);

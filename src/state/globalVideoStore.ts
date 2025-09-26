@@ -48,7 +48,7 @@ interface GlobalVideoState {
   playersMeta: Record<string, PlayerMetadata>;
   currentTab: string;
   hermesCompatMode: boolean;
-  cleanupInterval?: NodeJS.Timeout;
+  cleanupInterval?: ReturnType<typeof setTimeout>;
   errorMetrics: {
     disposalErrors: number;
     recoverySuccesses: number;

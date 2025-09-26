@@ -71,8 +71,8 @@ export function useVideoAnalyticsTracker(config: VideoAnalyticsConfig) {
   });
 
   const sessionIdRef = useRef<string | null>(providedSessionId || null);
-  const watchTimeIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const engagementIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const watchTimeIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const engagementIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const lastPlaybackStatusRef = useRef<PlaybackStatusSnapshot | null>(null);
   const hasTrackedImpressionRef = useRef(false);

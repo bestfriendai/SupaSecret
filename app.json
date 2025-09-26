@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Toxic Confessions",
+    "slug": "toxic-confessions",
+    "version": "1.0.0"
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+    "ios_app_id": "ca-app-pub-9512493666273460~9888540524",
+    "delay_app_measurement_init": true,
+    "optimize_initialization": true,
+    "optimize_ad_loading": true,
+    "user_tracking_usage_description": "This identifier will be used to deliver personalized ads to you."
+  }
+}

@@ -66,7 +66,7 @@ type MockPurchaseResult = {
 type RevenueCatCustomerResult = RevenueCatCustomerInfo | MockPurchaseResult | null;
 
 // Check if running in Expo Go
-const IS_EXPO_GO = Constants.appOwnership === "expo";
+const IS_EXPO_GO = Constants.executionEnvironment === "storeClient";
 const config = getConfig();
 
 // RevenueCat API Key from configuration

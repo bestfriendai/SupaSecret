@@ -31,7 +31,7 @@ export const useScreenStatus = ({
   enableRetry = true,
 }: ScreenStatusOptions): ScreenStatus => {
   const { getState, setLoading: setLoadingState, setError: setErrorState } = useLoadingStates();
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastAsyncFnRef = useRef<(() => Promise<any>) | null>(null);
   const lastOptionsRef = useRef<any>(null);
 

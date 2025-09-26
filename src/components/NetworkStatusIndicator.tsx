@@ -165,7 +165,7 @@ export default function NetworkStatusIndicator({
   const [isVisible, setIsVisible] = useState(false);
   const [bandwidthMbps, setBandwidthMbps] = useState<number | null>(null);
 
-  const hideTimer = useRef<NodeJS.Timeout | undefined>(undefined);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reconnectAttempts = useRef(0);
 
   const opacity = useSharedValue(0);

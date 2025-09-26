@@ -49,7 +49,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
 }) => {
   const playerRef = useRef<VideoView>(null);
   const [isDisposing, setIsDisposing] = useState(false);
-  const disposalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const disposalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPlaybackStatusRef = useRef<any>(null);
   const bufferingStateRef = useRef(false);
   const seekDetectionRef = useRef<{ time: number; position: number } | null>(null);
@@ -240,11 +240,11 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       // Future: Check player.isBuffering or similar
       const isBuffering = false; // Default for now
 
-        if (isBuffering !== bufferingStateRef.current) {
-          bufferingStateRef.current = isBuffering;
-          if (isBuffering) {
-            onBufferStart?.();
-            analytics.handleBufferStart();
+      if (isBuffering !== bufferingStateRef.current) {
+        bufferingStateRef.current = isBuffering;
+        if (isBuffering) {
+          onBufferStart?.();
+          analytics.handleBufferStart();
         } else {
           onBufferEnd?.();
           analytics.handleBufferEnd();
@@ -254,15 +254,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
 
     const bufferInterval = setInterval(checkBuffering, 500);
     return () => clearInterval(bufferInterval);
-  }, [
-    player,
-    trackDetailedEngagement,
-    enableAnalytics,
-    analyticsConsent,
-    onBufferStart,
-    onBufferEnd,
-    analytics,
-  ]);
+  }, [player, trackDetailedEngagement, enableAnalytics, analyticsConsent, onBufferStart, onBufferEnd, analytics]);
 
   // Track interaction events
   const trackInteraction = useCallback(

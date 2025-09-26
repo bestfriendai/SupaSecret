@@ -82,7 +82,7 @@ interface TrendingState {
 }
 
 let trendingRealtimeChannel: RealtimeChannel | null = null;
-let trendingRefreshTimer: NodeJS.Timeout | null = null;
+let trendingRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 const initializeTrendingRealtime = (_set: (partial: Partial<TrendingState>) => void, get: () => TrendingState) => {
   if (trendingRealtimeChannel) return;

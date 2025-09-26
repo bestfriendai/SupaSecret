@@ -18,8 +18,8 @@ import {
 } from "../utils/validation";
 
 // Check if we're in Expo Go or Development Build
-const IS_EXPO_GO = Constants.appOwnership === "expo";
-const IS_DEV_BUILD = Constants.appOwnership === null;
+const IS_EXPO_GO = Constants.executionEnvironment === "storeClient";
+const IS_DEV_BUILD = Constants.executionEnvironment === "standalone";
 const HAS_FFMPEG = !IS_EXPO_GO; // FFmpeg only available in dev builds
 
 // Lazy load FFmpeg for development builds only

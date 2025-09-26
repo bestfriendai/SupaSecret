@@ -75,7 +75,7 @@ export class EnhancedVideoPlayerDisposal {
   private disposalQueue: QueuedDisposal[];
   private memoryMetrics: MemoryMetrics[];
   private isHermesRuntime: boolean;
-  private queueProcessor?: NodeJS.Timeout;
+  private queueProcessor?: ReturnType<typeof setTimeout>;
   private disposalInProgress: Set<string>;
 
   private constructor() {
@@ -609,7 +609,7 @@ export class EnhancedVideoPlayerDisposal {
       state = {
         playerId,
         player,
-          state: VideoPlayerState.Idle,
+        state: VideoPlayerState.Idle,
         disposalAttempts: 0,
         isDisposed: false,
         hermesCompatibilityMode: this.isHermesRuntime,
@@ -663,7 +663,9 @@ export class EnhancedVideoPlayerDisposal {
       operation(),
       new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new VideoDisposalError(`Operation timed out after ${timeout}ms`, undefined, VideoErrorSeverity.WARNING));
+          reject(
+            new VideoDisposalError(`Operation timed out after ${timeout}ms`, undefined, VideoErrorSeverity.WARNING),
+          );
         }, timeout);
       }),
     ]);

@@ -68,7 +68,7 @@ export function useVideoFeedGestures({
   const isScrolling = useSharedValue(false);
   const activeDirection = useSharedValue<"idle" | "up" | "down" | "left" | "right">("idle");
   const lastTapTime = useRef(0);
-  const tapTimeout = useRef<NodeJS.Timeout | null>(null);
+  const tapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pan gesture for swipe navigation (vertical and horizontal)
   const panGesture = Gesture.Pan()

@@ -243,7 +243,7 @@ export const createKeyboardHandler = (onShow?: (height: number) => void, onHide?
 /**
  * Debounced keyboard dismiss for rapid interactions
  */
-let dismissTimeout: NodeJS.Timeout;
+let dismissTimeout: ReturnType<typeof setTimeout>;
 
 export const debouncedKeyboardDismiss = (delay = 100) => {
   clearTimeout(dismissTimeout);

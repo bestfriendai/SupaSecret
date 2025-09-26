@@ -54,7 +54,7 @@ class NetworkProfiler {
     resetDate: Date.now(),
   };
   private networkSubscription: NetInfoSubscription | null = null;
-  private measurementInterval: NodeJS.Timeout | null = null;
+  private measurementInterval: ReturnType<typeof setTimeout> | null = null;
   private options: Required<NetworkConditionOptions>;
   private readonly CACHE_KEY_PREFIX = "network_profiler_";
   private readonly STABILITY_WINDOW = 10;

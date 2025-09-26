@@ -50,7 +50,7 @@ export default function PullToRefreshOverlay({
   }, [pullDistance, threshold]);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     if (isRefreshing) {
       if (!userPreferences?.reduced_motion) {

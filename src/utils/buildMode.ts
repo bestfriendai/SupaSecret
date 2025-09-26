@@ -23,11 +23,13 @@ export function useBuildMode(): BuildModeInfo {
   });
 
   useEffect(() => {
-    const isExpoGo = Constants.appOwnership === "expo";
+    const isExpoGo = Constants.executionEnvironment === "storeClient";
     const isDevelopment = __DEV__ && !isExpoGo;
     const isProduction = !__DEV__ && !isExpoGo;
     const isPreview =
-      !__DEV__ && !isExpoGo && (Constants.appOwnership === null || Constants.appOwnership === undefined);
+      !__DEV__ &&
+      !isExpoGo &&
+      (Constants.executionEnvironment === "standalone" || Constants.executionEnvironment === undefined);
 
     let mode: BuildMode = "development";
     if (isExpoGo) mode = "expo-go";

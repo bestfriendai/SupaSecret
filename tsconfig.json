@@ -16,5 +16,6 @@
       "@/*": ["./src/*"]
     }
   },
+  "include": ["src/**/*", "types/**/*", "nativewind-env.d.ts"],
   "exclude": ["node_modules", "babel.config.js", "metro.config.js", "supabase/functions/**"]
 }

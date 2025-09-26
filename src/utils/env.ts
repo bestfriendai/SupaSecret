@@ -6,11 +6,11 @@ import Constants from "expo-constants";
  */
 export const env = {
   /** Whether the app is running in Expo Go */
-  expoGo: Constants.appOwnership === "expo",
+  expoGo: Constants.executionEnvironment === "storeClient",
   /** Whether the app is running in a development build */
-  devClient: Constants.appOwnership === null,
+  devClient: Constants.executionEnvironment === "standalone",
   /** Whether the app is running as a standalone build */
-  standalone: Constants.appOwnership === ("standalone" as any),
+  standalone: Constants.executionEnvironment === "standalone",
   /** Whether FFmpeg is available in the environment */
   get ffmpegReady(): boolean {
     return !!(global as any).__ffmpegAvailable;
