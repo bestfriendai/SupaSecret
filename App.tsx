@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 import { supabase } from "./src/lib/supabase";
 import * as Linking from "expo-linking";
+import * as SplashScreen from "expo-splash-screen";
 import "./global.css";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -25,6 +26,47 @@ import { offlineQueue } from "./src/utils/offlineQueue";
 import { initializeServices } from "./src/services/ServiceInitializer";
 import { checkEnvironment } from "./src/utils/environmentCheck";
 import "./src/utils/hermesTestUtils"; // Auto-run Hermes compatibility tests
+
+// Prevent splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
+
+// Debug: Simple initialization to isolate issues
+const debugInitializeApp = async () => {
+  try {
+    console.log("[DEBUG] Starting minimal app initialization...");
+
+    // Step 1: Check environment
+    console.log("[DEBUG] Step 1: Checking environment...");
+    checkEnvironment();
+
+    // Step 2: Initialize services (with error handling)
+    console.log("[DEBUG] Step 2: Initializing services...");
+    try {
+      await initializeServices();
+      console.log("[DEBUG] Services initialized successfully");
+    } catch (serviceError) {
+      console.error("[DEBUG] Service initialization failed:", serviceError);
+      // Continue anyway for debugging
+    }
+
+    // Step 3: Set up audio session
+    console.log("[DEBUG] Step 3: Setting up audio...");
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+      console.log("[DEBUG] Audio setup successful");
+    } catch (audioError) {
+      console.error("[DEBUG] Audio setup failed:", audioError);
+    }
+
+    console.log("[DEBUG] Minimal initialization completed");
+  } catch (error) {
+    console.error("[DEBUG] Initialization error:", error);
+    throw error;
+  }
+};
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
@@ -63,52 +105,80 @@ export default function App() {
       }
     });
 
+    // Hide splash screen when app is ready
+    const hideSplashScreen = async () => {
+      try {
+        await SplashScreen.hideAsync();
+        console.log("[DEBUG] Splash screen hidden successfully");
+      } catch (error) {
+        console.error("[DEBUG] Error hiding splash screen:", error);
+      }
+    };
+
+    // Hide splash screen after a short delay to ensure smooth transition
+    const splashTimer = setTimeout(hideSplashScreen, 100);
+
     const initializeApp = async () => {
       try {
         if (__DEV__) {
-          console.log("[App] Starting app initialization...");
+          console.log("[App] Starting simplified app initialization...");
         }
 
-        // Check environment variables
-        checkEnvironment();
-
-        // Initialize services
-        await initializeServices();
-
-        // Set up audio session
-        await Audio.setAudioModeAsync({
-          allowsRecording: true,
-          playsInSilentMode: true,
-        });
+        // Use the debug initialization function
+        await debugInitializeApp();
 
         // Set up auth listener
-        setupAuthListener();
+        console.log("[DEBUG] Step 4: Setting up auth listener...");
+        try {
+          setupAuthListener();
+          console.log("[DEBUG] Auth listener setup successful");
+        } catch (authError) {
+          console.error("[DEBUG] Auth listener setup failed:", authError);
+        }
 
         // Set up store subscriptions
-        setupConfessionSubscriptions();
-        setupNotificationSubscriptions();
+        console.log("[DEBUG] Step 5: Setting up store subscriptions...");
+        try {
+          setupConfessionSubscriptions();
+          setupNotificationSubscriptions();
+          console.log("[DEBUG] Store subscriptions setup successful");
+        } catch (storeError) {
+          console.error("[DEBUG] Store subscriptions setup failed:", storeError);
+        }
 
         // Check auth state first
-        await checkAuthState();
+        console.log("[DEBUG] Step 6: Checking auth state...");
+        try {
+          await checkAuthState();
+          console.log("[DEBUG] Auth state check successful");
+        } catch (authStateError) {
+          console.error("[DEBUG] Auth state check failed:", authStateError);
+        }
 
         // Load user preferences before confessions (ensures store is initialized)
+        console.log("[DEBUG] Step 7: Loading user preferences...");
         try {
           await loadUserPreferences();
+          console.log("[DEBUG] User preferences loaded successfully");
         } catch (error) {
-          console.error("[App] Failed to load user preferences:", error);
+          console.error("[DEBUG] Failed to load user preferences:", error);
           // Continue with default preferences
         }
 
         // Load confessions after preferences are set
-        await loadConfessions();
+        console.log("[DEBUG] Step 8: Loading confessions...");
+        try {
+          await loadConfessions();
+          console.log("[DEBUG] Confessions loaded successfully");
+        } catch (confessionError) {
+          console.error("[DEBUG] Failed to load confessions:", confessionError);
+        }
 
         // Offline queue starts automatically
-
-        if (__DEV__) {
-          console.log("[App] App initialization completed successfully");
-        }
+        console.log("[DEBUG] App initialization completed successfully");
       } catch (error) {
-        console.error("[App] App initialization failed:", error);
+        console.error("[DEBUG] App initialization failed:", error);
+        // Don't throw - let the app continue to show error in UI
       } finally {
         setIsInitializing(false);
       }

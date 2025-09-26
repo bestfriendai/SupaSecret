@@ -14,7 +14,7 @@ module.exports = {
     newArchEnabled: true,
     icon: "./assets/icon.png",
     splash: {
-      image: "./assets/splash.png",
+      image: "./assets/logo.png",
       resizeMode: "contain",
       backgroundColor: "#000000",
     },
@@ -47,6 +47,7 @@ module.exports = {
           microphonePermissionText: "$(PRODUCT_NAME) needs access to your Microphone for recording audio.",
         },
       ],
+
       "expo-audio",
       "expo-camera",
       "expo-asset",
