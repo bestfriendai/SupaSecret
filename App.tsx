@@ -37,7 +37,7 @@ process.env.EXPO_PUBLIC_VIBECODE_{key}
 //directly access the key
 
 Incorrect usage:
-import { OPENAI_API_KEY } from '@env';
+// import { OPENAI_API_KEY } from '@env'; // Removed - not needed
 //don't use @env, its depreicated
 
 Incorrect usage:
@@ -127,7 +127,12 @@ export default function App() {
           return;
         }
         if (token_hash && type) {
-          const { data, error } = await supabase.auth.verifyOtp({ token_hash, type });
+          const tokenHashStr = Array.isArray(token_hash) ? token_hash[0] : token_hash;
+          const typeStr = Array.isArray(type) ? type[0] : type;
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHashStr,
+            type: typeStr as any,
+          });
           if (error) console.error("Verify OTP error:", error);
           else console.log("Auth verified successfully");
         }

@@ -82,7 +82,7 @@ export const PRODUCTION_CONFIG = {
   // Analytics Configuration
   ANALYTICS: {
     // Google Analytics
-    GOOGLE_ANALYTICS_ID: getEnvVar("EXPO_PUBLIC_GOOGLE_ANALYTICS_ID", { required: true }),
+    GOOGLE_ANALYTICS_ID: getEnvVar("EXPO_PUBLIC_GOOGLE_ANALYTICS_ID", { required: false }),
   },
 
   // Push Notifications
@@ -137,14 +137,14 @@ export const PRODUCTION_CONFIG = {
 
   // Feature Flags
   FEATURES: {
-    ENABLE_ANALYTICS: true,
+    ENABLE_ANALYTICS: false,
     ENABLE_ADS: true,
-    ENABLE_CRASH_REPORTING: true,
-    ENABLE_PUSH_NOTIFICATIONS: true,
+    ENABLE_CRASH_REPORTING: false,
+    ENABLE_PUSH_NOTIFICATIONS: false,
     ENABLE_SOCIAL_SHARING: false,
-    ENABLE_CONTENT_MODERATION: true,
-    ENABLE_REAL_TIME_TRANSCRIPTION: true,
-    ENABLE_ADVANCED_VIDEO_PROCESSING: true,
+    ENABLE_CONTENT_MODERATION: false,
+    ENABLE_REAL_TIME_TRANSCRIPTION: false,
+    ENABLE_ADVANCED_VIDEO_PROCESSING: false,
   },
 
   // Performance Configuration
@@ -240,7 +240,6 @@ export const validateProductionConfig = (): {
           "ADMOB.AD_UNITS.interstitial",
           "ADMOB.AD_UNITS.rewarded",
           "REVENUECAT.API_KEY",
-          "ANALYTICS.GOOGLE_ANALYTICS_ID",
         ];
 
         if (criticalKeys.includes(currentPath)) {
@@ -261,7 +260,6 @@ export const validateProductionConfig = (): {
     "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID",
     "EXPO_PUBLIC_REVENUECAT_IOS_KEY",
     "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY",
-    "EXPO_PUBLIC_GOOGLE_ANALYTICS_ID",
   ];
 
   requiredEnvVars.forEach((envVar) => {
