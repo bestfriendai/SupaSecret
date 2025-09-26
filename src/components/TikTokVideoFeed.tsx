@@ -98,7 +98,7 @@ class CircuitBreaker {
   private failureCount = 0;
   private lastFailureTime = 0;
   private isOpen = false;
-  private resetTimer?: NodeJS.Timeout;
+  private resetTimer?: ReturnType<typeof setTimeout>;
 
   constructor(
     private threshold: number,
@@ -175,7 +175,7 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
   const loadingRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const videoPlayersRef = useRef<Map<string, VideoPlayerState>>(new Map());
-  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const circuitBreaker = useRef(new CircuitBreaker(CIRCUIT_BREAKER_THRESHOLD, CIRCUIT_BREAKER_TIMEOUT));
   const fallbackVideoIndex = useRef(0);
 
@@ -325,13 +325,13 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
           });
         } else {
           const nextRetryCount = (playerState.retryCount ?? 0) + 1;
-        videoPlayersRef.current.set(videoId, {
-          ...playerState,
-          player: playerState.player ?? null,
-          error: videoError,
-          retryCount: nextRetryCount,
-          lastRetryTime: Date.now(),
-        });
+          videoPlayersRef.current.set(videoId, {
+            ...playerState,
+            player: playerState.player ?? null,
+            error: videoError,
+            retryCount: nextRetryCount,
+            lastRetryTime: Date.now(),
+          });
 
           if (recoveryResult.fallbackUsed) {
             fallbackVideoIndex.current++;
@@ -512,12 +512,7 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
       backoffFactor: 2,
       shouldRetry: (error) => {
         const online = isOnline();
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === "string"
-              ? error
-              : undefined;
+        const message = error instanceof Error ? error.message : typeof error === "string" ? error : undefined;
         return online && !(message?.toLowerCase().includes("rate limit") ?? false);
       },
     };

@@ -108,10 +108,10 @@ export function useVideoPerformanceOptimization(
   // Refs
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const networkSubscription = useRef<any>(null);
-  const memoryMonitorInterval = useRef<NodeJS.Timeout | null>(null);
-  const analyticsInterval = useRef<NodeJS.Timeout | null>(null);
+  const memoryMonitorInterval = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const analyticsInterval = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appStateSubscription = useRef<any>(null);
-  const queueStatsInterval = useRef<NodeJS.Timeout | null>(null);
+  const queueStatsInterval = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialized = useRef(false);
 
   // Initialize performance optimization
@@ -502,8 +502,7 @@ export function useVideoPerformanceOptimization(
         if (networkProfile.latency > 100) {
           issues.push("High latency detected");
         }
-        const memoryUsageRatio =
-          (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
+        const memoryUsageRatio = (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
         if (memoryUsageRatio > 0.8) {
           issues.push("High memory usage");
         }

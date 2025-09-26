@@ -3,9 +3,37 @@ import Constants from "expo-constants";
 import { hasAdvertisingConsent } from "../state/consentStore";
 import { getConfig } from "../config/production";
 
+/// <reference path="../../types/react-native-google-mobile-ads.d.ts" />
+
 // Note: AdMob requires development build - this is demo mode for Expo Go
-const IS_EXPO_GO = Constants.appOwnership === "expo";
+const IS_EXPO_GO = Constants.executionEnvironment === "storeClient";
+const IS_WEB = Platform.OS === "web";
 const config = getConfig();
+
+// Type declarations for AdMob module
+type AdMobModule = {
+  default: () => any;
+  InterstitialAd: any;
+  RewardedAd: any;
+  BannerAdSize: any;
+  TestIds: any;
+  AdEventType: any;
+  RewardedAdEventType: any;
+};
+
+// Safe module import function following Expo best practices
+const getAdMobModule = async (): Promise<AdMobModule | null> => {
+  if (IS_EXPO_GO || IS_WEB) return null;
+
+  try {
+    // @ts-ignore - react-native-google-mobile-ads is a native module
+    const module = await import("react-native-google-mobile-ads");
+    return module as AdMobModule;
+  } catch (error) {
+    console.warn("AdMob module not available:", error instanceof Error ? error.message : String(error));
+    return null;
+  }
+};
 
 // AdMob Ad Unit IDs - use test IDs in development, production IDs in release
 const AD_UNIT_IDS = {
@@ -36,16 +64,7 @@ export class AdMobService {
   private static mobileAds: any = null;
   private static interstitialAd: any = null;
   private static rewardedAd: any = null;
-  private static AdMobModule: any = null;
-
-  // Type definitions for AdMob components
-  private static MobileAdsType: any = null;
-  private static InterstitialAdType: any = null;
-  private static RewardedAdType: any = null;
-  private static BannerAdSizeType: any = null;
-  private static TestIdsType: any = null;
-  private static AdEventTypeConst: any = null;
-  private static RewardedAdEventTypeConst: any = null;
+  private static adMobModule: AdMobModule | null = null;
 
   private static isValidAdUnit(id: any): boolean {
     return typeof id === "string" && id.startsWith("ca-app-pub-") && id.includes("/");
@@ -61,28 +80,15 @@ export class AdMobService {
     }
 
     try {
-      // Real AdMob initialization for development build
-      this.AdMobModule = await import("react-native-google-mobile-ads");
-      const {
-        default: mobileAds,
-        InterstitialAd,
-        RewardedAd,
-        BannerAdSize,
-        TestIds,
-        AdEventType,
-        RewardedAdEventType,
-      } = this.AdMobModule;
+      // Get AdMob module safely
+      this.adMobModule = await getAdMobModule();
+      if (!this.adMobModule) {
+        console.warn("AdMob module not available, running in demo mode");
+        this.isInitialized = true;
+        return;
+      }
 
-      // Store type references for later use
-      this.MobileAdsType = mobileAds;
-      this.InterstitialAdType = InterstitialAd;
-      this.RewardedAdType = RewardedAd;
-      this.BannerAdSizeType = BannerAdSize;
-      this.TestIdsType = TestIds;
-      this.AdEventTypeConst = AdEventType;
-      this.RewardedAdEventTypeConst = RewardedAdEventType;
-
-      this.mobileAds = mobileAds;
+      const { default: mobileAds, InterstitialAd, RewardedAd } = this.adMobModule;
 
       // Initialize AdMob
       await mobileAds().initialize();
@@ -90,7 +96,6 @@ export class AdMobService {
       // Set request configuration based on consent
       const hasConsent = hasAdvertisingConsent();
       await mobileAds().setRequestConfiguration({
-        // Set to true if user has not consented to personalized ads
         tagForChildDirectedTreatment: false,
         tagForUnderAgeOfConsent: false,
         maxAdContentRating: "MA",
@@ -161,22 +166,15 @@ export class AdMobService {
     }
 
     try {
-      // Real AdMob implementation for development build
+      // Ensure we have the AdMob module
+      if (!this.adMobModule) {
+        this.adMobModule = await getAdMobModule();
+        if (!this.adMobModule) return false;
+      }
+
+      const { InterstitialAd, AdEventType } = this.adMobModule;
       const loaded = await this.ensureInterstitialLoaded();
       if (!loaded || !this.interstitialAd) return false;
-
-      // Use stored InterstitialAd type or try to import it with error handling
-      let InterstitialAd = this.InterstitialAdType;
-      if (!InterstitialAd) {
-        try {
-          const adModule = await import("react-native-google-mobile-ads");
-          InterstitialAd = adModule.InterstitialAd;
-          this.InterstitialAdType = InterstitialAd;
-        } catch (importError) {
-          console.error("Failed to import InterstitialAd:", importError);
-          return false;
-        }
-      }
 
       return new Promise((resolve) => {
         let unsubscribeLoaded: (() => void) | null = null;
@@ -194,13 +192,13 @@ export class AdMobService {
         };
 
         try {
-          const AET = this.AdEventTypeConst || (this.AdMobModule && this.AdMobModule.AdEventType);
-          unsubscribeLoaded = this.interstitialAd.addAdEventListener(AET?.LOADED || "loaded", () => {
+          const AET = AdEventType || { LOADED: "loaded", CLOSED: "closed", ERROR: "error" };
+          unsubscribeLoaded = this.interstitialAd.addAdEventListener(AET.LOADED || "loaded", () => {
             console.log("🚀 Interstitial ad loaded, showing...");
             this.interstitialAd.show();
           });
 
-          unsubscribeClosed = this.interstitialAd.addAdEventListener(AET?.CLOSED || "closed", () => {
+          unsubscribeClosed = this.interstitialAd.addAdEventListener(AET.CLOSED || "closed", () => {
             console.log("✅ Interstitial ad closed");
             this.lastInterstitialTime = now;
 
@@ -218,15 +216,13 @@ export class AdMobService {
             resolve(true);
           });
 
-          unsubscribeError = this.interstitialAd.addAdEventListener(AET?.ERROR || "error", async (error: any) => {
+          unsubscribeError = this.interstitialAd.addAdEventListener(AET.ERROR || "error", async (error: any) => {
             console.error("Interstitial ad error:", error);
             // schedule reload with simple backoff and abort mechanism
             let aborted = false;
-            const timeouts: NodeJS.Timeout[] = [];
 
             const abort = () => {
               aborted = true;
-              timeouts.forEach(clearTimeout);
             };
 
             // Store original cleanup and create enhanced cleanup
@@ -238,8 +234,6 @@ export class AdMobService {
 
             try {
               for (let i = 0; i < 3 && !aborted; i++) {
-                const timeout = setTimeout(() => {}, 500 * Math.pow(2, i));
-                timeouts.push(timeout);
                 await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
                 if (aborted) break;
 
@@ -284,15 +278,25 @@ export class AdMobService {
     }
 
     try {
+      // Ensure we have the AdMob module
+      if (!this.adMobModule) {
+        this.adMobModule = await getAdMobModule();
+        if (!this.adMobModule) return { shown: false, rewarded: false };
+      }
+
+      const { RewardedAd, RewardedAdEventType, AdEventType } = this.adMobModule;
       const ok = await this.ensureRewardedLoaded();
       if (!ok || !this.rewardedAd) return { shown: false, rewarded: false };
 
       return await new Promise((resolve) => {
         let rewarded = false;
-        const RAET = this.RewardedAdEventTypeConst || (this.AdMobModule && this.AdMobModule.RewardedAdEventType);
-        const unsubscribeEarned = this.rewardedAd.addAdEventListener(RAET?.EARNED_REWARD || "earned", () => {
+        const RAET = RewardedAdEventType || { EARNED_REWARD: "earned" };
+        const AEType = AdEventType || { CLOSED: "closed", ERROR: "error" };
+
+        const unsubscribeEarned = this.rewardedAd.addAdEventListener(RAET.EARNED_REWARD || "earned", () => {
           rewarded = true;
         });
+
         const finalize = (result: { shown: boolean; rewarded: boolean }) => {
           try {
             unsubscribeEarned?.();
@@ -301,11 +305,10 @@ export class AdMobService {
           } catch {}
           resolve(result);
         };
-        const AEType = this.AdEventTypeConst || (this.AdMobModule && this.AdMobModule.AdEventType);
-        const unsubscribeClosed = this.rewardedAd.addAdEventListener(AEType?.CLOSED || "closed", () => {
+
+        const unsubscribeClosed = this.rewardedAd.addAdEventListener(AEType.CLOSED || "closed", () => {
           // preload next
           try {
-            const { RewardedAd } = this.AdMobModule || {};
             if (RewardedAd) {
               if (this.isValidAdUnit(AD_UNIT_IDS.rewarded)) {
                 this.rewardedAd = RewardedAd.createForAdRequest(AD_UNIT_IDS.rewarded);
@@ -315,10 +318,10 @@ export class AdMobService {
           } catch {}
           finalize({ shown: true, rewarded });
         });
-        const unsubscribeError = this.rewardedAd.addAdEventListener(AEType?.ERROR || "error", () => {
+
+        const unsubscribeError = this.rewardedAd.addAdEventListener(AEType.ERROR || "error", () => {
           // preload next after error
           try {
-            const { RewardedAd } = this.AdMobModule || {};
             if (RewardedAd) {
               if (this.isValidAdUnit(AD_UNIT_IDS.rewarded)) {
                 this.rewardedAd = RewardedAd.createForAdRequest(AD_UNIT_IDS.rewarded);
@@ -328,6 +331,7 @@ export class AdMobService {
           } catch {}
           finalize({ shown: false, rewarded: false });
         });
+
         this.rewardedAd.show();
       });
     } catch (error) {
@@ -355,7 +359,14 @@ export class AdMobService {
 
   private static async ensureInterstitialLoaded(retries = 3, base = 500) {
     if (IS_EXPO_GO) return true;
-    const { InterstitialAd } = this.AdMobModule || (await import("react-native-google-mobile-ads"));
+
+    // Ensure we have the AdMob module
+    if (!this.adMobModule) {
+      this.adMobModule = await getAdMobModule();
+      if (!this.adMobModule) return false;
+    }
+
+    const { InterstitialAd } = this.adMobModule;
     for (let i = 0; i < retries; i++) {
       try {
         if (!this.interstitialAd) {
@@ -377,7 +388,14 @@ export class AdMobService {
 
   private static async ensureRewardedLoaded(retries = 3, base = 500) {
     if (IS_EXPO_GO) return true;
-    const { RewardedAd } = this.AdMobModule || (await import("react-native-google-mobile-ads"));
+
+    // Ensure we have the AdMob module
+    if (!this.adMobModule) {
+      this.adMobModule = await getAdMobModule();
+      if (!this.adMobModule) return false;
+    }
+
+    const { RewardedAd } = this.adMobModule;
     for (let i = 0; i < retries; i++) {
       try {
         if (!this.rewardedAd) {

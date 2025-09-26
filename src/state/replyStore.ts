@@ -187,7 +187,7 @@ let repliesChannel: any = null;
 let typingChannel: any = null;
 let reconnectTimer: any = null;
 let reconnectAttempts = 0;
-let typingTimers: Record<string, NodeJS.Timeout> = {};
+let typingTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 export const useReplyStore = create<ReplyState>()(
   persist(

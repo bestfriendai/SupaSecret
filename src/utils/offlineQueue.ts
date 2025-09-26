@@ -97,7 +97,7 @@ class OfflineQueueManager {
   private listeners: ((isOnline: boolean) => void)[] = [];
   private isOnline = true;
   private netInfoUnsubscribe: (() => void) | null = null;
-  private scheduledTimer: NodeJS.Timeout | null = null;
+  private scheduledTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly STORAGE_KEY = "offline_queue";
   private readonly MAX_QUEUE_SIZE = 100;

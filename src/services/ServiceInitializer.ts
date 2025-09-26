@@ -11,7 +11,7 @@ import { RevenueCatService } from "./RevenueCatService";
 import { getAnonymiser } from "./Anonymiser";
 import { initializeConsent } from "../state/consentStore";
 
-const IS_EXPO_GO = Constants.appOwnership === "expo";
+const IS_EXPO_GO = Constants.executionEnvironment === "storeClient";
 const config = getConfig();
 
 export interface ServiceInitializationOptions {

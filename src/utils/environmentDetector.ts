@@ -80,10 +80,10 @@ class EnvironmentDetector {
       return this.cachedInfo;
     }
 
-    const appOwnership = Constants.appOwnership;
-    const isExpoGo = appOwnership === "expo";
-    const isDevelopmentBuild = appOwnership === null;
-    const isStandaloneBuild = appOwnership === ("standalone" as any);
+    const executionEnvironment = Constants.executionEnvironment;
+    const isExpoGo = executionEnvironment === "storeClient";
+    const isDevelopmentBuild = executionEnvironment === "standalone";
+    const isStandaloneBuild = executionEnvironment === "standalone";
     const isProductionBuild = !__DEV__ && isStandaloneBuild;
 
     // Detect device type

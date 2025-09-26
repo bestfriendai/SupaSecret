@@ -43,7 +43,7 @@ class HealthMonitor {
   private lastScreenChangeAt: number | null = null;
   private currentScreen: string = "Unknown";
   private isMonitoring: boolean = false;
-  private reportingInterval: NodeJS.Timeout | null = null;
+  private reportingInterval: ReturnType<typeof setTimeout> | null = null;
   private appStateListener: ReturnType<typeof AppState.addEventListener> | null = null;
   private netInfoUnsubscribe: (() => void) | null = null;
 

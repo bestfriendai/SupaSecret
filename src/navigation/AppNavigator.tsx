@@ -266,7 +266,7 @@ export default function AppNavigator() {
     setIsInitializing(true);
     setInitError(null);
 
-    let timeoutId: NodeJS.Timeout | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise((_, reject) => {
       timeoutId = setTimeout(() => reject(new Error("Auth check timeout")), AUTH_CHECK_TIMEOUT);
     });

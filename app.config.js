@@ -1,6 +1,14 @@
 require("dotenv").config();
 
-export default {
+module.exports = {
+  "react-native-google-mobile-ads": {
+    android_app_id: "ca-app-pub-3940256099942544~3347511713",
+    ios_app_id: "ca-app-pub-9512493666273460~9888540524",
+    delay_app_measurement_init: true,
+    optimize_initialization: true,
+    optimize_ad_loading: true,
+    user_tracking_usage_description: "This identifier will be used to deliver personalized ads to you."
+  },
   expo: {
     name: "Toxic Confessions",
     slug: "toxic-confessions",
@@ -18,7 +26,7 @@ export default {
     },
     updates: {
       enabled: true,
-      url: "https://u.expo.dev/YOUR-EXPO-PROJECT-ID",
+      url: "https://u.expo.dev/91978f09-79c1-45ae-8271-3e6b48dc88e1",
     },
     plugins: [
       [
@@ -33,6 +41,7 @@ export default {
             targetSdkVersion: 35,
             minSdkVersion: 24,
             newArchEnabled: true,
+            kotlinVersion: "2.1.0",
           },
         },
       ],
@@ -56,6 +65,7 @@ export default {
       "expo-font",
       "expo-localization",
       "expo-splash-screen",
+      "./plugins/withModularHeaders",
     ],
     androidNavigationBar: {
       visible: "sticky-immersive",
@@ -65,6 +75,7 @@ export default {
       buildNumber: "1",
       icon: "./assets/icon.png",
       infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
           "Camera access is required to record anonymous videos. Faces are blurred and voices modulated for privacy—no data is stored without processing.",
         NSMicrophoneUsageDescription:
@@ -100,6 +111,9 @@ export default {
       package: "com.toxic.confessions",
     },
     extra: {
+      eas: {
+        projectId: "91978f09-79c1-45ae-8271-3e6b48dc88e1",
+      },
       env: process.env.EXPO_PUBLIC_ENV,
       projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
       privacyPolicyUrl: "https://toxicconfessions.app/privacy",

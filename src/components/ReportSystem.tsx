@@ -95,7 +95,7 @@ export const ReportSystem: React.FC<ReportSystemProps> = ({ contentId, contentTy
 
   // Handle auto-close with timeout cleanup
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     if (step === "confirmation") {
       timeoutId = setTimeout(() => {

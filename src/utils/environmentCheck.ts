@@ -9,7 +9,7 @@
 import Constants from "expo-constants";
 
 // Check if we're running in Expo Go
-export const IS_EXPO_GO = Constants.appOwnership === "expo";
+export const IS_EXPO_GO = Constants.executionEnvironment === "storeClient";
 
 // Check if we're in development mode
 export const IS_DEV = __DEV__;
@@ -36,7 +36,7 @@ export const checkEnvironment = () => {
   if (__DEV__) {
     console.log("🔍 Environment Check:");
     console.log(`📱 Platform: ${Constants.platform?.ios ? "iOS" : "Android"}`);
-    console.log(`🏗️ App Ownership: ${Constants.appOwnership}`);
+    console.log(`🏗️ Execution Environment: ${Constants.executionEnvironment}`);
     console.log(`🔧 Development Mode: ${IS_DEV}`);
     console.log(`🎯 Expo Go: ${IS_EXPO_GO}`);
 

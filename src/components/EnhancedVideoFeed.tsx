@@ -221,7 +221,7 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
 
   // Set up progress tracking for current video with proper cleanup
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     const player = videoPlayers.getPlayer(currentIndex);
     if (player && currentVideo && isFocused) {

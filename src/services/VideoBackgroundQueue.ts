@@ -66,7 +66,7 @@ class VideoBackgroundQueue {
   private config: QueueConfig;
   private isProcessing = false;
   private isPaused = false;
-  private memoryMonitorInterval?: NodeJS.Timeout;
+  private memoryMonitorInterval?: ReturnType<typeof setTimeout>;
   private appStateSubscription?: any;
   private currentAppState: AppStateStatus = "active";
   private jobIdCounter = 0;
@@ -153,8 +153,7 @@ class VideoBackgroundQueue {
   private startMemoryMonitoring(): void {
     this.memoryMonitorInterval = setInterval(async () => {
       const memoryInfo = await environmentDetector.getMemoryInfo();
-      const memoryUsage =
-        (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
+      const memoryUsage = (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
 
       if (memoryUsage > this.config.memoryThreshold) {
         // Pause processing if memory pressure is high
