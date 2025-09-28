@@ -1,0 +1,90 @@
+{
+  "project": {
+    "name": "Toxic Confessions",
+    "bundleId": "com.toxic.confessions",
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  },
+  "apiKeys": {
+    "ios": "appl_DOIFtYSbtSxeplMuPlcSNIEapYvOz",
+    "android": "goog_DOIFtYSbtSxeplMuPlcSNIEapYvOz"
+  },
+  "entitlements": [
+    {
+      "id": "supasecret_plus",
+      "lookupKey": "premium_access",
+      "displayName": "Premium Access",
+      "description": "Full access to all premium features"
+    }
+  ],
+  "products": [
+    {
+      "id": "supasecret_plus_monthly",
+      "displayName": "Toxic Confessions Plus Monthly",
+      "type": "subscription",
+      "duration": "P1M",
+      "price": 4.99,
+      "currency": "USD",
+      "entitlements": [
+        "supasecret_plus"
+      ],
+      "storeProductIds": {
+        "ios": "supasecret_plus_monthly",
+        "android": "supasecret_plus_monthly"
+      }
+    },
+    {
+      "id": "supasecret_plus_annual",
+      "displayName": "Toxic Confessions Plus Annual",
+      "type": "subscription",
+      "duration": "P1Y",
+      "price": 29.99,
+      "currency": "USD",
+      "entitlements": [
+        "supasecret_plus"
+      ],
+      "popular": true,
+      "storeProductIds": {
+        "ios": "supasecret_plus_annual",
+        "android": "supasecret_plus_annual"
+      }
+    }
+  ],
+  "offerings": [
+    {
+      "id": "default",
+      "displayName": "Toxic Confessions Plus",
+      "description": "Premium subscription for Toxic Confessions",
+      "packages": [
+        {
+          "id": "monthly",
+          "productId": "supasecret_plus_monthly",
+          "packageType": "monthly"
+        },
+        {
+          "id": "annual",
+          "productId": "supasecret_plus_annual",
+          "packageType": "annual",
+          "recommended": true
+        }
+      ]
+    }
+  ],
+  "setupComplete": true,
+  "timestamp": "2025-09-28T05:37:38.704Z",
+  "mcpSetup": {
+    "completed": true,
+    "projectId": "projf5ad9927",
+    "projectName": "ToxicConfessions",
+    "lastVerified": "2025-09-28T01:58:00.000Z",
+    "components": {
+      "apps": true,
+      "entitlements": true,
+      "offerings": true,
+      "packages": true,
+      "products": true
+    }
+  }
+}

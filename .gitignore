@@ -68,3 +68,8 @@ __pycache__
 *.pyc
 .next
 .github
+
+# MCP Configuration (contains API keys)
+.cursor/mcp.json
+mcp.json
+.env.mcp

@@ -4,39 +4,30 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
-  ScrollView,
   Pressable,
-  AccessibilityInfo,
-  Vibration,
-  LayoutAnimation,
   UIManager,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   BottomSheetModal,
-  BottomSheetModalProvider,
   BottomSheetBackdrop,
   BottomSheetTextInput,
   BottomSheetFlatList,
-  BottomSheetScrollView,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "expo-blur";
-import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
-import { formatDistanceToNow, format } from "date-fns";
-import Svg, { Circle, Rect, Path, Polygon, Ellipse, G } from "react-native-svg";
-import MaskedView from "@react-native-masked-view/masked-view";
 
-import { useReplyStore, type ReactionType, type Reaction } from "../state/replyStore";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import Svg, { Circle, Rect, Path, Polygon, G } from "react-native-svg";
+
+import { useReplyStore, type ReactionType } from "../state/replyStore";
 import { VideoDataService } from "../services/VideoDataService";
 import { PreferenceAwareHaptics } from "../utils/haptics";
 import { InlineCharacterCounter } from "./CharacterCounter";
@@ -47,8 +38,6 @@ import { useToastHelpers } from "../contexts/ToastContext";
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Enhanced anonymous avatar generator with geometric patterns
 const GeometricAvatar = memo(({ seed, size = 40 }: { seed: string; size?: number }) => {
@@ -242,18 +231,14 @@ const GeometricAvatar = memo(({ seed, size = 40 }: { seed: string; size?: number
 
   return (
     <View className="rounded-full overflow-hidden" style={{ width: size, height: size }}>
-      <LinearGradient
-        colors={colors}
-        className="absolute w-full h-full"
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+      <LinearGradient colors={colors} className="absolute w-full h-full" start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
       <Svg width={size} height={size} className="absolute">
         {pattern()}
       </Svg>
     </View>
   );
 });
+GeometricAvatar.displayName = "GeometricAvatar";
 
 // Reaction types are now imported from replyStore
 
@@ -482,6 +467,7 @@ const CommentItem = memo(
     );
   },
 );
+CommentItem.displayName = "CommentItem";
 
 // Loading skeleton component
 const CommentSkeleton = memo(() => {
@@ -520,6 +506,7 @@ const CommentSkeleton = memo(() => {
     </Animated.View>
   );
 });
+CommentSkeleton.displayName = "CommentSkeleton";
 
 // Main EnhancedCommentBottomSheet component
 interface EnhancedCommentBottomSheetProps {

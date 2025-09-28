@@ -20,7 +20,11 @@
     "verify-backend": "node scripts/verify-backend-integration.js",
     "video-cleanup:dry-run": "node scripts/video-cleanup-report.js --dry-run",
     "video-cleanup:cleanup": "node scripts/video-cleanup-report.js --cleanup",
-    "add-sample-videos": "node scripts/add-sample-video-confessions.js"
+    "add-sample-videos": "node scripts/add-sample-video-confessions.js",
+    "verify-revenuecat": "tsx scripts/verify-revenuecat.ts",
+    "setup-revenuecat": "node scripts/setup-revenuecat-dashboard.js",
+    "revenuecat-mcp": "node scripts/revenuecat-mcp-setup.js",
+    "revenuecat-api": "npx tsx scripts/revenuecat-api-setup.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.63.0",
@@ -99,6 +103,7 @@
     "expo-store-review": "~9.0.7",
     "expo-symbols": "~1.0.7",
     "expo-system-ui": "~6.0.7",
+    "expo-updates": "~29.0.11",
     "expo-video": "~3.0.11",
     "expo-video-thumbnails": "~10.0.7",
     "expo-web-browser": "~15.0.7",
@@ -140,6 +145,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@babel/plugin-transform-class-static-block": "^7.28.3",
     "@react-native-community/cli": "^20.0.2",
     "@react-native/metro-config": "^0.81.1",
     "@types/jest": "^30.0.0",
@@ -147,6 +153,7 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^7.7.1",
     "@typescript-eslint/parser": "^7.7.1",
+    "axios": "^1.12.2",
     "babel-plugin-module-resolver": "^5.0.2",
     "dotenv": "^17.2.2",
     "eslint": "^8.57.0",
@@ -157,6 +164,7 @@
     "patch-package": "^8.0.0",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.0"
   },
   "private": true,

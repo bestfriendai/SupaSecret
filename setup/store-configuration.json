@@ -1,0 +1,40 @@
+{
+  "ios": {
+    "bundleId": "com.toxic.confessions",
+    "subscriptions": [
+      {
+        "productId": "supasecret_plus_monthly",
+        "name": "ToxicConfessions Plus Monthly",
+        "price": "$4.99",
+        "duration": "monthly",
+        "subscriptionGroup": "supasecret_plus_group"
+      },
+      {
+        "productId": "supasecret_plus_annual",
+        "name": "ToxicConfessions Plus Annual",
+        "price": "$29.99",
+        "duration": "annual",
+        "subscriptionGroup": "supasecret_plus_group"
+      }
+    ]
+  },
+  "android": {
+    "packageName": "com.toxic.confessions",
+    "subscriptions": [
+      {
+        "productId": "supasecret_plus_monthly",
+        "name": "ToxicConfessions Plus Monthly",
+        "price": "$4.99",
+        "duration": "monthly",
+        "subscriptionGroup": "supasecret_plus_group"
+      },
+      {
+        "productId": "supasecret_plus_annual",
+        "name": "ToxicConfessions Plus Annual",
+        "price": "$29.99",
+        "duration": "annual",
+        "subscriptionGroup": "supasecret_plus_group"
+      }
+    ]
+  }
+}

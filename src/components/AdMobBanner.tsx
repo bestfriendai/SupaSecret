@@ -1,24 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Platform, StyleSheet } from 'react-native';
-import { AdMobService } from '../services/AdMobService';
-import { hasAdvertisingConsent } from '../state/consentStore';
+import React, { useEffect, useState } from "react";
+import { View, Text, Platform, StyleSheet } from "react-native";
+import { AdMobService } from "../services/AdMobService";
+import { hasAdvertisingConsent } from "../state/consentStore";
 
 // Dynamic import for native module
 let BannerAd: any = null;
 let BannerAdSize: any = null;
 
 const loadAdMobModule = async () => {
-  if (Platform.OS === 'web' || AdMobService.isExpoGo()) {
+  if (Platform.OS === "web" || AdMobService.isExpoGo()) {
     return false;
   }
 
   try {
-    const module = await import('react-native-google-mobile-ads');
-    BannerAd = module.BannerAd;
-    BannerAdSize = module.BannerAdSize;
+    const module = await import("react-native-google-mobile-ads");
+    BannerAd = (module as any).BannerAd;
+    BannerAdSize = (module as any).BannerAdSize;
     return true;
   } catch (error) {
-    console.warn('AdMob module not available:', error);
+    console.warn("AdMob module not available:", error);
     return false;
   }
 };
@@ -28,11 +28,7 @@ interface AdMobBannerProps {
   testMode?: boolean;
 }
 
-export const AdMobBanner: React.FC<AdMobBannerProps> = ({
-  visible = true,
-  testMode = __DEV__
-}) => {
-  const [isAdLoaded, setIsAdLoaded] = useState(false);
+export const AdMobBanner: React.FC<AdMobBannerProps> = ({ visible = true, testMode = __DEV__ }) => {
   const [adError, setAdError] = useState<string | null>(null);
   const [moduleLoaded, setModuleLoaded] = useState(false);
 
@@ -52,7 +48,7 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
       });
 
   useEffect(() => {
-    loadAdMobModule().then(loaded => {
+    loadAdMobModule().then((loaded) => {
       setModuleLoaded(loaded);
     });
   }, []);
@@ -67,12 +63,8 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
   if (AdMobService.isExpoGo()) {
     return (
       <View style={styles.demoBanner}>
-        <Text style={styles.demoText}>
-          📱 AdMob Banner Ad ({testMode ? 'Test Mode' : 'Production'})
-        </Text>
-        <Text style={styles.demoSubtext}>
-          Requires development build
-        </Text>
+        <Text style={styles.demoText}>📱 AdMob Banner Ad ({testMode ? "Test Mode" : "Production"})</Text>
+        <Text style={styles.demoSubtext}>Requires development build</Text>
       </View>
     );
   }
@@ -94,68 +86,64 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({
           requestNonPersonalizedAdsOnly: !hasConsent,
         }}
         onAdLoaded={() => {
-          console.log('✅ Banner ad loaded');
-          setIsAdLoaded(true);
+          console.log("✅ Banner ad loaded");
           setAdError(null);
         }}
         onAdFailedToLoad={(error: any) => {
-          console.error('❌ Banner ad failed to load:', error);
-          setAdError(error.message || 'Failed to load ad');
-          setIsAdLoaded(false);
+          console.error("❌ Banner ad failed to load:", error);
+          setAdError(error.message || "Failed to load ad");
         }}
         onAdOpened={() => {
-          console.log('👆 Banner ad opened');
+          console.log("👆 Banner ad opened");
         }}
         onAdClosed={() => {
-          console.log('👇 Banner ad closed');
+          console.log("👇 Banner ad closed");
         }}
       />
-      {adError && __DEV__ && (
-        <Text style={styles.errorText}>Ad Error: {adError}</Text>
-      )}
+      {adError && __DEV__ && <Text style={styles.errorText}>Ad Error: {adError}</Text>}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
     minHeight: 50,
   },
   demoBanner: {
     height: 50,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
     marginVertical: 5,
     borderRadius: 5,
     marginHorizontal: 10,
   },
   demoText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   demoSubtext: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   loadingBanner: {
     height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
   },
   errorText: {
     fontSize: 10,
-    color: 'red',
+    color: "red",
     marginTop: 5,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

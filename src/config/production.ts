@@ -48,18 +48,22 @@ export const PRODUCTION_CONFIG = {
     }),
     AD_UNITS: {
       banner: Platform.select({
-        ios: getEnvVar("EXPO_PUBLIC_ADMOB_BANNER_IOS", { default: "ca-app-pub-9512493666273460/3323132177" }),
-        android: getEnvVar("EXPO_PUBLIC_ADMOB_BANNER_ANDROID", { default: "ca-app-pub-3940256099942544/6300978111" }),
+        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_BANNER_ID", { default: "ca-app-pub-9512493666273460/6903779371" }),
+        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID", {
+          default: "ca-app-pub-9512493666273460/6470974033",
+        }),
       }),
       interstitial: Platform.select({
-        ios: getEnvVar("EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS", { default: "ca-app-pub-9512493666273460/4444642155" }),
-        android: getEnvVar("EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID", {
-          default: "ca-app-pub-3940256099942544/1033173712",
+        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID", { default: "ca-app-pub-9512493666273460/6847939052" }),
+        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID", {
+          default: "ca-app-pub-9512493666273460/8136969992",
         }),
       }),
       rewarded: Platform.select({
-        ios: getEnvVar("EXPO_PUBLIC_ADMOB_REWARDED_IOS", { default: "ca-app-pub-9512493666273460/5566152133" }),
-        android: getEnvVar("EXPO_PUBLIC_ADMOB_REWARDED_ANDROID", { default: "ca-app-pub-3940256099942544/5224354917" }),
+        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID", { default: "ca-app-pub-9512493666273460/1862193927" }),
+        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID", {
+          default: "ca-app-pub-9512493666273460/9041297053",
+        }),
       }),
     },
   },
@@ -71,11 +75,11 @@ export const PRODUCTION_CONFIG = {
       android: getEnvVar("EXPO_PUBLIC_REVENUECAT_ANDROID_KEY", { required: true }),
     }),
     ENTITLEMENTS: {
-      PREMIUM: "premium",
+      PREMIUM: "toxicconfessions_plus",
     },
     PRODUCTS: {
-      MONTHLY: "toxicconfessions_premium_monthly",
-      YEARLY: "toxicconfessions_premium_yearly",
+      MONTHLY: "toxicconfessions_plus_monthly",
+      YEARLY: "toxicconfessions_plus_annual",
     },
   },
 

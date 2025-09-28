@@ -1,4 +1,17 @@
-require("dotenv").config({ override: true });
+require("dotenv").config({ override: true, quiet: true });
+
+const googleMobileAdsConfig = (() => {
+  try {
+    const config = require("./google-mobile-ads.json");
+    return config["react-native-google-mobile-ads"] || null;
+  } catch (error) {
+    console.warn("google-mobile-ads.json not found or invalid, skipping AdMob config setup.");
+    return null;
+  }
+})();
+
+// Check if we're building for Expo Go
+const isExpoGo = process.env.EXPO_GO === "true" || process.env.npm_lifecycle_event === "start" || process.env.npm_lifecycle_event === "web";
 
 module.exports = {
   expo: {
@@ -7,7 +20,7 @@ module.exports = {
     scheme: "toxicconfessions",
     version: "1.0.0",
     runtimeVersion: {
-      policy: "sdkVersion"
+      policy: "sdkVersion",
     },
     orientation: "portrait",
     userInterfaceStyle: "light",
@@ -38,15 +51,20 @@ module.exports = {
           },
         },
       ],
-      [
-        "react-native-vision-camera",
-        {
-          enableFrameProcessors: true,
-          cameraPermissionText: "$(PRODUCT_NAME) needs access to your Camera for recording anonymous videos.",
-          enableMicrophonePermission: true,
-          microphonePermissionText: "$(PRODUCT_NAME) needs access to your Microphone for recording audio.",
-        },
-      ],
+      // Only include react-native-vision-camera for development builds, not Expo Go
+      ...(isExpoGo
+        ? []
+        : [
+            [
+              "react-native-vision-camera",
+              {
+                enableFrameProcessors: true,
+                cameraPermissionText: "$(PRODUCT_NAME) needs access to your Camera for recording anonymous videos.",
+                enableMicrophonePermission: true,
+                microphonePermissionText: "$(PRODUCT_NAME) needs access to your Microphone for recording audio.",
+              },
+            ],
+          ]),
 
       "expo-audio",
       "expo-camera",
@@ -103,6 +121,7 @@ module.exports = {
         "android.permission.READ_EXTERNAL_STORAGE",
       ],
       package: "com.toxic.confessions",
+      googleMobileAdsJson: "./google-mobile-ads.json",
     },
     extra: {
       eas: {
@@ -119,4 +138,9 @@ module.exports = {
       },
     },
   },
+  ...(googleMobileAdsConfig
+    ? {
+        "react-native-google-mobile-ads": googleMobileAdsConfig,
+      }
+    : {}),
 };

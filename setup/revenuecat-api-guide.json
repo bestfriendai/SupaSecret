@@ -1,0 +1,67 @@
+{
+  "project_id": "your-project-id",
+  "api_calls": {
+    "create_apps": [
+      {
+        "name": "Toxic Confessions iOS",
+        "type": "app_store",
+        "app_store": {
+          "bundle_id": "com.toxic.confessions"
+        }
+      },
+      {
+        "name": "Toxic Confessions Android",
+        "type": "play_store",
+        "play_store": {
+          "package_name": "com.toxic.confessions"
+        }
+      }
+    ],
+    "create_entitlements": [
+      {
+        "lookup_key": "premium_access",
+        "display_name": "Premium Access"
+      }
+    ],
+    "create_products": [
+      {
+        "store_identifier": "supasecret_plus_monthly",
+        "display_name": "Toxic Confessions Plus Monthly",
+        "type": "subscription"
+      },
+      {
+        "store_identifier": "supasecret_plus_annual",
+        "display_name": "Toxic Confessions Plus Annual",
+        "type": "subscription"
+      }
+    ],
+    "attach_products": {
+      "product_ids": [
+        "prod1a2b3c4d5e",
+        "prod2a2b3c4d5e"
+      ]
+    },
+    "create_offering": {
+      "lookup_key": "default",
+      "display_name": "Toxic Confessions Plus"
+    },
+    "create_packages": [
+      {
+        "lookup_key": "monthly",
+        "display_name": "Monthly",
+        "product_id": "prod1a2b3c4d5e"
+      },
+      {
+        "lookup_key": "annual",
+        "display_name": "Annual",
+        "product_id": "prod2a2b3c4d5e"
+      }
+    ]
+  },
+  "notes": [
+    "1. Create a project in RevenueCat dashboard first",
+    "2. Replace 'your-project-id' with actual project ID",
+    "3. Replace product IDs with actual IDs returned from API",
+    "4. Test with sandbox accounts before production"
+  ]
+}

@@ -8,12 +8,13 @@ import {
   View,
   Pressable,
   AppState,
+  FlatList,
 } from "react-native";
-import { FlatList } from "react-native";
+
 import type { ViewToken } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
-import { GestureDetector } from "react-native-gesture-handler";
+
 import Animated, { useAnimatedStyle, withTiming, useSharedValue } from "react-native-reanimated";
 import { useVideoPlayer, VideoPlayer } from "expo-video";
 import * as Haptics from "expo-haptics";
@@ -28,20 +29,13 @@ import { generateConfessionLink, generateShareMessage } from "../utils/links";
 import { VideoDataService } from "../services/VideoDataService";
 import { useConfessionStore } from "../state/confessionStore";
 import type { Confession } from "../types/confession";
-import { useVideoFeedGestures } from "../hooks/useVideoFeedGestures";
+
 import { isOnline, setOnline } from "../lib/offlineQueue";
-import { VideoLoadError, VideoErrorCode, VideoErrorSeverity } from "../types/videoErrors";
+import { VideoLoadError } from "../types/videoErrors";
 
 interface OptimizedTikTokVideoFeedProps {
   onClose?: () => void;
   initialIndex?: number;
-}
-
-interface VideoLoadResult {
-  success: boolean;
-  videos: Confession[];
-  error?: VideoLoadError;
-  shouldRetry: boolean;
 }
 
 // Single video player approach - only one player at a time
@@ -51,7 +45,6 @@ const FALLBACK_VIDEOS = [
 ];
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-const MAX_RETRY_ATTEMPTS = 3;
 
 const viewabilityConfig = {
   itemVisiblePercentThreshold: 80,
@@ -67,7 +60,8 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [networkStatus, setNetworkStatus] = useState(isOnline());
+  const [networkStatus] = useState(isOnline());
+
   const [retryAttempts, setRetryAttempts] = useState(0);
   const scrollOffset = useSharedValue(0);
   const hasInitializedScroll = useRef(false);

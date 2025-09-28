@@ -3,13 +3,7 @@ import { View, Text, Pressable, Dimensions, StyleSheet } from "react-native";
 import { VideoView, VideoPlayer, VideoPlayerStatus } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-  interpolate,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { format, isValid } from "date-fns";
 import * as Haptics from "expo-haptics";
 
@@ -198,9 +192,6 @@ export default function OptimizedVideoItem({
   }, [onCommentPress, confession.id]);
 
   // Listen for comment updates to refresh count
-  const handleCommentUpdate = useCallback(() => {
-    VideoDataService.getCommentCount(confession.id).then(setCommentCount);
-  }, [confession.id]);
 
   // Handle share action
   const handleShare = useCallback(() => {

@@ -15,13 +15,7 @@ import type { ViewToken } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  interpolate,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, withTiming, useSharedValue } from "react-native-reanimated";
 import { useVideoPlayer, VideoPlayer } from "expo-video";
 import * as Haptics from "expo-haptics";
 import NetInfo from "@react-native-community/netinfo";
@@ -44,7 +38,7 @@ import {
   VideoErrorType,
   VideoError,
 } from "../types/videoErrors";
-import { createRetryableOperation, RetryConfig, RetryResult } from "../utils/retryLogic";
+import { createRetryableOperation, RetryConfig } from "../utils/retryLogic";
 import { useGlobalVideoStore } from "../state/globalVideoStore";
 import { videoErrorRecoveryService } from "../services/VideoErrorRecoveryService";
 import { VideoErrorMessages, UserFriendlyError } from "../utils/videoErrorMessages";
