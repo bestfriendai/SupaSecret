@@ -434,16 +434,35 @@ export class RevenueCatService {
   static getMockOfferings(): SubscriptionTier[] {
     return [
       {
-        id: "monthly",
-        name: "Premium Monthly",
+        id: "toxicconfessions_plus_monthly",
+        name: "ToxicConfessions Plus Monthly",
         price: "$4.99/month",
-        features: ["No ads", "Unlimited video recordings", "Advanced voice effects", "Priority support"],
+        features: [
+          "Ad-free experience",
+          "Unlimited video recordings (up to 5 minutes)",
+          "Higher quality video (4K)",
+          "Unlimited saves",
+          "Advanced filters",
+          "Priority processing",
+          "Custom themes",
+          "Early access to new features",
+        ],
       },
       {
-        id: "annual",
-        name: "Premium Annual",
-        price: "$39.99/year",
-        features: ["No ads", "Unlimited video recordings", "Advanced voice effects", "Priority support", "Save 33%"],
+        id: "toxicconfessions_plus_annual",
+        name: "ToxicConfessions Plus Annual",
+        price: "$29.99/year",
+        features: [
+          "Ad-free experience",
+          "Unlimited video recordings (up to 5 minutes)",
+          "Higher quality video (4K)",
+          "Unlimited saves",
+          "Advanced filters",
+          "Priority processing",
+          "Custom themes",
+          "Early access to new features",
+          "Save 50%",
+        ],
         isPopular: true,
       },
     ];

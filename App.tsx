@@ -22,7 +22,6 @@ import { cleanupNotificationSubscriptions, setupNotificationSubscriptions } from
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ToastProvider } from "./src/contexts/ToastContext";
 import RetryBanner from "./src/components/RetryBanner";
-import { offlineQueue } from "./src/utils/offlineQueue";
 import { initializeServices } from "./src/services/ServiceInitializer";
 import { checkEnvironment } from "./src/utils/environmentCheck";
 import "./src/utils/hermesTestUtils"; // Auto-run Hermes compatibility tests
@@ -116,7 +115,7 @@ export default function App() {
     };
 
     // Hide splash screen after a short delay to ensure smooth transition
-    const splashTimer = setTimeout(hideSplashScreen, 100);
+    setTimeout(hideSplashScreen, 100);
 
     const initializeApp = async () => {
       try {
@@ -199,7 +198,7 @@ export default function App() {
         if (token_hash && type) {
           const tokenHashStr = Array.isArray(token_hash) ? token_hash[0] : token_hash;
           const typeStr = Array.isArray(type) ? type[0] : type;
-          const { data, error } = await supabase.auth.verifyOtp({
+          const { error } = await supabase.auth.verifyOtp({
             token_hash: tokenHashStr,
             type: typeStr as any,
           });
