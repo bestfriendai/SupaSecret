@@ -75,11 +75,22 @@ export const PRODUCTION_CONFIG = {
       android: getEnvVar("EXPO_PUBLIC_REVENUECAT_ANDROID_KEY", { required: true }),
     }),
     ENTITLEMENTS: {
-      PREMIUM: "toxicconfessions_plus",
+      PREMIUM: "premium",
+      PRO: "pro",
+      UNLIMITED_VIDEOS: "unlimited_videos",
     },
     PRODUCTS: {
-      MONTHLY: "toxicconfessions_plus_monthly",
-      YEARLY: "toxicconfessions_plus_annual",
+      MONTHLY_IOS: "com.toxic.confessions.monthly",
+      ANNUAL_IOS: "com.toxic.confessions.annual",
+      LIFETIME_IOS: "com.toxic.confessions.lifetime",
+      MONTHLY_ANDROID: "com.toxic.confessions.monthly:monthly-base",
+      ANNUAL_ANDROID: "com.toxic.confessions.annual:annual-base",
+      LIFETIME_ANDROID: "com.toxic.confessions.lifetime:lifetime-base",
+    },
+    PACKAGES: {
+      MONTHLY: "$rc_monthly",
+      ANNUAL: "$rc_annual",
+      LIFETIME: "$rc_lifetime",
     },
   },
 

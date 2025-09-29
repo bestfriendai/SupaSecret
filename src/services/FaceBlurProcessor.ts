@@ -17,7 +17,7 @@ const loadNativeModules = async () => {
       FaceDetection = await import("@react-native-ml-kit/face-detection");
     }
     if (!FFmpegKit) {
-      FFmpegKit = await import("ffmpeg-kit-react-native");
+      FFmpegKit = await import("ffmpeg-kit-react-native-community");
     }
   } catch (error) {
     console.error("Failed to load native modules:", error);
