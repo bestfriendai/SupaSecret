@@ -18,7 +18,7 @@ const loadNativeModules = async () => {
 
   try {
     if (!FFmpegKit) {
-      const ffmpegModule = await import("ffmpeg-kit-react-native");
+      // const ffmpegModule = await import("ffmpeg-kit-react-native");
       FFmpegKit = ffmpegModule.FFmpegKit;
       ReturnCode = ffmpegModule.ReturnCode;
     }

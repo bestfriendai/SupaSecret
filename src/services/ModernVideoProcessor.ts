@@ -32,7 +32,7 @@ const loadFFmpeg = async () => {
   if (!HAS_FFMPEG || FFmpegKit) return;
 
   try {
-    const ffmpegModule = await import("ffmpeg-kit-react-native");
+    // const ffmpegModule = await import("ffmpeg-kit-react-native");
     FFmpegKit = ffmpegModule.FFmpegKit;
     FFmpegKitConfig = ffmpegModule.FFmpegKitConfig;
     FFprobeKit = ffmpegModule.FFprobeKit;
