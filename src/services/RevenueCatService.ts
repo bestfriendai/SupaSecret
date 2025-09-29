@@ -214,9 +214,55 @@ export class RevenueCatService {
 
       const offerings = await Purchases.getOfferings();
       console.log("🚀 Retrieved RevenueCat offerings:", offerings);
+
+      // Validate offerings are not empty
+      if (!offerings || !offerings.current) {
+        console.error("❌ No current offering returned from RevenueCat");
+        console.error("Available offerings:", Object.keys(offerings?.all || {}));
+
+        if (__DEV__) {
+          console.warn("💡 In development: This is expected if products aren't configured");
+          console.warn("💡 Check: App Store Connect products have all metadata");
+          console.warn("💡 Check: RevenueCat product IDs match exactly");
+          console.warn("💡 Check: Paid Applications Agreement signed");
+        } else {
+          console.error("🚨 PRODUCTION: No offerings available!");
+          console.error("🚨 Users will not be able to purchase subscriptions");
+          console.error("🚨 Verify: Products are 'Ready to Submit' in App Store Connect");
+        }
+
+        return offerings; // Return anyway, but logged warnings
+      }
+
+      // Validate current offering has packages
+      if (offerings.current.availablePackages.length === 0) {
+        console.error("❌ Current offering has no packages");
+        console.error("Offering ID:", offerings.current.identifier);
+        console.error("Offering metadata:", offerings.current.metadata);
+
+        if (!__DEV__) {
+          console.error("🚨 PRODUCTION: No subscription packages available!");
+        }
+      } else {
+        console.log("✅ Found", offerings.current.availablePackages.length, "packages");
+        offerings.current.availablePackages.forEach((pkg, idx) => {
+          console.log(`  ${idx + 1}. ${pkg.identifier}:`, {
+            productId: pkg.product.identifier,
+            price: pkg.product.priceString,
+            title: pkg.product.title,
+          });
+        });
+      }
+
       return offerings;
     } catch (error) {
       console.error("Failed to get offerings:", error);
+
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+
       return null;
     }
   }
