@@ -26,6 +26,7 @@ interface RevenueCatOffering {
   serverDescription: string;
   metadata: Record<string, any>;
   packages: RevenueCatPackage[];
+  availablePackages: RevenueCatPackage[]; // Alias for packages
 }
 
 interface RevenueCatPackage {

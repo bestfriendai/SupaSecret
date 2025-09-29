@@ -110,7 +110,11 @@ export const useProgressiveEnhancement = () => {
         keyof FeatureFallbacks,
         keyof Pick<
           DeviceCapabilities,
-          "hasFaceDetection" | "hasVoiceModulation" | "hasSpeechRecognition" | "hasAdvancedCamera" | "hasVideoProcessing"
+          | "hasFaceDetection"
+          | "hasVoiceModulation"
+          | "hasSpeechRecognition"
+          | "hasAdvancedCamera"
+          | "hasVideoProcessing"
         >
       > = {
         faceBlur: "hasFaceDetection",

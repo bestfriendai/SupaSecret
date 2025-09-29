@@ -8,6 +8,7 @@ import { Platform } from "react-native";
 // Helper function to get environment variables with validation
 const getEnvVar = (name: string, options: { required?: boolean; default?: string | null } = {}): string | null => {
   const { required = false, default: defaultValue = null } = options;
+  // eslint-disable-next-line expo/no-dynamic-env-var
   const value = process.env[name];
 
   if (!value || value.trim() === "") {
@@ -76,21 +77,14 @@ export const PRODUCTION_CONFIG = {
     }),
     ENTITLEMENTS: {
       PREMIUM: "premium",
-      PRO: "pro",
-      UNLIMITED_VIDEOS: "unlimited_videos",
     },
     PRODUCTS: {
-      MONTHLY_IOS: "com.toxic.confessions.monthly",
-      ANNUAL_IOS: "com.toxic.confessions.annual",
-      LIFETIME_IOS: "com.toxic.confessions.lifetime",
-      MONTHLY_ANDROID: "com.toxic.confessions.monthly:monthly-base",
-      ANNUAL_ANDROID: "com.toxic.confessions.annual:annual-base",
-      LIFETIME_ANDROID: "com.toxic.confessions.lifetime:lifetime-base",
+      MONTHLY: "com.toxic.confessions.monthly",
+      ANNUAL: "com.toxic.confessions.annual",
     },
     PACKAGES: {
       MONTHLY: "$rc_monthly",
       ANNUAL: "$rc_annual",
-      LIFETIME: "$rc_lifetime",
     },
   },
 
@@ -278,6 +272,7 @@ export const validateProductionConfig = (): {
   ];
 
   requiredEnvVars.forEach((envVar) => {
+    // eslint-disable-next-line expo/no-dynamic-env-var
     const value = process.env[envVar];
     if (!value || value.includes("YOUR_") || value.includes("PLACEHOLDER")) {
       if (!missingKeys.some((key) => key.includes(envVar.replace("EXPO_PUBLIC_", "").toLowerCase()))) {

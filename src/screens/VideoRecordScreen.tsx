@@ -14,10 +14,30 @@ import { ProcessedVideo } from "../services/IAnonymiser";
 import { ProcessingMode } from "../services/UnifiedVideoProcessingService";
 import { useVideoCapabilities } from "../services/UnifiedVideoService";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
+import VisionCameraRecordScreen from "./VisionCameraRecordScreen";
 
 const MAX_DURATION = 60; // seconds
 
+/**
+ * Unified Video Record Screen
+ * Automatically uses Vision Camera (native builds) or Expo Camera (Expo Go)
+ */
 function VideoRecordScreen() {
+  // Use Vision Camera for native builds with real-time face blur
+  // Use Expo Camera for Expo Go with post-processing fallback
+  if (!IS_EXPO_GO) {
+    return <VisionCameraRecordScreen />;
+  }
+
+  // Expo Go implementation below
+  return <ExpoCameraRecordScreen />;
+}
+
+/**
+ * Expo Camera implementation for Expo Go
+ * Uses post-processing for face blur (no real-time effects)
+ */
+function ExpoCameraRecordScreen() {
   const navigation = useNavigation();
 
   const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
@@ -254,6 +274,12 @@ function VideoRecordScreen() {
           transcriptionText={data.liveTranscription}
           onTranscriptionUpdate={() => {}}
         />
+
+        {/* Expo Go Info Banner */}
+        <View style={styles.expoGoBanner}>
+          <Ionicons name="information-circle" size={16} color="#3B82F6" />
+          <Text style={styles.expoGoBannerText}>Expo Go: Post-processing mode (build for real-time blur)</Text>
+        </View>
 
         {(processing || isProcessingStarted) && (
           <View style={styles.processingOverlay}>
@@ -616,6 +642,27 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  expoGoBanner: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 60 : 20,
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(59, 130, 246, 0.15)",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(59, 130, 246, 0.3)",
+  },
+  expoGoBannerText: {
+    color: "#93C5FD",
+    fontSize: 12,
+    fontWeight: "500",
+    flex: 1,
   },
 });
 

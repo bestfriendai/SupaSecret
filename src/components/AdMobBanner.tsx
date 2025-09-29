@@ -32,20 +32,8 @@ export const AdMobBanner: React.FC<AdMobBannerProps> = ({ visible = true, testMo
   const [adError, setAdError] = useState<string | null>(null);
   const [moduleLoaded, setModuleLoaded] = useState(false);
 
-  // Your real iOS banner ad unit ID
-  const IOS_BANNER_ID = "ca-app-pub-9512493666273460/3323132177";
-  const ANDROID_BANNER_ID = "ca-app-pub-3940256099942544/6300978111"; // Test ID for Android
-
-  // Use test IDs in development
-  const adUnitId = testMode
-    ? Platform.select({
-        ios: "ca-app-pub-3940256099942544/2934735716", // Test banner iOS
-        android: "ca-app-pub-3940256099942544/6300978111", // Test banner Android
-      })
-    : Platform.select({
-        ios: IOS_BANNER_ID,
-        android: ANDROID_BANNER_ID,
-      });
+  // Get ad unit ID from AdMobService
+  const adUnitId = AdMobService.getBannerAdUnitId();
 
   useEffect(() => {
     loadAdMobModule().then((loaded) => {

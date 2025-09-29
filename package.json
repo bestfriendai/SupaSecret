@@ -22,7 +22,8 @@
     "video-cleanup:cleanup": "node scripts/video-cleanup-report.js --cleanup",
     "add-sample-videos": "node scripts/add-sample-video-confessions.js",
     "verify-revenuecat": "tsx scripts/verify-revenuecat.ts",
-    "setup-revenuecat": "node scripts/setup-revenuecat-dashboard.js",
+    "setup-revenuecat": "tsx scripts/setup-revenuecat-final.ts",
+    "setup-revenuecat-old": "node scripts/setup-revenuecat-dashboard.js",
     "revenuecat-mcp": "node scripts/revenuecat-mcp-setup.js",
     "revenuecat-api": "npx tsx scripts/revenuecat-api-setup.ts"
   },
@@ -48,7 +49,7 @@
     "@react-navigation/native-stack": "^7.0.0",
     "@react-navigation/stack": "^7.0.0",
     "@shopify/flash-list": "2.0.2",
-    "@shopify/react-native-skia": "2.2.12",
+    "@shopify/react-native-skia": "^2.2.12",
     "@supabase/supabase-js": "^2.42.7",
     "clsx": "^2.1.1",
     "date-fns": "^2.30.0",
@@ -57,6 +58,7 @@
     "expo-asset": "~12.0.9",
     "expo-audio": "~1.0.13",
     "expo-auth-session": "~7.0.8",
+    "expo-av": "^16.0.7",
     "expo-background-fetch": "~14.0.7",
     "expo-battery": "~10.0.7",
     "expo-blob": "^0.1.6",
@@ -139,6 +141,7 @@
     "react-native-worklets-core": "^1.6.2",
     "tailwind-merge": "^3.3.1",
     "uuid": "^13.0.0",
+    "vision-camera-face-detector": "^0.1.8",
     "zustand": "^5.0.8"
   },
   "overrides": {
@@ -175,13 +178,15 @@
       "reactNativeDirectoryCheck": {
         "exclude": [
           "@anthropic-ai/sdk",
+          "@react-native-ml-kit/face-detection",
           "expo-live-photo",
           "expo-network-addons",
           "isomorphic-dompurify",
           "openai",
           "react-native-video-processing",
           "react-native-voice",
-          "uuid"
+          "uuid",
+          "vision-camera-face-detector"
         ],
         "listUnknownPackages": false
       }

@@ -399,7 +399,9 @@ export class VideoErrorMessages {
       error.type === VideoErrorType.NETWORK ||
       error.type === VideoErrorType.TIMEOUT ||
       error.type === VideoErrorType.MEMORY ||
-      (error.type === VideoErrorType.DECODE && typeof error.debugInfo === "string" && error.debugInfo.includes("bitrate"))
+      (error.type === VideoErrorType.DECODE &&
+        typeof error.debugInfo === "string" &&
+        error.debugInfo.includes("bitrate"))
     );
   }
 

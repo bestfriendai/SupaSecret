@@ -11,7 +11,10 @@ const googleMobileAdsConfig = (() => {
 })();
 
 // Check if we're building for Expo Go
-const isExpoGo = process.env.EXPO_GO === "true" || process.env.npm_lifecycle_event === "start" || process.env.npm_lifecycle_event === "web";
+const isExpoGo =
+  process.env.EXPO_GO === "true" ||
+  process.env.npm_lifecycle_event === "start" ||
+  process.env.npm_lifecycle_event === "web";
 
 module.exports = {
   expo: {

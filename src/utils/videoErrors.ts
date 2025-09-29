@@ -332,10 +332,7 @@ class VideoErrorAnalyzer {
       const platformInfo = (globalThis as { Platform?: { OS?: unknown; Version?: unknown } }).Platform;
       context.deviceInfo = {
         platform: typeof platformInfo?.OS === "string" ? (platformInfo.OS as string) : "unknown",
-        version:
-          typeof platformInfo?.Version === "number"
-            ? String(platformInfo.Version as number)
-            : "unknown",
+        version: typeof platformInfo?.Version === "number" ? String(platformInfo.Version as number) : "unknown",
         isHermes: this.isHermesRuntime(),
       };
 
@@ -495,10 +492,7 @@ class VideoErrorAnalyzer {
   }
 
   private static getDefaultSeverity(code: VideoErrorCode): VideoErrorSeverity {
-    const criticalCodes: VideoErrorCode[] = [
-      VideoErrorCode.PERMISSION_DENIED,
-      VideoErrorCode.UNAUTHORIZED,
-    ];
+    const criticalCodes: VideoErrorCode[] = [VideoErrorCode.PERMISSION_DENIED, VideoErrorCode.UNAUTHORIZED];
 
     const warningCodes: VideoErrorCode[] = [
       VideoErrorCode.DISPOSAL_TIMEOUT,

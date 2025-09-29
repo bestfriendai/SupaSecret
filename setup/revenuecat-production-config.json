@@ -1,0 +1,50 @@
+{
+  "updated": "2025-09-29T22:10:50.400Z",
+  "config": {
+    "projectName": "Toxic Confessions",
+    "bundleId": "com.toxic.confessions",
+    "packageName": "com.toxic.confessions",
+    "products": [
+      {
+        "identifier": "monthly",
+        "name": "Toxic Confessions Plus Monthly",
+        "type": "subscription",
+        "price": 4.99,
+        "duration": "monthly",
+        "storeProductId": {
+          "ios": "com.toxic.confessions.monthly",
+          "android": "com.toxic.confessions.monthly"
+        }
+      },
+      {
+        "identifier": "annual",
+        "name": "Toxic Confessions Plus Annual",
+        "type": "subscription",
+        "price": 29.99,
+        "duration": "annual",
+        "storeProductId": {
+          "ios": "com.toxic.confessions.annual",
+          "android": "com.toxic.confessions.annual"
+        }
+      }
+    ],
+    "entitlement": "premium",
+    "offering": "default"
+  },
+  "instructions": {
+    "ios_products": [
+      "com.toxic.confessions.monthly",
+      "com.toxic.confessions.annual"
+    ],
+    "android_products": [
+      "com.toxic.confessions.monthly",
+      "com.toxic.confessions.annual"
+    ],
+    "entitlement": "premium",
+    "offering": "default"
+  },
+  "apiKeyFormat": {
+    "ios": "appl_XXXXXXXXXXXXX",
+    "android": "goog_XXXXXXXXXXXXX"
+  }
+}

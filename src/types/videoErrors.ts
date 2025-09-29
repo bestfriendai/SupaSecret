@@ -110,7 +110,11 @@ export class BaseVideoError extends Error {
 }
 
 export class VideoLoadError extends BaseVideoError {
-  constructor(message: string, metadata?: Record<string, unknown>, severity: VideoErrorSeverity = VideoErrorSeverity.ERROR) {
+  constructor(
+    message: string,
+    metadata?: Record<string, unknown>,
+    severity: VideoErrorSeverity = VideoErrorSeverity.ERROR,
+  ) {
     super(VideoErrorCode.NetworkError, message, metadata, true, severity);
   }
 }

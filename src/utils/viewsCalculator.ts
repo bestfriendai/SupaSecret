@@ -19,7 +19,7 @@ export const calculateViews = async (confessionId: string): Promise<number> => {
     }
 
     // Count unique session_ids
-    const rows = (data ?? []) as Array<{ session_id?: string }>;
+    const rows = (data ?? []) as { session_id?: string }[];
     const uniqueSessions = new Set(rows.map((item) => item.session_id).filter((id): id is string => Boolean(id)));
     return uniqueSessions.size;
   } catch (e) {
@@ -57,7 +57,7 @@ export const calculateBulkViews = async (confessionIds: string[]): Promise<Recor
     });
 
     // Add session IDs to the appropriate sets
-    ((data ?? []) as Array<{ confession_id?: string; session_id?: string }>).forEach((item) => {
+    ((data ?? []) as { confession_id?: string; session_id?: string }[]).forEach((item) => {
       if (item.confession_id && item.session_id) {
         if (!viewCounts[item.confession_id]) {
           viewCounts[item.confession_id] = new Set();
