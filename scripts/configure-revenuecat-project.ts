@@ -1,73 +1,73 @@
 #!/usr/bin/env tsx
 
-import axios from 'axios';
-import dotenv from 'dotenv';
+import axios from "axios";
+import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
 
 // RevenueCat REST API v2 configuration
-const API_KEY = 'sk_DOIFtYSbtSxeplMuPlcSNIEapYvOz';
-const API_BASE = 'https://api.revenuecat.com/v2';
-const PROJECT_ID = 'toxicconfessions'; // Your existing project
+const API_KEY = "sk_DOIFtYSbtSxeplMuPlcSNIEapYvOz";
+const API_BASE = "https://api.revenuecat.com/v2";
+const PROJECT_ID = "toxicconfessions"; // Your existing project
 
 const api = axios.create({
   baseURL: API_BASE,
   headers: {
-    'Authorization': `Bearer ${API_KEY}`,
-    'Content-Type': 'application/json',
-    'X-Platform': 'ios,android'
+    Authorization: `Bearer ${API_KEY}`,
+    "Content-Type": "application/json",
+    "X-Platform": "ios,android",
   },
 });
 
 // Product configurations
 const PRODUCTS = [
   {
-    id: 'supasecret_plus_monthly',
-    store_identifier: 'supasecret_plus_monthly',
-    type: 'subscription',
-    display_name: 'Toxic Confessions Plus Monthly',
-    app_store_product_id: 'supasecret_plus_monthly',
-    play_store_product_id: 'supasecret_plus_monthly',
+    id: "supasecret_plus_monthly",
+    store_identifier: "supasecret_plus_monthly",
+    type: "subscription",
+    display_name: "Toxic Confessions Plus Monthly",
+    app_store_product_id: "supasecret_plus_monthly",
+    play_store_product_id: "supasecret_plus_monthly",
   },
   {
-    id: 'supasecret_plus_annual',
-    store_identifier: 'supasecret_plus_annual',
-    type: 'subscription',
-    display_name: 'Toxic Confessions Plus Annual',
-    app_store_product_id: 'supasecret_plus_annual',
-    play_store_product_id: 'supasecret_plus_annual',
+    id: "supasecret_plus_annual",
+    store_identifier: "supasecret_plus_annual",
+    type: "subscription",
+    display_name: "Toxic Confessions Plus Annual",
+    app_store_product_id: "supasecret_plus_annual",
+    play_store_product_id: "supasecret_plus_annual",
   },
 ];
 
 // Entitlement configuration
 const ENTITLEMENTS = [
   {
-    id: 'supasecret_plus',
-    display_name: 'Premium Access',
-    description: 'Full access to all premium features',
-    product_ids: ['supasecret_plus_monthly', 'supasecret_plus_annual'],
+    id: "supasecret_plus",
+    display_name: "Premium Access",
+    description: "Full access to all premium features",
+    product_ids: ["supasecret_plus_monthly", "supasecret_plus_annual"],
   },
 ];
 
 // Offering configuration
 const OFFERINGS = [
   {
-    id: 'default',
-    display_name: 'Toxic Confessions Plus',
+    id: "default",
+    display_name: "Toxic Confessions Plus",
     is_current: true,
     packages: [
       {
-        id: '$rc_monthly',
-        display_name: 'Monthly Subscription',
+        id: "$rc_monthly",
+        display_name: "Monthly Subscription",
         position: 0,
-        product_id: 'supasecret_plus_monthly',
+        product_id: "supasecret_plus_monthly",
       },
       {
-        id: '$rc_annual',
-        display_name: 'Annual Subscription (Save 50%)',
+        id: "$rc_annual",
+        display_name: "Annual Subscription (Save 50%)",
         position: 1,
-        product_id: 'supasecret_plus_annual',
+        product_id: "supasecret_plus_annual",
         is_featured: true,
       },
     ],
@@ -76,7 +76,7 @@ const OFFERINGS = [
 
 // Step 1: Create Products
 async function createProducts() {
-  console.log('\n🛍️ Creating Products...');
+  console.log("\n🛍️ Creating Products...");
 
   for (const product of PRODUCTS) {
     try {
@@ -90,7 +90,7 @@ async function createProducts() {
       };
 
       await api.post(`/projects/${PROJECT_ID}/products`, iosPayload, {
-        headers: { 'X-Platform': 'ios' }
+        headers: { "X-Platform": "ios" },
       });
       console.log(`    ✅ iOS product created: ${product.id}`);
 
@@ -102,12 +102,11 @@ async function createProducts() {
       };
 
       await api.post(`/projects/${PROJECT_ID}/products`, androidPayload, {
-        headers: { 'X-Platform': 'android' }
+        headers: { "X-Platform": "android" },
       });
       console.log(`    ✅ Android product created: ${product.id}`);
-
     } catch (error: any) {
-      if (error.response?.status === 409 || error.response?.data?.code === 'product_already_exists') {
+      if (error.response?.status === 409 || error.response?.data?.code === "product_already_exists") {
         console.log(`    ℹ️ Product ${product.id} already exists`);
       } else {
         console.error(`    ❌ Error creating product ${product.id}:`, error.response?.data || error.message);
@@ -118,7 +117,7 @@ async function createProducts() {
 
 // Step 2: Create Entitlements
 async function createEntitlements() {
-  console.log('\n📦 Creating Entitlements...');
+  console.log("\n📦 Creating Entitlements...");
 
   for (const entitlement of ENTITLEMENTS) {
     try {
@@ -137,7 +136,7 @@ async function createEntitlements() {
       for (const productId of entitlement.product_ids) {
         try {
           await api.post(`/projects/${PROJECT_ID}/entitlements/${entitlement.id}/products`, {
-            product_id: productId
+            product_id: productId,
           });
           console.log(`    ✅ Attached product ${productId} to entitlement`);
         } catch (error: any) {
@@ -148,16 +147,15 @@ async function createEntitlements() {
           }
         }
       }
-
     } catch (error: any) {
-      if (error.response?.status === 409 || error.response?.data?.code === 'entitlement_already_exists') {
+      if (error.response?.status === 409 || error.response?.data?.code === "entitlement_already_exists") {
         console.log(`    ℹ️ Entitlement ${entitlement.id} already exists`);
 
         // Try to attach products even if entitlement exists
         for (const productId of entitlement.product_ids) {
           try {
             await api.post(`/projects/${PROJECT_ID}/entitlements/${entitlement.id}/products`, {
-              product_id: productId
+              product_id: productId,
             });
             console.log(`    ✅ Attached product ${productId} to existing entitlement`);
           } catch (err: any) {
@@ -175,7 +173,7 @@ async function createEntitlements() {
 
 // Step 3: Create Offerings
 async function createOfferings() {
-  console.log('\n🎯 Creating Offerings...');
+  console.log("\n🎯 Creating Offerings...");
 
   for (const offering of OFFERINGS) {
     try {
@@ -216,16 +214,15 @@ async function createOfferings() {
       if (offering.is_current) {
         try {
           await api.patch(`/projects/${PROJECT_ID}/offerings/${offering.id}`, {
-            is_current: true
+            is_current: true,
           });
           console.log(`    ✅ Set ${offering.id} as current offering`);
         } catch (error: any) {
           console.error(`    ❌ Error setting current offering:`, error.response?.data || error.message);
         }
       }
-
     } catch (error: any) {
-      if (error.response?.status === 409 || error.response?.data?.code === 'offering_already_exists') {
+      if (error.response?.status === 409 || error.response?.data?.code === "offering_already_exists") {
         console.log(`    ℹ️ Offering ${offering.id} already exists`);
 
         // Try to update packages even if offering exists
@@ -252,7 +249,7 @@ async function createOfferings() {
         if (offering.is_current) {
           try {
             await api.patch(`/projects/${PROJECT_ID}/offerings/${offering.id}`, {
-              is_current: true
+              is_current: true,
             });
             console.log(`    ✅ Set ${offering.id} as current offering`);
           } catch (err: any) {
@@ -268,7 +265,7 @@ async function createOfferings() {
 
 // Step 4: Verify Setup
 async function verifySetup() {
-  console.log('\n🔍 Verifying Setup...');
+  console.log("\n🔍 Verifying Setup...");
 
   try {
     // Get project info
@@ -292,19 +289,18 @@ async function verifySetup() {
     if (currentOffering) {
       console.log(`  ✅ Current Offering: ${currentOffering.id}`);
     }
-
   } catch (error: any) {
-    console.error('  ❌ Error verifying setup:', error.response?.data || error.message);
+    console.error("  ❌ Error verifying setup:", error.response?.data || error.message);
   }
 }
 
 // Main setup function
 async function main() {
-  console.log('🚀 Configuring RevenueCat Project: Toxic Confessions');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log("🚀 Configuring RevenueCat Project: Toxic Confessions");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(`Project ID: ${PROJECT_ID}`);
   console.log(`API Key: ${API_KEY.substring(0, 10)}...`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
   try {
     // Step 1: Create Products
@@ -319,32 +315,31 @@ async function main() {
     // Step 4: Verify Setup
     await verifySetup();
 
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('✅ ✅ ✅ RevenueCat Configuration Complete! ✅ ✅ ✅');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("✅ ✅ ✅ RevenueCat Configuration Complete! ✅ ✅ ✅");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-    console.log('\n📱 Next Steps:');
-    console.log('1. Create matching products in App Store Connect');
-    console.log('2. Create matching products in Google Play Console');
-    console.log('3. Import products in RevenueCat Dashboard');
-    console.log('4. Test with sandbox accounts');
+    console.log("\n📱 Next Steps:");
+    console.log("1. Create matching products in App Store Connect");
+    console.log("2. Create matching products in Google Play Console");
+    console.log("3. Import products in RevenueCat Dashboard");
+    console.log("4. Test with sandbox accounts");
 
-    console.log('\n💰 Products Created:');
-    console.log('  • supasecret_plus_monthly - $4.99/month');
-    console.log('  • supasecret_plus_annual - $29.99/year (Save 50%)');
+    console.log("\n💰 Products Created:");
+    console.log("  • supasecret_plus_monthly - $4.99/month");
+    console.log("  • supasecret_plus_annual - $29.99/year (Save 50%)");
 
-    console.log('\n🎁 Premium Features:');
-    console.log('  • Ad-free experience');
-    console.log('  • Unlimited 5-minute videos');
-    console.log('  • 4K video quality');
-    console.log('  • Unlimited saves');
-    console.log('  • Advanced filters');
-    console.log('  • Priority processing');
-    console.log('  • Custom themes');
-    console.log('  • Early access');
-
+    console.log("\n🎁 Premium Features:");
+    console.log("  • Ad-free experience");
+    console.log("  • Unlimited 5-minute videos");
+    console.log("  • 4K video quality");
+    console.log("  • Unlimited saves");
+    console.log("  • Advanced filters");
+    console.log("  • Priority processing");
+    console.log("  • Custom themes");
+    console.log("  • Early access");
   } catch (error: any) {
-    console.error('\n❌ Setup failed:', error.response?.data || error.message);
+    console.error("\n❌ Setup failed:", error.response?.data || error.message);
     process.exit(1);
   }
 }

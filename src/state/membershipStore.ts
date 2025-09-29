@@ -70,9 +70,6 @@ export const useMembershipStore = create<MembershipState>()(
       purchaseSubscription: async (planId: string) => {
         set({ isLoading: true, error: null });
         try {
-          // This is a placeholder implementation
-          // In a real app, this would integrate with Expo IAP or RevenueCat
-
           const plan = get().availablePlans.find((p) => p.id === planId);
           if (!plan) throw new Error("Plan not found");
 
@@ -81,28 +78,46 @@ export const useMembershipStore = create<MembershipState>()(
           } = await supabase.auth.getUser();
           if (!user) throw new Error("User not authenticated");
 
-          // Simulate purchase success for demo
-          const expiresAt = new Date();
-          if (plan.interval === "month") {
-            // Add 30 days to avoid month boundary issues
-            expiresAt.setTime(expiresAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-          } else {
-            // Add 365 days for yearly subscription
-            expiresAt.setTime(expiresAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+          const { RevenueCatService } = await import("../services/RevenueCatService");
+          await RevenueCatService.initialize();
+
+          const offerings = await RevenueCatService.getOfferings();
+          if (!offerings?.current) {
+            throw new Error("No offerings available. Please configure RevenueCat products in the dashboard.");
           }
+
+          const pkg = offerings.current.packages.find((p: any) => p.identifier === planId);
+          if (!pkg) {
+            throw new Error(`Package ${planId} not found in RevenueCat offerings`);
+          }
+
+          const result = await RevenueCatService.purchasePackage(pkg);
+
+          if ("mockCustomerInfo" in result) {
+            throw new Error("Cannot purchase in demo mode. Please use a development build.");
+          }
+
+          const customerInfo = result.customerInfo;
+          const isPremium = Object.keys(customerInfo.entitlements.active).length > 0;
+
+          if (!isPremium) {
+            throw new Error("Purchase completed but premium entitlement not active");
+          }
+
+          const activeEntitlement: any = Object.values(customerInfo.entitlements.active)[0];
+          const expiresAt = activeEntitlement?.expirationDate || null;
 
           const membership: UserMembership = {
             user_id: user.id,
             tier: plan.tier,
             plan_id: planId,
-            subscription_id: null, // Will be set by actual payment processor
-            expires_at: expiresAt.toISOString(),
-            auto_renew: true,
+            subscription_id: customerInfo.originalAppUserId,
+            expires_at: expiresAt,
+            auto_renew: activeEntitlement?.willRenew !== false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
 
-          // Store in database
           const { error } = await supabase.from("user_memberships").upsert(membership, { onConflict: "user_id" });
 
           if (error) throw error;

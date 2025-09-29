@@ -244,7 +244,7 @@ export const useReplyStore = create<ReplyState>()(
 
           if (error) throw error;
 
-          const rows = (data ?? []) as Array<{
+          const rows = (data ?? []) as {
             id: string;
             confession_id: string;
             user_id?: string | null;
@@ -252,14 +252,14 @@ export const useReplyStore = create<ReplyState>()(
             is_anonymous: boolean;
             likes?: number | null;
             created_at: string;
-            replies?: Array<{ count: number }> | null;
-            reactions?: Array<{ type: string }> | null;
+            replies?: { count: number }[] | null;
+            reactions?: { type: string }[] | null;
             edited_at?: string | null;
             deleted_at?: string | null;
             flagged?: boolean;
             flag_reason?: string | null;
             parent_id?: string | null;
-          }>;
+          }[];
 
           // Get user reactions if authenticated
           let userReactions: Record<string, ReactionType[]> = {};
@@ -286,7 +286,7 @@ export const useReplyStore = create<ReplyState>()(
               .eq("user_id", user.id)
               .in("reply_id", replyIds);
 
-            const likeRows = (likesData ?? []) as Array<{ reply_id: string | null }>;
+            const likeRows = (likesData ?? []) as { reply_id: string | null }[];
             userLikes = likeRows.map((like) => like.reply_id).filter((id): id is string => Boolean(id));
           }
 

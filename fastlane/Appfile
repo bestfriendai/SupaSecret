@@ -1,0 +1,13 @@
+# Fastlane Appfile for Toxic Confessions
+
+# Your Apple ID email
+# apple_id ENV["APPLE_ID"]
+
+# App Bundle Identifier
+app_identifier("com.toxic.confessions")
+
+# Apple Developer Team ID (optional, will be detected automatically)
+# team_id "YOUR_TEAM_ID"
+
+# iTunes Connect Team ID (if different from Developer Team)
+# itc_team_id "YOUR_ITC_TEAM_ID"

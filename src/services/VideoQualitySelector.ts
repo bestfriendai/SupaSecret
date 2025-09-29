@@ -426,8 +426,7 @@ export class VideoQualitySelector {
     ]);
 
     const memoryInfo = await environmentDetector.getMemoryInfo();
-    const memoryPressure =
-      (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
+    const memoryPressure = (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
 
     const selectedQuality = this.selectionEngine.selectOptimalQuality(networkProfile, deviceTier, memoryPressure);
 
@@ -453,8 +452,7 @@ export class VideoQualitySelector {
     ]);
 
     const memoryInfo = await environmentDetector.getMemoryInfo();
-    const memoryPressure =
-      (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
+    const memoryPressure = (memoryInfo.totalMemory - memoryInfo.availableMemory) / memoryInfo.totalMemory;
 
     const selectedQuality = this.selectionEngine.selectOptimalQuality(networkProfile, deviceTier, memoryPressure);
 

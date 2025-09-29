@@ -667,10 +667,7 @@ export class VideoDataService {
 
       const possibleId = metadata.confession_id ?? metadata.videoId;
       const videoId = typeof possibleId === "string" && possibleId.length > 0 ? possibleId : undefined;
-      const timestampValue =
-        typeof metadata.timestamp === "number"
-          ? (metadata.timestamp as number)
-          : Date.now();
+      const timestampValue = typeof metadata.timestamp === "number" ? (metadata.timestamp as number) : Date.now();
 
       if (!videoId) {
         if (__DEV__) {

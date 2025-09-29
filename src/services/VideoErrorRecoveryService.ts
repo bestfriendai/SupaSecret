@@ -314,9 +314,11 @@ export class VideoErrorRecoveryService {
     // Retry the operation
     try {
       if (context.videoId) {
-        const retryFn = (VideoDataService as unknown as {
-          retryFailedRequest?: (videoId: string) => Promise<void>;
-        }).retryFailedRequest;
+        const retryFn = (
+          VideoDataService as unknown as {
+            retryFailedRequest?: (videoId: string) => Promise<void>;
+          }
+        ).retryFailedRequest;
         if (retryFn) {
           await retryFn(context.videoId);
         }
@@ -342,9 +344,11 @@ export class VideoErrorRecoveryService {
 
       // Refresh video data
       if (context.videoId) {
-        const refreshFn = (VideoDataService as unknown as {
-          refreshVideoData?: (videoId: string) => Promise<void>;
-        }).refreshVideoData;
+        const refreshFn = (
+          VideoDataService as unknown as {
+            refreshVideoData?: (videoId: string) => Promise<void>;
+          }
+        ).refreshVideoData;
         if (refreshFn) {
           await refreshFn(context.videoId);
           return { success: true };
@@ -415,9 +419,11 @@ export class VideoErrorRecoveryService {
     try {
       // Load fallback source
       if (context.videoId) {
-        const fallbackFn = (VideoDataService as unknown as {
-          loadFallbackVideo?: (videoId: string, url: string) => Promise<void>;
-        }).loadFallbackVideo;
+        const fallbackFn = (
+          VideoDataService as unknown as {
+            loadFallbackVideo?: (videoId: string, url: string) => Promise<void>;
+          }
+        ).loadFallbackVideo;
         if (fallbackFn) {
           await fallbackFn(context.videoId, fallbackSource.url);
         }

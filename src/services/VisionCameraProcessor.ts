@@ -149,50 +149,34 @@ export class VisionCameraProcessor {
   /**
    * Create a frame processor for real-time video effects
    * Compatible with Reanimated v4 worklets
+   *
+   * NOTE: This method is deprecated. Use VisionCameraFaceBlurProcessor instead.
+   * Hooks cannot be called inside class methods.
    */
-  createFrameProcessor(processFrame: (frame: any) => void) {
-    "worklet";
-
-    if (!this.isVisionCameraAvailable || !useFrameProcessor) {
-      console.log("Frame processors not available");
-      return null;
-    }
-
-    return useFrameProcessor((frame: any) => {
-      "worklet";
-      processFrame(frame);
-    }, []);
+  createFrameProcessor(_processFrame: (frame: any) => void) {
+    console.warn("createFrameProcessor is deprecated. Use VisionCameraFaceBlurProcessor instead.");
+    return null;
   }
 
   /**
    * Create a Skia frame processor for advanced drawing
+   *
+   * NOTE: This method is deprecated. Use VisionCameraFaceBlurProcessor instead.
+   * Hooks cannot be called inside class methods.
    */
-  createSkiaFrameProcessor(draw: (canvas: any, frame: any) => void) {
-    "worklet";
-
-    if (!useSkiaFrameProcessor) {
-      console.log("Skia frame processors not available");
-      return null;
-    }
-
-    return useSkiaFrameProcessor((frame: any, canvas: any) => {
-      "worklet";
-      draw(canvas, frame);
-    }, []);
+  createSkiaFrameProcessor(_draw: (canvas: any, frame: any) => void) {
+    console.warn("createSkiaFrameProcessor is deprecated. Use VisionCameraFaceBlurProcessor instead.");
+    return null;
   }
 
   /**
    * Apply face blur effect using ML Kit
+   *
+   * NOTE: This method is deprecated. Use VisionCameraFaceBlurProcessor instead.
    */
   createFaceBlurProcessor() {
-    "worklet";
-
-    return this.createFrameProcessor((frame) => {
-      "worklet";
-      // Face detection would happen here with ML Kit integration
-      // This is a placeholder for the actual implementation
-      console.log("Processing frame for face blur");
-    });
+    console.warn("createFaceBlurProcessor is deprecated. Use VisionCameraFaceBlurProcessor instead.");
+    return null;
   }
 
   /**
@@ -327,28 +311,24 @@ export class VisionCameraProcessor {
       };
     }
 
+    // NOTE: This method is deprecated. Hooks cannot be called inside class methods.
+    console.warn("getCameraDevices is deprecated. Use useCameraDevice hook directly in your component.");
     return {
-      back: useCameraDevice("back"),
-      front: useCameraDevice("front"),
-      external: useCameraDevice("external"),
+      back: null,
+      front: null,
+      external: null,
     };
   }
 
   /**
    * Get optimal format for device
+   *
+   * NOTE: This method is deprecated. Hooks cannot be called inside class methods.
+   * Use useCameraFormat hook directly in your component.
    */
-  getOptimalFormat(device: any, targetFps: number = 30) {
-    if (!device || !useCameraFormat) {
-      return null;
-    }
-
-    return useCameraFormat(device, [
-      { fps: targetFps },
-      { videoAspectRatio: 16 / 9 },
-      { videoResolution: "max" },
-      { photoAspectRatio: 16 / 9 },
-      { photoResolution: "max" },
-    ]);
+  getOptimalFormat(_device: any, _targetFps: number = 30) {
+    console.warn("getOptimalFormat is deprecated. Use useCameraFormat hook directly in your component.");
+    return null;
   }
 
   /**

@@ -1,0 +1,260 @@
+# Fastlane Configuration for Toxic Confessions
+# Documentation: https://docs.fastlane.tools
+
+default_platform(:ios)
+
+platform :ios do
+
+  before_all do
+    # Set App Store Connect API credentials
+    ENV["APP_STORE_CONNECT_API_KEY_PATH"] = "./AuthKey_K3AQ7255RT.p8"
+    ENV["APP_STORE_CONNECT_API_KEY_ID"] = "K3AQ7255RT"
+    ENV["APP_STORE_CONNECT_API_ISSUER_ID"] = "d379ef5a-740b-4b80-bc48-8e1526fc03d3"
+  end
+
+  desc "Create app in App Store Connect"
+  lane :create_app do
+    apple_id = prompt(text: "Enter your Apple ID email: ")
+
+    puts "================================================"
+    puts "Creating App in App Store Connect"
+    puts "================================================"
+    puts ""
+
+    produce(
+      username: apple_id,
+      app_identifier: "com.toxic.confessions",
+      app_name: "Toxic Confessions",
+      language: "English",
+      app_version: "1.0",
+      sku: "toxic-confessions-001",
+      team_name: nil, # Will be auto-detected
+    )
+
+    puts "\n✅ App created successfully!"
+    puts ""
+    puts "App Details:"
+    puts "  • Name: Toxic Confessions"
+    puts "  • Bundle ID: com.toxic.confessions"
+    puts "  • Version: 1.0"
+    puts ""
+    puts "Next: Run './scripts/create-iap.sh' to create in-app purchases"
+  end
+
+  desc "Create In-App Purchases using App Store Connect API"
+  lane :create_iap_api do
+    puts "================================================"
+    puts "Creating In-App Purchases with API Key"
+    puts "================================================"
+    puts ""
+
+    # Use App Store Connect API
+    app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_filepath: ENV["APP_STORE_CONNECT_API_KEY_PATH"],
+      in_house: false
+    )
+
+    puts "\n📦 Creating in-app purchases..."
+
+    # Create IAPs using deliver/produce with API
+    create_iap_with_api(
+      app_identifier: "com.toxic.confessions",
+      product_id: "com.toxic.confessions.monthly",
+      reference_name: "Premium Monthly",
+      subscription_duration: "ONE_MONTH",
+      subscription_group_name: "Premium Subscriptions"
+    )
+
+    create_iap_with_api(
+      app_identifier: "com.toxic.confessions",
+      product_id: "com.toxic.confessions.annual",
+      reference_name: "Premium Annual",
+      subscription_duration: "ONE_YEAR",
+      subscription_group_name: "Premium Subscriptions"
+    )
+
+    create_iap_with_api(
+      app_identifier: "com.toxic.confessions",
+      product_id: "com.toxic.confessions.lifetime",
+      reference_name: "Premium Lifetime",
+      is_non_consumable: true
+    )
+
+    puts "\n================================================"
+    puts "✅ Complete!"
+    puts "================================================"
+  end
+
+  desc "Create In-App Purchases for Toxic Confessions"
+  lane :create_iap do
+    # Ensure we have credentials
+    apple_id = prompt(text: "Enter your Apple ID email: ")
+    app_identifier = "com.toxic.confessions"
+
+    puts "================================================"
+    puts "Creating In-App Purchases for Toxic Confessions"
+    puts "App Bundle ID: #{app_identifier}"
+    puts "================================================"
+    puts ""
+    puts "You will be prompted for your Apple ID password."
+    puts "If you have 2FA enabled, you'll need an app-specific password."
+    puts "Generate one at: https://appleid.apple.com/account/manage"
+    puts ""
+
+    # Create Monthly Subscription
+    puts "\n📦 Creating Monthly Subscription..."
+    begin
+      produce(
+        username: apple_id,
+        app_identifier: app_identifier,
+        skip_itc: true, # Don't create app, just IAP
+      )
+
+      # Note: Fastlane's produce doesn't directly create IAPs
+      # We need to use spaceship (Fastlane's underlying API)
+      create_in_app_purchase(
+        apple_id: apple_id,
+        app_identifier: app_identifier,
+        product_id: "com.toxic.confessions.monthly",
+        reference_name: "Premium Monthly",
+        type: "auto_renewable_subscription",
+        subscription_group_name: "Premium Subscriptions"
+      )
+      puts "✅ Monthly subscription created!"
+    rescue => ex
+      UI.error("Failed to create monthly subscription: #{ex.message}")
+    end
+
+    # Create Annual Subscription
+    puts "\n📦 Creating Annual Subscription..."
+    begin
+      create_in_app_purchase(
+        apple_id: apple_id,
+        app_identifier: app_identifier,
+        product_id: "com.toxic.confessions.annual",
+        reference_name: "Premium Annual",
+        type: "auto_renewable_subscription",
+        subscription_group_name: "Premium Subscriptions"
+      )
+      puts "✅ Annual subscription created!"
+    rescue => ex
+      UI.error("Failed to create annual subscription: #{ex.message}")
+    end
+
+    # Create Lifetime Purchase
+    puts "\n📦 Creating Lifetime Purchase..."
+    begin
+      create_in_app_purchase(
+        apple_id: apple_id,
+        app_identifier: app_identifier,
+        product_id: "com.toxic.confessions.lifetime",
+        reference_name: "Premium Lifetime",
+        type: "non_consumable"
+      )
+      puts "✅ Lifetime purchase created!"
+    rescue => ex
+      UI.error("Failed to create lifetime purchase: #{ex.message}")
+    end
+
+    puts "\n================================================"
+    puts "✅ In-App Purchase creation complete!"
+    puts "================================================"
+    puts ""
+    puts "Next steps:"
+    puts "1. Log into App Store Connect"
+    puts "2. Go to your app → Features → In-App Purchases"
+    puts "3. Complete the pricing and localization for each product"
+    puts "4. Add screenshots and descriptions"
+    puts "5. Submit for review with your app"
+  end
+
+  # Custom action to create IAP using API
+  private_lane :create_iap_with_api do |options|
+    require 'spaceship'
+
+    # Already authenticated via app_store_connect_api_key
+    app = Spaceship::ConnectAPI::App.find(options[:app_identifier])
+
+    if app.nil?
+      UI.user_error!("Could not find app with bundle identifier '#{options[:app_identifier]}'")
+      return
+    end
+
+    UI.message("Creating IAP: #{options[:product_id]}")
+
+    begin
+      if options[:is_non_consumable]
+        # Create non-consumable
+        iap = app.create_in_app_purchase!(
+          product_id: options[:product_id],
+          reference_name: options[:reference_name],
+          purchase_type: Spaceship::ConnectAPI::InAppPurchase::PurchaseType::NON_CONSUMABLE
+        )
+      else
+        # Create auto-renewable subscription
+        # First, find or create subscription group
+        groups = app.get_subscription_groups
+        group = groups.find { |g| g.reference_name == options[:subscription_group_name] }
+
+        if group.nil?
+          UI.message("Creating subscription group: #{options[:subscription_group_name]}")
+          group = app.create_subscription_group!(
+            reference_name: options[:subscription_group_name]
+          )
+        end
+
+        # Create subscription in group
+        iap = group.create_subscription!(
+          product_id: options[:product_id],
+          reference_name: options[:reference_name],
+          subscription_duration: options[:subscription_duration]
+        )
+      end
+
+      UI.success("✅ Created: #{options[:product_id]}")
+    rescue => ex
+      if ex.message.include?("already exists") || ex.message.include?("duplicate")
+        UI.important("⚠️  Product '#{options[:product_id]}' already exists, skipping...")
+      else
+        UI.error("❌ Failed to create #{options[:product_id]}: #{ex.message}")
+        raise ex
+      end
+    end
+  end
+
+  desc "List all In-App Purchases"
+  lane :list_iap do
+    apple_id = prompt(text: "Enter your Apple ID email: ")
+    app_identifier = "com.toxic.confessions"
+
+    require 'spaceship'
+    Spaceship::ConnectAPI.login(apple_id)
+
+    app = Spaceship::ConnectAPI::App.find(app_identifier)
+
+    if app.nil?
+      UI.user_error!("Could not find app with bundle identifier '#{app_identifier}'")
+      return
+    end
+
+    iaps = app.in_app_purchases
+
+    puts "\n📦 In-App Purchases for #{app.name}:"
+    puts "=" * 60
+
+    if iaps.empty?
+      puts "No in-app purchases found."
+    else
+      iaps.each do |iap|
+        puts "\nProduct ID: #{iap.product_id}"
+        puts "Name: #{iap.name}"
+        puts "Type: #{iap.type}"
+        puts "State: #{iap.state}"
+        puts "-" * 60
+      end
+    end
+  end
+
+end

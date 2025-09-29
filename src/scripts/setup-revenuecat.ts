@@ -8,56 +8,56 @@
  * templates and validate your setup.
  */
 
-import { writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
-import * as path from 'path';
+import { writeFileSync, existsSync, mkdirSync } from "fs";
+import { join } from "path";
+import * as path from "path";
 
 // Product definitions for ToxicConfessions Plus
 export const REVENUECAT_PRODUCTS = {
   monthly: {
-    id: 'supasecret_plus_monthly',
-    name: 'ToxicConfessions Plus Monthly',
-    type: 'subscription',
-    duration: 'monthly',
+    id: "supasecret_plus_monthly",
+    name: "ToxicConfessions Plus Monthly",
+    type: "subscription",
+    duration: "monthly",
     price: 4.99,
-    currency: 'USD',
+    currency: "USD",
     features: [
-      'Ad-free experience',
-      'Unlimited video recordings (up to 5 minutes)',
-      'Higher quality video (4K)',
-      'Unlimited saves',
-      'Advanced filters',
-      'Priority processing',
-      'Custom themes',
-      'Early access to new features',
+      "Ad-free experience",
+      "Unlimited video recordings (up to 5 minutes)",
+      "Higher quality video (4K)",
+      "Unlimited saves",
+      "Advanced filters",
+      "Priority processing",
+      "Custom themes",
+      "Early access to new features",
     ],
     storeProductIds: {
-      ios: '', // Will be set when published to App Store
-      android: '', // Will be set when published to Play Store
+      ios: "", // Will be set when published to App Store
+      android: "", // Will be set when published to Play Store
     },
   },
   annual: {
-    id: 'supasecret_plus_annual',
-    name: 'ToxicConfessions Plus Annual',
-    type: 'subscription',
-    duration: 'annual',
+    id: "supasecret_plus_annual",
+    name: "ToxicConfessions Plus Annual",
+    type: "subscription",
+    duration: "annual",
     price: 29.99,
-    currency: 'USD',
+    currency: "USD",
     features: [
-      'Ad-free experience',
-      'Unlimited video recordings (up to 5 minutes)',
-      'Higher quality video (4K)',
-      'Unlimited saves',
-      'Advanced filters',
-      'Priority processing',
-      'Custom themes',
-      'Early access to new features',
-      'Save 50%',
+      "Ad-free experience",
+      "Unlimited video recordings (up to 5 minutes)",
+      "Higher quality video (4K)",
+      "Unlimited saves",
+      "Advanced filters",
+      "Priority processing",
+      "Custom themes",
+      "Early access to new features",
+      "Save 50%",
     ],
     isPopular: true,
     storeProductIds: {
-      ios: '', // Will be set when published to App Store
-      android: '', // Will be set when published to Play Store
+      ios: "", // Will be set when published to App Store
+      android: "", // Will be set when published to Play Store
     },
   },
 } as const;
@@ -65,42 +65,39 @@ export const REVENUECAT_PRODUCTS = {
 // Entitlement definition
 export const REVENUECAT_ENTITLEMENTS = {
   premium: {
-    id: 'supasecret_plus',
-    name: 'Premium Access',
-    description: 'Full access to all premium features',
+    id: "supasecret_plus",
+    name: "Premium Access",
+    description: "Full access to all premium features",
   },
 } as const;
 
 // Offering definition
 export const REVENUECAT_OFFERINGS = {
   default: {
-    id: 'default_offering',
-    name: 'ToxicConfessions Plus',
-    description: 'Premium subscription for ToxicConfessions',
-    products: [
-      REVENUECAT_PRODUCTS.monthly.id,
-      REVENUECAT_PRODUCTS.annual.id,
-    ],
+    id: "default_offering",
+    name: "ToxicConfessions Plus",
+    description: "Premium subscription for ToxicConfessions",
+    products: [REVENUECAT_PRODUCTS.monthly.id, REVENUECAT_PRODUCTS.annual.id],
   },
 } as const;
 
 // Environment variables template
 export const ENVIRONMENT_TEMPLATE = {
   development: {
-    'EXPO_PUBLIC_REVENUECAT_IOS_KEY': 'your_revenuecat_ios_api_key_here',
-    'EXPO_PUBLIC_REVENUECAT_ANDROID_KEY': 'your_revenuecat_android_api_key_here',
-    'EXPO_PUBLIC_ADMOB_IOS_APP_ID': 'your_admob_ios_app_id_here',
-    'EXPO_PUBLIC_ADMOB_ANDROID_APP_ID': 'your_admob_android_app_id_here',
-    'EXPO_PUBLIC_ADMOB_IOS_BANNER_ID': 'your_admob_ios_banner_id_here',
-    'EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID': 'your_admob_android_banner_id_here',
+    EXPO_PUBLIC_REVENUECAT_IOS_KEY: "your_revenuecat_ios_api_key_here",
+    EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: "your_revenuecat_android_api_key_here",
+    EXPO_PUBLIC_ADMOB_IOS_APP_ID: "your_admob_ios_app_id_here",
+    EXPO_PUBLIC_ADMOB_ANDROID_APP_ID: "your_admob_android_app_id_here",
+    EXPO_PUBLIC_ADMOB_IOS_BANNER_ID: "your_admob_ios_banner_id_here",
+    EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID: "your_admob_android_banner_id_here",
   },
   production: {
-    'EXPO_PUBLIC_REVENUECAT_IOS_KEY': 'REQUIRED_IOS_API_KEY',
-    'EXPO_PUBLIC_REVENUECAT_ANDROID_KEY': 'REQUIRED_ANDROID_API_KEY',
-    'EXPO_PUBLIC_ADMOB_IOS_APP_ID': 'REQUIRED_IOS_APP_ID',
-    'EXPO_PUBLIC_ADMOB_ANDROID_APP_ID': 'REQUIRED_ANDROID_APP_ID',
-    'EXPO_PUBLIC_ADMOB_IOS_BANNER_ID': 'REQUIRED_IOS_BANNER_ID',
-    'EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID': 'REQUIRED_ANDROID_BANNER_ID',
+    EXPO_PUBLIC_REVENUECAT_IOS_KEY: "REQUIRED_IOS_API_KEY",
+    EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: "REQUIRED_ANDROID_API_KEY",
+    EXPO_PUBLIC_ADMOB_IOS_APP_ID: "REQUIRED_IOS_APP_ID",
+    EXPO_PUBLIC_ADMOB_ANDROID_APP_ID: "REQUIRED_ANDROID_APP_ID",
+    EXPO_PUBLIC_ADMOB_IOS_BANNER_ID: "REQUIRED_IOS_BANNER_ID",
+    EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID: "REQUIRED_ANDROID_BANNER_ID",
   },
 } as const;
 
@@ -118,8 +115,8 @@ export function generateDashboardConfig() {
       {
         identifier: REVENUECAT_PRODUCTS.monthly.id,
         name: REVENUECAT_PRODUCTS.monthly.name,
-        type: 'subscription',
-        duration: 'monthly',
+        type: "subscription",
+        duration: "monthly",
         price: REVENUECAT_PRODUCTS.monthly.price,
         currency: REVENUECAT_PRODUCTS.monthly.currency,
         features: REVENUECAT_PRODUCTS.monthly.features,
@@ -127,8 +124,8 @@ export function generateDashboardConfig() {
       {
         identifier: REVENUECAT_PRODUCTS.annual.id,
         name: REVENUECAT_PRODUCTS.annual.name,
-        type: 'subscription',
-        duration: 'annual',
+        type: "subscription",
+        duration: "annual",
         price: REVENUECAT_PRODUCTS.annual.price,
         currency: REVENUECAT_PRODUCTS.annual.currency,
         features: REVENUECAT_PRODUCTS.annual.features,
@@ -349,54 +346,42 @@ module.exports = {
 
 // Main execution function
 export function runSetup() {
-  const outputDir = path.join(__dirname, '../../setup');
+  const outputDir = path.join(__dirname, "../../setup");
 
   // Create output directory if it doesn't exist
   if (!existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
+    mkdirSync(outputDir, { recursive: true });
   }
 
-  console.log('🚀 Setting up RevenueCat configuration...');
+  console.log("🚀 Setting up RevenueCat configuration...");
 
   // Generate dashboard configuration JSON
   const dashboardConfig = generateDashboardConfig();
-  writeFileSync(
-    path.join(outputDir, 'revenuecat-dashboard-config.json'),
-    JSON.stringify(dashboardConfig, null, 2)
-  );
-  console.log('✅ Generated revenuecat-dashboard-config.json');
+  writeFileSync(path.join(outputDir, "revenuecat-dashboard-config.json"), JSON.stringify(dashboardConfig, null, 2));
+  console.log("✅ Generated revenuecat-dashboard-config.json");
 
   // Generate environment template
   const envTemplate = generateEnvTemplate();
-  writeFileSync(
-    path.join(outputDir, '.env.template'),
-    envTemplate
-  );
-  console.log('✅ Generated .env.template');
+  writeFileSync(path.join(outputDir, ".env.template"), envTemplate);
+  console.log("✅ Generated .env.template");
 
   // Generate EAS secrets script
   const easScript = generateEASSecretsScript();
-  writeFileSync(
-    path.join(outputDir, 'setup-eas-secrets.sh'),
-    easScript
-  );
-  console.log('✅ Generated setup-eas-secrets.sh');
+  writeFileSync(path.join(outputDir, "setup-eas-secrets.sh"), easScript);
+  console.log("✅ Generated setup-eas-secrets.sh");
 
   // Generate validation script
   const validationScript = generateValidationScript();
-  writeFileSync(
-    path.join(outputDir, 'validate-config.js'),
-    validationScript
-  );
-  console.log('✅ Generated validate-config.js');
+  writeFileSync(path.join(outputDir, "validate-config.js"), validationScript);
+  console.log("✅ Generated validate-config.js");
 
-  console.log('\\n🎉 RevenueCat setup files generated successfully!');
-  console.log('\\nNext steps:');
-  console.log('1. Copy .env.template to .env and fill in your actual values');
-  console.log('2. Import revenuecat-dashboard-config.json into your RevenueCat dashboard');
-  console.log('3. Run setup-eas-secrets.sh to configure production secrets');
-  console.log('4. Run node setup/validate-config.js to verify your setup');
-  console.log('\\n📖 See docs/REVENUECAT_SETUP.md for detailed instructions');
+  console.log("\\n🎉 RevenueCat setup files generated successfully!");
+  console.log("\\nNext steps:");
+  console.log("1. Copy .env.template to .env and fill in your actual values");
+  console.log("2. Import revenuecat-dashboard-config.json into your RevenueCat dashboard");
+  console.log("3. Run setup-eas-secrets.sh to configure production secrets");
+  console.log("4. Run node setup/validate-config.js to verify your setup");
+  console.log("\\n📖 See docs/REVENUECAT_SETUP.md for detailed instructions");
 }
 
 // Module exports are handled by const declarations above

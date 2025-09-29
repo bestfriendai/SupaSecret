@@ -1,0 +1,256 @@
+/**
+ * Modern Face Blur Processor using Vision Camera + Skia + ML Kit
+ * Replaces FFmpegKit with real-time frame processing
+ * Works with native builds (not Expo Go)
+ */
+
+import { useState, useCallback } from "react";
+import { Alert } from "react-native";
+import { IS_EXPO_GO } from "../utils/environmentCheck";
+
+// Lazy load native modules to prevent Expo Go crashes
+let Camera: any;
+let useSkiaFrameProcessor: any;
+let detectFaces: any;
+let Skia: any;
+
+const loadNativeModules = async () => {
+  if (IS_EXPO_GO) {
+    throw new Error("Face blur not available in Expo Go - use development build");
+  }
+
+  try {
+    if (!Camera) {
+      const visionCamera = await import("react-native-vision-camera");
+      Camera = visionCamera.Camera;
+      useSkiaFrameProcessor = visionCamera.useSkiaFrameProcessor;
+    }
+
+    if (!detectFaces) {
+      const faceDetector = await import("vision-camera-face-detector");
+      detectFaces = faceDetector.scanFaces; // Correct method name
+    }
+
+    if (!Skia) {
+      const skia = await import("@shopify/react-native-skia");
+      Skia = skia.Skia;
+    }
+  } catch (error) {
+    console.error("Failed to load native modules:", error);
+    throw new Error("Native modules not available. Ensure you're using a development build.");
+  }
+};
+
+export interface FaceBlurOptions {
+  blurIntensity?: number; // 1-50, default 15
+  detectionMode?: "fast" | "accurate"; // default 'fast'
+  onProgress?: (progress: number, status: string) => void;
+}
+
+/**
+ * Hook for real-time face blur during video recording
+ * Uses Vision Camera frame processors for on-the-fly processing
+ */
+export const useRealtimeFaceBlur = () => {
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const initializeFaceBlur = useCallback(async () => {
+    try {
+      await loadNativeModules();
+      setIsReady(true);
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      console.error("Face blur initialization failed:", error);
+      setError(errorMessage);
+
+      if (errorMessage.includes("Expo Go")) {
+        Alert.alert(
+          "Feature Unavailable",
+          "Face blur requires a development build. Please build the app with 'npx expo run:ios' or 'npx expo run:android'.",
+        );
+      } else {
+        Alert.alert("Initialization Error", `Face blur setup failed: ${errorMessage}`);
+      }
+
+      return false;
+    }
+  }, []);
+
+  /**
+   * Creates a Skia frame processor that blurs detected faces in real-time
+   * This runs on every camera frame during recording
+   */
+  /**
+   * Create a face blur frame processor
+   * NOTE: This returns a factory function, not the processor itself.
+   * The actual processor must be created in a component using useSkiaFrameProcessor.
+   */
+  const createFaceBlurFrameProcessor = useCallback(
+    (blurIntensity: number = 15) => {
+      if (!isReady) {
+        console.warn("Face blur not initialized. Call initializeFaceBlur() first.");
+        return null;
+      }
+
+      // Return a factory function that can be used in a component
+      return (frame: any) => {
+        "worklet";
+
+        try {
+          // Detect faces in the current frame
+          const faces = detectFaces(frame);
+
+          if (faces && faces.length > 0) {
+            // Create blur effect
+            const paint = Skia.Paint();
+            paint.setMaskFilter(
+              Skia.MaskFilter.MakeBlur(
+                Skia.BlurStyle.Normal,
+                blurIntensity / 2, // Convert intensity to sigma value
+                true,
+              ),
+            );
+
+            // Apply blur to each detected face
+            faces.forEach((face: any) => {
+              const { bounds } = face;
+
+              // Draw blurred rectangle over face
+              frame.drawRect(
+                {
+                  x: bounds.x,
+                  y: bounds.y,
+                  width: bounds.width,
+                  height: bounds.height,
+                },
+                paint,
+              );
+            });
+          }
+        } catch (error) {
+          // Silently fail on individual frames to avoid disrupting recording
+          console.warn("Frame processing error:", error);
+        }
+      };
+    },
+    [isReady],
+  );
+
+  return {
+    initializeFaceBlur,
+    createFaceBlurFrameProcessor,
+    isReady,
+    error,
+  };
+};
+
+/**
+ * Post-processing face blur for already recorded videos
+ * Note: This is less efficient than real-time processing
+ * Consider using real-time blur during recording instead
+ */
+export const usePostProcessFaceBlur = () => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const processVideoWithFaceBlur = useCallback(
+    async (videoUri: string, options: FaceBlurOptions = {}): Promise<string> => {
+      const { blurIntensity = 15, onProgress } = options;
+
+      setIsProcessing(true);
+      setError(null);
+      onProgress?.(0, "Initializing face blur...");
+
+      try {
+        await loadNativeModules();
+        onProgress?.(20, "Loading video...");
+
+        // For post-processing, we recommend using server-side processing
+        // or implementing a frame-by-frame extraction and re-encoding pipeline
+        // This is complex and resource-intensive on mobile devices
+
+        console.warn(
+          "Post-processing face blur is not recommended. " +
+            "Use real-time blur during recording for better performance.",
+        );
+
+        onProgress?.(50, "Processing frames...");
+
+        // TODO: Implement frame extraction, blur, and re-encoding
+        // This would require:
+        // 1. Extract frames from video
+        // 2. Detect faces in each frame
+        // 3. Apply blur to faces
+        // 4. Re-encode video from processed frames
+        // 5. Merge audio back
+
+        // For now, return original video with warning
+        Alert.alert(
+          "Feature Not Available",
+          "Post-processing face blur is not yet implemented. Please use real-time blur during recording.",
+        );
+
+        onProgress?.(100, "Complete");
+        return videoUri;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        console.error("Face blur processing failed:", error);
+        setError(errorMessage);
+
+        Alert.alert("Processing Error", `Face blur failed: ${errorMessage}`);
+        return videoUri;
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [],
+  );
+
+  return {
+    processVideoWithFaceBlur,
+    isProcessing,
+    error,
+  };
+};
+
+/**
+ * Utility function to check if face blur is available
+ */
+export const isFaceBlurAvailable = async (): Promise<boolean> => {
+  if (IS_EXPO_GO) {
+    return false;
+  }
+
+  try {
+    await loadNativeModules();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Get camera permissions for face blur
+ */
+export const requestFaceBlurPermissions = async (): Promise<boolean> => {
+  try {
+    await loadNativeModules();
+
+    const cameraPermission = await Camera.requestCameraPermission();
+    const microphonePermission = await Camera.requestMicrophonePermission();
+
+    return cameraPermission === "granted" && microphonePermission === "granted";
+  } catch (error) {
+    console.error("Failed to request permissions:", error);
+    return false;
+  }
+};
+
+export default {
+  useRealtimeFaceBlur,
+  usePostProcessFaceBlur,
+  isFaceBlurAvailable,
+  requestFaceBlurPermissions,
+};
