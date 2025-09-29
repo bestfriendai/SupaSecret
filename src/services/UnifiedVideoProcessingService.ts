@@ -604,7 +604,7 @@ export class UnifiedVideoProcessingService implements IAnonymiser {
         this.ffmpegAvailable = false;
         return false;
       }
-      const ff = await import("ffmpeg-kit-react-native");
+      // const ff = await import("ffmpeg-kit-react-native");
       this.ffmpegAvailable = !!(ff && ff.FFmpegKit);
       return this.ffmpegAvailable;
     } catch {
@@ -732,7 +732,7 @@ export class UnifiedVideoProcessingService implements IAnonymiser {
     // Try to get duration using FFmpeg if available
     if (this.ffmpegAvailable) {
       try {
-        const ff = await import("ffmpeg-kit-react-native");
+        // const ff = await import("ffmpeg-kit-react-native");
         if (ff && ff.FFprobeKit) {
           const session = await ff.FFprobeKit.getMediaInformation(this.pathForFFmpeg(videoUri));
           const info = await session.getMediaInformation();
@@ -791,7 +791,7 @@ export class UnifiedVideoProcessingService implements IAnonymiser {
       const isAvailable = await this.checkFFmpegAvailability();
       if (!isAvailable) return false;
 
-      const ff = await import("ffmpeg-kit-react-native");
+      // const ff = await import("ffmpeg-kit-react-native");
       if (!ff || !ff.FFmpegKit) return false;
 
       // Use executeWithArguments for safer execution
@@ -809,7 +809,7 @@ export class UnifiedVideoProcessingService implements IAnonymiser {
       const isAvailable = await this.checkFFmpegAvailability();
       if (!isAvailable) return false;
 
-      const ff = await import("ffmpeg-kit-react-native");
+      // const ff = await import("ffmpeg-kit-react-native");
       if (!ff || !ff.FFmpegKit) return false;
 
       const session = await ff.FFmpegKit.execute(command);
