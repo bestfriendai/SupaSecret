@@ -13,7 +13,7 @@ const loadFFmpeg = async () => {
 
   try {
     if (!FFmpegKit) {
-      FFmpegKit = await import("ffmpeg-kit-react-native");
+      FFmpegKit = await import("ffmpeg-kit-react-native-community");
     }
   } catch (error) {
     console.error("Failed to load FFmpeg:", error);

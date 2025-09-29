@@ -27,7 +27,7 @@ module.exports = {
     newArchEnabled: true,
     icon: "./assets/icon.png",
     splash: {
-      image: "./assets/logo.png",
+      image: "./assets/icon.png",
       resizeMode: "contain",
       backgroundColor: "#000000",
     },
