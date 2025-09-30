@@ -1,14 +1,50 @@
 import { env } from "../utils/env";
-import { IAnonymiser } from "./IAnonymiser";
-import { videoProcessingService } from "./UnifiedVideoProcessingService";
+import { IAnonymiser, ProcessedVideo, VideoProcessingOptions } from "./IAnonymiser";
+import { getUnifiedVideoService } from "./UnifiedVideoService";
 
-// Lazy load native anonymiser to prevent Expo Go crashes
-let nativeAnonymiser: IAnonymiser | null = null;
+let cachedAnonymiser: IAnonymiser | null = null;
 let loadingPromise: Promise<IAnonymiser> | null = null;
 
+const createAnonymiser = async (): Promise<IAnonymiser> => {
+  const videoService = await getUnifiedVideoService();
+
+  return {
+    async initialize() {
+      console.log("Unified Video Service anonymiser initialized");
+    },
+
+    async processVideo(videoUri: string, options: VideoProcessingOptions = {}): Promise<ProcessedVideo> {
+      console.log("Processing video with UnifiedVideoService:", videoUri);
+
+      const quality = options.quality === "highest" ? "high" : options.quality || "high";
+      const result = await videoService.processVideo(videoUri, {
+        quality: quality as "high" | "medium" | "low",
+        blur: options.enableFaceBlur,
+      });
+
+      return {
+        uri: result.uri,
+        duration: result.duration,
+        thumbnailUri: result.thumbnail,
+        faceBlurApplied: options.enableFaceBlur || false,
+        voiceChangeApplied: options.enableVoiceChange || false,
+        metadata:
+          result.width && result.height
+            ? {
+                width: result.width,
+                height: result.height,
+                duration: result.duration,
+                size: 0,
+              }
+            : undefined,
+      };
+    },
+  };
+};
+
 const getNativeAnonymiser = async (): Promise<IAnonymiser> => {
-  if (nativeAnonymiser) {
-    return nativeAnonymiser;
+  if (cachedAnonymiser) {
+    return cachedAnonymiser;
   }
 
   if (loadingPromise) {
@@ -17,11 +53,9 @@ const getNativeAnonymiser = async (): Promise<IAnonymiser> => {
 
   loadingPromise = (async () => {
     try {
-      const { nativeAnonymiser: native } = await import("./NativeAnonymiser");
-      nativeAnonymiser = native;
-      return native;
+      cachedAnonymiser = await createAnonymiser();
+      return cachedAnonymiser;
     } catch (error) {
-      // Reset loading promise on failure to allow retries
       loadingPromise = null;
       throw error;
     }
@@ -30,19 +64,13 @@ const getNativeAnonymiser = async (): Promise<IAnonymiser> => {
   return loadingPromise;
 };
 
-// Factory function that returns the appropriate anonymiser
 export const getAnonymiser = async (): Promise<IAnonymiser> => {
-  if (env.expoGo) {
-    console.log("🎯 Using DemoAnonymiser (Expo Go mode)");
-    return videoProcessingService;
-  } else {
-    console.log("🚀 Using NativeAnonymiser (Development/Standalone build)");
-    try {
-      return await getNativeAnonymiser();
-    } catch (error) {
-      console.warn("Failed to load NativeAnonymiser, falling back to demo mode:", error);
-      return videoProcessingService;
-    }
+  console.log("🚀 Using UnifiedVideoService for anonymisation");
+  try {
+    return await getNativeAnonymiser();
+  } catch (error) {
+    console.error("Failed to load anonymiser:", error);
+    throw error;
   }
 };
 

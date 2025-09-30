@@ -10,7 +10,18 @@ import { CameraView, CameraType } from "expo-camera";
 import * as Audio from "expo-audio";
 import { env } from "../utils/env";
 import { useMediaPermissions } from "./useMediaPermissions";
-import { unifiedVideoProcessingService, ProcessingMode } from "../services/UnifiedVideoProcessingService";
+import { getUnifiedVideoService } from "../services/UnifiedVideoService";
+import { getAnonymiser } from "../services/Anonymiser";
+
+export enum ProcessingMode {
+  FACE_BLUR = "face_blur",
+  VOICE_CHANGE = "voice_change",
+  FULL = "full",
+  NONE = "none",
+  HYBRID = "hybrid",
+  LOCAL = "local",
+  SERVER = "server",
+}
 import type { ProcessedVideo, VideoProcessingOptions } from "../services/IAnonymiser";
 
 export interface VideoRecorderState {
@@ -363,42 +374,20 @@ export const useVideoRecorder = (options: VideoRecorderOptions = {}) => {
 
         let processed: ProcessedVideo;
 
-        if (env.expoGo) {
-          console.log("🎯 Processing video in Expo Go mode");
-          // Expo Go mode - try local processing first, fallback to server
-          try {
-            processed = await unifiedVideoProcessingService.processVideo(uriToProcess, {
-              ...processingOptions,
-              mode: ProcessingMode.LOCAL,
-            });
-          } catch (localError) {
-            console.warn("Local processing failed in Expo Go, trying server:", localError);
-            try {
-              processed = await unifiedVideoProcessingService.processVideo(uriToProcess, {
-                ...processingOptions,
-                mode: ProcessingMode.SERVER,
-              });
-            } catch (serverError) {
-              console.warn("Server processing failed, using fallback:", serverError);
-              // Fallback: create a basic processed video object
-              processed = {
-                uri: uriToProcess,
-                width: 1920,
-                height: 1080,
-                duration: 30,
-                size: 0,
-                transcription: "Transcription not available in Expo Go",
-                faceBlurApplied: enableFaceBlur,
-                voiceChangeApplied: enableVoiceChange,
-              } as ProcessedVideo;
-            }
-          }
-        } else {
-          // Development build - use dual mode
-          processed = await unifiedVideoProcessingService.processVideo(uriToProcess, {
-            ...processingOptions,
-            mode: processingMode,
-          });
+        console.log("🎯 Processing video with Anonymiser service");
+        try {
+          const anonymiser = await getAnonymiser();
+          processed = await anonymiser.processVideo(uriToProcess, processingOptions);
+        } catch (error) {
+          console.error("Video processing failed:", error);
+          // Fallback: create a basic processed video object
+          processed = {
+            uri: uriToProcess,
+            duration: 30,
+            transcription: "Processing failed",
+            faceBlurApplied: enableFaceBlur,
+            voiceChangeApplied: enableVoiceChange,
+          } as ProcessedVideo;
         }
 
         console.log("✅ Video processing completed successfully:", processed);

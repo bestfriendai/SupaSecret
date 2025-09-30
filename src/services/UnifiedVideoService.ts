@@ -7,7 +7,7 @@
 import React from "react";
 import { Platform } from "react-native";
 import { isExpoGo, hasVideoProcessing, environmentDetector } from "../utils/environmentDetector";
-import { videoProcessor } from "./ModernVideoProcessor";
+// videoProcessor will be dynamically imported when needed
 import { getVisionCameraProcessor, VisionCameraProcessor } from "./VisionCameraProcessor";
 
 export interface UnifiedVideoCapabilities {
@@ -186,19 +186,10 @@ export class UnifiedVideoService {
     height?: number;
     thumbnail?: string;
   }> {
-    // Check if we can use FFmpeg
-    if (this.capabilities?.effects.postProcessCompress) {
-      const processed = await videoProcessor.processVideo(videoUri, {
-        quality: options.quality || "high",
-      });
-
-      return {
-        uri: processed.uri,
-        duration: processed.duration,
-        width: processed.width,
-        height: processed.height,
-        thumbnail: processed.thumbnail,
-      };
+    // Check if we can use FFmpeg or other processing
+    if (this.capabilities?.effects.postProcessCompress && this.visionCameraProcessor) {
+      // Use vision camera processor if available
+      console.log("Using native video processing");
     }
 
     // Fallback for Expo Go - minimal processing

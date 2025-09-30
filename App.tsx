@@ -104,20 +104,14 @@ export default function App() {
       }
     });
 
-    // Hide splash screen when app is ready
-    const hideSplashScreen = async () => {
-      try {
-        await SplashScreen.hideAsync();
-        console.log("[DEBUG] Splash screen hidden successfully");
-      } catch (error) {
-        console.error("[DEBUG] Error hiding splash screen:", error);
-      }
-    };
-
-    // Hide splash screen after a short delay to ensure smooth transition
-    setTimeout(hideSplashScreen, 100);
-
     const initializeApp = async () => {
+      const MAX_INIT_TIME = 15000;
+      const initTimeout = setTimeout(() => {
+        console.warn("[DEBUG] Initialization taking too long, forcing app to show");
+        setIsInitializing(false);
+        SplashScreen.hideAsync().catch((e) => console.error("Failed to hide splash:", e));
+      }, MAX_INIT_TIME);
+
       try {
         if (__DEV__) {
           console.log("[App] Starting simplified app initialization...");
@@ -179,7 +173,16 @@ export default function App() {
         console.error("[DEBUG] App initialization failed:", error);
         // Don't throw - let the app continue to show error in UI
       } finally {
+        clearTimeout(initTimeout);
         setIsInitializing(false);
+
+        // Hide splash screen after initialization completes
+        try {
+          await SplashScreen.hideAsync();
+          console.log("[DEBUG] Splash screen hidden successfully");
+        } catch (error) {
+          console.error("[DEBUG] Error hiding splash screen:", error);
+        }
       }
     };
 
