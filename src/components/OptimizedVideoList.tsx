@@ -48,7 +48,36 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
   const isLoading = useConfessionStore((state) => state.isLoading);
   const videoConfessions = useMemo(() => {
-    const filtered = confessions.filter((c) => c && c.type === "video" && c.id);
+    const filtered = confessions.filter((c) => {
+      // Comprehensive validation to ensure item is a valid confession
+      if (!c) {
+        if (__DEV__) {
+          console.warn("OptimizedVideoList: Filtered out null/undefined confession");
+        }
+        return false;
+      }
+      
+      if (!c.id) {
+        if (__DEV__) {
+          console.warn("OptimizedVideoList: Filtered out confession without ID:", c);
+        }
+        return false;
+      }
+      
+      if (c.type !== "video") {
+        return false;
+      }
+      
+      // Ensure required fields exist
+      if (!c.content && !c.videoUri) {
+        if (__DEV__) {
+          console.warn("OptimizedVideoList: Filtered out confession without content or video:", c.id);
+        }
+        return false;
+      }
+      
+      return true;
+    });
 
     // Validate for duplicates and dedupe if necessary
     if (filtered.length > 0) {
@@ -328,10 +357,29 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
 
   const renderItem = useCallback(
     ({ item, index }: { item: Confession; index: number }) => {
-      // Add null check for item to prevent crashes
-      if (!item || !item.id) {
+      // Add comprehensive null check for item to prevent crashes
+      if (!item) {
         if (__DEV__) {
-          console.warn(`OptimizedVideoList: Invalid item at index ${index}:`, item);
+          console.warn(`OptimizedVideoList: Null/undefined item at index ${index}`);
+        }
+        return (
+          <View
+            style={{
+              height: screenHeight,
+              width: screenWidth,
+              backgroundColor: "black",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#999", fontSize: 16 }}>Video data unavailable</Text>
+          </View>
+        );
+      }
+
+      if (!item.id) {
+        if (__DEV__) {
+          console.warn(`OptimizedVideoList: Item missing ID at index ${index}:`, item);
         }
         return (
           <View
@@ -344,6 +392,45 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
             }}
           >
             <Text style={{ color: "#999", fontSize: 16 }}>Invalid video data</Text>
+          </View>
+        );
+      }
+
+      if (item.type !== "video") {
+        if (__DEV__) {
+          console.warn(`OptimizedVideoList: Non-video item at index ${index}:`, item.type);
+        }
+        return (
+          <View
+            style={{
+              height: screenHeight,
+              width: screenWidth,
+              backgroundColor: "black",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#999", fontSize: 16 }}>Invalid content type</Text>
+          </View>
+        );
+      }
+
+      // Additional validation for required fields
+      if (!item.content && !item.videoUri) {
+        if (__DEV__) {
+          console.warn(`OptimizedVideoList: Item missing content and video at index ${index}:`, item.id);
+        }
+        return (
+          <View
+            style={{
+              height: screenHeight,
+              width: screenWidth,
+              backgroundColor: "black",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#999", fontSize: 16 }}>Video content missing</Text>
           </View>
         );
       }
