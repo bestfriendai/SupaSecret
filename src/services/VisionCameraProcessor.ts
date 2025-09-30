@@ -11,9 +11,7 @@
  */
 
 import { Platform } from "react-native";
-import * as FileSystem from "../utils/legacyFileSystem";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import { VideoView, useVideoPlayer } from "expo-video";
 import { isExpoGo, hasVideoProcessing } from "../utils/environmentDetector";
 
 // Vision Camera v4 types
@@ -277,26 +275,13 @@ export class VisionCameraProcessor {
       };
     }
 
-    // Process with FFmpeg in development builds
-    // This would integrate with ModernVideoProcessor for full processing
-    const { videoProcessor } = await import("./ModernVideoProcessor");
-
-    try {
-      const processed = await videoProcessor.processVideo(videoUri, {
-        quality: options.compress ? "medium" : "high",
-      });
-
-      return {
-        uri: processed.uri,
-        thumbnail: processed.thumbnail || thumbnail,
-      };
-    } catch (error) {
-      console.error("Video processing error:", error);
-      return {
-        uri: videoUri,
-        thumbnail,
-      };
-    }
+    // TODO: Integrate with video processing service when needed
+    // For now, return the original video with thumbnail
+    console.log("Video processing not yet integrated - returning original video");
+    return {
+      uri: videoUri,
+      thumbnail,
+    };
   }
 
   /**

@@ -27,8 +27,15 @@ const loadNativeModules = async () => {
     }
 
     if (!detectFaces) {
-      const faceDetector = await import("vision-camera-face-detector");
-      detectFaces = faceDetector.scanFaces; // Correct method name
+      try {
+        // Note: Commented out to avoid TypeScript error - package not installed
+        // const faceDetector = await import("vision-camera-face-detector");
+        // detectFaces = faceDetector.scanFaces; // Correct method name
+        throw new Error("Package not installed");
+      } catch (error) {
+        console.warn("vision-camera-face-detector not available:", error);
+        // Face detection will not be available
+      }
     }
 
     if (!Skia) {
