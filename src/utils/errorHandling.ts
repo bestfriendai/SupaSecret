@@ -275,3 +275,31 @@ export const getUserFriendlyMessage = (error: StandardError, screenContext?: str
       return error.message;
   }
 };
+
+/**
+ * Hook for error handling with toast notifications
+ * This is a placeholder - actual implementation should use ToastContext
+ */
+export const useErrorHandler = () => {
+  const handleError = (error: unknown, options?: { showToast?: boolean; context?: any }) => {
+    const processedError = processError(error, options?.context?.action);
+
+    if (__DEV__) {
+      console.error('[useErrorHandler]', processedError);
+    }
+
+    // TODO: Integrate with ToastContext when available
+    if (options?.showToast) {
+      console.warn('Toast notification:', getUserFriendlyMessage(processedError));
+    }
+
+    return processedError;
+  };
+
+  const handleSuccess = (message: string) => {
+    // TODO: Integrate with ToastContext when available
+    console.log('[Success]', message);
+  };
+
+  return { handleError, handleSuccess };
+};

@@ -25,6 +25,9 @@ export const getTotalDiskCapacityAsync = LegacyFileSystem.getTotalDiskCapacityAs
 export const cacheDirectory = Paths.cache.uri;
 export const documentDirectory = Paths.document.uri;
 
+// Export EncodingType enum from legacy API
+export const EncodingType = LegacyFileSystem.EncodingType;
+
 export default {
   File,
   Directory,
@@ -43,4 +46,5 @@ export default {
   getTotalDiskCapacityAsync,
   cacheDirectory,
   documentDirectory,
+  EncodingType,
 };
