@@ -11,7 +11,7 @@ import { PermissionGate } from "../components/PermissionGate";
 import { useVideoRecorder } from "../hooks/useVideoRecorder";
 import { TranscriptionOverlay } from "../components/TranscriptionOverlay";
 import { ProcessedVideo } from "../services/IAnonymiser";
-import { ProcessingMode } from "../services/UnifiedVideoProcessingService";
+import { ProcessingMode } from "../hooks/useVideoRecorder";
 import { useVideoCapabilities } from "../services/UnifiedVideoService";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
 import VisionCameraRecordScreen from "./VisionCameraRecordScreen";

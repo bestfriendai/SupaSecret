@@ -1,4 +1,4 @@
-import { unifiedVideoProcessingService } from "./UnifiedVideoProcessingService";
+// import { unifiedVideoProcessingService } from "./UnifiedVideoProcessingService";
 import { offlineQueue } from "../lib/offlineQueue";
 import { videoPerformanceConfig, DevicePerformanceTier, BackgroundProcessingConfig } from "../config/videoPerformance";
 import { environmentDetector } from "../utils/environmentDetector";
@@ -70,7 +70,7 @@ class VideoBackgroundQueue {
   private appStateSubscription?: any;
   private currentAppState: AppStateStatus = "active";
   private jobIdCounter = 0;
-  private videoProcessingService = unifiedVideoProcessingService;
+  private videoProcessingService: any = null;
   private deviceTier: DevicePerformanceTier = DevicePerformanceTier.MID;
   private jobListeners: Map<string, (result: JobResult) => void> = new Map();
   private progressCallbacks: Map<string, (progress: number) => void> = new Map();

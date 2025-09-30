@@ -42,7 +42,7 @@ module.exports = {
         "expo-build-properties",
         {
           ios: {
-            deploymentTarget: "15.1",
+            deploymentTarget: "16.0",
             newArchEnabled: true,
           },
           android: {
