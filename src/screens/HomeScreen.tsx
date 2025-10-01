@@ -25,6 +25,7 @@ import ReportModal from "../components/ReportModal";
 import FeedActionSheet from "../components/FeedActionSheet";
 import ConfessionSkeleton from "../components/ConfessionSkeleton";
 import HashtagText from "../components/HashtagText";
+import { Image } from "expo-image";
 
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11yProps } from "../utils/accessibility";
@@ -304,9 +305,25 @@ function HomeScreen() {
                       {/* Video Thumbnail */}
                       {confession.videoUri && (
                         <View className="w-full aspect-video bg-gray-800 items-center justify-center relative">
-                          {/* Thumbnail would be loaded here - for now showing placeholder */}
+                          {/* Actual Thumbnail Image */}
+                          {confession.thumbnailUri ? (
+                            <Image
+                              source={{ uri: confession.thumbnailUri }}
+                              style={{ width: "100%", height: "100%" }}
+                              contentFit="cover"
+                              transition={200}
+                              placeholder={{ blurhash: "L5H2EC=PM+yV0g-mq.wG9c010J}I" }}
+                            />
+                          ) : (
+                            <View className="w-full h-full bg-gray-800" />
+                          )}
+                          {/* Gradient Overlay */}
                           <View className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50" />
-                          <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.9)" />
+                          {/* Play Button */}
+                          <View className="absolute inset-0 items-center justify-center">
+                            <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.9)" />
+                          </View>
+                          {/* Privacy Badge */}
                           <View className="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded-lg flex-row items-center">
                             <Ionicons name="eye-off" size={12} color="#8B98A5" />
                             <Text className="text-gray-300 text-10 ml-1">Face blurred</Text>
