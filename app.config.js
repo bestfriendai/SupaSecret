@@ -91,16 +91,30 @@ module.exports = {
       icon: "./assets/icon.png",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        // App Tracking Transparency (ATT) - REQUIRED for App Store approval
+        NSUserTrackingUsageDescription:
+          "We use tracking to show you relevant ads and improve your experience. Your privacy is protected—we never share personal information without your consent.",
+        // Camera & Microphone - Required for video recording
         NSCameraUsageDescription:
           "Camera access is required to record anonymous videos. Faces are blurred and voices modulated for privacy—no data is stored without processing.",
         NSMicrophoneUsageDescription:
           "Microphone access enables voice recording with automatic pitch shifting for anonymity. Audio is processed on-device and never sent unmodulated.",
         NSSpeechRecognitionUsageDescription:
           "Speech recognition generates live captions for anonymous video confessions. All processing happens on-device to protect your privacy.",
+        // Photo Library - For saving processed videos
         NSPhotoLibraryUsageDescription:
           "Photo library access is used to save processed anonymous videos with metadata stripped for complete privacy protection.",
+        NSPhotoLibraryAddUsageDescription:
+          "Save anonymous videos to your photo library after face blurring and voice modulation for complete privacy.",
+        // Notifications
         NSUserNotificationsUsageDescription:
           "Notifications are used to inform you about app updates and important privacy-related information.",
+        // Location (if needed in future)
+        NSLocationWhenInUseUsageDescription:
+          "Location is used to show you content relevant to your area. This is optional and can be disabled in settings.",
+        // Contacts (if social features added)
+        NSContactsUsageDescription:
+          "Access contacts to help you connect with friends on the platform. This is optional.",
       },
       bundleIdentifier: "com.toxic.confessions",
     },

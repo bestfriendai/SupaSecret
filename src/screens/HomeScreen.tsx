@@ -257,10 +257,13 @@ function HomeScreen() {
     ({ item: confession, index }: { item: Confession; index: number }) => {
       const replies = getRepliesForConfession(confession.id);
 
+      // Show ads every 10-15 secrets (randomize between 10-15 for natural spacing)
+      const shouldShowAd = index > 0 && index % (10 + (index % 6)) === 0;
+
       return (
         <>
-          {/* Optimized Ad Banner */}
-          <OptimizedAdBanner placement="home-feed" index={index} />
+          {/* Timeline Ad every 10-15 secrets */}
+          {shouldShowAd && <OptimizedAdBanner placement="home-feed" index={index} />}
 
           {/* Confession Item */}
           <Pressable className="border-b border-gray-800 px-4 py-3" onPress={() => handleSecretPress(confession)}>
@@ -293,16 +296,30 @@ function HomeScreen() {
                     {confession.transcription && (
                       <HashtagText text={confession.transcription} className="text-white text-15 leading-5 mb-3" />
                     )}
-                    <View className="bg-gray-900 border border-gray-700 rounded-2xl p-3 mb-3">
-                      <View className="flex-row items-center">
-                        <Ionicons name="play-circle" size={24} color="#1D9BF0" />
-                        <Text className="text-gray-300 ml-2 text-13">Video confession</Text>
-                        <View className="ml-auto flex-row items-center">
-                          <Ionicons name="eye-off" size={14} color="#8B98A5" />
-                          <Text className="text-gray-500 text-11 ml-1">Face blurred</Text>
+                    {/* Video Preview with Thumbnail */}
+                    <Pressable
+                      className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden mb-3"
+                      onPress={() => handleSecretPress(confession)}
+                    >
+                      {/* Video Thumbnail */}
+                      {confession.videoUri && (
+                        <View className="w-full aspect-video bg-gray-800 items-center justify-center relative">
+                          {/* Thumbnail would be loaded here - for now showing placeholder */}
+                          <View className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50" />
+                          <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.9)" />
+                          <View className="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded-lg flex-row items-center">
+                            <Ionicons name="eye-off" size={12} color="#8B98A5" />
+                            <Text className="text-gray-300 text-10 ml-1">Face blurred</Text>
+                          </View>
                         </View>
+                      )}
+                      {/* Video Info */}
+                      <View className="p-3 flex-row items-center">
+                        <Ionicons name="videocam" size={20} color="#1D9BF0" />
+                        <Text className="text-gray-300 ml-2 text-13 flex-1">Tap to watch video confession</Text>
+                        <Ionicons name="chevron-forward" size={16} color="#8B98A5" />
                       </View>
-                    </View>
+                    </Pressable>
                   </View>
                 )}
 
