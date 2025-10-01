@@ -99,9 +99,7 @@ export const getAnthropicTextResponse = async (
       },
     );
   } catch (error) {
-    handleApiError(error, "anthropic", context);
-    // This line is unreachable because handleApiError always throws
-    throw new Error("Unreachable code");
+    return handleApiError(error, "anthropic", context);
   }
 };
 
@@ -281,9 +279,7 @@ export const getGrokTextResponse = async (messages: AIMessage[], options?: AIReq
       },
     );
   } catch (error) {
-    handleApiError(error, "grok", context);
-    // This line is unreachable because handleApiError always throws
-    throw new Error("Unreachable code");
+    return handleApiError(error, "grok", context);
   }
 };
 
