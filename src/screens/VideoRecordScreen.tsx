@@ -14,19 +14,20 @@ import { ProcessedVideo } from "../services/IAnonymiser";
 import { ProcessingMode } from "../hooks/useVideoRecorder";
 import { useVideoCapabilities } from "../services/UnifiedVideoService";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
-import VisionCameraRecordScreen from "./VisionCameraRecordScreen";
+import FaceBlurRecordScreen from "./FaceBlurRecordScreen";
 
 const MAX_DURATION = 60; // seconds
 
 /**
  * Unified Video Record Screen
- * Automatically uses Vision Camera (native builds) or Expo Camera (Expo Go)
+ * Automatically uses FaceBlurApp-style Vision Camera (native builds) or Expo Camera (Expo Go)
  */
 function VideoRecordScreen() {
-  // Use Vision Camera for native builds with real-time face blur
+  // Use FaceBlurApp-style Vision Camera for native builds with real-time face blur at 60+ FPS
+  // Uses react-native-vision-camera-face-detector for precise contour-based face masking
   // Use Expo Camera for Expo Go with post-processing fallback
   if (!IS_EXPO_GO) {
-    return <VisionCameraRecordScreen />;
+    return <FaceBlurRecordScreen />;
   }
 
   // Expo Go implementation below

@@ -20,6 +20,17 @@ const resolvedSupabaseAnonKey =
   getEnvVarWithFallback("EXPO_PUBLIC_SUPABASE_ANON_KEY", "EXPO_PUBLIC_VIBECODE_SUPABASE_ANON_KEY") ||
   (Constants?.expoConfig as any)?.extra?.nonSensitive?.supabaseAnonKey;
 
+// DEBUG LOGGING: Validate environment variable resolution
+console.log('[SUPABASE DEBUG] Environment variable resolution:', {
+  resolvedSupabaseUrl: resolvedSupabaseUrl ? `${resolvedSupabaseUrl.substring(0, 20)}...` : 'UNDEFINED',
+  resolvedSupabaseAnonKey: resolvedSupabaseAnonKey ? `${resolvedSupabaseAnonKey.substring(0, 20)}...` : 'UNDEFINED',
+  constantsExpoConfigExists: !!Constants?.expoConfig,
+  constantsExtraExists: !!(Constants?.expoConfig as any)?.extra,
+  constantsExtraNonSensitiveExists: !!(Constants?.expoConfig as any)?.extra?.nonSensitive,
+  constantsExtraNonSensitiveUrl: !!(Constants?.expoConfig as any)?.extra?.nonSensitive?.supabaseUrl,
+  constantsExtraNonSensitiveKey: !!(Constants?.expoConfig as any)?.extra?.nonSensitive?.supabaseAnonKey,
+});
+
 // Create a flag to track if Supabase is properly configured
 export const isSupabaseConfigured = !!(resolvedSupabaseUrl && resolvedSupabaseAnonKey);
 
@@ -46,16 +57,51 @@ export const isSupabaseConfigured = !!(resolvedSupabaseUrl && resolvedSupabaseAn
 void startNetworkWatcher();
 
 // SDK 53: Secure storage adapter for enhanced security on iOS 18
+// Added error handling to prevent "Value is undefined, expected an Object" errors
 const supabaseStorage = {
-  getItem: (key: string) => SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+  getItem: async (key: string) => {
+    try {
+      const value = await SecureStore.getItemAsync(key);
+      // Return null if value is undefined to prevent GoTrueClient errors
+      return value ?? null;
+    } catch (error) {
+      console.warn(`[Supabase Storage] Failed to get item "${key}":`, error);
+      return null;
+    }
+  },
+  setItem: async (key: string, value: string) => {
+    try {
+      // Validate that value is not undefined
+      if (value === undefined) {
+        console.warn(`[Supabase Storage] Attempted to set undefined value for key "${key}"`);
+        return;
+      }
+      await SecureStore.setItemAsync(key, value);
+    } catch (error) {
+      console.error(`[Supabase Storage] Failed to set item "${key}":`, error);
+    }
+  },
+  removeItem: async (key: string) => {
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch (error) {
+      console.warn(`[Supabase Storage] Failed to remove item "${key}":`, error);
+    }
+  },
 };
 
 // SDK 53: Enhanced Supabase configuration with secure storage and improved security
 // Use fallback values if environment variables are missing to prevent crashes
 const clientUrl = resolvedSupabaseUrl || "https://dummy.supabase.co";
 const clientKey = resolvedSupabaseAnonKey || "dummy-anon-key";
+
+// DEBUG LOGGING: Validate client initialization values
+console.log('[SUPABASE DEBUG] Client initialization:', {
+  clientUrl: clientUrl ? `${clientUrl.substring(0, 20)}...` : 'UNDEFINED',
+  clientKey: clientKey ? `${clientKey.substring(0, 20)}...` : 'UNDEFINED',
+  isUsingFallbackUrl: clientUrl === "https://dummy.supabase.co",
+  isUsingFallbackKey: clientKey === "dummy-anon-key",
+});
 
 export const supabase = createClient<Database>(clientUrl, clientKey, {
   auth: {

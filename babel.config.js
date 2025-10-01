@@ -8,10 +8,7 @@ module.exports = function (api) {
   const hasFFmpegKit = fs.existsSync(path.join(projectRoot, "node_modules", "ffmpeg-kit-react-native"));
 
   return {
-    presets: [
-      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
-      "nativewind/babel",
-    ],
+    presets: [["babel-preset-expo", { jsxImportSource: "nativewind" }], "nativewind/babel"],
     plugins: [
       [
         "module-resolver",
@@ -28,7 +25,8 @@ module.exports = function (api) {
         },
       ],
       "@babel/plugin-transform-class-static-block",
-      "react-native-worklets/plugin", // Required for bottom-sheet v5
+      "react-native-worklets-core/plugin",
+      "react-native-reanimated/plugin",
     ],
   };
 };

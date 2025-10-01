@@ -23,7 +23,18 @@ const loadNativeModules = async () => {
     if (!Camera) {
       const visionCamera = await import("react-native-vision-camera");
       Camera = visionCamera.Camera;
-      useSkiaFrameProcessor = visionCamera.useSkiaFrameProcessor;
+
+      // Load useSkiaFrameProcessor from Vision Camera
+      if ('useSkiaFrameProcessor' in visionCamera) {
+        useSkiaFrameProcessor = visionCamera.useSkiaFrameProcessor;
+      } else {
+        console.warn("⚠️ useSkiaFrameProcessor not found in Vision Camera module");
+      }
+    }
+
+    if (!Skia) {
+      const skia = await import("@shopify/react-native-skia");
+      Skia = skia.Skia;
     }
 
     if (!detectFaces) {
@@ -36,11 +47,6 @@ const loadNativeModules = async () => {
         console.warn("vision-camera-face-detector not available:", error);
         // Face detection will not be available
       }
-    }
-
-    if (!Skia) {
-      const skia = await import("@shopify/react-native-skia");
-      Skia = skia.Skia;
     }
   } catch (error) {
     console.error("Failed to load native modules:", error);

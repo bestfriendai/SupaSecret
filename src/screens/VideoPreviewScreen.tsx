@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { View, Text, Pressable, ActivityIndicator, Alert, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system/legacy";
 
 import { useConfessionStore } from "../state/confessionStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
@@ -21,33 +22,134 @@ export default function VideoPreviewScreen() {
 
   const [isSharing, setIsSharing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [videoError, setVideoError] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const { hapticsEnabled, impactAsync } = usePreferenceAwareHaptics();
   const { addConfession } = useConfessionStore();
+  const hasStartedPlayingRef = useRef(false);
+
+  // Validate video URI format
+  const videoUri = processedVideo.uri.startsWith("file://") ? processedVideo.uri : `file://${processedVideo.uri}`;
+
+  console.log("📹 VideoPreviewScreen - Video URI:", videoUri);
 
   // Create video player
-  const player = useVideoPlayer(processedVideo.uri, (player) => {
+  const player = useVideoPlayer(videoUri, (player) => {
+    console.log("🎬 Video player initialized");
     player.loop = true;
-    if (isPlaying) {
-      player.play();
-    }
+    player.muted = false;
   });
 
+  // Monitor player status
+  useEffect(() => {
+    if (!player) return;
+
+    const checkStatus = () => {
+      try {
+        const status = player.status;
+        console.log("📊 Player status:", status);
+
+        if (status === "error") {
+          console.error("❌ Video player error");
+          setVideoError("Failed to load video");
+          setIsLoading(false);
+        } else if (status === "readyToPlay" && !hasStartedPlayingRef.current) {
+          console.log("✅ Video ready to play");
+          setIsLoading(false);
+          setVideoError(null);
+          hasStartedPlayingRef.current = true;
+          // Auto-play once ready
+          player.play();
+          setIsPlaying(true);
+        } else if (status === "loading") {
+          console.log("⏳ Video loading...");
+          setIsLoading(true);
+        }
+      } catch (error) {
+        console.error("❌ Error checking player status:", error);
+        setVideoError("Failed to load video");
+        setIsLoading(false);
+      }
+    };
+
+    // Check status immediately and set up interval
+    checkStatus();
+    const interval = setInterval(checkStatus, 500);
+
+    return () => clearInterval(interval);
+  }, [player]);
+
+  // Validate video file exists
+  useEffect(() => {
+    const validateVideo = async () => {
+      try {
+        const fileUri = videoUri.replace("file://", "");
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        console.log("📁 Video file info:", fileInfo);
+
+        if (!fileInfo.exists) {
+          console.error("❌ Video file does not exist:", fileUri);
+          setVideoError("Video file not found");
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("❌ Error validating video file:", error);
+        setVideoError("Failed to validate video file");
+        setIsLoading(false);
+      }
+    };
+
+    validateVideo();
+  }, [videoUri]);
+
+  // Handle screen focus/blur
+  useFocusEffect(
+    useCallback(() => {
+      console.log("🎯 VideoPreview focused");
+      if (player && hasStartedPlayingRef.current) {
+        player.play();
+        setIsPlaying(true);
+      }
+
+      return () => {
+        console.log("👋 VideoPreview blurred");
+        if (player) {
+          player.pause();
+          setIsPlaying(false);
+        }
+      };
+    }, [player]),
+  );
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      player?.release();
+      console.log("🧹 Cleaning up video player");
+      if (player) {
+        player.pause();
+        player.release();
+      }
+      hasStartedPlayingRef.current = false;
     };
   }, [player]);
 
   const togglePlayPause = useCallback(() => {
-    if (isPlaying) {
-      player.pause();
-    } else {
-      player.play();
+    if (!player || isLoading || videoError) return;
+
+    try {
+      if (isPlaying) {
+        player.pause();
+        setIsPlaying(false);
+      } else {
+        player.play();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error("❌ Error toggling play/pause:", error);
     }
-    setIsPlaying(!isPlaying);
-  }, [player, isPlaying]);
+  }, [player, isPlaying, isLoading, videoError]);
 
   const handleShare = useCallback(async () => {
     if (isSharing) return;
@@ -151,19 +253,43 @@ export default function VideoPreviewScreen() {
     <SafeAreaView style={styles.container}>
       {/* Video Player */}
       <View style={styles.videoContainer}>
-        <VideoView player={player} style={styles.video} contentFit="cover" nativeControls={false} />
+        {!videoError && <VideoView player={player} style={styles.video} contentFit="cover" nativeControls={false} />}
+
+        {/* Loading Overlay */}
+        {isLoading && !videoError && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#1D9BF0" />
+            <Text style={styles.loadingText}>Loading video...</Text>
+          </View>
+        )}
+
+        {/* Error Overlay */}
+        {videoError && (
+          <View style={styles.errorOverlay}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={styles.errorTitle}>Video Error</Text>
+            <Text style={styles.errorMessage}>{videoError}</Text>
+            <Pressable style={styles.errorButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.errorButtonText}>Go Back</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Play/Pause Button Overlay */}
-        <Pressable
-          style={styles.playPauseOverlay}
-          onPress={togglePlayPause}
-          accessibilityRole="button"
-          accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
-        >
-          <View style={styles.playPauseButton}>
-            <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="#ffffff" />
-          </View>
-        </Pressable>
+        {!isLoading && !videoError && (
+          <Pressable
+            style={styles.playPauseOverlay}
+            onPress={togglePlayPause}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
+          >
+            {!isPlaying && (
+              <View style={styles.playPauseButton}>
+                <Ionicons name="play" size={32} color="#ffffff" />
+              </View>
+            )}
+          </Pressable>
+        )}
 
         {/* Expo Go Privacy Overlay */}
         {IS_EXPO_GO && (
@@ -403,5 +529,55 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "#1D9BF0",
     borderRadius: 2,
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#ffffff",
+    fontSize: 16,
+    marginTop: 16,
+  },
+  errorOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorTitle: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "bold",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    color: "#8B98A5",
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  errorButton: {
+    backgroundColor: "#1D9BF0",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  errorButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

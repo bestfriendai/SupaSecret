@@ -210,7 +210,8 @@ export class RevenueCatService {
 
     try {
       if (!Purchases) {
-        throw new Error("RevenueCat not initialized");
+        console.warn("RevenueCat not initialized, returning null");
+        return null;
       }
 
       const offerings = await Purchases.getOfferings();
@@ -223,7 +224,11 @@ export class RevenueCatService {
 
         if (__DEV__) {
           console.warn("💡 In development: This is expected if products aren't configured");
-          console.warn("💡 Check: App Store Connect products have all metadata");
+          console.warn("💡 To fix this:");
+          console.warn("   1. Create a StoreKit Configuration file (ToxicConfessions.storekit)");
+          console.warn("   2. Add products in Xcode: Product > Scheme > Edit Scheme > Run > Options");
+          console.warn("   3. Select the StoreKit Configuration file");
+          console.warn("   4. Or configure products in App Store Connect");
           console.warn("💡 Check: RevenueCat product IDs match exactly");
           console.warn("💡 Check: Paid Applications Agreement signed");
         } else {
@@ -261,9 +266,25 @@ export class RevenueCatService {
 
       if (error instanceof Error) {
         console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
+
+        // Check for specific RevenueCat errors
+        if (error.message.includes("could not be fetched from App Store Connect") ||
+            error.message.includes("StoreKit Configuration")) {
+          console.error("🔧 CONFIGURATION ERROR:");
+          console.error("   Products are not configured in App Store Connect or StoreKit Configuration");
+          console.error("   For local testing:");
+          console.error("   1. Open Xcode");
+          console.error("   2. Product > Scheme > Edit Scheme > Run > Options");
+          console.error("   3. Select ToxicConfessions.storekit as StoreKit Configuration");
+          console.error("   4. Rebuild the app");
+        }
+
+        if (__DEV__) {
+          console.error("Error stack:", error.stack);
+        }
       }
 
+      // Return null instead of throwing to prevent app crashes
       return null;
     }
   }

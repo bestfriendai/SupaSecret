@@ -55,6 +55,15 @@ function VisionCameraRecordScreenContent() {
   const { startRecording, stopRecording, toggleCamera, requestPermissions } = controls;
   const { isRecording, recordingTime, hasPermissions, isReady, error, cameraDevice, facing } = state;
 
+  // DEBUG: Log camera device state
+  console.log('📹 [VisionCameraRecordScreen] Camera state:', {
+    hasCamera: !!Camera,
+    hasCameraDevice: !!cameraDevice,
+    cameraDeviceValue: cameraDevice,
+    isReady,
+    hasPermissions,
+  });
+
   // Request permissions on mount
   useEffect(() => {
     if (!hasPermissions && isReady) {
@@ -65,17 +74,27 @@ function VisionCameraRecordScreenContent() {
   const handleNextPress = useCallback(async () => {
     if (!recordedVideoPath) {
       setUiError("No video recorded");
+      console.warn("⚠️ No recorded video path available");
       return;
     }
+
+    console.log("🎬 Navigating to VideoPreview with video:", recordedVideoPath);
 
     if (hapticsEnabled) {
       await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
+    // Ensure video path has file:// prefix
+    const videoUri = recordedVideoPath.startsWith("file://")
+      ? recordedVideoPath
+      : `file://${recordedVideoPath}`;
+
+    console.log("📹 Video URI for preview:", videoUri);
+
     // Navigate to preview with the recorded video
     (navigation as any).navigate("VideoPreview", {
       processedVideo: {
-        uri: recordedVideoPath,
+        uri: videoUri,
         width: 1920,
         height: 1080,
         duration: recordingTime,
@@ -83,8 +102,10 @@ function VisionCameraRecordScreenContent() {
       },
     });
 
-    // Reset for next recording
-    setRecordedVideoPath(null);
+    // Reset for next recording after a delay to allow navigation to complete
+    setTimeout(() => {
+      setRecordedVideoPath(null);
+    }, 500);
   }, [recordedVideoPath, recordingTime, hapticsEnabled, impactAsync, navigation]);
 
   if (!Camera || !cameraDevice) {
