@@ -64,6 +64,21 @@ export const useSimpleVideoPlayer = (videos: VideoItem[]): SimpleVideoPlayerMana
     }
   });
 
+  // Cleanup player when component unmounts or source changes
+  useEffect(() => {
+    return () => {
+      try {
+        if (videoPlayer && typeof videoPlayer.release === "function") {
+          videoPlayer.pause();
+          videoPlayer.release();
+          console.log("useSimpleVideoPlayer: Player released on cleanup");
+        }
+      } catch (error) {
+        console.warn("useSimpleVideoPlayer: Error releasing player:", error);
+      }
+    };
+  }, [videoPlayer, currentVideoSource]);
+
   // Log player state
   useEffect(() => {
     console.log("useSimpleVideoPlayer: Player state changed:", videoPlayer ? "available" : "null");
