@@ -9,11 +9,11 @@ import { Alert } from "react-native";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
 import { useRealtimeFaceBlur } from "../services/VisionCameraFaceBlurProcessor";
 
-// Lazy load Vision Camera modules
-let Camera: any;
-let useCameraDevice: any;
-let useCameraPermission: any;
+// Import Vision Camera directly - will be tree-shaken in Expo Go
+let Camera: any = null;
+let useCameraDeviceHook: any = null;
 
+// Load Vision Camera modules
 const loadVisionCamera = async () => {
   if (IS_EXPO_GO) {
     throw new Error("Vision Camera not available in Expo Go");
@@ -22,8 +22,7 @@ const loadVisionCamera = async () => {
   try {
     const visionCamera = await import("react-native-vision-camera");
     Camera = visionCamera.Camera;
-    useCameraDevice = visionCamera.useCameraDevice;
-    useCameraPermission = visionCamera.useCameraPermission;
+    useCameraDeviceHook = visionCamera.useCameraDevice;
     return true;
   } catch (error) {
     console.error("Failed to load Vision Camera:", error);
@@ -110,12 +109,41 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
     init();
   }, [enableFaceBlur]);
 
-  // Get camera device - moved to a separate effect that doesn't call hooks
+  // Get camera device using the proper hook
+  // This must be called after Vision Camera is loaded
   useEffect(() => {
-    if (isVisionCameraLoaded) {
-      // Camera device will be accessed directly in the component
-      // This is just to trigger re-render when facing changes
-      setCameraDevice({ facing });
+    if (isVisionCameraLoaded && useCameraDeviceHook) {
+      try {
+        // Call the useCameraDevice hook to get the actual device
+        // Note: This is a workaround since we can't call hooks conditionally
+        // In a real implementation, this should be refactored to use the hook at the top level
+        const getDevice = async () => {
+          try {
+            // Get all available devices
+            const devices = await Camera.getAvailableCameraDevices();
+            console.log('📹 Available camera devices:', devices.length);
+
+            // Find the device matching the current facing direction
+            const device = devices.find((d: any) => d.position === facing);
+
+            if (device) {
+              console.log('✅ Found camera device:', { position: device.position, id: device.id });
+              setCameraDevice(device);
+            } else {
+              console.error('❌ No camera device found for position:', facing);
+              setError(`No ${facing} camera found`);
+            }
+          } catch (err) {
+            console.error('❌ Failed to get camera devices:', err);
+            setError('Failed to get camera devices');
+          }
+        };
+
+        getDevice();
+      } catch (err) {
+        console.error('❌ Error setting up camera device:', err);
+        setError('Failed to setup camera');
+      }
     }
   }, [isVisionCameraLoaded, facing]);
 

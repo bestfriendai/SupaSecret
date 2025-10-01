@@ -3,6 +3,16 @@
     "version": ">= 12.0.0"
   },
   "build": {
+    "local": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal",
@@ -87,7 +97,9 @@
       "channel": "production",
       "ios": {
         "resourceClass": "m-medium",
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "credentialsSource": "remote",
+        "autoIncrement": "buildNumber"
       },
       "android": {
         "buildType": "app-bundle",
@@ -107,7 +119,18 @@
         "EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID": "ca-app-pub-9512493666273460/1862193927",
         "EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID": "ca-app-pub-9512493666273460/9041297053",
         "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_nXnAuBEeeERxBHxAzqhFgSnIzam",
-        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_ffsiomTRezyIrsyrwwZTiCpjSiC"
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_ffsiomTRezyIrsyrwwZTiCpjSiC",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "REPLACE_WITH_PRODUCTION_FIREBASE_API_KEY",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "REPLACE_WITH_PRODUCTION_FIREBASE_AUTH_DOMAIN",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "REPLACE_WITH_PRODUCTION_FIREBASE_PROJECT_ID",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "REPLACE_WITH_PRODUCTION_FIREBASE_STORAGE_BUCKET",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "REPLACE_WITH_PRODUCTION_FIREBASE_MESSAGING_SENDER_ID",
+        "EXPO_PUBLIC_FIREBASE_APP_ID_IOS": "REPLACE_WITH_PRODUCTION_FIREBASE_APP_ID_IOS",
+        "EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID": "REPLACE_WITH_PRODUCTION_FIREBASE_APP_ID_ANDROID",
+        "EXPO_PUBLIC_OPENAI_API_KEY": "REPLACE_WITH_PRODUCTION_OPENAI_API_KEY",
+        "EXPO_PUBLIC_ANTHROPIC_API_KEY": "REPLACE_WITH_PRODUCTION_ANTHROPIC_API_KEY",
+        "EXPO_PUBLIC_GROK_API_KEY": "REPLACE_WITH_PRODUCTION_GROK_API_KEY",
+        "EXPO_PUBLIC_SERVER_URL": "REPLACE_WITH_PRODUCTION_SERVER_URL"
       }
     }
   },

@@ -105,7 +105,7 @@ export default function App() {
     });
 
     const initializeApp = async () => {
-      const MAX_INIT_TIME = 15000;
+      const MAX_INIT_TIME = 5000; // Reduced from 15s to 5s for faster recovery
       const initTimeout = setTimeout(() => {
         console.warn("[DEBUG] Initialization taking too long, forcing app to show");
         setIsInitializing(false);

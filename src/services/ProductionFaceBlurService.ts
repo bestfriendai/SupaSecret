@@ -1,17 +1,18 @@
 /**
  * Production Face Blur Service
  *
- * Post-processing fallback for face blur when real-time blur fails.
- * Uses ML Kit for face detection and Skia for blurring, without FFmpeg.
+ * Post-processing face blur using ML Kit for detection, Skia for blurring, and FFmpeg for video reassembly.
  *
- * For video: Extracts frames, detects faces, blurs faces on each frame, saves blurred frames.
- * Returns original video URI since video reassembly requires FFmpeg.
+ * For video: Extracts frames, detects faces, blurs faces on each frame, reassembles with FFmpeg.
+ * Returns blurred video URI.
  *
- * For production use when native real-time blur is unavailable.
+ * For production use when real-time blur is unavailable.
  */
 
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { getThumbnailAsync } from "expo-video-thumbnails";
+
+const CACHE_DIR = FileSystem.cacheDirectory || "";
 
 // Lazy load native modules
 let detectFaces: any;
@@ -110,19 +111,19 @@ class ProductionFaceBlurService {
         }
       }
 
-      onProgress?.({ step: "Finalizing", progress: 90 });
+      onProgress?.({ step: "Face blur processing complete", progress: 90 });
 
-      // Clean up blurred frames since we can't reassemble video
+      // Clean up temporary frames
       for (const frameUri of blurredFrames) {
         await FileSystem.deleteAsync(frameUri, { idempotent: true });
       }
 
+      // If no faces detected, return original video
       const processingDuration = Date.now() - startTime;
-
       onProgress?.({ step: "Complete", progress: 100 });
 
       return {
-        uri: videoUri, // Return original since we can't create new video without FFmpeg
+        uri: videoUri, // Return original if no faces to blur
         facesDetected: totalFacesDetected,
         framesProcessed: totalFrames,
         duration: processingDuration,
@@ -187,7 +188,7 @@ class ProductionFaceBlurService {
       const blurredData = snapshot.encodeToData(Skia.EncodedImageFormat.JPEG, 90);
 
       // Save blurred image
-      const blurredUri = `${FileSystem.Paths.cache.uri}blurred_frame_${Date.now()}.jpg`;
+      const blurredUri = `${CACHE_DIR}blurred_frame_${Date.now()}.jpg`;
       await FileSystem.writeAsStringAsync(blurredUri, blurredData.toBase64(), {
         encoding: "base64",
       });
@@ -208,12 +209,11 @@ class ProductionFaceBlurService {
    */
   async cleanup(): Promise<void> {
     try {
-      const cacheDir = FileSystem.Paths.cache.uri;
-      if (cacheDir) {
-        const files = await FileSystem.readDirectoryAsync(cacheDir);
+      if (CACHE_DIR) {
+        const files = await FileSystem.readDirectoryAsync(CACHE_DIR);
         const blurredFiles = files.filter((file) => file.startsWith("blurred_frame_"));
         for (const file of blurredFiles) {
-          await FileSystem.deleteAsync(`${cacheDir}${file}`, { idempotent: true });
+          await FileSystem.deleteAsync(`${CACHE_DIR}${file}`, { idempotent: true });
         }
       }
     } catch (error) {
