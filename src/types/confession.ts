@@ -1,35 +1,18 @@
 export interface Confession {
   id: string;
-  type: "text" | "video";
   content: string;
-  videoUri?: string | null;
-  originalVideoUri?: string | null;
-  selectedVideoUri?: string | null;
-  videoQuality?: "360p" | "720p" | "1080p";
-  videoVariants?: {
-    quality: "360p" | "720p" | "1080p";
-    uri: string;
-    width?: number;
-    height?: number;
-  }[];
-  qualityMetadata?: {
-    deviceTier?: string;
-    networkQuality?: string;
-    selectedQuality?: "360p" | "720p" | "1080p";
-  };
-  transcription?: string | null;
-  timestamp: number;
-  isAnonymous: boolean;
+  userId?: string;
+  timestamp: string;
   likes: number;
-  views: number;
-  sessionId?: string | null;
-  isLiked?: boolean | null;
-  // Video processing fields
-  faceBlurApplied?: boolean;
-  voiceChangeApplied?: boolean;
-  processed?: boolean;
-  // Video metadata
-  duration?: number;
+  isLiked: boolean;
+  type: "text" | "video";
+  videoUri?: string;
+  thumbnailUri?: string; // Video thumbnail URL
+  transcription?: string;
+  user_id?: string;
+  created_at?: string;
+  has_face_blur?: boolean;
+  video_duration?: number;
 }
 
 // Database schema representation (snake_case)
