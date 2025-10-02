@@ -99,6 +99,9 @@ function VisionCameraRecordScreenContent() {
         height: 1080,
         duration: recordingTime,
         size: 0, // Will be calculated later
+        faceBlurApplied: enableFaceBlur,
+        privacyMode: 'blur' as const,
+        blurIntensity: blurIntensity,
       },
     });
 

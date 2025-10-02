@@ -230,6 +230,10 @@ export const useFaceBlurRecorder = (options: FaceBlurRecorderOptions = {}) => {
           setError(errorMessage);
           onError?.(errorMessage);
         },
+        videoCodec: "h264",
+        videoBitRate: "normal",
+        audioCodec: "aac-lc",
+        audioBitRate: 128000,
       });
     } catch (error) {
       console.error("❌ Failed to start recording:", error);

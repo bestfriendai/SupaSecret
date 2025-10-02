@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView, useVideoPlayer } from "expo-video";
+import { useEventListener } from "expo";
+
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
 
@@ -14,6 +16,16 @@ import { IS_EXPO_GO } from "../utils/environmentCheck";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 
 type VideoPreviewScreenRouteProp = RouteProp<RootStackParamList, "VideoPreview">;
+
+// Emoji mapping for privacy modes
+type EmojiType = 'mask' | 'sunglasses' | 'blur' | 'robot' | 'incognito';
+const EMOJI_MAP: Record<EmojiType, string> = {
+  mask: '😷',
+  sunglasses: '🕶️',
+  blur: '🌫️',
+  robot: '🤖',
+  incognito: '🥸',
+};
 
 export default function VideoPreviewScreen() {
   const navigation = useNavigation();
@@ -43,43 +55,38 @@ export default function VideoPreviewScreen() {
   });
 
   // Monitor player status
+  useEventListener(player, "statusChange", (event) => {
+    if (!event) return;
+    const { status, error } = event;
+    console.log("📊 Player status changed:", status);
+
+    if (status === "error") {
+      console.error("❌ Video player error:", error);
+      setVideoError(error?.message ?? "Failed to load video");
+      setIsLoading(false);
+    } else if (status === "readyToPlay" && !hasStartedPlayingRef.current) {
+      console.log("✅ Video ready to play");
+      setIsLoading(false);
+      setVideoError(null);
+      hasStartedPlayingRef.current = true;
+      player.play();
+      setIsPlaying(true);
+    } else if (status === "loading") {
+      console.log("⏳ Video loading...");
+      setIsLoading(true);
+    }
+  });
+
+  // Loading timeout
   useEffect(() => {
-    if (!player) return;
-
-    const checkStatus = () => {
-      try {
-        const status = player.status;
-        console.log("📊 Player status:", status);
-
-        if (status === "error") {
-          console.error("❌ Video player error");
-          setVideoError("Failed to load video");
-          setIsLoading(false);
-        } else if (status === "readyToPlay" && !hasStartedPlayingRef.current) {
-          console.log("✅ Video ready to play");
-          setIsLoading(false);
-          setVideoError(null);
-          hasStartedPlayingRef.current = true;
-          // Auto-play once ready
-          player.play();
-          setIsPlaying(true);
-        } else if (status === "loading") {
-          console.log("⏳ Video loading...");
-          setIsLoading(true);
-        }
-      } catch (error) {
-        console.error("❌ Error checking player status:", error);
-        setVideoError("Failed to load video");
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        setVideoError("Video loading timed out");
         setIsLoading(false);
       }
-    };
-
-    // Check status immediately and set up interval
-    checkStatus();
-    const interval = setInterval(checkStatus, 500);
-
-    return () => clearInterval(interval);
-  }, [player]);
+    }, 10000); // 10 seconds
+    return () => clearTimeout(timeout);
+  }, []);
 
   // Validate video file exists
   useEffect(() => {
@@ -114,26 +121,14 @@ export default function VideoPreviewScreen() {
       }
 
       return () => {
-        console.log("👋 VideoPreview blurred");
-        if (player) {
+        console.log("VideoPreview blurred");
+        if (player.status === "readyToPlay") {
           player.pause();
-          setIsPlaying(false);
         }
+        setIsPlaying(false);
       };
     }, [player]),
   );
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      console.log("🧹 Cleaning up video player");
-      if (player) {
-        player.pause();
-        player.release();
-      }
-      hasStartedPlayingRef.current = false;
-    };
-  }, [player]);
 
   const togglePlayPause = useCallback(() => {
     if (!player || isLoading || videoError) return;
@@ -170,6 +165,7 @@ export default function VideoPreviewScreen() {
         duration: processedVideo.duration,
         likes: 0,
         views: 0,
+        isLiked: false,
       };
 
       await addConfession(confessionPayload, {
@@ -291,12 +287,18 @@ export default function VideoPreviewScreen() {
           </Pressable>
         )}
 
-        {/* Expo Go Privacy Overlay */}
-        {IS_EXPO_GO && (
+        {/* Privacy Overlay - Shows when privacy effects are applied */}
+        {processedVideo.faceBlurApplied && (
           <View style={styles.privacyOverlay}>
             <View style={styles.privacyBadge}>
               <Ionicons name="eye-off" size={16} color="#ffffff" />
-              <Text style={styles.privacyText}>Face Blur Applied</Text>
+              <Text style={styles.privacyText}>
+                {processedVideo.privacyMode === 'emoji' && processedVideo.emojiType
+                  ? `${EMOJI_MAP[processedVideo.emojiType as EmojiType]} Privacy`
+                  : processedVideo.privacyMode === 'blur'
+                    ? 'Face Blur Applied'
+                    : 'Privacy Applied'}
+              </Text>
             </View>
           </View>
         )}
@@ -324,16 +326,22 @@ export default function VideoPreviewScreen() {
               : "Your anonymous video confession"}
           </Text>
 
-          {IS_EXPO_GO && (
+          {processedVideo.faceBlurApplied && (
             <View style={styles.featureList}>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                <Text style={styles.featureText}>Face blur applied</Text>
+                <Text style={styles.featureText}>
+                  {processedVideo.privacyMode === 'emoji' && processedVideo.emojiType
+                    ? `${EMOJI_MAP[processedVideo.emojiType as EmojiType]} Emoji privacy applied`
+                    : 'Face blur applied'}
+                </Text>
               </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                <Text style={styles.featureText}>Voice change applied</Text>
-              </View>
+              {processedVideo.voiceChangeApplied && (
+                <View style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                  <Text style={styles.featureText}>Voice change applied</Text>
+                </View>
+              )}
             </View>
           )}
         </View>

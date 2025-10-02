@@ -6,6 +6,9 @@ export interface ProcessedVideo {
   audioUri?: string;
   faceBlurApplied?: boolean;
   voiceChangeApplied?: boolean;
+  privacyMode?: 'emoji' | 'blur' | 'none';
+  emojiType?: 'mask' | 'sunglasses' | 'robot' | 'incognito' | 'blur';
+  blurIntensity?: number;
   metadata?: {
     width: number;
     height: number;

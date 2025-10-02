@@ -25,7 +25,7 @@ const loadNativeModules = async () => {
       Camera = visionCamera.Camera;
 
       // Load useSkiaFrameProcessor from Vision Camera
-      if ('useSkiaFrameProcessor' in visionCamera) {
+      if ("useSkiaFrameProcessor" in visionCamera) {
         useSkiaFrameProcessor = visionCamera.useSkiaFrameProcessor;
       } else {
         console.warn("⚠️ useSkiaFrameProcessor not found in Vision Camera module");
@@ -39,13 +39,10 @@ const loadNativeModules = async () => {
 
     if (!detectFaces) {
       try {
-        // Note: Commented out to avoid TypeScript error - package not installed
-        // const faceDetector = await import("vision-camera-face-detector");
-        // detectFaces = faceDetector.scanFaces; // Correct method name
-        throw new Error("Package not installed");
+        await import("react-native-vision-camera-face-detector");
+        console.log("✅ react-native-vision-camera-face-detector loaded");
       } catch (error) {
-        console.warn("vision-camera-face-detector not available:", error);
-        // Face detection will not be available
+        console.warn("react-native-vision-camera-face-detector not available:", error);
       }
     }
   } catch (error) {

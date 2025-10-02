@@ -2,9 +2,11 @@ export interface Confession {
   id: string;
   content: string;
   userId?: string;
-  timestamp: string;
+  timestamp: string | number; // Accepts both ISO string and Unix timestamp
   likes: number;
+  views: number;
   isLiked: boolean;
+  isAnonymous: boolean;
   type: "text" | "video";
   videoUri?: string;
   thumbnailUri?: string; // Video thumbnail URL
@@ -13,6 +15,12 @@ export interface Confession {
   created_at?: string;
   has_face_blur?: boolean;
   video_duration?: number;
+  faceBlurApplied?: boolean;
+  voiceChangeApplied?: boolean;
+  duration?: number;
+  selectedVideoUri?: string; // For video quality selection
+  qualityMetadata?: any; // Video quality metadata
+  videoVariants?: any[]; // Video quality variants
 }
 
 // Database schema representation (snake_case)

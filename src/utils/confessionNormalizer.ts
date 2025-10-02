@@ -41,6 +41,11 @@ export function normalizeConfessionSync(dbRow: any): Confession {
     likes: Math.max(0, parseInt(dbRow.likes) || 0),
     views: Math.max(0, parseInt(dbRow.views) || 0),
     isLiked: false,
+    has_face_blur: dbRow.has_face_blur || false,
+    faceBlurApplied: dbRow.has_face_blur || false,
+    voiceChangeApplied: dbRow.has_voice_change || false,
+    video_duration: dbRow.video_duration || undefined,
+    thumbnailUri: dbRow.video_thumbnail_url || undefined,
   };
 
   // Handle video URI for video confessions

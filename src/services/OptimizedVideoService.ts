@@ -139,9 +139,9 @@ class OptimizedVideoService {
     return videos.map((video) => ({
       ...video,
       // Add CDN optimization hints
-      videoUri: this.optimizeVideoUrl(video.videoUri),
+      videoUri: this.optimizeVideoUrl(video.videoUri) || undefined,
       // Prepare thumbnail URL if available
-      thumbnailUri: this.generateThumbnailUrl(video.videoUri),
+      thumbnailUri: this.generateThumbnailUrl(video.videoUri) || undefined,
       // Add quality options
       qualityOptions: this.getQualityOptions(video.videoUri),
     }));

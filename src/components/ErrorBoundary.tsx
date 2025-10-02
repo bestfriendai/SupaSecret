@@ -26,18 +26,12 @@ interface State {
 export class ErrorBoundary extends Component<Props, State> {
   private resetTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(props: Props) {
-    // Call super first without type annotation to avoid Hermes issues
-    super(props);
-
-    // Initialize state directly without type inference issues
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      errorId: "",
-    };
-  }
+  state: State = {
+    hasError: false,
+    error: null,
+    errorInfo: null,
+    errorId: "",
+  };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     // Generate unique error ID for tracking

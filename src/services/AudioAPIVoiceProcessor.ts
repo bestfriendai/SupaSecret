@@ -16,14 +16,15 @@ let GainNode: any;
 
 const loadAudioAPI = async () => {
   try {
+    // @ts-ignore - Optional dependency
     const audioAPI = await import("react-native-audio-api");
     AudioContext = audioAPI.AudioContext;
     AudioBufferSourceNode = audioAPI.AudioBufferSourceNode;
     GainNode = audioAPI.GainNode;
     return true;
   } catch (error) {
-    console.error("Failed to load react-native-audio-api:", error);
-    throw new Error("Audio API not available");
+    console.error("react-native-audio-api not installed. Voice effects will be unavailable.");
+    return false;
   }
 };
 
