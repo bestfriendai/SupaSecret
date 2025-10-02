@@ -8,7 +8,7 @@ describe("trending utils", () => {
     id: "id-" + Math.random().toString(36).slice(2),
     type: "text",
     content: "#confess testing content",
-    transcription: null,
+    transcription: undefined,
     videoUri: undefined,
     timestamp: baseTimestamp,
     isAnonymous: true,

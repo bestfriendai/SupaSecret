@@ -17,8 +17,9 @@ const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 const FALLBACK_USERNAME = "@anonymous";
 const DOUBLE_TAP_MAX_DELAY = 280;
 
-const formatTimestamp = (timestamp: number) => {
-  const date = new Date(timestamp);
+const formatTimestamp = (timestamp: string | number) => {
+  const ts = typeof timestamp === "string" ? new Date(timestamp).getTime() : timestamp;
+  const date = new Date(ts);
   if (!isValid(date)) {
     return "Just now";
   }

@@ -1,7 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 
-export type EmojiType = 'mask' | 'sunglasses' | 'blur' | 'robot' | 'incognito';
+export type EmojiType = "mask" | "sunglasses" | "blur" | "robot" | "incognito";
 
 interface Face {
   bounds: {
@@ -18,41 +18,45 @@ interface FaceEmojiOverlayProps {
 }
 
 const EMOJI_MAP: Record<EmojiType, string> = {
-  mask: '😷',
-  sunglasses: '🕶️',
-  blur: '🌫️',
-  robot: '🤖',
-  incognito: '🥸',
+  mask: "😷",
+  sunglasses: "🕶️",
+  blur: "🌫️",
+  robot: "🤖",
+  incognito: "🥸",
 };
 
 export const FaceEmojiOverlay: React.FC<FaceEmojiOverlayProps> = ({ faces, emojiType }) => {
-  if (!faces || faces.length === 0) return null;
+  if (!faces || faces.length === 0) {
+    return null;
+  }
 
   return (
     <>
       {faces.map((face, index) => {
         const { x, y, width, height } = face.bounds;
-        
-        // Add padding to make emoji cover face better
-        const padding = width * 0.1;
-        const emojiSize = Math.max(width, height) * 1.3;
-        
+
+        console.log(`😷 Face ${index}:`, { x, y, width, height });
+
+        // Make emoji significantly larger to fully cover face
+        const emojiSize = Math.max(width, height) * 2.0;
+        // Center the emoji over the face
+        const offsetX = x - (emojiSize - width) / 2;
+        const offsetY = y - (emojiSize - height) / 2;
+
         return (
           <View
             key={`face-${index}`}
             style={[
               styles.emojiContainer,
               {
-                left: x - padding,
-                top: y - padding,
+                left: offsetX,
+                top: offsetY,
                 width: emojiSize,
                 height: emojiSize,
               },
             ]}
           >
-            <Text style={[styles.emoji, { fontSize: emojiSize * 0.8 }]}>
-              {EMOJI_MAP[emojiType]}
-            </Text>
+            <Text style={[styles.emoji, { fontSize: emojiSize * 0.9 }]}>{EMOJI_MAP[emojiType]}</Text>
           </View>
         );
       })}
@@ -62,11 +66,12 @@ export const FaceEmojiOverlay: React.FC<FaceEmojiOverlayProps> = ({ faces, emoji
 
 const styles = StyleSheet.create({
   emojiContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
   },
   emoji: {
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

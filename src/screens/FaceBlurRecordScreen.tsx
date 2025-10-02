@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Platform } from "react-native";
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Platform, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,7 +13,7 @@ import { FaceEmojiOverlay, EmojiType } from "../components/privacy/FaceEmojiOver
 
 const MAX_DURATION = 60;
 
-function CameraScreen({ hookResult, recordedVideoPath, onNextPress }: any) {
+function CameraScreen({ hookResult, recordedVideoPath, onNextPress, selectedEmoji, setSelectedEmoji }: any) {
   const navigation = useNavigation();
   const {
     state,
@@ -23,16 +23,16 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress }: any) {
     useCameraDevice,
     useCameraFormat,
     useFrameProcessor,
+    useSkiaFrameProcessor,
     useFaceDetector,
     runAsync,
+    Skia,
   } = hookResult;
 
   const { isRecording, recordingTime, hasPermissions, isReady, error, facing } = state;
   const { startRecording, stopRecording, toggleCamera, requestPermissions } = controls;
 
   const [faces, setFaces] = useState<any[]>([]);
-  const [selectedEmoji, setSelectedEmoji] = useState<EmojiType>("mask");
-
   const device = useCameraDevice(facing);
 
   const format = device
@@ -46,11 +46,18 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress }: any) {
       ])
     : null;
 
+  const screenWidth = Dimensions.get("window").width;
+  const screenHeight = Dimensions.get("window").height;
+
   const { detectFaces, stopListeners } = useFaceDetector({
     performanceMode: "fast",
     contourMode: "none",
     landmarkMode: "none",
     classificationMode: "none",
+    autoMode: true,
+    windowWidth: screenWidth,
+    windowHeight: screenHeight,
+    cameraFacing: facing,
   });
 
   useEffect(() => {
@@ -60,25 +67,86 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress }: any) {
   }, []);
 
   const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: any[]) => {
+    if (detectedFaces.length > 0 && __DEV__) {
+      console.log("✅ Face detected! Count:", detectedFaces.length);
+      console.log("Face bounds:", detectedFaces[0].bounds);
+    }
     setFaces(detectedFaces);
   });
 
+  // Emoji to Unicode mapping
+  const getEmojiText = (type: EmojiType) => {
+    const map: Record<EmojiType, string> = {
+      mask: "😷",
+      sunglasses: "🕶️",
+      blur: "🌫️",
+      robot: "🤖",
+      incognito: "🥸",
+    };
+    return map[type];
+  };
+
   const frameProcessor =
-    useFrameProcessor && runAsync
-      ? useFrameProcessor(
+    useSkiaFrameProcessor && Skia
+      ? useSkiaFrameProcessor(
           (frame: any) => {
             "worklet";
-            runAsync(frame, () => {
-              "worklet";
-              try {
-                const detectedFaces = detectFaces(frame);
-                handleDetectedFaces(detectedFaces);
-              } catch (e: any) {}
-            });
+            try {
+              // Render the camera frame first
+              frame.render();
+
+              // Detect faces
+              const detectedFaces = detectFaces(frame);
+
+              // Update UI with detected faces
+              handleDetectedFaces(detectedFaces);
+
+              // Draw emojis on each detected face
+              if (detectedFaces && detectedFaces.length > 0) {
+                detectedFaces.forEach((face: any) => {
+                  const { x, y, width, height } = face.bounds;
+
+                  // Calculate emoji size and position to fully cover face
+                  const emojiSize = Math.max(width, height) * 2.0;
+                  const offsetX = x - (emojiSize - width) / 2;
+                  const offsetY = y - (emojiSize - height) / 2;
+
+                  // Create text paint
+                  const paint = Skia.Paint();
+                  paint.setColor(Skia.Color("white"));
+
+                  // Create font
+                  const fontSize = emojiSize * 0.9;
+                  const font = Skia.Font(null, fontSize);
+
+                  // Draw emoji text
+                  const emoji = getEmojiText(selectedEmoji);
+                  frame.drawText(emoji, offsetX, offsetY + fontSize, paint, font);
+                });
+              }
+            } catch (e: any) {
+              console.error("❌ Frame processing error:", e);
+            }
           },
-          [handleDetectedFaces],
+          [detectFaces, handleDetectedFaces, selectedEmoji],
         )
-      : undefined;
+      : useFrameProcessor && runAsync
+        ? useFrameProcessor(
+            (frame: any) => {
+              "worklet";
+              runAsync(frame, () => {
+                "worklet";
+                try {
+                  const detectedFaces = detectFaces(frame);
+                  handleDetectedFaces(detectedFaces);
+                } catch (e: any) {
+                  console.error("❌ Frame processing error:", e);
+                }
+              });
+            },
+            [handleDetectedFaces],
+          )
+        : undefined;
 
   useEffect(() => {
     if (!hasPermissions && isReady) {
@@ -113,19 +181,23 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Camera
-        ref={cameraRef}
-        style={styles.camera}
-        device={device}
-        isActive={true}
-        video={true}
-        audio={true}
-        format={format}
-        frameProcessor={frameProcessor}
-        fps={30}
-      />
+      <View style={styles.cameraContainer}>
+        <Camera
+          ref={cameraRef}
+          style={styles.camera}
+          device={device}
+          isActive={true}
+          video={true}
+          audio={true}
+          format={format}
+          frameProcessor={frameProcessor}
+          fps={30}
+        />
 
-      <FaceEmojiOverlay faces={faces} emojiType={selectedEmoji} />
+        <View style={styles.overlayContainer}>
+          <FaceEmojiOverlay faces={faces} emojiType={selectedEmoji} />
+        </View>
+      </View>
 
       {error && (
         <View style={styles.errorOverlay}>
@@ -225,6 +297,7 @@ function FaceBlurRecordScreenContent() {
   const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
 
   const [recordedVideoPath, setRecordedVideoPath] = useState<string | null>(null);
+  const [selectedEmoji, setSelectedEmoji] = useState<EmojiType>("mask");
 
   const handleRecordingStart = useCallback(async () => {
     if (hapticsEnabled) {
@@ -278,6 +351,9 @@ function FaceBlurRecordScreenContent() {
         height: 720,
         duration: recordingTime,
         size: 0,
+        faceBlurApplied: true,
+        privacyMode: "emoji" as const,
+        emojiType: selectedEmoji,
       },
     });
 
@@ -307,7 +383,15 @@ function FaceBlurRecordScreenContent() {
     );
   }
 
-  return <CameraScreen hookResult={hookResult} recordedVideoPath={recordedVideoPath} onNextPress={handleNextPress} />;
+  return (
+    <CameraScreen
+      hookResult={hookResult}
+      recordedVideoPath={recordedVideoPath}
+      onNextPress={handleNextPress}
+      selectedEmoji={selectedEmoji}
+      setSelectedEmoji={setSelectedEmoji}
+    />
+  );
 }
 
 function FaceBlurRecordScreen() {
@@ -341,6 +425,18 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  cameraContainer: {
+    flex: 1,
+  },
+  overlayContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    pointerEvents: "none",
   },
   loadingContainer: {
     flex: 1,

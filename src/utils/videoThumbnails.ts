@@ -3,8 +3,8 @@
  * Generates thumbnails for video previews
  */
 
-import { VideoThumbnails } from "expo-video-thumbnails";
-import * as FileSystem from "expo-file-system";
+import * as VideoThumbnails from "expo-video-thumbnails";
+import * as FileSystem from "expo-file-system/legacy";
 
 export interface ThumbnailOptions {
   time?: number; // Time in ms to capture thumbnail (default: 1000)

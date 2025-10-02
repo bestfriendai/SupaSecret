@@ -25,7 +25,11 @@ export const extractHashtags = (text: string): string[] => {
  */
 export const getRecentConfessions = (confessions: Confession[], hours: number = 24): Confession[] => {
   const cutoffTime = Date.now() - hours * 60 * 60 * 1000;
-  return confessions.filter((confession) => confession.timestamp >= cutoffTime);
+  return confessions.filter((confession) => {
+    const timestamp =
+      typeof confession.timestamp === "string" ? new Date(confession.timestamp).getTime() : confession.timestamp;
+    return timestamp >= cutoffTime;
+  });
 };
 
 /**
@@ -66,7 +70,9 @@ export const getTrendingHashtags = (confessions: Confession[], hours: number = 2
 export const calculateEngagementScore = (confession: Confession): number => {
   const likes = confession.likes || 0;
   const views = (confession.views as number | undefined) || 0;
-  const hoursOld = (Date.now() - confession.timestamp) / (1000 * 60 * 60);
+  const timestamp =
+    typeof confession.timestamp === "string" ? new Date(confession.timestamp).getTime() : confession.timestamp;
+  const hoursOld = (Date.now() - timestamp) / (1000 * 60 * 60);
 
   // Decay factor: newer posts get higher scores
   const decayFactor = Math.exp(-hoursOld / 24); // Half-life of 24 hours

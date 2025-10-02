@@ -16,17 +16,8 @@
 
 import { Dimensions } from "react-native";
 import { CameraPosition, useCameraDevice, useCameraFormat, useSkiaFrameProcessor } from "react-native-vision-camera";
-// Note: react-native-vision-camera-face-detector is not installed
-// This service is currently not functional and needs the package to be installed
-// import { useFaceDetector, Contours } from "react-native-vision-camera-face-detector";
+import { useFaceDetector, type Contours } from "react-native-vision-camera-face-detector";
 import { ClipOp, Skia, TileMode } from "@shopify/react-native-skia";
-
-// Placeholder types for missing face detector
-type Contours = any;
-const useFaceDetector = (_options?: any): any => {
-  console.warn('useFaceDetector is not available - react-native-vision-camera-face-detector not installed');
-  return null;
-};
 
 export interface RealtimeFaceBlurOptions {
   blurRadius?: number; // Default: 25

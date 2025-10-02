@@ -70,6 +70,13 @@ export default function VideoInteractionOverlay({
   const user = useAuthStore((state) => state.user);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const confessions = useConfessionStore((state) => state.confessions);
+  
+  // Use useMemo to create stable reference and prevent infinite loops
+  const currentConfession = useMemo(
+    () => confessions.find((c) => c.id === confession.id),
+    [confessions, confession.id]
+  );
+  
   const { isSaved: checkIsSaved, saveConfession, unsaveConfession } = useSavedStore();
   const getReplies = useReplyStore((state) => state.getRepliesForConfession);
   const subscribeToReplies = useReplyStore((state) => state.subscribeToReplies);
@@ -112,43 +119,46 @@ export default function VideoInteractionOverlay({
 
   useEffect(() => {
     if (user?.id) {
-      const currentConfession = confessions.find((c) => c.id === confession.id);
       setIsLiked(Boolean(currentConfession?.isLiked));
-      setLikeCount(typeof currentConfession?.likes === "number" ? currentConfession.likes : likeCount);
+      setLikeCount(typeof currentConfession?.likes === "number" ? currentConfession.likes : confession.likes || 0);
       setIsSaved(checkIsSaved(confession.id));
     }
-  }, [user?.id, confession.id, confessions, checkIsSaved]);
+  }, [user?.id, confession.id, currentConfession?.isLiked, currentConfession?.likes, checkIsSaved, confession.likes]);
 
   // Real-time comment count updates
   useEffect(() => {
     const totalCount = typeof pagination?.totalCount === "number" ? pagination.totalCount : replies.length;
-    setCommentCount(totalCount);
 
-    // Animate comment count changes
-    if (totalCount > commentCount) {
-      setHasNewComments(true);
-      setShowCommentIndicator(true);
+    // Only update if count actually changed
+    if (totalCount !== commentCount) {
+      setCommentCount(totalCount);
 
-      // Pulse animation for new comments
-      commentPulse.value = withSequence(
-        withSpring(1.2, { damping: 4, stiffness: 200 }),
-        withSpring(1, { damping: 10, stiffness: 150 }),
-      );
+      // Animate comment count changes (only for increases)
+      if (totalCount > commentCount && commentCount > 0) {
+        setHasNewComments(true);
+        setShowCommentIndicator(true);
 
-      // Show badge animation
-      commentBadgeScale.value = withSequence(
-        withSpring(1, { damping: 8, stiffness: 300 }),
-        withTiming(1, { duration: 3000 }),
-        withTiming(0, { duration: 300 }),
-      );
+        // Pulse animation for new comments
+        commentPulse.value = withSequence(
+          withSpring(1.2, { damping: 4, stiffness: 200 }),
+          withSpring(1, { damping: 10, stiffness: 150 }),
+        );
 
-      // Hide indicator after 3 seconds
-      setTimeout(() => {
-        setShowCommentIndicator(false);
-        setHasNewComments(false);
-      }, 3500);
+        // Show badge animation
+        commentBadgeScale.value = withSequence(
+          withSpring(1, { damping: 8, stiffness: 300 }),
+          withTiming(1, { duration: 3000 }),
+          withTiming(0, { duration: 300 }),
+        );
+
+        // Hide indicator after 3 seconds
+        setTimeout(() => {
+          setShowCommentIndicator(false);
+          setHasNewComments(false);
+        }, 3500);
+      }
     }
-  }, [replies, pagination, commentCount]);
+  }, [replies.length, pagination?.totalCount]);
 
   // Subscribe to real-time comment updates
   useEffect(() => {

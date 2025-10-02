@@ -4,28 +4,24 @@
  * Based on production implementation from main app
  */
 
-import * as FileSystem from '../../../utils/legacyFileSystem';
-import type {
-  VoiceEffect,
-  VoiceProcessingOptions,
-  VoiceProcessingResult,
-  IVoiceProcessingService,
-} from '../types';
+import * as FileSystem from "../../../utils/legacyFileSystem";
+import type { VoiceEffect, VoiceProcessingOptions, VoiceProcessingResult, IVoiceProcessingService } from "../types";
 
 // Lazy load audio API
 let AudioContext: any;
 
 /**
- * Load react-native-audio-api
+ * Load react-native-audio-api (optional dependency)
  */
 const loadAudioAPI = async () => {
   try {
-    const audioAPI = await import('react-native-audio-api');
+    // @ts-ignore - Optional dependency
+    const audioAPI = await import("react-native-audio-api");
     AudioContext = audioAPI.AudioContext;
     return true;
   } catch (error) {
-    console.error('Failed to load react-native-audio-api:', error);
-    throw new Error('Audio API not available');
+    console.error("react-native-audio-api not installed. Voice effects will be unavailable.");
+    return false;
   }
 };
 
@@ -34,9 +30,9 @@ const loadAudioAPI = async () => {
  */
 const getPitchShiftRate = (effect: VoiceEffect): number => {
   switch (effect) {
-    case 'deep':
+    case "deep":
       return 0.8; // Lower pitch (20% slower)
-    case 'light':
+    case "light":
       return 1.2; // Higher pitch (20% faster)
     default:
       return 1.0; // No change
@@ -61,7 +57,7 @@ export class VoiceProcessingService implements IVoiceProcessingService {
       this.audioContext = new AudioContext();
       this.isInitialized = true;
     } catch (error) {
-      console.error('Voice processing initialization failed:', error);
+      console.error("Voice processing initialization failed:", error);
       throw error;
     }
   }
@@ -72,10 +68,10 @@ export class VoiceProcessingService implements IVoiceProcessingService {
   async processAudio(audioUri: string, options: VoiceProcessingOptions): Promise<VoiceProcessingResult> {
     const { effect, onProgress } = options;
 
-    if (effect === 'none') {
+    if (effect === "none") {
       return {
         uri: audioUri,
-        effect: 'none',
+        effect: "none",
         duration: 0,
         voiceChangeApplied: false,
       };
@@ -85,14 +81,14 @@ export class VoiceProcessingService implements IVoiceProcessingService {
       await this.initialize();
     }
 
-    onProgress?.(0, 'Initializing voice processing...');
+    onProgress?.(0, "Initializing voice processing...");
 
     try {
       const startTime = Date.now();
       const pitchRate = getPitchShiftRate(effect);
-      const effectDescription = effect === 'deep' ? 'deeper' : 'lighter';
+      const effectDescription = effect === "deep" ? "deeper" : "lighter";
 
-      onProgress?.(10, 'Loading audio file...');
+      onProgress?.(10, "Loading audio file...");
 
       // Create output path
       const outputUri = audioUri.replace(/\.(m4a|wav|mp3|aac)$/i, `_voice_${effect}.wav`);
@@ -104,7 +100,7 @@ export class VoiceProcessingService implements IVoiceProcessingService {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      onProgress?.(30, 'Decoding audio...');
+      onProgress?.(30, "Decoding audio...");
 
       const arrayBuffer = base64ToArrayBuffer(audioData);
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
@@ -128,18 +124,18 @@ export class VoiceProcessingService implements IVoiceProcessingService {
       source.playbackRate.value = pitchRate;
       source.connect(offlineContext.destination);
 
-      onProgress?.(70, 'Rendering audio...');
+      onProgress?.(70, "Rendering audio...");
 
       // Render audio
       source.start();
       const renderedBuffer = await offlineContext.startRendering();
 
-      onProgress?.(85, 'Encoding processed audio...');
+      onProgress?.(85, "Encoding processed audio...");
 
       // Save processed audio as WAV
       await this.saveAudioBuffer(renderedBuffer, outputUri);
 
-      onProgress?.(100, 'Voice processing complete!');
+      onProgress?.(100, "Voice processing complete!");
 
       const processingTime = Date.now() - startTime;
 
@@ -150,7 +146,7 @@ export class VoiceProcessingService implements IVoiceProcessingService {
         voiceChangeApplied: true,
       };
     } catch (error) {
-      console.error('Voice processing failed:', error);
+      console.error("Voice processing failed:", error);
       throw error;
     }
   }
@@ -188,12 +184,12 @@ export class VoiceProcessingService implements IVoiceProcessingService {
     };
 
     // RIFF chunk descriptor
-    writeString(0, 'RIFF');
+    writeString(0, "RIFF");
     view.setUint32(4, length - 8, true);
-    writeString(8, 'WAVE');
+    writeString(8, "WAVE");
 
     // fmt sub-chunk
-    writeString(12, 'fmt ');
+    writeString(12, "fmt ");
     view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
     view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
     view.setUint16(22, buffer.numberOfChannels, true);
@@ -203,7 +199,7 @@ export class VoiceProcessingService implements IVoiceProcessingService {
     view.setUint16(34, 16, true); // BitsPerSample
 
     // data sub-chunk
-    writeString(36, 'data');
+    writeString(36, "data");
     view.setUint32(40, length - 44, true);
 
     // Write interleaved PCM data
@@ -235,7 +231,7 @@ export class VoiceProcessingService implements IVoiceProcessingService {
       try {
         await this.audioContext.close();
       } catch (error) {
-        console.error('Failed to close audio context:', error);
+        console.error("Failed to close audio context:", error);
       }
       this.audioContext = null;
     }
@@ -259,7 +255,7 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
  * Helper: Convert ArrayBuffer to base64
  */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = '';
+  let binary = "";
   const bytes = new Uint8Array(buffer);
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);

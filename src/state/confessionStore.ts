@@ -188,7 +188,13 @@ export const useConfessionStore = create<ConfessionState>()(
               );
             }
 
-            const finalConfessions = uniqueConfessions.sort((a, b) => b.timestamp - a.timestamp).slice(0, 200); // limit to reduce memory pressure
+            const finalConfessions = uniqueConfessions
+              .sort((a, b) => {
+                const aTime = typeof a.timestamp === "string" ? new Date(a.timestamp).getTime() : a.timestamp;
+                const bTime = typeof b.timestamp === "string" ? new Date(b.timestamp).getTime() : b.timestamp;
+                return bTime - aTime;
+              })
+              .slice(0, 200); // limit to reduce memory pressure
 
             set({
               confessions: finalConfessions,
