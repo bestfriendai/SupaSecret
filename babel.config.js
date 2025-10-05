@@ -6,9 +6,16 @@ module.exports = function (api) {
 
   const projectRoot = __dirname;
   const hasFFmpegKit = fs.existsSync(path.join(projectRoot, "node_modules", "ffmpeg-kit-react-native"));
+  const iosExists = fs.existsSync(path.join(projectRoot, "ios"));
+
+  const expoPresetOptions = { worklets: true };
+
+  const nativewindPresets = iosExists
+    ? [["babel-preset-expo", expoPresetOptions], "nativewind/babel"]
+    : [["babel-preset-expo", expoPresetOptions]];
 
   return {
-    presets: [["babel-preset-expo", { jsxImportSource: "nativewind" }], "nativewind/babel"],
+    presets: nativewindPresets,
     plugins: [
       [
         "module-resolver",
@@ -25,7 +32,6 @@ module.exports = function (api) {
         },
       ],
       "@babel/plugin-transform-class-static-block",
-      "react-native-worklets-core/plugin",
       "react-native-reanimated/plugin",
     ],
   };
