@@ -3,10 +3,10 @@
  * Optimized version with memoization to prevent unnecessary re-renders
  */
 
-import React, { memo, useMemo, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { FeedAdComponent } from './FeedAd';
-import type { FeedAdProps, AdConfig } from '../types';
+import React, { memo, useMemo, useRef } from "react";
+import { View, StyleSheet } from "react-native";
+import { FeedAdComponent } from "./FeedAd";
+import type { FeedAdProps, AdConfig } from "../types";
 
 interface OptimizedFeedAdProps extends FeedAdProps {
   config: AdConfig;
@@ -19,7 +19,7 @@ interface OptimizedFeedAdProps extends FeedAdProps {
  * and uses memoization to prevent unnecessary re-renders
  */
 export const OptimizedFeedAd: React.FC<OptimizedFeedAdProps> = memo(
-  ({ index, interval = 5, placement = 'home-feed', size = 'medium', config, isPremium, hasConsent }) => {
+  ({ index, interval = 5, placement = "home-feed", size = "medium", config, isPremium, hasConsent }) => {
     // Create stable random offset once per component instance
     const randomOffsetRef = useRef(Math.floor(Math.random() * 2));
 
@@ -55,10 +55,10 @@ export const OptimizedFeedAd: React.FC<OptimizedFeedAdProps> = memo(
         />
       </View>
     );
-  }
+  },
 );
 
-OptimizedFeedAd.displayName = 'OptimizedFeedAd';
+OptimizedFeedAd.displayName = "OptimizedFeedAd";
 
 const styles = StyleSheet.create({
   container: {
@@ -74,7 +74,7 @@ export const shouldShowAdAtIndex = (
   index: number,
   interval: number = 5,
   isPremium: boolean = false,
-  randomOffset: number = 0
+  randomOffset: number = 0,
 ): boolean => {
   // Return false early for invalid index values
   if (index < 0 || !Number.isInteger(index)) return false;

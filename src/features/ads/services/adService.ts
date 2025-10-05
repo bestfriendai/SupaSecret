@@ -11,15 +11,9 @@
  * - Demo mode for development
  */
 
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
-import type {
-  AdConfig,
-  AdRequestOptions,
-  InterstitialAdOptions,
-  RewardedAdResult,
-  RewardedAdOptions,
-} from '../types';
+import { Platform } from "react-native";
+import Constants from "expo-constants";
+import type { AdConfig, AdRequestOptions, InterstitialAdOptions, RewardedAdResult, RewardedAdOptions } from "../types";
 
 // Type declarations for AdMob module
 type AdMobModule = {
@@ -43,8 +37,8 @@ class AdService {
   private readonly INTERSTITIAL_COOLDOWN = 60000; // 1 minute
 
   // Environment flags
-  private readonly IS_EXPO_GO = Constants.executionEnvironment === 'storeClient';
-  private readonly IS_WEB = Platform.OS === 'web';
+  private readonly IS_EXPO_GO = Constants.executionEnvironment === "storeClient";
+  private readonly IS_WEB = Platform.OS === "web";
   private readonly IS_DEV = __DEV__;
 
   private constructor() {}
@@ -80,10 +74,10 @@ class AdService {
 
     try {
       // @ts-ignore - react-native-google-mobile-ads is a native module
-      const module = await import('react-native-google-mobile-ads');
+      const module = await import("react-native-google-mobile-ads");
       return module as AdMobModule;
     } catch (error) {
-      console.warn('AdMob module not available:', error instanceof Error ? error.message : String(error));
+      console.warn("AdMob module not available:", error instanceof Error ? error.message : String(error));
       return null;
     }
   }
@@ -92,13 +86,13 @@ class AdService {
    * Validate ad unit ID format
    */
   private isValidAdUnit(id: any): boolean {
-    return typeof id === 'string' && id.startsWith('ca-app-pub-') && id.includes('/');
+    return typeof id === "string" && id.startsWith("ca-app-pub-") && id.includes("/");
   }
 
   /**
    * Get ad unit ID for specific type
    */
-  getAdUnitId(type: 'banner' | 'interstitial' | 'rewarded', config: AdConfig): string | null {
+  getAdUnitId(type: "banner" | "interstitial" | "rewarded", config: AdConfig): string | null {
     const adUnit = config.adUnits[type];
     const id = Platform.select({
       ios: adUnit.ios,
@@ -118,18 +112,18 @@ class AdService {
    */
   async initialize(config: AdConfig, hasConsent: boolean): Promise<void> {
     if (this.initialized) {
-      console.log('AdMob already initialized');
+      console.log("AdMob already initialized");
       return;
     }
 
     if (!config.enabled) {
-      console.log('AdMob disabled via config');
+      console.log("AdMob disabled via config");
       this.initialized = true;
       return;
     }
 
     if (this.IS_EXPO_GO) {
-      console.log('AdMob Demo Mode - Development build required for real ads');
+      console.log("AdMob Demo Mode - Development build required for real ads");
       this.initialized = true;
       return;
     }
@@ -138,7 +132,7 @@ class AdService {
       // Load AdMob module
       this.adMobModule = await this.loadAdMobModule();
       if (!this.adMobModule) {
-        console.warn('AdMob module not available, running in demo mode');
+        console.warn("AdMob module not available, running in demo mode");
         this.initialized = true;
         return;
       }
@@ -153,36 +147,36 @@ class AdService {
       const requestConfig: AdRequestOptions = {
         tagForChildDirectedTreatment: false,
         tagForUnderAgeOfConsent: false,
-        maxAdContentRating: 'MA',
+        maxAdContentRating: "MA",
         requestNonPersonalizedAdsOnly: !hasConsent,
       };
 
       await mobileAds().setRequestConfiguration(requestConfig);
 
       // Pre-load interstitial ad
-      const interstitialId = this.getAdUnitId('interstitial', config);
+      const interstitialId = this.getAdUnitId("interstitial", config);
       if (interstitialId) {
         this.interstitialAd = InterstitialAd.createForAdRequest(interstitialId);
         this.interstitialAd.load();
       } else {
-        console.warn('AdMob interstitial unit invalid/missing; skipping preload');
+        console.warn("AdMob interstitial unit invalid/missing; skipping preload");
       }
 
       // Pre-load rewarded ad
-      const rewardedId = this.getAdUnitId('rewarded', config);
+      const rewardedId = this.getAdUnitId("rewarded", config);
       if (rewardedId) {
         this.rewardedAd = RewardedAd.createForAdRequest(rewardedId);
         this.rewardedAd.load();
       } else {
-        console.warn('AdMob rewarded unit invalid/missing; skipping preload');
+        console.warn("AdMob rewarded unit invalid/missing; skipping preload");
       }
 
-      console.log('AdMob initialized successfully');
+      console.log("AdMob initialized successfully");
       this.initialized = true;
     } catch (error) {
       console.warn(
-        'AdMob initialization failed, running in demo mode:',
-        error instanceof Error ? error.message : String(error)
+        "AdMob initialization failed, running in demo mode:",
+        error instanceof Error ? error.message : String(error),
       );
       this.initialized = true;
     }
@@ -198,31 +192,28 @@ class AdService {
   /**
    * Show interstitial ad
    */
-  async showInterstitial(
-    config: AdConfig,
-    options: InterstitialAdOptions = {}
-  ): Promise<boolean> {
+  async showInterstitial(config: AdConfig, options: InterstitialAdOptions = {}): Promise<boolean> {
     const { skipIfPremium = true, placement, onAdDismissed, onAdFailedToShow } = options;
 
     // Check if ads should be shown
     if (skipIfPremium && !this.shouldShowAd(!skipIfPremium)) {
-      console.log('User is premium, skipping ad');
+      console.log("User is premium, skipping ad");
       return false;
     }
 
     // Check cooldown
     const now = Date.now();
     if (now - this.lastInterstitialTime < this.INTERSTITIAL_COOLDOWN) {
-      console.log('Ad cooldown active, skipping ad');
+      console.log("Ad cooldown active, skipping ad");
       return false;
     }
 
     // Demo mode for Expo Go
     if (this.IS_EXPO_GO) {
-      console.log('Demo: Interstitial ad would show here (Development build required)');
+      console.log("Demo: Interstitial ad would show here (Development build required)");
       return new Promise((resolve) => {
         setTimeout(() => {
-          console.log('Demo interstitial ad completed');
+          console.log("Demo interstitial ad completed");
           this.lastInterstitialTime = now;
           onAdDismissed?.();
           resolve(true);
@@ -235,7 +226,7 @@ class AdService {
       if (!this.adMobModule) {
         this.adMobModule = await this.loadAdMobModule();
         if (!this.adMobModule) {
-          onAdFailedToShow?.(new Error('AdMob module not available'));
+          onAdFailedToShow?.(new Error("AdMob module not available"));
           return false;
         }
       }
@@ -244,7 +235,7 @@ class AdService {
       const loaded = await this.ensureInterstitialLoaded(config);
 
       if (!loaded || !this.interstitialAd) {
-        onAdFailedToShow?.(new Error('Failed to load interstitial ad'));
+        onAdFailedToShow?.(new Error("Failed to load interstitial ad"));
         return false;
       }
 
@@ -259,30 +250,30 @@ class AdService {
             unsubscribeClosed?.();
             unsubscribeError?.();
           } catch (error) {
-            console.warn('Error during cleanup:', error);
+            console.warn("Error during cleanup:", error);
           }
         };
 
         try {
-          const AET = AdEventType || { LOADED: 'loaded', CLOSED: 'closed', ERROR: 'error' };
+          const AET = AdEventType || { LOADED: "loaded", CLOSED: "closed", ERROR: "error" };
 
-          unsubscribeLoaded = this.interstitialAd.addAdEventListener(AET.LOADED || 'loaded', () => {
-            console.log('Interstitial ad loaded, showing...');
+          unsubscribeLoaded = this.interstitialAd.addAdEventListener(AET.LOADED || "loaded", () => {
+            console.log("Interstitial ad loaded, showing...");
             this.interstitialAd.show();
           });
 
-          unsubscribeClosed = this.interstitialAd.addAdEventListener(AET.CLOSED || 'closed', () => {
-            console.log('Interstitial ad closed');
+          unsubscribeClosed = this.interstitialAd.addAdEventListener(AET.CLOSED || "closed", () => {
+            console.log("Interstitial ad closed");
             this.lastInterstitialTime = now;
 
             // Pre-load next ad
-            const interstitialId = this.getAdUnitId('interstitial', config);
+            const interstitialId = this.getAdUnitId("interstitial", config);
             if (interstitialId) {
               try {
                 this.interstitialAd = InterstitialAd.createForAdRequest(interstitialId);
                 this.interstitialAd.load();
               } catch (error) {
-                console.warn('Failed to create new interstitial ad:', error);
+                console.warn("Failed to create new interstitial ad:", error);
               }
             }
 
@@ -291,42 +282,39 @@ class AdService {
             resolve(true);
           });
 
-          unsubscribeError = this.interstitialAd.addAdEventListener(
-            AET.ERROR || 'error',
-            async (error: any) => {
-              console.error('Interstitial ad error:', error);
+          unsubscribeError = this.interstitialAd.addAdEventListener(AET.ERROR || "error", async (error: any) => {
+            console.error("Interstitial ad error:", error);
 
-              // Retry loading
-              const interstitialId = this.getAdUnitId('interstitial', config);
-              if (interstitialId) {
-                try {
-                  await new Promise((r) => setTimeout(r, 500));
-                  this.interstitialAd = InterstitialAd.createForAdRequest(interstitialId);
-                  this.interstitialAd.load();
-                } catch (retryError) {
-                  console.warn('Failed to retry loading interstitial ad:', retryError);
-                }
+            // Retry loading
+            const interstitialId = this.getAdUnitId("interstitial", config);
+            if (interstitialId) {
+              try {
+                await new Promise((r) => setTimeout(r, 500));
+                this.interstitialAd = InterstitialAd.createForAdRequest(interstitialId);
+                this.interstitialAd.load();
+              } catch (retryError) {
+                console.warn("Failed to retry loading interstitial ad:", retryError);
               }
-
-              cleanup();
-              onAdFailedToShow?.(error);
-              resolve(false);
             }
-          );
+
+            cleanup();
+            onAdFailedToShow?.(error);
+            resolve(false);
+          });
 
           // If already loaded, show immediately
           if (this.interstitialAd.loaded) {
             this.interstitialAd.show();
           }
         } catch (error) {
-          console.error('Error setting up interstitial ad listeners:', error);
+          console.error("Error setting up interstitial ad listeners:", error);
           cleanup();
           onAdFailedToShow?.(error as Error);
           resolve(false);
         }
       });
     } catch (error) {
-      console.error('Failed to show interstitial ad:', error);
+      console.error("Failed to show interstitial ad:", error);
       onAdFailedToShow?.(error as Error);
       return false;
     }
@@ -335,22 +323,19 @@ class AdService {
   /**
    * Show rewarded ad
    */
-  async showRewarded(
-    config: AdConfig,
-    options: RewardedAdOptions = {}
-  ): Promise<RewardedAdResult> {
+  async showRewarded(config: AdConfig, options: RewardedAdOptions = {}): Promise<RewardedAdResult> {
     const { placement, onEarnedReward, onAdDismissed, onAdFailedToShow } = options;
 
     // Demo mode for Expo Go
     if (this.IS_EXPO_GO) {
-      console.log('Demo: Rewarded ad would show here (Development build required)');
+      console.log("Demo: Rewarded ad would show here (Development build required)");
       return new Promise((resolve) => {
         setTimeout(() => {
-          console.log('Demo rewarded ad completed - user rewarded!');
-          const reward = { amount: 1, type: 'coins' };
+          console.log("Demo rewarded ad completed - user rewarded!");
+          const reward = { amount: 1, type: "coins" };
           onEarnedReward?.(reward);
           onAdDismissed?.();
-          resolve({ shown: true, rewarded: true, rewardAmount: 1, rewardType: 'coins' });
+          resolve({ shown: true, rewarded: true, rewardAmount: 1, rewardType: "coins" });
         }, 2500);
       });
     }
@@ -360,7 +345,7 @@ class AdService {
       if (!this.adMobModule) {
         this.adMobModule = await this.loadAdMobModule();
         if (!this.adMobModule) {
-          onAdFailedToShow?.(new Error('AdMob module not available'));
+          onAdFailedToShow?.(new Error("AdMob module not available"));
           return { shown: false, rewarded: false };
         }
       }
@@ -369,27 +354,24 @@ class AdService {
       const loaded = await this.ensureRewardedLoaded(config);
 
       if (!loaded || !this.rewardedAd) {
-        onAdFailedToShow?.(new Error('Failed to load rewarded ad'));
+        onAdFailedToShow?.(new Error("Failed to load rewarded ad"));
         return { shown: false, rewarded: false };
       }
 
       return await new Promise((resolve) => {
         let rewarded = false;
         let rewardAmount = 0;
-        let rewardType = '';
+        let rewardType = "";
 
-        const RAET = RewardedAdEventType || { EARNED_REWARD: 'earned' };
-        const AEType = AdEventType || { CLOSED: 'closed', ERROR: 'error' };
+        const RAET = RewardedAdEventType || { EARNED_REWARD: "earned" };
+        const AEType = AdEventType || { CLOSED: "closed", ERROR: "error" };
 
-        const unsubscribeEarned = this.rewardedAd.addAdEventListener(
-          RAET.EARNED_REWARD || 'earned',
-          (reward: any) => {
-            rewarded = true;
-            rewardAmount = reward?.amount || 1;
-            rewardType = reward?.type || 'reward';
-            onEarnedReward?.({ amount: rewardAmount, type: rewardType });
-          }
-        );
+        const unsubscribeEarned = this.rewardedAd.addAdEventListener(RAET.EARNED_REWARD || "earned", (reward: any) => {
+          rewarded = true;
+          rewardAmount = reward?.amount || 1;
+          rewardType = reward?.type || "reward";
+          onEarnedReward?.({ amount: rewardAmount, type: rewardType });
+        });
 
         const finalize = (result: RewardedAdResult) => {
           try {
@@ -397,22 +379,22 @@ class AdService {
             unsubscribeClosed?.();
             unsubscribeError?.();
           } catch (error) {
-            console.warn('Error during cleanup:', error);
+            console.warn("Error during cleanup:", error);
           }
           resolve(result);
         };
 
-        const unsubscribeClosed = this.rewardedAd.addAdEventListener(AEType.CLOSED || 'closed', () => {
-          console.log('Rewarded ad closed');
+        const unsubscribeClosed = this.rewardedAd.addAdEventListener(AEType.CLOSED || "closed", () => {
+          console.log("Rewarded ad closed");
 
           // Pre-load next ad
-          const rewardedId = this.getAdUnitId('rewarded', config);
+          const rewardedId = this.getAdUnitId("rewarded", config);
           if (rewardedId) {
             try {
               this.rewardedAd = RewardedAd.createForAdRequest(rewardedId);
               this.rewardedAd.load();
             } catch (error) {
-              console.warn('Failed to create new rewarded ad:', error);
+              console.warn("Failed to create new rewarded ad:", error);
             }
           }
 
@@ -420,32 +402,29 @@ class AdService {
           finalize({ shown: true, rewarded, rewardAmount, rewardType });
         });
 
-        const unsubscribeError = this.rewardedAd.addAdEventListener(
-          AEType.ERROR || 'error',
-          (error: any) => {
-            console.error('Rewarded ad error:', error);
+        const unsubscribeError = this.rewardedAd.addAdEventListener(AEType.ERROR || "error", (error: any) => {
+          console.error("Rewarded ad error:", error);
 
-            // Pre-load next ad after error
-            const rewardedId = this.getAdUnitId('rewarded', config);
-            if (rewardedId) {
-              try {
-                this.rewardedAd = RewardedAd.createForAdRequest(rewardedId);
-                this.rewardedAd.load();
-              } catch (retryError) {
-                console.warn('Failed to retry loading rewarded ad:', retryError);
-              }
+          // Pre-load next ad after error
+          const rewardedId = this.getAdUnitId("rewarded", config);
+          if (rewardedId) {
+            try {
+              this.rewardedAd = RewardedAd.createForAdRequest(rewardedId);
+              this.rewardedAd.load();
+            } catch (retryError) {
+              console.warn("Failed to retry loading rewarded ad:", retryError);
             }
-
-            onAdFailedToShow?.(error);
-            finalize({ shown: false, rewarded: false });
           }
-        );
+
+          onAdFailedToShow?.(error);
+          finalize({ shown: false, rewarded: false });
+        });
 
         // Show the ad
         this.rewardedAd.show();
       });
     } catch (error) {
-      console.error('Failed to show rewarded ad:', error);
+      console.error("Failed to show rewarded ad:", error);
       onAdFailedToShow?.(error as Error);
       return { shown: false, rewarded: false };
     }
@@ -463,7 +442,7 @@ class AdService {
     }
 
     const { InterstitialAd } = this.adMobModule;
-    const interstitialId = this.getAdUnitId('interstitial', config);
+    const interstitialId = this.getAdUnitId("interstitial", config);
 
     if (!interstitialId) return false;
 
@@ -501,7 +480,7 @@ class AdService {
     }
 
     const { RewardedAd } = this.adMobModule;
-    const rewardedId = this.getAdUnitId('rewarded', config);
+    const rewardedId = this.getAdUnitId("rewarded", config);
 
     if (!rewardedId) return false;
 

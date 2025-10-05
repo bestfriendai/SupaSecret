@@ -39,11 +39,7 @@ export const Loading: React.FC<LoadingProps> = ({
 
   const spinnerSize = sizeMap[size];
 
-  const containerClassName = cn(
-    "items-center justify-center",
-    fullScreen ? "flex-1 bg-black" : "py-8",
-    className,
-  );
+  const containerClassName = cn("items-center justify-center", fullScreen ? "flex-1 bg-black" : "py-8", className);
 
   if (variant === "spinner") {
     return (
@@ -55,10 +51,28 @@ export const Loading: React.FC<LoadingProps> = ({
   }
 
   if (variant === "dots") {
-    return <LoadingDots message={message} size={size} color={color} fullScreen={fullScreen} className={className} {...viewProps} />;
+    return (
+      <LoadingDots
+        message={message}
+        size={size}
+        color={color}
+        fullScreen={fullScreen}
+        className={className}
+        {...viewProps}
+      />
+    );
   }
 
-  return <LoadingPulse message={message} size={size} color={color} fullScreen={fullScreen} className={className} {...viewProps} />;
+  return (
+    <LoadingPulse
+      message={message}
+      size={size}
+      color={color}
+      fullScreen={fullScreen}
+      className={className}
+      {...viewProps}
+    />
+  );
 };
 
 // Animated Loading Spinner
@@ -99,11 +113,7 @@ export const LoadingSpinner: React.FC<LoadingProps> = ({
     transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
   }));
 
-  const containerClassName = cn(
-    "items-center justify-center",
-    fullScreen ? "flex-1 bg-black" : "py-8",
-    className,
-  );
+  const containerClassName = cn("items-center justify-center", fullScreen ? "flex-1 bg-black" : "py-8", className);
 
   return (
     <View className={containerClassName} {...viewProps}>
@@ -168,11 +178,7 @@ export const LoadingDots: React.FC<LoadingProps> = ({
   const dot2Style = createDotStyle(dot2);
   const dot3Style = createDotStyle(dot3);
 
-  const containerClassName = cn(
-    "items-center justify-center",
-    fullScreen ? "flex-1 bg-black" : "py-8",
-    className,
-  );
+  const containerClassName = cn("items-center justify-center", fullScreen ? "flex-1 bg-black" : "py-8", className);
 
   return (
     <View className={containerClassName} {...viewProps}>
@@ -208,10 +214,7 @@ export const LoadingPulse: React.FC<LoadingProps> = ({
   const pulseSize = sizeMap[size];
 
   useEffect(() => {
-    scale.value = withRepeat(
-      withSequence(withTiming(1.3, { duration: 1000 }), withTiming(1, { duration: 1000 })),
-      -1,
-    );
+    scale.value = withRepeat(withSequence(withTiming(1.3, { duration: 1000 }), withTiming(1, { duration: 1000 })), -1);
 
     opacity.value = withRepeat(
       withSequence(withTiming(0.3, { duration: 1000 }), withTiming(1, { duration: 1000 })),
@@ -224,11 +227,7 @@ export const LoadingPulse: React.FC<LoadingProps> = ({
     opacity: opacity.value,
   }));
 
-  const containerClassName = cn(
-    "items-center justify-center",
-    fullScreen ? "flex-1 bg-black" : "py-8",
-    className,
-  );
+  const containerClassName = cn("items-center justify-center", fullScreen ? "flex-1 bg-black" : "py-8", className);
 
   return (
     <View className={containerClassName} {...viewProps}>
@@ -255,14 +254,17 @@ export interface SkeletonProps extends ViewProps {
   borderRadius?: number;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ width = "100%", height = 20, borderRadius = 4, className, ...viewProps }) => {
+export const Skeleton: React.FC<SkeletonProps> = ({
+  width = "100%",
+  height = 20,
+  borderRadius = 4,
+  className,
+  ...viewProps
+}) => {
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(withTiming(1, { duration: 800 }), withTiming(0.3, { duration: 800 })),
-      -1,
-    );
+    opacity.value = withRepeat(withSequence(withTiming(1, { duration: 800 }), withTiming(0.3, { duration: 800 })), -1);
   }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({

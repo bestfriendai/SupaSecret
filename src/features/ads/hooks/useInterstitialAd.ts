@@ -3,9 +3,9 @@
  * Provides easy access to interstitial ads with automatic cooldown management
  */
 
-import { useCallback, useRef } from 'react';
-import { adService } from '../services/adService';
-import type { AdConfig, InterstitialAdOptions } from '../types';
+import { useCallback, useRef } from "react";
+import { adService } from "../services/adService";
+import type { AdConfig, InterstitialAdOptions } from "../types";
 
 interface UseInterstitialAdParams {
   config: AdConfig;
@@ -19,7 +19,7 @@ export const useInterstitialAd = ({ config, isPremium }: UseInterstitialAdParams
     async (options: InterstitialAdOptions = {}): Promise<boolean> => {
       // Prevent multiple simultaneous ad requests
       if (isShowingRef.current) {
-        console.log('Interstitial ad already showing');
+        console.log("Interstitial ad already showing");
         return false;
       }
 
@@ -42,11 +42,11 @@ export const useInterstitialAd = ({ config, isPremium }: UseInterstitialAdParams
         return result;
       } catch (error) {
         isShowingRef.current = false;
-        console.error('Failed to show interstitial ad:', error);
+        console.error("Failed to show interstitial ad:", error);
         return false;
       }
     },
-    [config, isPremium]
+    [config, isPremium],
   );
 
   return {

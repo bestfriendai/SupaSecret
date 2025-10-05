@@ -8,11 +8,11 @@ module.exports = function (api) {
   const hasFFmpegKit = fs.existsSync(path.join(projectRoot, "node_modules", "ffmpeg-kit-react-native"));
   const iosExists = fs.existsSync(path.join(projectRoot, "ios"));
 
-  const expoPresetOptions = { worklets: true };
-
+  // Note: worklets are automatically handled by react-native-reanimated/plugin
+  // No need to pass worklets option to babel-preset-expo
   const nativewindPresets = iosExists
-    ? [["babel-preset-expo", expoPresetOptions], "nativewind/babel"]
-    : [["babel-preset-expo", expoPresetOptions]];
+    ? ["babel-preset-expo", "nativewind/babel"]
+    : ["babel-preset-expo"];
 
   return {
     presets: nativewindPresets,

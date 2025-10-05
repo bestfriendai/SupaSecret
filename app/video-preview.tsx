@@ -7,7 +7,7 @@ export default function VideoPreview() {
 
   // Parse processedVideo from params if passed as JSON string
   const processedVideo = params.processedVideo
-    ? typeof params.processedVideo === 'string'
+    ? typeof params.processedVideo === "string"
       ? JSON.parse(params.processedVideo)
       : params.processedVideo
     : undefined;

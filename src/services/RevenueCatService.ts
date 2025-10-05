@@ -268,8 +268,10 @@ export class RevenueCatService {
         console.error("Error message:", error.message);
 
         // Check for specific RevenueCat errors
-        if (error.message.includes("could not be fetched from App Store Connect") ||
-            error.message.includes("StoreKit Configuration")) {
+        if (
+          error.message.includes("could not be fetched from App Store Connect") ||
+          error.message.includes("StoreKit Configuration")
+        ) {
           console.error("🔧 CONFIGURATION ERROR:");
           console.error("   Products are not configured in App Store Connect or StoreKit Configuration");
           console.error("   For local testing:");

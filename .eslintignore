@@ -1,0 +1,17 @@
+# Supabase functions use Deno imports - not errors
+supabase/functions/**/*.ts
+
+# Generated types
+supabase/remote_types.ts
+
+# Build outputs
+node_modules/
+.expo/
+.expo-shared/
+ios/
+android/
+dist/
+
+# Config files that may have intentional formatting
+*.config.js
+*.config.ts

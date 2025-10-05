@@ -32,14 +32,8 @@
     "offering": "default"
   },
   "instructions": {
-    "ios_products": [
-      "com.toxic.confessions.monthly",
-      "com.toxic.confessions.annual"
-    ],
-    "android_products": [
-      "com.toxic.confessions.monthly",
-      "com.toxic.confessions.annual"
-    ],
+    "ios_products": ["com.toxic.confessions.monthly", "com.toxic.confessions.annual"],
+    "android_products": ["com.toxic.confessions.monthly", "com.toxic.confessions.annual"],
     "entitlement": "premium",
     "offering": "default"
   },

@@ -4,21 +4,30 @@
  */
 
 // Types
-export * from './types';
+export * from "./types";
 
 // Services
-export { VideoService, getVideoService, initializeVideoService } from './services/videoService';
-export { FaceBlurService, getFaceBlurService, isFaceBlurAvailable, requestFaceBlurPermissions } from './services/faceBlurService';
-export { VoiceProcessingService, getVoiceProcessingService, isVoiceProcessingAvailable } from './services/voiceProcessingService';
+export { VideoService, getVideoService, initializeVideoService } from "./services/videoService";
+export {
+  FaceBlurService,
+  getFaceBlurService,
+  isFaceBlurAvailable,
+  requestFaceBlurPermissions,
+} from "./services/faceBlurService";
+export {
+  VoiceProcessingService,
+  getVoiceProcessingService,
+  isVoiceProcessingAvailable,
+} from "./services/voiceProcessingService";
 
 // Components
-export { VideoPlayer } from './components/VideoPlayer';
-export { VideoRecordingModal } from './components/VideoRecordingModal';
-export { VideoFeed } from './components/VideoFeed';
+export { VideoPlayer } from "./components/VideoPlayer";
+export { VideoRecordingModal } from "./components/VideoRecordingModal";
+export { VideoFeed } from "./components/VideoFeed";
 
 // Hooks
-export { useVideoRecording } from './hooks/useVideoRecording';
-export { useVideoPlayer } from './hooks/useVideoPlayer';
+export { useVideoRecording } from "./hooks/useVideoRecording";
+export { useVideoPlayer } from "./hooks/useVideoPlayer";
 
 // Utils
 export {
@@ -27,4 +36,4 @@ export {
   pollProcessingStatus,
   downloadProcessedVideo,
   uploadAndProcessVideo,
-} from './utils/videoUpload';
+} from "./utils/videoUpload";

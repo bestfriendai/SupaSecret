@@ -11,7 +11,7 @@
  * Based on react-native-purchases v9.4.2 best practices
  */
 
-import Constants from 'expo-constants';
+import Constants from "expo-constants";
 import type {
   RevenueCatCustomerInfo,
   RevenueCatOfferings,
@@ -22,11 +22,11 @@ import type {
   SubscriptionTier,
   SubscriptionStatus,
   PurchaseError,
-} from '../types';
-import { PurchaseErrorType } from '../types';
+} from "../types";
+import { PurchaseErrorType } from "../types";
 
 // Check if running in Expo Go
-const IS_EXPO_GO = Constants.executionEnvironment === 'storeClient';
+const IS_EXPO_GO = Constants.executionEnvironment === "storeClient";
 
 // Lazy load RevenueCat to prevent Expo Go crashes
 let Purchases: {
@@ -73,17 +73,14 @@ export class SubscriptionService {
   private static async loadRevenueCat(): Promise<void> {
     if (!Purchases && !IS_EXPO_GO) {
       try {
-        const RevenueCatModule = await import('react-native-purchases');
+        const RevenueCatModule = await import("react-native-purchases");
         Purchases = RevenueCatModule.default as any;
         if (__DEV__) {
-          console.log('🚀 RevenueCat module loaded successfully');
+          console.log("🚀 RevenueCat module loaded successfully");
         }
       } catch (error) {
         if (__DEV__) {
-          console.warn(
-            'RevenueCat not available, running in demo mode:',
-            (error as Error)?.message || String(error)
-          );
+          console.warn("RevenueCat not available, running in demo mode:", (error as Error)?.message || String(error));
         }
       }
     }
@@ -96,7 +93,7 @@ export class SubscriptionService {
     if (this.isInitialized) return;
 
     if (IS_EXPO_GO) {
-      console.log('🎯 RevenueCat Demo Mode - Development build required for real subscriptions');
+      console.log("🎯 RevenueCat Demo Mode - Development build required for real subscriptions");
       this.isInitialized = true;
       return;
     }
@@ -104,7 +101,7 @@ export class SubscriptionService {
     try {
       // Runtime guard for API key
       if (!REVENUECAT_API_KEY) {
-        console.warn('RevenueCat API key missing; skipping initialization (demo mode)');
+        console.warn("RevenueCat API key missing; skipping initialization (demo mode)");
         this.isInitialized = true;
         return;
       }
@@ -113,7 +110,7 @@ export class SubscriptionService {
 
       if (!Purchases) {
         if (__DEV__) {
-          console.log('🎯 RevenueCat not available, running in demo mode');
+          console.log("🎯 RevenueCat not available, running in demo mode");
         }
         this.isInitialized = true;
         return;
@@ -127,18 +124,18 @@ export class SubscriptionService {
 
       // Set debug logs in development
       if (__DEV__) {
-        await Purchases.setLogLevel('DEBUG');
+        await Purchases.setLogLevel("DEBUG");
       }
 
       if (__DEV__) {
-        console.log('✅ RevenueCat initialized successfully');
+        console.log("✅ RevenueCat initialized successfully");
       }
       this.isInitialized = true;
     } catch (error) {
       if (__DEV__) {
         console.warn(
-          'RevenueCat initialization failed, running in demo mode:',
-          (error as any)?.message || String(error)
+          "RevenueCat initialization failed, running in demo mode:",
+          (error as any)?.message || String(error),
         );
       }
       this.isInitialized = true;
@@ -153,11 +150,11 @@ export class SubscriptionService {
 
     try {
       await Purchases.logIn(userID);
-      console.log('✅ RevenueCat user ID set:', userID);
+      console.log("✅ RevenueCat user ID set:", userID);
       // Invalidate cache after login
       this.customerInfoCache = { data: null, timestamp: 0 };
     } catch (error) {
-      console.error('Failed to set RevenueCat user ID:', error);
+      console.error("Failed to set RevenueCat user ID:", error);
       throw error;
     }
   }
@@ -170,11 +167,11 @@ export class SubscriptionService {
 
     try {
       await Purchases.logOut();
-      console.log('✅ RevenueCat user logged out');
+      console.log("✅ RevenueCat user logged out");
       // Clear cache after logout
       this.customerInfoCache = { data: null, timestamp: 0 };
     } catch (error) {
-      console.error('Failed to log out from RevenueCat:', error);
+      console.error("Failed to log out from RevenueCat:", error);
     }
   }
 
@@ -185,26 +182,26 @@ export class SubscriptionService {
     await this.initialize();
 
     if (IS_EXPO_GO) {
-      console.log('🎯 Demo: Getting mock offerings');
+      console.log("🎯 Demo: Getting mock offerings");
       return null;
     }
 
     try {
       if (!Purchases) {
-        throw new Error('RevenueCat not initialized');
+        throw new Error("RevenueCat not initialized");
       }
 
       const offerings = await Purchases.getOfferings();
 
       // Validate offerings
       if (!offerings || !offerings.current) {
-        console.error('❌ No current offering returned from RevenueCat');
-        console.error('Available offerings:', Object.keys(offerings?.all || {}));
+        console.error("❌ No current offering returned from RevenueCat");
+        console.error("Available offerings:", Object.keys(offerings?.all || {}));
 
         if (__DEV__) {
-          console.warn('💡 Check: App Store Connect products have all metadata');
-          console.warn('💡 Check: RevenueCat product IDs match exactly');
-          console.warn('💡 Check: Paid Applications Agreement signed');
+          console.warn("💡 Check: App Store Connect products have all metadata");
+          console.warn("💡 Check: RevenueCat product IDs match exactly");
+          console.warn("💡 Check: Paid Applications Agreement signed");
         }
 
         return offerings;
@@ -212,9 +209,9 @@ export class SubscriptionService {
 
       // Validate packages
       if (offerings.current.availablePackages.length === 0) {
-        console.error('❌ Current offering has no packages');
+        console.error("❌ Current offering has no packages");
       } else {
-        console.log('✅ Found', offerings.current.availablePackages.length, 'packages');
+        console.log("✅ Found", offerings.current.availablePackages.length, "packages");
         if (__DEV__) {
           offerings.current.availablePackages.forEach((pkg, idx) => {
             console.log(`  ${idx + 1}. ${pkg.identifier}:`, {
@@ -228,7 +225,7 @@ export class SubscriptionService {
 
       return offerings;
     } catch (error) {
-      console.error('Failed to get offerings:', error);
+      console.error("Failed to get offerings:", error);
       return null;
     }
   }
@@ -239,20 +236,18 @@ export class SubscriptionService {
   private static async purchaseWithRetry(
     pkg: RevenueCatPackage,
     attempts = 3,
-    baseDelay = 500
+    baseDelay = 500,
   ): Promise<RevenueCatPurchaseResult | undefined> {
     for (let i = 0; i < attempts; i++) {
       try {
         if (!Purchases) {
-          throw new Error('RevenueCat Purchases not initialized');
+          throw new Error("RevenueCat Purchases not initialized");
         }
         return await Purchases.purchasePackage(pkg);
       } catch (e: any) {
-        const msg = (e?.message || '').toLowerCase();
-        const userCanceled = msg.includes('cancel');
-        const retryable =
-          !userCanceled &&
-          (msg.includes('network') || msg.includes('timeout') || e?.code === 503);
+        const msg = (e?.message || "").toLowerCase();
+        const userCanceled = msg.includes("cancel");
+        const retryable = !userCanceled && (msg.includes("network") || msg.includes("timeout") || e?.code === 503);
 
         if (!retryable || i === attempts - 1) throw e;
 
@@ -266,18 +261,18 @@ export class SubscriptionService {
    * Purchase a subscription package
    */
   static async purchasePackage(
-    packageToPurchase: RevenueCatPackage
+    packageToPurchase: RevenueCatPackage,
   ): Promise<RevenueCatPurchaseResult | MockPurchaseResult> {
     await this.initialize();
 
     if (IS_EXPO_GO) {
       if (__DEV__) {
-        console.log('🎯 Demo: Simulating purchase...');
+        console.log("🎯 Demo: Simulating purchase...");
       }
       return new Promise((resolve) => {
         setTimeout(() => {
           if (__DEV__) {
-            console.log('✅ Demo purchase completed successfully!');
+            console.log("✅ Demo purchase completed successfully!");
           }
           resolve({ mockCustomerInfo: true });
         }, 2000);
@@ -286,21 +281,21 @@ export class SubscriptionService {
 
     try {
       if (!Purchases) {
-        throw new Error('RevenueCat not initialized');
+        throw new Error("RevenueCat not initialized");
       }
 
       if (__DEV__) {
-        console.log('🚀 Purchasing package:', packageToPurchase.identifier);
+        console.log("🚀 Purchasing package:", packageToPurchase.identifier);
       }
 
       const result = await this.purchaseWithRetry(packageToPurchase);
 
       if (!result) {
-        throw new Error('Purchase result is undefined');
+        throw new Error("Purchase result is undefined");
       }
 
       if (__DEV__) {
-        console.log('✅ Purchase completed successfully!');
+        console.log("✅ Purchase completed successfully!");
       }
 
       // Invalidate cache after purchase
@@ -308,11 +303,11 @@ export class SubscriptionService {
 
       return {
         customerInfo: result.customerInfo || ({} as RevenueCatCustomerInfo),
-        productIdentifier: result.productIdentifier || '',
+        productIdentifier: result.productIdentifier || "",
       };
     } catch (error) {
       if (__DEV__) {
-        console.error('Purchase failed:', error);
+        console.error("Purchase failed:", error);
       }
       throw error;
     }
@@ -325,10 +320,10 @@ export class SubscriptionService {
     await this.initialize();
 
     if (IS_EXPO_GO) {
-      console.log('🎯 Demo: Simulating restore purchases...');
+      console.log("🎯 Demo: Simulating restore purchases...");
       return new Promise((resolve) => {
         setTimeout(() => {
-          console.log('✅ Demo restore completed!');
+          console.log("✅ Demo restore completed!");
           resolve({ mockCustomerInfo: true });
         }, 1500);
       });
@@ -336,19 +331,19 @@ export class SubscriptionService {
 
     try {
       if (!Purchases) {
-        throw new Error('RevenueCat not initialized');
+        throw new Error("RevenueCat not initialized");
       }
 
-      console.log('🚀 Restoring purchases...');
+      console.log("🚀 Restoring purchases...");
       const customerInfo = await Purchases.restorePurchases();
-      console.log('✅ Restore completed!');
+      console.log("✅ Restore completed!");
 
       // Invalidate cache after restore
       this.customerInfoCache = { data: null, timestamp: 0 };
 
       return customerInfo;
     } catch (error) {
-      console.error('Restore failed:', error);
+      console.error("Restore failed:", error);
       throw error;
     }
   }
@@ -374,7 +369,7 @@ export class SubscriptionService {
 
     try {
       if (!Purchases) {
-        throw new Error('RevenueCat not initialized');
+        throw new Error("RevenueCat not initialized");
       }
 
       const customerInfo = await Purchases.getCustomerInfo();
@@ -387,7 +382,7 @@ export class SubscriptionService {
 
       return customerInfo;
     } catch (error) {
-      console.error('Failed to get customer info:', error);
+      console.error("Failed to get customer info:", error);
       return null;
     }
   }
@@ -402,7 +397,7 @@ export class SubscriptionService {
 
     try {
       const customerInfo = await this.getCustomerInfo();
-      if (!customerInfo || 'mockCustomerInfo' in customerInfo) {
+      if (!customerInfo || "mockCustomerInfo" in customerInfo) {
         return false;
       }
 
@@ -416,7 +411,7 @@ export class SubscriptionService {
 
       return hasActiveEntitlement || hasActiveSubscription;
     } catch (error) {
-      console.error('Failed to check premium status:', error);
+      console.error("Failed to check premium status:", error);
       return false;
     }
   }
@@ -428,10 +423,10 @@ export class SubscriptionService {
     try {
       const customerInfo = await this.getCustomerInfo();
 
-      if (!customerInfo || 'mockCustomerInfo' in customerInfo) {
+      if (!customerInfo || "mockCustomerInfo" in customerInfo) {
         return {
-          status: 'free',
-          tier: 'free',
+          status: "free",
+          tier: "free",
           expiresAt: null,
           willRenew: false,
           billingIssue: false,
@@ -445,8 +440,8 @@ export class SubscriptionService {
 
       if (!hasActive) {
         return {
-          status: 'expired',
-          tier: 'free',
+          status: "expired",
+          tier: "free",
           expiresAt: null,
           willRenew: false,
           billingIssue: false,
@@ -457,15 +452,11 @@ export class SubscriptionService {
 
       const activeEntitlement = Object.values(entitlements)[0] as any;
       const billingIssue = activeEntitlement.billingIssueDetectedAt != null;
-      const inTrialPeriod = activeEntitlement.periodType === 'trial';
+      const inTrialPeriod = activeEntitlement.periodType === "trial";
 
       return {
-        status: billingIssue
-          ? 'billing_issue'
-          : inTrialPeriod
-          ? 'trial'
-          : 'active',
-        tier: 'plus',
+        status: billingIssue ? "billing_issue" : inTrialPeriod ? "trial" : "active",
+        tier: "plus",
         expiresAt: activeEntitlement.expirationDate,
         willRenew: activeEntitlement.willRenew,
         billingIssue,
@@ -473,10 +464,10 @@ export class SubscriptionService {
         inTrialPeriod,
       };
     } catch (error) {
-      console.error('Failed to get subscription status:', error);
+      console.error("Failed to get subscription status:", error);
       return {
-        status: 'free',
-        tier: 'free',
+        status: "free",
+        tier: "free",
         expiresAt: null,
         willRenew: false,
         billingIssue: false,
@@ -490,101 +481,90 @@ export class SubscriptionService {
    * Handle purchase errors with proper categorization
    */
   static handlePurchaseError(error: any): PurchaseError {
-    const errorMessage = error?.message?.toLowerCase() || '';
+    const errorMessage = error?.message?.toLowerCase() || "";
     const errorCode = error?.code;
 
     // User cancelled
-    if (errorMessage.includes('cancel') || errorCode === 1) {
+    if (errorMessage.includes("cancel") || errorCode === 1) {
       return {
         type: PurchaseErrorType.USER_CANCELLED,
-        message: 'User cancelled the purchase',
+        message: "User cancelled the purchase",
         shouldRetry: false,
-        userFriendlyMessage: '',
+        userFriendlyMessage: "",
       };
     }
 
     // Payment pending (Google Play)
-    if (errorMessage.includes('pending') || errorCode === 2) {
+    if (errorMessage.includes("pending") || errorCode === 2) {
       return {
         type: PurchaseErrorType.PAYMENT_PENDING,
-        message: 'Payment is pending',
+        message: "Payment is pending",
         shouldRetry: false,
-        userFriendlyMessage:
-          'Your purchase is being processed. Please check back shortly.',
+        userFriendlyMessage: "Your purchase is being processed. Please check back shortly.",
       };
     }
 
     // Invalid purchase
-    if (errorMessage.includes('invalid') || errorCode === 3) {
+    if (errorMessage.includes("invalid") || errorCode === 3) {
       return {
         type: PurchaseErrorType.INVALID_PURCHASE,
-        message: 'Invalid purchase',
+        message: "Invalid purchase",
         shouldRetry: false,
-        userFriendlyMessage:
-          'This purchase is not valid. Please try again or contact support.',
+        userFriendlyMessage: "This purchase is not valid. Please try again or contact support.",
       };
     }
 
     // Not allowed (parental controls, etc.)
-    if (errorMessage.includes('not allowed') || errorCode === 5) {
+    if (errorMessage.includes("not allowed") || errorCode === 5) {
       return {
         type: PurchaseErrorType.NOT_ALLOWED,
-        message: 'Purchase not allowed',
+        message: "Purchase not allowed",
         shouldRetry: false,
-        userFriendlyMessage:
-          'Purchases are not allowed on this device. Check your device settings.',
+        userFriendlyMessage: "Purchases are not allowed on this device. Check your device settings.",
       };
     }
 
     // Already owned
-    if (errorMessage.includes('already') || errorCode === 7) {
+    if (errorMessage.includes("already") || errorCode === 7) {
       return {
         type: PurchaseErrorType.ALREADY_OWNED,
-        message: 'Product already owned',
+        message: "Product already owned",
         shouldRetry: false,
-        userFriendlyMessage:
-          'You already own this subscription. Try restoring your purchases.',
+        userFriendlyMessage: "You already own this subscription. Try restoring your purchases.",
       };
     }
 
     // Network error
     if (
-      errorMessage.includes('network') ||
-      errorMessage.includes('timeout') ||
+      errorMessage.includes("network") ||
+      errorMessage.includes("timeout") ||
       errorCode === 503 ||
       errorCode === 504
     ) {
       return {
         type: PurchaseErrorType.NETWORK_ERROR,
-        message: 'Network error',
+        message: "Network error",
         shouldRetry: true,
-        userFriendlyMessage:
-          'Network connection issue. Please check your internet and try again.',
+        userFriendlyMessage: "Network connection issue. Please check your internet and try again.",
       };
     }
 
     // Store error
-    if (
-      errorMessage.includes('store') ||
-      errorMessage.includes('receipt') ||
-      (errorCode >= 500 && errorCode < 600)
-    ) {
+    if (errorMessage.includes("store") || errorMessage.includes("receipt") || (errorCode >= 500 && errorCode < 600)) {
       return {
         type: PurchaseErrorType.STORE_ERROR,
-        message: 'Store error',
+        message: "Store error",
         shouldRetry: true,
-        userFriendlyMessage:
-          'App Store is temporarily unavailable. Please try again in a moment.',
+        userFriendlyMessage: "App Store is temporarily unavailable. Please try again in a moment.",
       };
     }
 
     // Unknown error
     return {
       type: PurchaseErrorType.UNKNOWN,
-      message: errorMessage || 'Unknown error',
+      message: errorMessage || "Unknown error",
       shouldRetry: false,
-      userFriendlyMessage:
-        'An unexpected error occurred. Please try again or contact support.',
+      userFriendlyMessage: "An unexpected error occurred. Please try again or contact support.",
     };
   }
 
@@ -594,34 +574,34 @@ export class SubscriptionService {
   static getMockOfferings(): SubscriptionTier[] {
     return [
       {
-        id: 'supasecret_plus_monthly',
-        name: 'SupaSecret Plus Monthly',
-        price: '$4.99/month',
+        id: "supasecret_plus_monthly",
+        name: "SupaSecret Plus Monthly",
+        price: "$4.99/month",
         features: [
-          'Ad-free experience',
-          'Unlimited video recordings (up to 5 minutes)',
-          'Higher quality video (4K)',
-          'Unlimited saves',
-          'Advanced filters',
-          'Priority processing',
-          'Custom themes',
-          'Early access to new features',
+          "Ad-free experience",
+          "Unlimited video recordings (up to 5 minutes)",
+          "Higher quality video (4K)",
+          "Unlimited saves",
+          "Advanced filters",
+          "Priority processing",
+          "Custom themes",
+          "Early access to new features",
         ],
       },
       {
-        id: 'supasecret_plus_annual',
-        name: 'SupaSecret Plus Annual',
-        price: '$29.99/year',
+        id: "supasecret_plus_annual",
+        name: "SupaSecret Plus Annual",
+        price: "$29.99/year",
         features: [
-          'Ad-free experience',
-          'Unlimited video recordings (up to 5 minutes)',
-          'Higher quality video (4K)',
-          'Unlimited saves',
-          'Advanced filters',
-          'Priority processing',
-          'Custom themes',
-          'Early access to new features',
-          'Save 50%',
+          "Ad-free experience",
+          "Unlimited video recordings (up to 5 minutes)",
+          "Higher quality video (4K)",
+          "Unlimited saves",
+          "Advanced filters",
+          "Priority processing",
+          "Custom themes",
+          "Early access to new features",
+          "Save 50%",
         ],
         isPopular: true,
       },
@@ -644,13 +624,13 @@ export class SubscriptionService {
       const tiers: SubscriptionTier[] = pkgs.map((p) => ({
         id: p.identifier,
         name: p.product?.title || p.identifier,
-        price: p.product?.priceString || '',
+        price: p.product?.priceString || "",
         features: [],
       }));
 
       return tiers.length ? tiers : null;
     } catch (e) {
-      if (__DEV__) console.warn('getSubscriptionTiers failed:', e);
+      if (__DEV__) console.warn("getSubscriptionTiers failed:", e);
       return null;
     }
   }
@@ -663,9 +643,9 @@ export class SubscriptionService {
 
     try {
       await Purchases.setAttributes(attributes);
-      console.log('✅ User attributes set');
+      console.log("✅ User attributes set");
     } catch (error) {
-      console.error('Failed to set user attributes:', error);
+      console.error("Failed to set user attributes:", error);
     }
   }
 

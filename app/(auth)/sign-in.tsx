@@ -139,14 +139,8 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-        >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           {/* Header */}
           <View
             style={{
@@ -178,9 +172,7 @@ export default function SignInScreen() {
           <View style={{ flex: 1, paddingHorizontal: 24, paddingVertical: 32 }}>
             {/* Welcome Text */}
             <View style={{ marginBottom: 32 }}>
-              <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "bold", marginBottom: 8 }}>
-                Welcome Back
-              </Text>
+              <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "bold", marginBottom: 8 }}>Welcome Back</Text>
               <Text style={{ color: "#9CA3AF", fontSize: 16, lineHeight: 24 }}>
                 Sign in to your account to continue sharing and connecting anonymously.
               </Text>
@@ -270,9 +262,7 @@ export default function SignInScreen() {
             </View>
 
             {/* Sign Up Link */}
-            <View
-              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}
-            >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
               <Text style={{ color: "#9CA3AF", fontSize: 15 }}>Don't have an account? </Text>
               <Pressable onPress={handleSignUp}>
                 <Text style={{ color: "#3B82F6", fontSize: 15, fontWeight: "600" }}>Sign Up</Text>
@@ -290,13 +280,10 @@ export default function SignInScreen() {
             >
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
                 <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-                <Text style={{ color: "#10B981", fontSize: 14, fontWeight: "500", marginLeft: 8 }}>
-                  Secure Sign In
-                </Text>
+                <Text style={{ color: "#10B981", fontSize: 14, fontWeight: "500", marginLeft: 8 }}>Secure Sign In</Text>
               </View>
               <Text style={{ color: "#9CA3AF", fontSize: 13, lineHeight: 18 }}>
-                Your login credentials are encrypted and secure. We never store your password in plain
-                text.
+                Your login credentials are encrypted and secure. We never store your password in plain text.
               </Text>
             </View>
           </View>

@@ -41,9 +41,7 @@ export default function AuthInput({
 
   return (
     <View style={{ marginBottom: 16 }}>
-      <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "500", marginBottom: 8 }}>
-        {label}
-      </Text>
+      <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "500", marginBottom: 8 }}>{label}</Text>
       <View
         style={{
           flexDirection: "row",
@@ -109,9 +107,7 @@ export default function AuthInput({
       {error && (
         <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
           <Ionicons name="alert-circle" size={14} color="#EF4444" />
-          <Text style={{ color: "#EF4444", fontSize: 12, marginLeft: 4, flex: 1 }}>
-            {error}
-          </Text>
+          <Text style={{ color: "#EF4444", fontSize: 12, marginLeft: 4, flex: 1 }}>{error}</Text>
         </View>
       )}
     </View>

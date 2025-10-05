@@ -18,13 +18,7 @@ export {
 } from "./Button";
 
 // Input Components
-export {
-  Input,
-  EmailInput,
-  PasswordInput,
-  SearchInput,
-  type InputProps,
-} from "./Input";
+export { Input, EmailInput, PasswordInput, SearchInput, type InputProps } from "./Input";
 
 // Card Components
 export {

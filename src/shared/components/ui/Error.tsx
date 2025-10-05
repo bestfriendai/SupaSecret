@@ -211,7 +211,9 @@ export interface ErrorBannerProps {
 
 export const ErrorBanner: React.FC<ErrorBannerProps> = ({ message, onDismiss, dismissText = "Dismiss", className }) => {
   return (
-    <View className={cn("bg-red-900/30 border-l-4 border-red-500 p-4 flex-row items-center justify-between", className)}>
+    <View
+      className={cn("bg-red-900/30 border-l-4 border-red-500 p-4 flex-row items-center justify-between", className)}
+    >
       <View className="flex-1 flex-row items-start">
         <Text className="text-red-400 text-base mr-2">⚠️</Text>
         <Text className="text-red-400 text-sm flex-1">{message}</Text>

@@ -36,10 +36,7 @@
       }
     ],
     "attach_products": {
-      "product_ids": [
-        "prod1a2b3c4d5e",
-        "prod2a2b3c4d5e"
-      ]
+      "product_ids": ["prod1a2b3c4d5e", "prod2a2b3c4d5e"]
     },
     "create_offering": {
       "lookup_key": "default",

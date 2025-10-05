@@ -147,7 +147,7 @@ export const runSecurityAudit = async (): Promise<{
     vulnerabilities: auditCommonVulnerabilities(),
   };
 
-  const overall = Object.values(results).every(result => result.passed);
+  const overall = Object.values(results).every((result) => result.passed);
 
   if (__DEV__) {
     console.log("🔒 Security Audit Results:", results);

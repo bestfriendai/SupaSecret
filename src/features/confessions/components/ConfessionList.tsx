@@ -1,11 +1,11 @@
-import React, { useCallback } from 'react';
-import { View, Text, RefreshControl } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ConfessionCard } from './ConfessionCard';
-import { ConfessionSkeleton } from './ConfessionSkeleton';
-import type { Confession } from '../types/confession.types';
+import React, { useCallback } from "react";
+import { View, Text, RefreshControl } from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ConfessionCard } from "./ConfessionCard";
+import { ConfessionSkeleton } from "./ConfessionSkeleton";
+import type { Confession } from "../types/confession.types";
 
 interface ConfessionListProps {
   confessions: Confession[];
@@ -54,7 +54,7 @@ export function ConfessionList({
         />
       );
     },
-    [replyCountMap, savedConfessionIds, onConfessionPress, onLike, onReport, onMoreActions]
+    [replyCountMap, savedConfessionIds, onConfessionPress, onLike, onReport, onMoreActions],
   );
 
   const renderFooter = useCallback(() => {
@@ -83,9 +83,7 @@ export function ConfessionList({
     return (
       <View className="flex-1 items-center justify-center px-6 py-20">
         <Ionicons name="lock-closed-outline" size={64} color="#8B98A5" />
-        <Text className="text-white text-20 font-bold mt-6 text-center">
-          No secrets shared yet
-        </Text>
+        <Text className="text-white text-20 font-bold mt-6 text-center">No secrets shared yet</Text>
         <Text className="text-gray-500 text-15 mt-2 text-center leading-5">
           Be the first to share an anonymous confession with the community
         </Text>
@@ -114,12 +112,7 @@ export function ConfessionList({
       ListEmptyComponent={renderEmpty}
       refreshControl={
         onRefresh ? (
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            colors={['#1D9BF0']}
-            tintColor="#1D9BF0"
-          />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={["#1D9BF0"]} tintColor="#1D9BF0" />
         ) : undefined
       }
       estimatedItemSize={150}

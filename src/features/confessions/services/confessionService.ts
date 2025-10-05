@@ -1,13 +1,13 @@
-import { confessionRepository } from './confessionRepository';
+import { confessionRepository } from "./confessionRepository";
 import type {
   Confession,
   DatabaseConfession,
   CreateConfessionInput,
   VideoAnalytics,
   UserPreferences,
-} from '../types/confession.types';
+} from "../types/confession.types";
 
-const FALLBACK_VIDEO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+const FALLBACK_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
 /**
  * Extracts video URI from database row
@@ -15,7 +15,7 @@ const FALLBACK_VIDEO = 'https://commondatastorage.googleapis.com/gtv-videos-buck
 function getVideoUriFromRow(dbRow: any): string | null {
   if (!dbRow) return null;
   const videoPath = dbRow.video_uri || dbRow.video_url;
-  if (!videoPath || typeof videoPath !== 'string') return null;
+  if (!videoPath || typeof videoPath !== "string") return null;
   return videoPath.trim() || null;
 }
 
@@ -35,8 +35,8 @@ export const isLocalUri = (value?: string): boolean => !!value && /^file:\/\//i.
 export function normalizeConfession(dbRow: DatabaseConfession): Confession {
   const base: Confession = {
     id: dbRow.id,
-    type: dbRow.type === 'video' || dbRow.type === 'text' ? dbRow.type : 'text',
-    content: dbRow.content || '',
+    type: dbRow.type === "video" || dbRow.type === "text" ? dbRow.type : "text",
+    content: dbRow.content || "",
     videoUri: undefined,
     transcription: dbRow.transcription || undefined,
     timestamp: dbRow.created_at ? new Date(dbRow.created_at).getTime() : Date.now(),
@@ -47,7 +47,7 @@ export function normalizeConfession(dbRow: DatabaseConfession): Confession {
   };
 
   // Handle video URI for video confessions
-  if (base.type === 'video') {
+  if (base.type === "video") {
     const videoPath = getVideoUriFromRow(dbRow);
     if (videoPath) {
       // If it's already a URL, use it directly
@@ -108,24 +108,24 @@ export class ConfessionService {
     input: CreateConfessionInput,
     options?: {
       onUploadProgress?: (percent: number) => void;
-    }
+    },
   ): Promise<Confession> {
     // Validation
     const trimmedContent = input.content.trim();
     if (!trimmedContent) {
-      throw new Error('Please enter your confession');
+      throw new Error("Please enter your confession");
     }
 
     if (trimmedContent.length > 280) {
-      throw new Error('Your confession is too long. Please keep it under 280 characters.');
+      throw new Error("Your confession is too long. Please keep it under 280 characters.");
     }
 
     if (trimmedContent.length < 10) {
-      throw new Error('Your confession is too short. Please write at least 10 characters.');
+      throw new Error("Your confession is too short. Please write at least 10 characters.");
     }
 
-    if (input.type === 'video' && !input.videoUri) {
-      throw new Error('Video file is required for video confessions');
+    if (input.type === "video" && !input.videoUri) {
+      throw new Error("Video file is required for video confessions");
     }
 
     // Create in database
@@ -164,7 +164,7 @@ export class ConfessionService {
     } catch (error) {
       // Fallback to direct update if RPC fails
       if (__DEV__) {
-        console.warn('RPC toggle_like failed, using fallback', error);
+        console.warn("RPC toggle_like failed, using fallback", error);
       }
       throw error;
     }
@@ -173,10 +173,7 @@ export class ConfessionService {
   /**
    * Update video analytics
    */
-  async updateVideoAnalytics(
-    confessionId: string,
-    analytics: Partial<VideoAnalytics>
-  ): Promise<void> {
+  async updateVideoAnalytics(confessionId: string, analytics: Partial<VideoAnalytics>): Promise<void> {
     await confessionRepository.updateVideoAnalytics(confessionId, analytics);
   }
 
@@ -191,8 +188,8 @@ export class ConfessionService {
       prefs || {
         autoplay: true,
         sound_enabled: true,
-        quality_preference: 'auto',
-        data_usage_mode: 'unlimited',
+        quality_preference: "auto",
+        data_usage_mode: "unlimited",
         captions_default: true,
         haptics_enabled: true,
         reduced_motion: false,
@@ -204,23 +201,17 @@ export class ConfessionService {
   /**
    * Update user preferences
    */
-  async updateUserPreferences(
-    userId: string,
-    preferences: Partial<UserPreferences>
-  ): Promise<void> {
+  async updateUserPreferences(userId: string, preferences: Partial<UserPreferences>): Promise<void> {
     await confessionRepository.updateUserPreferences(userId, preferences);
   }
 
   /**
    * Subscribe to real-time confession updates
    */
-  subscribeToConfessions(
-    onInsert: (confession: Confession) => void,
-    onUpdate: (confession: Confession) => void
-  ) {
+  subscribeToConfessions(onInsert: (confession: Confession) => void, onUpdate: (confession: Confession) => void) {
     return confessionRepository.subscribeToConfessions(
       (dbConfession) => onInsert(normalizeConfession(dbConfession)),
-      (dbConfession) => onUpdate(normalizeConfession(dbConfession))
+      (dbConfession) => onUpdate(normalizeConfession(dbConfession)),
     );
   }
 }

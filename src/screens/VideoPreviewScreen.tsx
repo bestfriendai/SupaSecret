@@ -18,13 +18,13 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 type VideoPreviewScreenRouteProp = RouteProp<RootStackParamList, "VideoPreview">;
 
 // Emoji mapping for privacy modes
-type EmojiType = 'mask' | 'sunglasses' | 'blur' | 'robot' | 'incognito';
+type EmojiType = "mask" | "sunglasses" | "blur" | "robot" | "incognito";
 const EMOJI_MAP: Record<EmojiType, string> = {
-  mask: '😷',
-  sunglasses: '🕶️',
-  blur: '🌫️',
-  robot: '🤖',
-  incognito: '🥸',
+  mask: "😷",
+  sunglasses: "🕶️",
+  blur: "🌫️",
+  robot: "🤖",
+  incognito: "🥸",
 };
 
 export default function VideoPreviewScreen() {
@@ -293,11 +293,11 @@ export default function VideoPreviewScreen() {
             <View style={styles.privacyBadge}>
               <Ionicons name="eye-off" size={16} color="#ffffff" />
               <Text style={styles.privacyText}>
-                {processedVideo.privacyMode === 'emoji' && processedVideo.emojiType
+                {processedVideo.privacyMode === "emoji" && processedVideo.emojiType
                   ? `${EMOJI_MAP[processedVideo.emojiType as EmojiType]} Privacy`
-                  : processedVideo.privacyMode === 'blur'
-                    ? 'Face Blur Applied'
-                    : 'Privacy Applied'}
+                  : processedVideo.privacyMode === "blur"
+                    ? "Face Blur Applied"
+                    : "Privacy Applied"}
               </Text>
             </View>
           </View>
@@ -331,9 +331,9 @@ export default function VideoPreviewScreen() {
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
                 <Text style={styles.featureText}>
-                  {processedVideo.privacyMode === 'emoji' && processedVideo.emojiType
+                  {processedVideo.privacyMode === "emoji" && processedVideo.emojiType
                     ? `${EMOJI_MAP[processedVideo.emojiType as EmojiType]} Emoji privacy applied`
-                    : 'Face blur applied'}
+                    : "Face blur applied"}
                 </Text>
               </View>
               {processedVideo.voiceChangeApplied && (

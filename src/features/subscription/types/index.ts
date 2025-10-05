@@ -24,9 +24,9 @@ export interface RevenueCatEntitlement {
   expirationDate: string | null;
   productIdentifier: string;
   billingIssueDetectedAt: string | null;
-  ownershipType: 'PURCHASED' | 'FAMILY_SHARED';
-  periodType: 'normal' | 'trial' | 'intro';
-  store: 'app_store' | 'play_store' | 'stripe' | 'promotional';
+  ownershipType: "PURCHASED" | "FAMILY_SHARED";
+  periodType: "normal" | "trial" | "intro";
+  store: "app_store" | "play_store" | "stripe" | "promotional";
   unsubscribeDetectedAt: string | null;
 }
 
@@ -45,7 +45,7 @@ export interface RevenueCatOffering {
 
 export interface RevenueCatPackage {
   identifier: string;
-  packageType: 'MONTHLY' | 'ANNUAL' | 'WEEKLY' | 'LIFETIME' | 'CUSTOM';
+  packageType: "MONTHLY" | "ANNUAL" | "WEEKLY" | "LIFETIME" | "CUSTOM";
   product: RevenueCatProduct;
   offeringIdentifier: string;
 }
@@ -93,8 +93,8 @@ export interface SubscriptionTier {
 }
 
 export interface SubscriptionStatus {
-  status: 'active' | 'expired' | 'billing_issue' | 'free' | 'trial';
-  tier: 'free' | 'plus' | 'premium';
+  status: "active" | "expired" | "billing_issue" | "free" | "trial";
+  tier: "free" | "plus" | "premium";
   expiresAt: string | null;
   willRenew: boolean;
   billingIssue: boolean;
@@ -103,14 +103,14 @@ export interface SubscriptionStatus {
 }
 
 export enum PurchaseErrorType {
-  USER_CANCELLED = 'USER_CANCELLED',
-  PAYMENT_PENDING = 'PAYMENT_PENDING',
-  INVALID_PURCHASE = 'INVALID_PURCHASE',
-  NOT_ALLOWED = 'NOT_ALLOWED',
-  ALREADY_OWNED = 'ALREADY_OWNED',
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  STORE_ERROR = 'STORE_ERROR',
-  UNKNOWN = 'UNKNOWN',
+  USER_CANCELLED = "USER_CANCELLED",
+  PAYMENT_PENDING = "PAYMENT_PENDING",
+  INVALID_PURCHASE = "INVALID_PURCHASE",
+  NOT_ALLOWED = "NOT_ALLOWED",
+  ALREADY_OWNED = "ALREADY_OWNED",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  STORE_ERROR = "STORE_ERROR",
+  UNKNOWN = "UNKNOWN",
 }
 
 export interface PurchaseError {

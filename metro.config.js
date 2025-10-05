@@ -8,13 +8,8 @@ const config = getDefaultConfig(__dirname, {
   isCSSEnabled: true,
 });
 
-// Enable package exports for Expo SDK 54+
-config.resolver.unstable_enablePackageExports = true;
-
 // Basic Hermes optimizations (minimal to avoid conflicts)
-config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+config.resolver.platforms = ["ios", "android", "native", "web"];
 
-module.exports = withNativeWind(config, {
-  input: "./global.css",
-  inlineRem: false,
-});
+// Wrap config with NativeWind for CSS processing
+module.exports = withNativeWind(config, { input: "./global.css" });

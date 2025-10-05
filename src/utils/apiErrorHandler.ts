@@ -9,7 +9,10 @@ export class AppError extends Error {
   retryable?: boolean;
   userMessage?: string;
 
-  constructor(message: string, options?: { code?: string; status?: number; details?: any; retryable?: boolean; userMessage?: string }) {
+  constructor(
+    message: string,
+    options?: { code?: string; status?: number; details?: any; retryable?: boolean; userMessage?: string },
+  ) {
     super(message);
     this.name = "AppError";
     this.code = options?.code || "UNKNOWN_ERROR";
@@ -86,7 +89,7 @@ export class ApiClient {
       timeout?: number;
       retries?: number;
       retryDelay?: number;
-    } = {}
+    } = {},
   ) {
     this.baseURL = baseURL;
     this.defaultTimeout = options.timeout || 30000;
@@ -206,7 +209,7 @@ export class ApiClient {
     options: ApiRequestOptions & {
       fieldName?: string;
       onProgress?: (progress: number) => void;
-    } = {}
+    } = {},
   ): Promise<ApiResponse<T>> {
     const { fieldName = "file", onProgress, ...requestOptions } = options;
 
@@ -324,7 +327,7 @@ export class SupabaseApiClient extends ApiClient {
 
   async supabaseRequest<T = any>(
     endpoint: string,
-    options: RequestInit & ApiRequestOptions = {}
+    options: RequestInit & ApiRequestOptions = {},
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       ...options,
@@ -338,7 +341,7 @@ export class SupabaseApiClient extends ApiClient {
   async supabaseQuery<T = any>(
     table: string,
     query: Record<string, any> = {},
-    options?: ApiRequestOptions
+    options?: ApiRequestOptions,
   ): Promise<ApiResponse<T[]>> {
     const params = new URLSearchParams();
 
@@ -365,7 +368,7 @@ export class SupabaseApiClient extends ApiClient {
     table: string,
     id: string | number,
     data: any,
-    options?: ApiRequestOptions
+    options?: ApiRequestOptions,
   ): Promise<ApiResponse<T>> {
     const endpoint = `/rest/v1/${table}?id=eq.${id}`;
     return this.supabaseRequest<T>(endpoint, {
@@ -400,7 +403,7 @@ export function useApiClient(baseURL?: string) {
     upload: <T = any>(
       endpoint: string,
       file: File | Blob,
-      options?: ApiRequestOptions & { fieldName?: string; onProgress?: (progress: number) => void }
+      options?: ApiRequestOptions & { fieldName?: string; onProgress?: (progress: number) => void },
     ) => client.upload<T>(endpoint, file, options),
   };
 }

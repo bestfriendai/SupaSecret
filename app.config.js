@@ -27,7 +27,7 @@ module.exports = {
     },
     orientation: "portrait",
     userInterfaceStyle: "light",
-    newArchEnabled: true,
+    newArchEnabled: false,
     icon: "./assets/icon.png",
     splash: {
       image: "./assets/icon.png",
@@ -43,13 +43,13 @@ module.exports = {
         {
           ios: {
             deploymentTarget: "16.0",
-            newArchEnabled: true,
+            newArchEnabled: false,
           },
           android: {
             compileSdkVersion: 35,
             targetSdkVersion: 35,
             minSdkVersion: 24,
-            newArchEnabled: true,
+            newArchEnabled: false,
             kotlinVersion: "2.1.0",
           },
         },
@@ -80,7 +80,6 @@ module.exports = {
       "expo-font",
       "expo-localization",
       "expo-splash-screen",
-      "./plugins/withModularHeaders",
     ],
     androidNavigationBar: {
       visible: "sticky-immersive",

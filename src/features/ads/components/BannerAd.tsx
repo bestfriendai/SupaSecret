@@ -3,27 +3,27 @@
  * Displays banner ads with proper consent and premium checks
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, Platform, StyleSheet } from 'react-native';
-import { adService } from '../services/adService';
-import type { BannerAdProps, AdConfig } from '../types';
+import React, { useEffect, useState } from "react";
+import { View, Text, Platform, StyleSheet } from "react-native";
+import { adService } from "../services/adService";
+import type { BannerAdProps, AdConfig } from "../types";
 
 // Dynamic import for native module
 let BannerAd: any = null;
 let BannerAdSize: any = null;
 
 const loadAdMobModule = async () => {
-  if (Platform.OS === 'web' || adService.isExpoGo()) {
+  if (Platform.OS === "web" || adService.isExpoGo()) {
     return false;
   }
 
   try {
-    const module = await import('react-native-google-mobile-ads');
+    const module = await import("react-native-google-mobile-ads");
     BannerAd = (module as any).BannerAd;
     BannerAdSize = (module as any).BannerAdSize;
     return true;
   } catch (error) {
-    console.warn('AdMob module not available:', error);
+    console.warn("AdMob module not available:", error);
     return false;
   }
 };
@@ -36,8 +36,8 @@ interface BannerAdComponentProps extends BannerAdProps {
 
 export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
   visible = true,
-  size = 'banner',
-  placement = 'home-feed',
+  size = "banner",
+  placement = "home-feed",
   config,
   isPremium,
   hasConsent,
@@ -50,7 +50,7 @@ export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
   const [moduleLoaded, setModuleLoaded] = useState(false);
 
   // Get ad unit ID from service
-  const adUnitId = adService.getAdUnitId('banner', config);
+  const adUnitId = adService.getAdUnitId("banner", config);
 
   useEffect(() => {
     loadAdMobModule().then((loaded) => {
@@ -73,7 +73,7 @@ export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
     return (
       <View style={styles.demoBanner}>
         <Text style={styles.demoText}>
-          Banner Ad - {placement} ({config.testMode ? 'Test Mode' : 'Production'})
+          Banner Ad - {placement} ({config.testMode ? "Test Mode" : "Production"})
         </Text>
         <Text style={styles.demoSubtext}>Requires development build</Text>
       </View>
@@ -92,15 +92,15 @@ export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
   // Map size to AdMob size
   const getSizeConstant = () => {
     switch (size) {
-      case 'large':
+      case "large":
         return BannerAdSize.LARGE_BANNER;
-      case 'medium':
+      case "medium":
         return BannerAdSize.MEDIUM_RECTANGLE;
-      case 'full-banner':
+      case "full-banner":
         return BannerAdSize.FULL_BANNER;
-      case 'leaderboard':
+      case "leaderboard":
         return BannerAdSize.LEADERBOARD;
-      case 'banner':
+      case "banner":
       default:
         return BannerAdSize.BANNER;
     }
@@ -121,7 +121,7 @@ export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
         }}
         onAdFailedToLoad={(error: any) => {
           console.error(`Banner ad failed to load - ${placement}:`, error);
-          const errorMessage = error.message || 'Failed to load ad';
+          const errorMessage = error.message || "Failed to load ad";
           setAdError(errorMessage);
           onAdFailedToLoad?.(new Error(errorMessage));
         }}
@@ -141,43 +141,43 @@ export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
     minHeight: 50,
   },
   demoBanner: {
     height: 50,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
     marginVertical: 5,
     borderRadius: 5,
     marginHorizontal: 10,
   },
   demoText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   demoSubtext: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   loadingBanner: {
     height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
   },
   errorText: {
     fontSize: 10,
-    color: 'red',
+    color: "red",
     marginTop: 5,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

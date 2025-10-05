@@ -254,15 +254,27 @@ async function flushAnalyticsBatch(tasks: QueueTask[]): Promise<void> {
 }
 
 export const startNetworkWatcher = async () => {
+  console.log("[DIAG] offlineQueue.ts: startNetworkWatcher() called, watcherStarted =", watcherStarted);
   if (watcherStarted) return;
   watcherStarted = true;
 
   // Load persisted queue on startup
-  await loadPersistedQueue();
+  console.log("[DIAG] offlineQueue.ts: About to load persisted queue...");
+  try {
+    await loadPersistedQueue();
+    console.log("[DIAG] offlineQueue.ts: Persisted queue loaded successfully");
+  } catch (error) {
+    console.error("[DIAG] offlineQueue.ts: Failed to load persisted queue:", error);
+    throw error;
+  }
 
   try {
+    console.log("[DIAG] offlineQueue.ts: About to import @react-native-community/netinfo...");
     // Attempt to use @react-native-community/netinfo if available
-    const netinfo = await import("@react-native-community/netinfo").catch(() => null as any);
+    const netinfo = await import("@react-native-community/netinfo").catch((err) => {
+      console.log("[DIAG] offlineQueue.ts: netinfo import failed (expected in some environments):", err);
+      return null as any;
+    });
     if (netinfo && netinfo.default) {
       netinfo.default.addEventListener((state: any) => {
         const wasOnline = online;
@@ -421,10 +433,8 @@ registerProcessor(
   },
 );
 
-// Initialize network watcher on module load
-startNetworkWatcher();
-
 // Export offlineQueue object for backward compatibility
+// NOTE: startNetworkWatcher() is now called from supabase.ts after safe initialization
 export const offlineQueue = {
   enqueue,
   flush,

@@ -4,12 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/src/features/auth";
-import {
-  validateEmail,
-  validatePassword,
-  getPasswordStrength,
-  AuthError,
-} from "@/src/features/auth";
+import { validateEmail, validatePassword, getPasswordStrength, AuthError } from "@/src/features/auth";
 import AuthInput from "@/src/features/auth/components/AuthInput";
 import AuthButton from "@/src/features/auth/components/AuthButton";
 
@@ -98,14 +93,8 @@ export default function SignUpScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-        >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           {/* Header */}
           <View
             style={{
@@ -129,9 +118,7 @@ export default function SignUpScreen() {
             >
               <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
             </Pressable>
-            <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "600" }}>
-              Create Account
-            </Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "600" }}>Create Account</Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -215,8 +202,7 @@ export default function SignUpScreen() {
                             flex: 1,
                             height: 8,
                             borderRadius: 4,
-                            backgroundColor:
-                              level <= passwordStrength.strength ? passwordStrength.color : "#374151",
+                            backgroundColor: level <= passwordStrength.strength ? passwordStrength.color : "#374151",
                           }}
                         />
                       ))}
@@ -310,8 +296,8 @@ export default function SignUpScreen() {
                 </Text>
               </View>
               <Text style={{ color: "#9CA3AF", fontSize: 13, lineHeight: 18 }}>
-                Your account is only used for app access. All confessions remain completely anonymous
-                and are never linked to your profile.
+                Your account is only used for app access. All confessions remain completely anonymous and are never
+                linked to your profile.
               </Text>
             </View>
           </View>

@@ -165,7 +165,7 @@ class Logger {
         stack: error.stack,
         componentStack,
       },
-      ["error_boundary", "crash"]
+      ["error_boundary", "crash"],
     );
   }
 
@@ -178,7 +178,7 @@ class Logger {
   }
 
   getLogs(level?: LogLevel, limit?: number): LogEntry[] {
-    let filtered = level !== undefined ? this.logs.filter(log => log.level >= level) : this.logs;
+    let filtered = level !== undefined ? this.logs.filter((log) => log.level >= level) : this.logs;
     if (limit) {
       filtered = filtered.slice(-limit);
     }

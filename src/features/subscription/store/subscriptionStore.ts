@@ -3,15 +3,10 @@
  * Zustand store for managing subscription state
  */
 
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { SubscriptionService } from '../services/subscriptionService';
-import type {
-  RevenueCatCustomerInfo,
-  RevenueCatPackage,
-  SubscriptionStatus,
-  PurchaseErrorType,
-} from '../types';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { SubscriptionService } from "../services/subscriptionService";
+import type { RevenueCatCustomerInfo, RevenueCatPackage, SubscriptionStatus, PurchaseErrorType } from "../types";
 
 interface SubscriptionState {
   // State
@@ -62,14 +57,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             isPremium,
             subscriptionStatus,
             customerInfo:
-              customerInfo && 'mockCustomerInfo' in customerInfo
-                ? null
-                : (customerInfo as RevenueCatCustomerInfo),
+              customerInfo && "mockCustomerInfo" in customerInfo ? null : (customerInfo as RevenueCatCustomerInfo),
             isLoading: false,
           });
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: error instanceof Error ? error.message : "Unknown error",
             isLoading: false,
           });
         }
@@ -85,7 +78,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const result = await SubscriptionService.purchasePackage(pkg);
 
           // Handle mock result
-          if ('mockCustomerInfo' in result) {
+          if ("mockCustomerInfo" in result) {
             set({ isPremium: true, isLoading: false });
             return true;
           }
@@ -95,7 +88,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const subscriptionStatus = await SubscriptionService.getSubscriptionStatus();
 
           if (!isPremium) {
-            throw new Error('Purchase completed but premium entitlement not active');
+            throw new Error("Purchase completed but premium entitlement not active");
           }
 
           set({
@@ -110,9 +103,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const purchaseError = SubscriptionService.handlePurchaseError(error);
 
           set({
-            error:
-              purchaseError.userFriendlyMessage ||
-              (error instanceof Error ? error.message : 'Purchase failed'),
+            error: purchaseError.userFriendlyMessage || (error instanceof Error ? error.message : "Purchase failed"),
             lastErrorType: purchaseError.type,
             isLoading: false,
           });
@@ -131,7 +122,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const result = await SubscriptionService.restorePurchases();
 
           // Handle mock result
-          if ('mockCustomerInfo' in result) {
+          if ("mockCustomerInfo" in result) {
             set({ isPremium: false, isLoading: false });
             return true;
           }
@@ -151,9 +142,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const purchaseError = SubscriptionService.handlePurchaseError(error);
 
           set({
-            error:
-              purchaseError.userFriendlyMessage ||
-              (error instanceof Error ? error.message : 'Restore failed'),
+            error: purchaseError.userFriendlyMessage || (error instanceof Error ? error.message : "Restore failed"),
             lastErrorType: purchaseError.type,
             isLoading: false,
           });
@@ -178,12 +167,10 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             isPremium,
             subscriptionStatus,
             customerInfo:
-              customerInfo && 'mockCustomerInfo' in customerInfo
-                ? null
-                : (customerInfo as RevenueCatCustomerInfo),
+              customerInfo && "mockCustomerInfo" in customerInfo ? null : (customerInfo as RevenueCatCustomerInfo),
           });
         } catch (error) {
-          console.error('Failed to refresh customer info:', error);
+          console.error("Failed to refresh customer info:", error);
         }
       },
 
@@ -206,7 +193,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           // Refresh subscription status after login
           await get().checkSubscriptionStatus();
         } catch (error) {
-          console.error('Failed to set user ID:', error);
+          console.error("Failed to set user ID:", error);
           throw error;
         }
       },
@@ -226,17 +213,17 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             lastErrorType: null,
           });
         } catch (error) {
-          console.error('Failed to log out:', error);
+          console.error("Failed to log out:", error);
         }
       },
     }),
     {
-      name: 'subscription-storage',
+      name: "subscription-storage",
       partialize: (state) => ({
         isPremium: state.isPremium,
         // Don't persist customerInfo to avoid storing PII
         // It will be re-fetched at runtime
       }),
-    }
-  )
+    },
+  ),
 );

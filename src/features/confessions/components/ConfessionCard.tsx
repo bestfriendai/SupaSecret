@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
-import type { Confession } from '../types/confession.types';
+import React from "react";
+import { View, Text, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import type { Confession } from "../types/confession.types";
 
 interface ConfessionCardProps {
   confession: Confession;
@@ -34,31 +34,21 @@ export function ConfessionCard({
           <View className="flex-row items-center mb-1">
             <Text className="text-white font-bold text-15">Anonymous</Text>
             <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-            <Text className="text-gray-500 text-15">
-              {format(new Date(confession.timestamp), 'MMM d')}
-            </Text>
+            <Text className="text-gray-500 text-15">{format(new Date(confession.timestamp), "MMM d")}</Text>
             <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
             <View className="flex-row items-center">
-              <Ionicons
-                name={confession.type === 'video' ? 'videocam' : 'document-text'}
-                size={14}
-                color="#1D9BF0"
-              />
-              <Text className="text-blue-400 text-13 ml-1">
-                {confession.type === 'video' ? 'Video' : 'Text'}
-              </Text>
+              <Ionicons name={confession.type === "video" ? "videocam" : "document-text"} size={14} color="#1D9BF0" />
+              <Text className="text-blue-400 text-13 ml-1">{confession.type === "video" ? "Video" : "Text"}</Text>
             </View>
           </View>
 
           {/* Content */}
-          {confession.type === 'text' ? (
+          {confession.type === "text" ? (
             <Text className="text-white text-15 leading-5 mb-3">{confession.content}</Text>
           ) : (
             <View>
               {confession.transcription && (
-                <Text className="text-white text-15 leading-5 mb-3">
-                  {confession.transcription}
-                </Text>
+                <Text className="text-white text-15 leading-5 mb-3">{confession.transcription}</Text>
               )}
               <View className="bg-gray-900 border border-gray-700 rounded-2xl p-3 mb-3">
                 <View className="flex-row items-center">
@@ -81,13 +71,11 @@ export function ConfessionCard({
                 onPress={onLike}
               >
                 <Ionicons
-                  name={confession.isLiked ? 'heart' : 'heart-outline'}
+                  name={confession.isLiked ? "heart" : "heart-outline"}
                   size={18}
-                  color={confession.isLiked ? '#EF4444' : '#8B98A5'}
+                  color={confession.isLiked ? "#EF4444" : "#8B98A5"}
                 />
-                <Text
-                  className={`text-13 ml-1 ${confession.isLiked ? 'text-red-400' : 'text-gray-500'}`}
-                >
+                <Text className={`text-13 ml-1 ${confession.isLiked ? "text-red-400" : "text-gray-500"}`}>
                   {confession.likes || 0}
                 </Text>
               </Pressable>
@@ -107,9 +95,9 @@ export function ConfessionCard({
               onPress={onMoreActions}
             >
               <Ionicons
-                name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                name={isSaved ? "bookmark" : "bookmark-outline"}
                 size={18}
-                color={isSaved ? '#F59E0B' : '#8B98A5'}
+                color={isSaved ? "#F59E0B" : "#8B98A5"}
               />
             </Pressable>
           </View>

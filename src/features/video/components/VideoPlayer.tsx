@@ -4,11 +4,11 @@
  * Implements modern best practices for video playback
  */
 
-import React, { useEffect, useCallback, useState } from 'react';
-import { View, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import { Ionicons } from '@expo/vector-icons';
-import type { VideoPlayerState, VideoPlayerControls } from '../types';
+import React, { useEffect, useCallback, useState } from "react";
+import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import { VideoView, useVideoPlayer } from "expo-video";
+import { Ionicons } from "@expo/vector-icons";
+import type { VideoPlayerState, VideoPlayerControls } from "../types";
 
 export interface VideoPlayerProps {
   videoUri: string;
@@ -19,7 +19,7 @@ export interface VideoPlayerProps {
   onPlaybackStateChange?: (state: VideoPlayerState) => void;
   onError?: (error: string) => void;
   style?: any;
-  contentFit?: 'contain' | 'cover' | 'fill';
+  contentFit?: "contain" | "cover" | "fill";
 }
 
 /**
@@ -35,7 +35,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onPlaybackStateChange,
   onError,
   style,
-  contentFit = 'cover',
+  contentFit = "cover",
 }) => {
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [isMuted, setIsMuted] = useState(muted);
@@ -45,9 +45,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Create video player using latest API
   const player = useVideoPlayer(videoUri, (player) => {
     if (!player) {
-      console.error('Video player initialization failed');
+      console.error("Video player initialization failed");
       setHasError(true);
-      onError?.('Failed to initialize video player');
+      onError?.("Failed to initialize video player");
       return;
     }
 
@@ -171,12 +171,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      <VideoView
-        player={player}
-        style={styles.video}
-        contentFit={contentFit}
-        nativeControls={false}
-      />
+      <VideoView player={player} style={styles.video} contentFit={contentFit} nativeControls={false} />
 
       {/* Loading indicator */}
       {isLoading && (
@@ -193,14 +188,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             style={styles.controlsOverlay}
             onPress={togglePlayPause}
             accessibilityRole="button"
-            accessibilityLabel={isPlaying ? 'Pause video' : 'Play video'}
+            accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
           >
             <View style={styles.playPauseButton}>
-              <Ionicons
-                name={isPlaying ? 'pause' : 'play'}
-                size={32}
-                color="#FFFFFF"
-              />
+              <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="#FFFFFF" />
             </View>
           </Pressable>
 
@@ -209,13 +200,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             style={styles.muteButton}
             onPress={toggleMute}
             accessibilityRole="button"
-            accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
+            accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
           >
-            <Ionicons
-              name={isMuted ? 'volume-mute' : 'volume-high'}
-              size={24}
-              color="#FFFFFF"
-            />
+            <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={24} color="#FFFFFF" />
           </Pressable>
         </>
       )}
@@ -226,49 +213,49 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-    position: 'relative',
+    backgroundColor: "#000000",
+    position: "relative",
   },
   video: {
     flex: 1,
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   controlsOverlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   playPauseButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     borderRadius: 40,
     width: 80,
     height: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   muteButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 20,
     right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     borderRadius: 20,
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1F2937',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#1F2937",
   },
 });
 

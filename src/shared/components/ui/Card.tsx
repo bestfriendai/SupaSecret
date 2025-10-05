@@ -28,7 +28,14 @@ export interface CardFooterProps extends ViewProps {
 }
 
 // Main Card Component
-const CardBase: React.FC<CardProps> = ({ children, variant = "default", onPress, disabled = false, className, ...viewProps }) => {
+const CardBase: React.FC<CardProps> = ({
+  children,
+  variant = "default",
+  onPress,
+  disabled = false,
+  className,
+  ...viewProps
+}) => {
   const isInteractive = !!onPress;
 
   const baseStyles = "rounded-xl p-4";
@@ -104,10 +111,7 @@ export const CardContent: React.FC<CardContentProps> = ({ children, className, .
 // Card Footer Component
 export const CardFooter: React.FC<CardFooterProps> = ({ children, className, ...viewProps }) => {
   return (
-    <View
-      className={cn("flex-row items-center justify-end pt-3 border-t border-gray-800", className)}
-      {...viewProps}
-    >
+    <View className={cn("flex-row items-center justify-end pt-3 border-t border-gray-800", className)} {...viewProps}>
       {children}
     </View>
   );

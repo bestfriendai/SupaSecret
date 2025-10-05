@@ -39,9 +39,7 @@ export const DeepLinkHandlers = {
 
   // Handle trending hashtag links
   handleTrendingLink: (hashtag?: string) => {
-    return hashtag
-      ? `/(tabs)/trending?hashtag=${encodeURIComponent(hashtag)}`
-      : "/(tabs)/trending";
+    return hashtag ? `/(tabs)/trending?hashtag=${encodeURIComponent(hashtag)}` : "/(tabs)/trending";
   },
 
   // Handle paywall links
@@ -268,7 +266,7 @@ export function convertLegacyRoute(legacyRoute: string): string {
       const match = legacyRoute.match(regex);
       if (match) {
         let route = replacement;
-        const paramNames = pattern.match(/:([^/]+)/g)?.map(p => p.slice(1)) || [];
+        const paramNames = pattern.match(/:([^/]+)/g)?.map((p) => p.slice(1)) || [];
         paramNames.forEach((param, index) => {
           route = route.replace(`:${param}`, match[index + 1]);
         });

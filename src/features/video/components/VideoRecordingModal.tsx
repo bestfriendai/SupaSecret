@@ -4,25 +4,12 @@
  * Includes face blur and voice effects support
  */
 
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Modal,
-  ActivityIndicator,
-  Alert,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import type {
-  VideoRecordingOptions,
-  CameraFacing,
-  ProcessedVideo,
-} from '../types';
-import { VIDEO_CONSTANTS } from '../types';
+import React, { useCallback, useEffect, useState, useRef } from "react";
+import { View, Text, Pressable, StyleSheet, Modal, ActivityIndicator, Alert, Platform } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import type { VideoRecordingOptions, CameraFacing, ProcessedVideo } from "../types";
+import { VIDEO_CONSTANTS } from "../types";
 
 const IS_EXPO_GO = !!(global as any).__expo?.isExpoGo;
 
@@ -33,17 +20,17 @@ let useCameraPermission: any;
 
 const loadVisionCamera = async () => {
   if (IS_EXPO_GO) {
-    throw new Error('Vision Camera not available in Expo Go');
+    throw new Error("Vision Camera not available in Expo Go");
   }
 
   try {
-    const visionCamera = await import('react-native-vision-camera');
+    const visionCamera = await import("react-native-vision-camera");
     Camera = visionCamera.Camera;
     useCameraDevice = visionCamera.useCameraDevice;
     useCameraPermission = visionCamera.useCameraPermission;
     return true;
   } catch (error) {
-    console.error('Failed to load Vision Camera:', error);
+    console.error("Failed to load Vision Camera:", error);
     return false;
   }
 };
@@ -68,7 +55,7 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
     maxDuration = VIDEO_CONSTANTS.MAX_DURATION,
     enableFaceBlur = false,
     blurIntensity = VIDEO_CONSTANTS.DEFAULT_BLUR_INTENSITY,
-    facing: initialFacing = 'front',
+    facing: initialFacing = "front",
     enableAudio = true,
   } = options;
 
@@ -97,9 +84,9 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
             await requestPermissions();
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to initialize camera';
+          const errorMessage = error instanceof Error ? error.message : "Failed to initialize camera";
           setError(errorMessage);
-          Alert.alert('Camera Error', errorMessage);
+          Alert.alert("Camera Error", errorMessage);
         }
       };
       init();
@@ -113,7 +100,7 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
         const device = useCameraDevice(facing);
         setCameraDevice(device);
       } catch (error) {
-        console.error('Failed to get camera device:', error);
+        console.error("Failed to get camera device:", error);
       }
     }
   }, [isInitialized, facing]);
@@ -152,18 +139,15 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
       const cameraPermission = await Camera.requestCameraPermission();
       const microphonePermission = await Camera.requestMicrophonePermission();
 
-      const granted = cameraPermission === 'granted' && microphonePermission === 'granted';
+      const granted = cameraPermission === "granted" && microphonePermission === "granted";
       setHasPermissions(granted);
 
       if (!granted) {
-        Alert.alert(
-          'Permissions Required',
-          'Camera and microphone permissions are required to record videos.',
-        );
+        Alert.alert("Permissions Required", "Camera and microphone permissions are required to record videos.");
       }
     } catch (error) {
-      console.error('Permission request failed:', error);
-      setError('Failed to request permissions');
+      console.error("Permission request failed:", error);
+      setError("Failed to request permissions");
     }
   }, []);
 
@@ -183,7 +167,7 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
 
       await cameraRef.current.startRecording({
         onRecordingFinished: (video: any) => {
-          console.log('Recording finished:', video.path);
+          console.log("Recording finished:", video.path);
           isRecordingRef.current = false;
           setIsRecording(false);
           setRecordingTime(0);
@@ -202,19 +186,19 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
           onClose();
         },
         onRecordingError: (error: any) => {
-          console.error('Recording error:', error);
+          console.error("Recording error:", error);
           isRecordingRef.current = false;
           setIsRecording(false);
           setRecordingTime(0);
-          const errorMessage = error?.message || 'Recording failed';
+          const errorMessage = error?.message || "Recording failed";
           setError(errorMessage);
           options.onError?.(errorMessage);
-          Alert.alert('Recording Error', errorMessage);
+          Alert.alert("Recording Error", errorMessage);
         },
       });
     } catch (error) {
-      console.error('Failed to start recording:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to start recording';
+      console.error("Failed to start recording:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to start recording";
       setError(errorMessage);
       options.onError?.(errorMessage);
       isRecordingRef.current = false;
@@ -231,8 +215,8 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
     try {
       await cameraRef.current.stopRecording();
     } catch (error) {
-      console.error('Failed to stop recording:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to stop recording';
+      console.error("Failed to stop recording:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to stop recording";
       setError(errorMessage);
       options.onError?.(errorMessage);
     }
@@ -240,27 +224,23 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
 
   // Toggle camera
   const handleToggleCamera = useCallback(() => {
-    setFacing((prev) => (prev === 'front' ? 'back' : 'front'));
+    setFacing((prev) => (prev === "front" ? "back" : "front"));
   }, []);
 
   // Close modal
   const handleClose = useCallback(() => {
     if (isRecording) {
-      Alert.alert(
-        'Recording in Progress',
-        'Do you want to stop recording and discard the video?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Discard',
-            style: 'destructive',
-            onPress: () => {
-              handleStopRecording();
-              onClose();
-            },
+      Alert.alert("Recording in Progress", "Do you want to stop recording and discard the video?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            handleStopRecording();
+            onClose();
           },
-        ],
-      );
+        },
+      ]);
     } else {
       onClose();
     }
@@ -275,7 +255,7 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
             <Ionicons name="alert-circle" size={48} color="#EF4444" />
             <Text style={styles.errorTitle}>Development Build Required</Text>
             <Text style={styles.errorMessage}>
-              Vision Camera requires a development build.{'\n\n'}
+              Vision Camera requires a development build.{"\n\n"}
               Run: npx expo run:ios or npx expo run:android
             </Text>
             <Pressable style={styles.button} onPress={onClose}>
@@ -308,9 +288,7 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
         <SafeAreaView style={styles.container}>
           <View style={styles.permissionContainer}>
             <Ionicons name="camera" size={48} color="#1D9BF0" />
-            <Text style={styles.permissionText}>
-              Camera and microphone permissions are required.
-            </Text>
+            <Text style={styles.permissionText}>Camera and microphone permissions are required.</Text>
             <Pressable style={styles.button} onPress={requestPermissions}>
               <Text style={styles.buttonText}>Grant Permission</Text>
             </Pressable>
@@ -356,15 +334,8 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
           </Pressable>
 
           <View style={styles.statusPill}>
-            <View
-              style={[
-                styles.statusIndicator,
-                { backgroundColor: isRecording ? '#EF4444' : '#22C55E' },
-              ]}
-            />
-            <Text style={styles.statusText}>
-              {isRecording ? 'Recording' : 'Ready'}
-            </Text>
+            <View style={[styles.statusIndicator, { backgroundColor: isRecording ? "#EF4444" : "#22C55E" }]} />
+            <Text style={styles.statusText}>{isRecording ? "Recording" : "Ready"}</Text>
           </View>
 
           <Pressable onPress={handleToggleCamera} style={styles.iconButton}>
@@ -375,22 +346,17 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
         {/* Bottom Controls */}
         <View style={styles.bottomControls}>
           <Text style={styles.timerText}>
-            {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')} / {maxDuration}s
+            {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")} / {maxDuration}s
           </Text>
 
           <Pressable
             onPress={isRecording ? handleStopRecording : handleStartRecording}
-            style={[
-              styles.recordButton,
-              isRecording ? styles.recordButtonActive : styles.recordButtonInactive,
-            ]}
+            style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
           >
-            <Text style={styles.recordButtonText}>{isRecording ? 'Stop' : 'Record'}</Text>
+            <Text style={styles.recordButtonText}>{isRecording ? "Stop" : "Record"}</Text>
           </Pressable>
 
-          {enableFaceBlur && (
-            <Text style={styles.infoText}>Face blur: {blurIntensity}</Text>
-          )}
+          {enableFaceBlur && <Text style={styles.infoText}>Face blur: {blurIntensity}</Text>}
         </View>
       </SafeAreaView>
     </Modal>
@@ -400,73 +366,73 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   camera: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
-    color: '#F9FAFB',
+    color: "#F9FAFB",
     marginTop: 16,
     fontSize: 16,
   },
   permissionContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 32,
   },
   permissionText: {
-    color: '#F9FAFB',
+    color: "#F9FAFB",
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 16,
     marginBottom: 24,
   },
   button: {
-    backgroundColor: '#1D9BF0',
+    backgroundColor: "#1D9BF0",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
     marginTop: 12,
     minWidth: 200,
-    alignItems: 'center',
+    alignItems: "center",
   },
   secondaryButton: {
-    backgroundColor: '#374151',
+    backgroundColor: "#374151",
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   topControls: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 12 : 24,
+    position: "absolute",
+    top: Platform.OS === "ios" ? 12 : 24,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
   },
   iconButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.55)",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 18,
@@ -478,97 +444,97 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   statusText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   bottomControls: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 32,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: "rgba(0,0,0,0.55)",
     borderRadius: 24,
     marginHorizontal: 20,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   recordButton: {
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 32,
     minWidth: 140,
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: 10,
   },
   recordButtonInactive: {
-    backgroundColor: '#DC2626',
+    backgroundColor: "#DC2626",
   },
   recordButtonActive: {
-    backgroundColor: '#991B1B',
+    backgroundColor: "#991B1B",
   },
   recordButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   timerText: {
-    color: '#E5E7EB',
+    color: "#E5E7EB",
     fontSize: 14,
     marginBottom: 4,
   },
   infoText: {
-    color: '#22C55E',
+    color: "#22C55E",
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 1000,
   },
   errorBox: {
-    backgroundColor: '#1F2937',
+    backgroundColor: "#1F2937",
     borderRadius: 16,
     padding: 24,
     margin: 20,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: "#374151",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 32,
   },
   errorTitle: {
-    color: '#EF4444',
+    color: "#EF4444",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 8,
     marginBottom: 8,
   },
   errorMessage: {
-    color: '#E5E7EB',
+    color: "#E5E7EB",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 16,
   },
   errorButton: {
-    backgroundColor: '#1D9BF0',
+    backgroundColor: "#1D9BF0",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   errorButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

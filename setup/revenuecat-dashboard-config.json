@@ -19,9 +19,7 @@
       "duration": "monthly",
       "price": 4.99,
       "currency": "USD",
-      "entitlements": [
-        "supasecret_plus"
-      ],
+      "entitlements": ["supasecret_plus"],
       "features": [
         "Ad-free experience",
         "Unlimited video recordings (up to 5 minutes)",
@@ -40,9 +38,7 @@
       "duration": "annual",
       "price": 29.99,
       "currency": "USD",
-      "entitlements": [
-        "supasecret_plus"
-      ],
+      "entitlements": ["supasecret_plus"],
       "features": [
         "Ad-free experience",
         "Unlimited video recordings (up to 5 minutes)",

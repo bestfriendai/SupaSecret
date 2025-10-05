@@ -10,10 +10,7 @@
   "project": {
     "name": "Toxic Confessions",
     "bundleId": "com.toxic.confessions",
-    "platforms": [
-      "ios",
-      "android"
-    ]
+    "platforms": ["ios", "android"]
   },
   "nextSteps": [
     "1. Restart Cursor IDE to load the new MCP configuration",

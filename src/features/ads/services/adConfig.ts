@@ -3,9 +3,9 @@
  * Helper functions to create and validate ad configurations
  */
 
-import { Platform } from 'react-native';
-import type { AdConfig } from '../types';
-import { TEST_AD_UNITS } from '../types';
+import { Platform } from "react-native";
+import type { AdConfig } from "../types";
+import { TEST_AD_UNITS } from "../types";
 
 /**
  * Get environment variable helper
@@ -13,25 +13,21 @@ import { TEST_AD_UNITS } from '../types';
 const getEnvVar = (name: string, fallback?: string): string => {
   // @ts-ignore - process.env is available at runtime
   const value = process.env[name];
-  return value || fallback || '';
+  return value || fallback || "";
 };
 
 /**
  * Validate ad unit ID format
  */
 export const isValidAdUnitId = (id: string | undefined | null): boolean => {
-  if (!id || typeof id !== 'string') return false;
-  return id.startsWith('ca-app-pub-') && id.includes('/');
+  if (!id || typeof id !== "string") return false;
+  return id.startsWith("ca-app-pub-") && id.includes("/");
 };
 
 /**
  * Create ad configuration from environment variables
  */
-export const createAdConfig = (options?: {
-  enabled?: boolean;
-  testMode?: boolean;
-  useTestAds?: boolean;
-}): AdConfig => {
+export const createAdConfig = (options?: { enabled?: boolean; testMode?: boolean; useTestAds?: boolean }): AdConfig => {
   const { enabled = true, testMode = __DEV__, useTestAds = false } = options || {};
 
   // Use test ads if specified or in development mode
@@ -42,30 +38,30 @@ export const createAdConfig = (options?: {
     testMode,
     appId: {
       ios: shouldUseTestAds
-        ? 'ca-app-pub-3940256099942544~1458002511' // Google test app ID
-        : getEnvVar('EXPO_PUBLIC_ADMOB_IOS_APP_ID'),
+        ? "ca-app-pub-3940256099942544~1458002511" // Google test app ID
+        : getEnvVar("EXPO_PUBLIC_ADMOB_IOS_APP_ID"),
       android: shouldUseTestAds
-        ? 'ca-app-pub-3940256099942544~3347511713' // Google test app ID
-        : getEnvVar('EXPO_PUBLIC_ADMOB_ANDROID_APP_ID'),
+        ? "ca-app-pub-3940256099942544~3347511713" // Google test app ID
+        : getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_APP_ID"),
     },
     adUnits: {
       banner: shouldUseTestAds
         ? TEST_AD_UNITS.banner
         : {
-            ios: getEnvVar('EXPO_PUBLIC_ADMOB_IOS_BANNER_ID'),
-            android: getEnvVar('EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID'),
+            ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_BANNER_ID"),
+            android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID"),
           },
       interstitial: shouldUseTestAds
         ? TEST_AD_UNITS.interstitial
         : {
-            ios: getEnvVar('EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID'),
-            android: getEnvVar('EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID'),
+            ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID"),
+            android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID"),
           },
       rewarded: shouldUseTestAds
         ? TEST_AD_UNITS.rewarded
         : {
-            ios: getEnvVar('EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID'),
-            android: getEnvVar('EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID'),
+            ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID"),
+            android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID"),
           },
     },
   };
@@ -79,30 +75,30 @@ export const validateAdConfig = (config: AdConfig): { valid: boolean; errors: st
 
   // Check if enabled
   if (!config.enabled) {
-    return { valid: true, errors: ['Ads are disabled'] };
+    return { valid: true, errors: ["Ads are disabled"] };
   }
 
   // Validate app IDs
   if (!config.appId.ios || !config.appId.android) {
-    errors.push('Missing app IDs');
+    errors.push("Missing app IDs");
   }
 
   // Validate banner ad units
   const bannerId = Platform.select(config.adUnits.banner);
   if (!isValidAdUnitId(bannerId)) {
-    errors.push('Invalid banner ad unit ID');
+    errors.push("Invalid banner ad unit ID");
   }
 
   // Validate interstitial ad units
   const interstitialId = Platform.select(config.adUnits.interstitial);
   if (!isValidAdUnitId(interstitialId)) {
-    errors.push('Invalid interstitial ad unit ID');
+    errors.push("Invalid interstitial ad unit ID");
   }
 
   // Validate rewarded ad units
   const rewardedId = Platform.select(config.adUnits.rewarded);
   if (!isValidAdUnitId(rewardedId)) {
-    errors.push('Invalid rewarded ad unit ID');
+    errors.push("Invalid rewarded ad unit ID");
   }
 
   return {
@@ -114,9 +110,7 @@ export const validateAdConfig = (config: AdConfig): { valid: boolean; errors: st
 /**
  * Get platform-specific ad unit ID
  */
-export const getAdUnitIdForPlatform = (
-  adUnit: { ios: string; android: string }
-): string | undefined => {
+export const getAdUnitIdForPlatform = (adUnit: { ios: string; android: string }): string | undefined => {
   return Platform.select(adUnit);
 };
 
@@ -124,18 +118,18 @@ export const getAdUnitIdForPlatform = (
  * Log ad configuration (for debugging)
  */
 export const logAdConfig = (config: AdConfig): void => {
-  console.log('=== Ad Configuration ===');
-  console.log('Enabled:', config.enabled);
-  console.log('Test Mode:', config.testMode);
-  console.log('App ID:', Platform.select(config.appId));
-  console.log('Banner ID:', getAdUnitIdForPlatform(config.adUnits.banner));
-  console.log('Interstitial ID:', getAdUnitIdForPlatform(config.adUnits.interstitial));
-  console.log('Rewarded ID:', getAdUnitIdForPlatform(config.adUnits.rewarded));
+  console.log("=== Ad Configuration ===");
+  console.log("Enabled:", config.enabled);
+  console.log("Test Mode:", config.testMode);
+  console.log("App ID:", Platform.select(config.appId));
+  console.log("Banner ID:", getAdUnitIdForPlatform(config.adUnits.banner));
+  console.log("Interstitial ID:", getAdUnitIdForPlatform(config.adUnits.interstitial));
+  console.log("Rewarded ID:", getAdUnitIdForPlatform(config.adUnits.rewarded));
 
   const validation = validateAdConfig(config);
-  console.log('Valid:', validation.valid);
+  console.log("Valid:", validation.valid);
   if (!validation.valid) {
-    console.log('Errors:', validation.errors);
+    console.log("Errors:", validation.errors);
   }
-  console.log('=======================');
+  console.log("=======================");
 };

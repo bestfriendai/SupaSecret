@@ -4,22 +4,14 @@
  * Uses expo-video for optimal performance
  */
 
-import React, { useCallback, useRef, useState, useEffect } from 'react';
-import {
-  View,
-  FlatList,
-  Dimensions,
-  StyleSheet,
-  Pressable,
-  Text,
-  ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import type { ViewToken } from 'react-native';
-import { VideoPlayer } from './VideoPlayer';
-import type { VideoFeedItem, VideoFeedProps } from '../types';
+import React, { useCallback, useRef, useState, useEffect } from "react";
+import { View, FlatList, Dimensions, StyleSheet, Pressable, Text, ActivityIndicator } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { ViewToken } from "react-native";
+import { VideoPlayer } from "./VideoPlayer";
+import type { VideoFeedItem, VideoFeedProps } from "../types";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const viewabilityConfig = {
   itemVisiblePercentThreshold: 80,
@@ -55,9 +47,7 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
     [onVideoChange],
   );
 
-  const viewabilityConfigCallbackPairs = useRef([
-    { viewabilityConfig, onViewableItemsChanged },
-  ]);
+  const viewabilityConfigCallbackPairs = useRef([{ viewabilityConfig, onViewableItemsChanged }]);
 
   // Scroll to initial index
   useEffect(() => {
@@ -140,11 +130,7 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
             </Pressable>
 
             <Pressable style={styles.actionButton} onPress={handleToggleMute}>
-              <Ionicons
-                name={muted ? 'volume-mute' : 'volume-high'}
-                size={32}
-                color="#FFFFFF"
-              />
+              <Ionicons name={muted ? "volume-mute" : "volume-high"} size={32} color="#FFFFFF" />
             </Pressable>
           </View>
         </View>
@@ -223,110 +209,110 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   videoContainer: {
     height: SCREEN_HEIGHT,
-    width: '100%',
-    backgroundColor: '#000000',
+    width: "100%",
+    backgroundColor: "#000000",
   },
   video: {
     flex: 1,
   },
   infoOverlay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 80,
     left: 0,
     right: 60,
     paddingHorizontal: 16,
   },
   transcriptionBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
   },
   transcriptionText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
     lineHeight: 20,
   },
   badgeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
     gap: 6,
   },
   badgeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   actionsContainer: {
-    position: 'absolute',
+    position: "absolute",
     right: 12,
     bottom: 80,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 20,
   },
   actionButton: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
   },
   actionText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 50,
     left: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     borderRadius: 20,
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000000',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000000",
     paddingHorizontal: 32,
   },
   emptyText: {
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     fontSize: 16,
     marginTop: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   refreshButton: {
-    backgroundColor: '#1D9BF0',
+    backgroundColor: "#1D9BF0",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
     marginTop: 24,
   },
   refreshButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
 });
 

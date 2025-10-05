@@ -22,17 +22,26 @@ export function useNetworkRecovery(options: NetworkRecoveryOptions = {}) {
   const { showToast } = useToast();
 
   // Helper functions for different toast types
-  const showInfo = useCallback((message: string) => {
-    showToast({ type: 'info', message });
-  }, [showToast]);
+  const showInfo = useCallback(
+    (message: string) => {
+      showToast({ type: "info", message });
+    },
+    [showToast],
+  );
 
-  const showError = useCallback((message: string) => {
-    showToast({ type: 'error', message });
-  }, [showToast]);
+  const showError = useCallback(
+    (message: string) => {
+      showToast({ type: "error", message });
+    },
+    [showToast],
+  );
 
-  const showSuccess = useCallback((message: string) => {
-    showToast({ type: 'success', message });
-  }, [showToast]);
+  const showSuccess = useCallback(
+    (message: string) => {
+      showToast({ type: "success", message });
+    },
+    [showToast],
+  );
 
   // Check network connectivity
   const checkConnectivity = useCallback(async (): Promise<boolean> => {
@@ -75,11 +84,11 @@ export function useNetworkRecovery(options: NetworkRecoveryOptions = {}) {
     if (!autoRetry || retryCount >= maxRetries) return false;
 
     setIsRetrying(true);
-    setRetryCount(prev => prev + 1);
+    setRetryCount((prev) => prev + 1);
 
     showInfo(`Retrying connection (${retryCount + 1}/${maxRetries})...`);
 
-    await new Promise(resolve => setTimeout(resolve, retryDelay));
+    await new Promise((resolve) => setTimeout(resolve, retryDelay));
 
     const connected = await checkConnectivity();
 
@@ -121,7 +130,7 @@ export function useNetworkRecovery(options: NetworkRecoveryOptions = {}) {
         setNetworkState(initialState);
 
         // Subscribe to network changes
-        unsubscribe = NetInfo.addEventListener(state => {
+        unsubscribe = NetInfo.addEventListener((state) => {
           const wasConnected = isConnected;
           const nowConnected = !!(state.isConnected && state.isInternetReachable);
 

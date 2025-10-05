@@ -285,12 +285,12 @@ export const useErrorHandler = () => {
     const processedError = processError(error, options?.context?.action);
 
     if (__DEV__) {
-      console.error('[useErrorHandler]', processedError);
+      console.error("[useErrorHandler]", processedError);
     }
 
     // TODO: Integrate with ToastContext when available
     if (options?.showToast) {
-      console.warn('Toast notification:', getUserFriendlyMessage(processedError));
+      console.warn("Toast notification:", getUserFriendlyMessage(processedError));
     }
 
     return processedError;
@@ -298,7 +298,7 @@ export const useErrorHandler = () => {
 
   const handleSuccess = (message: string) => {
     // TODO: Integrate with ToastContext when available
-    console.log('[Success]', message);
+    console.log("[Success]", message);
   };
 
   return { handleError, handleSuccess };
