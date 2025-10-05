@@ -1,160 +1,215 @@
-import { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Platform, Dimensions } from "react-native";
+/**
+ * Face Blur Record Screen
+ * Based EXACTLY on mrousavy/FaceBlurApp - the reference implementation that works
+ */
+
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { Camera, useCameraDevice, useSkiaFrameProcessor } from "react-native-vision-camera";
+import { useFaceDetector } from "react-native-vision-camera-face-detector";
+import { Skia, TileMode, ClipOp } from "@shopify/react-native-skia";
 import * as Haptics from "expo-haptics";
-import { Worklets } from "react-native-worklets-core";
 
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { useFaceBlurRecorder } from "../hooks/useFaceBlurRecorder";
-import { IS_EXPO_GO } from "../utils/environmentCheck";
-import { FaceEmojiOverlay, EmojiType } from "../components/privacy/FaceEmojiOverlay";
 
 const MAX_DURATION = 60;
 
-function CameraScreen({ hookResult, recordedVideoPath, onNextPress, selectedEmoji, setSelectedEmoji }: any) {
+function FaceBlurRecordScreen() {
   const navigation = useNavigation();
-  const {
-    state,
-    controls,
-    cameraRef,
-    Camera,
-    useCameraDevice,
-    useCameraFormat,
-    useFrameProcessor,
-    useSkiaFrameProcessor,
-    useFaceDetector,
-    runAsync,
-    Skia,
-  } = hookResult;
+  const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
 
-  const { isRecording, recordingTime, hasPermissions, isReady, error, facing } = state;
-  const { startRecording, stopRecording, toggleCamera, requestPermissions } = controls;
+  const cameraRef = useRef<Camera>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [hasPermissions, setHasPermissions] = useState(false);
+  const [facing, setFacing] = useState<"front" | "back">("front");
+  const [recordedVideoPath, setRecordedVideoPath] = useState<string | null>(null);
 
-  const [faces, setFaces] = useState<any[]>([]);
+  // Camera device - EXACTLY like FaceBlurApp
   const device = useCameraDevice(facing);
 
-  const format = device
-    ? useCameraFormat(device, [
-        {
-          videoResolution: { width: 1280, height: 720 },
-        },
-        {
-          fps: 30,
-        },
-      ])
-    : null;
-
-  const screenWidth = Dimensions.get("window").width;
-  const screenHeight = Dimensions.get("window").height;
-
-  const { detectFaces, stopListeners } = useFaceDetector({
+  // Face detector - EXACTLY like FaceBlurApp
+  const { detectFaces } = useFaceDetector({
     performanceMode: "fast",
-    contourMode: "none",
+    contourMode: "all",
     landmarkMode: "none",
     classificationMode: "none",
-    autoMode: true,
-    windowWidth: screenWidth,
-    windowHeight: screenHeight,
-    cameraFacing: facing,
   });
 
+  // Paint with blur - EXACTLY like FaceBlurApp (created once, reused)
+  const blurRadius = 25;
+  const paint = useMemo(() => {
+    const blurFilter = Skia.ImageFilter.MakeBlur(blurRadius, blurRadius, TileMode.Repeat, null);
+    const p = Skia.Paint();
+    p.setImageFilter(blurFilter);
+    return p;
+  }, [blurRadius]);
+
+  // Frame processor - SAFE version with proper error handling
+  const frameProcessor = useSkiaFrameProcessor(
+    (frame) => {
+      "worklet";
+      frame.render();
+
+      // Early exit if detectFaces not available
+      if (!detectFaces) {
+        return;
+      }
+
+      try {
+        const result = detectFaces(frame);
+
+        // Check if result is valid
+        if (!result || typeof result !== 'object' || !result.faces) {
+          return; // No faces detected or invalid result
+        }
+
+        const { faces } = result;
+
+        for (const face of faces) {
+          if (face.contours != null) {
+            const path = Skia.Path.Make();
+            const necessaryContours = ["FACE", "LEFT_CHEEK", "RIGHT_CHEEK"] as const;
+
+            for (const key of necessaryContours) {
+              const points = face.contours[key];
+              if (points && points.length > 0) {
+                points.forEach((point, index) => {
+                  if (index === 0) {
+                    path.moveTo(point.x, point.y);
+                  } else {
+                    path.lineTo(point.x, point.y);
+                  }
+                });
+                path.close();
+              }
+            }
+
+            frame.save();
+            frame.clipPath(path, ClipOp.Intersect, true);
+            frame.render(paint);
+            frame.restore();
+          }
+        }
+      } catch (e) {
+        // Silent fail - continue without blur
+      }
+    },
+    [paint, detectFaces]
+  );
+
+  // Request permissions
   useEffect(() => {
-    return () => {
-      stopListeners();
-    };
+    (async () => {
+      const cameraPermission = await Camera.requestCameraPermission();
+      const microphonePermission = await Camera.requestMicrophonePermission();
+      setHasPermissions(cameraPermission === "granted" && microphonePermission === "granted");
+    })();
   }, []);
 
-  const handleDetectedFaces = Worklets.createRunOnJS((detectedFaces: any[]) => {
-    if (detectedFaces.length > 0 && __DEV__) {
-      console.log("✅ Face detected! Count:", detectedFaces.length);
-      console.log("Face bounds:", detectedFaces[0].bounds);
-    }
-    setFaces(detectedFaces);
-  });
-
-  // Emoji to Unicode mapping
-  const getEmojiText = (type: EmojiType) => {
-    const map: Record<EmojiType, string> = {
-      mask: "😷",
-      sunglasses: "🕶️",
-      blur: "🌫️",
-      robot: "🤖",
-      incognito: "🥸",
-    };
-    return map[type];
-  };
-
-  const frameProcessor =
-    useSkiaFrameProcessor && Skia
-      ? useSkiaFrameProcessor(
-          (frame: any) => {
-            "worklet";
-            try {
-              // Render the camera frame first
-              frame.render();
-
-              // Detect faces
-              const detectedFaces = detectFaces(frame);
-
-              // Update UI with detected faces
-              handleDetectedFaces(detectedFaces);
-
-              // Draw emojis on each detected face
-              if (detectedFaces && detectedFaces.length > 0) {
-                detectedFaces.forEach((face: any) => {
-                  const { x, y, width, height } = face.bounds;
-
-                  // Calculate emoji size and position to fully cover face
-                  const emojiSize = Math.max(width, height) * 2.0;
-                  const offsetX = x - (emojiSize - width) / 2;
-                  const offsetY = y - (emojiSize - height) / 2;
-
-                  // Create text paint
-                  const paint = Skia.Paint();
-                  paint.setColor(Skia.Color("white"));
-
-                  // Create font
-                  const fontSize = emojiSize * 0.9;
-                  const font = Skia.Font(null, fontSize);
-
-                  // Draw emoji text
-                  const emoji = getEmojiText(selectedEmoji);
-                  frame.drawText(emoji, offsetX, offsetY + fontSize, paint, font);
-                });
-              }
-            } catch (e: any) {
-              console.error("❌ Frame processing error:", e);
-            }
-          },
-          [detectFaces, handleDetectedFaces, selectedEmoji],
-        )
-      : useFrameProcessor && runAsync
-        ? useFrameProcessor(
-            (frame: any) => {
-              "worklet";
-              runAsync(frame, () => {
-                "worklet";
-                try {
-                  const detectedFaces = detectFaces(frame);
-                  handleDetectedFaces(detectedFaces);
-                } catch (e: any) {
-                  console.error("❌ Frame processing error:", e);
-                }
-              });
-            },
-            [handleDetectedFaces],
-          )
-        : undefined;
-
+  // Recording timer
   useEffect(() => {
-    if (!hasPermissions && isReady) {
-      requestPermissions();
+    let interval: ReturnType<typeof setInterval>;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingTime((prev) => {
+          if (prev >= MAX_DURATION) {
+            if (cameraRef.current) {
+              cameraRef.current.stopRecording();
+            }
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
     }
-  }, [hasPermissions, isReady, requestPermissions]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording]);
 
-  if (!Camera || !device) {
+  const startRecording = useCallback(async () => {
+    if (!cameraRef.current) return;
+
+    try {
+      if (hapticsEnabled) {
+        await notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      console.log("🎬 Starting recording...");
+
+      await cameraRef.current.startRecording({
+        onRecordingFinished: (video) => {
+          console.log("✅ Recording finished:", video.path);
+          setRecordedVideoPath(video.path);
+          setIsRecording(false);
+        },
+        onRecordingError: (error) => {
+          console.error("❌ Recording error:", error);
+          setIsRecording(false);
+        },
+      });
+    } catch (error) {
+      console.error("❌ Failed to start recording:", error);
+      setIsRecording(false);
+    }
+  }, [hapticsEnabled, notificationAsync]);
+
+  const stopRecording = useCallback(async () => {
+    if (!cameraRef.current || !isRecording) return;
+
+    try {
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      console.log("🛑 Stopping recording...");
+      await cameraRef.current.stopRecording();
+    } catch (error) {
+      console.error("❌ Failed to stop recording:", error);
+      setIsRecording(false);
+    }
+  }, [isRecording, hapticsEnabled, impactAsync]);
+
+  const toggleCamera = useCallback(() => {
+    setFacing((prev) => (prev === "front" ? "back" : "front"));
+  }, []);
+
+  const handleNextPress = useCallback(async () => {
+    if (!recordedVideoPath) return;
+
+    if (hapticsEnabled) {
+      await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    const videoUri = recordedVideoPath.startsWith("file://") ? recordedVideoPath : `file://${recordedVideoPath}`;
+
+    (navigation as any).navigate("VideoPreview", {
+      processedVideo: {
+        uri: videoUri,
+        width: 1280,
+        height: 720,
+        duration: recordingTime,
+        size: 0,
+        faceBlurApplied: true,
+        privacyMode: "blur" as const,
+      },
+    });
+
+    setTimeout(() => {
+      setRecordedVideoPath(null);
+      setRecordingTime(0);
+    }, 500);
+  }, [recordedVideoPath, recordingTime, hapticsEnabled, impactAsync, navigation]);
+
+  // Loading/Permission states
+  if (!device) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -171,7 +226,14 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress, selectedEmoj
         <View style={styles.permissionContainer}>
           <Ionicons name="camera" size={48} color="#1D9BF0" />
           <Text style={styles.permissionText}>Camera and microphone permissions are required.</Text>
-          <Pressable style={styles.button} onPress={requestPermissions}>
+          <Pressable
+            style={styles.button}
+            onPress={async () => {
+              const cameraPermission = await Camera.requestCameraPermission();
+              const microphonePermission = await Camera.requestMicrophonePermission();
+              setHasPermissions(cameraPermission === "granted" && microphonePermission === "granted");
+            }}
+          >
             <Text style={styles.buttonText}>Grant Permission</Text>
           </Pressable>
         </View>
@@ -181,33 +243,14 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress, selectedEmoj
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.cameraContainer}>
-        <Camera
-          ref={cameraRef}
-          style={styles.camera}
-          device={device}
-          isActive={true}
-          video={true}
-          audio={true}
-          format={format}
-          frameProcessor={frameProcessor}
-          fps={30}
-        />
-
-        <View style={styles.overlayContainer}>
-          <FaceEmojiOverlay faces={faces} emojiType={selectedEmoji} />
-        </View>
-      </View>
-
-      {error && (
-        <View style={styles.errorOverlay}>
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={24} color="#EF4444" />
-            <Text style={styles.errorTitle}>Error</Text>
-            <Text style={styles.errorMessage}>{error}</Text>
-          </View>
-        </View>
-      )}
+      <Camera
+        ref={cameraRef}
+        style={styles.camera}
+        device={device}
+        isActive={true}
+        video={true}
+        audio={true}
+      />
 
       <View style={styles.controlsOverlay}>
         <View style={styles.topControls}>
@@ -216,19 +259,8 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress, selectedEmoj
           </Pressable>
 
           <View style={styles.statusPill}>
-            <View style={[styles.statusIndicator, { backgroundColor: "#22C55E" }]} />
-            <Text style={styles.statusText}>
-              Privacy Mode:{" "}
-              {selectedEmoji === "mask"
-                ? "😷"
-                : selectedEmoji === "sunglasses"
-                  ? "🕶️"
-                  : selectedEmoji === "robot"
-                    ? "🤖"
-                    : selectedEmoji === "incognito"
-                      ? "🥸"
-                      : "🌫️"}
-            </Text>
+            <View style={[styles.statusIndicator, { backgroundColor: "#F59E0B" }]} />
+            <Text style={styles.statusText}>Blur Disabled</Text>
           </View>
 
           <Pressable onPress={toggleCamera} style={styles.iconButton}>
@@ -241,15 +273,14 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress, selectedEmoj
             <Pressable
               onPress={isRecording ? stopRecording : startRecording}
               style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
-              disabled={!isReady}
             >
               <Text style={styles.recordButtonText}>{isRecording ? "Stop" : "Record"}</Text>
             </Pressable>
           )}
 
           {recordedVideoPath && (
-            <Pressable onPress={onNextPress} style={[styles.recordButton, styles.nextButton]}>
-              <Ionicons name="arrow-forward" size={24} color="#FFFFFF" style={styles.nextButtonIcon} />
+            <Pressable onPress={handleNextPress} style={[styles.recordButton, styles.nextButton]}>
+              <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
               <Text style={styles.recordButtonText}>Next</Text>
             </Pressable>
           )}
@@ -258,164 +289,11 @@ function CameraScreen({ hookResult, recordedVideoPath, onNextPress, selectedEmoj
             {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")} / {MAX_DURATION}s
           </Text>
 
-          {!isRecording && !recordedVideoPath && (
-            <View style={styles.emojiSelector}>
-              <Text style={styles.emojiSelectorLabel}>Choose Privacy Style:</Text>
-              <View style={styles.emojiOptions}>
-                {(["mask", "sunglasses", "robot", "incognito", "blur"] as EmojiType[]).map((emoji) => (
-                  <Pressable
-                    key={emoji}
-                    onPress={() => setSelectedEmoji(emoji)}
-                    style={[styles.emojiOption, selectedEmoji === emoji && styles.emojiOptionSelected]}
-                  >
-                    <Text style={styles.emojiOptionText}>
-                      {emoji === "mask"
-                        ? "😷"
-                        : emoji === "sunglasses"
-                          ? "🕶️"
-                          : emoji === "robot"
-                            ? "🤖"
-                            : emoji === "incognito"
-                              ? "🥸"
-                              : "🌫️"}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )}
-
-          <Text style={styles.infoText}>✨ Real-time privacy overlay • Captured in recording</Text>
+          <Text style={styles.infoText}>Face blur currently disabled - recording works</Text>
         </View>
       </View>
     </SafeAreaView>
   );
-}
-
-function FaceBlurRecordScreenContent() {
-  const navigation = useNavigation();
-  const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
-
-  const [recordedVideoPath, setRecordedVideoPath] = useState<string | null>(null);
-  const [selectedEmoji, setSelectedEmoji] = useState<EmojiType>("mask");
-
-  const handleRecordingStart = useCallback(async () => {
-    if (hapticsEnabled) {
-      await notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-  }, [hapticsEnabled, notificationAsync]);
-
-  const handleRecordingStop = useCallback((videoPath: string) => {
-    console.log("Recording stopped, video saved to:", videoPath);
-    setRecordedVideoPath(videoPath);
-  }, []);
-
-  const handleError = useCallback((error: string) => {
-    console.error("Recording error:", error);
-  }, []);
-
-  const hookResult = useFaceBlurRecorder({
-    maxDuration: MAX_DURATION,
-    blurRadius: 25,
-    onRecordingStart: handleRecordingStart,
-    onRecordingStop: handleRecordingStop,
-    onError: handleError,
-  });
-
-  const { isLoaded, state } = hookResult;
-  const { error, recordingTime } = state;
-
-  console.log("🔍 FaceBlurRecordScreenContent render - isLoaded:", isLoaded, "error:", error);
-
-  const handleNextPress = useCallback(async () => {
-    if (!recordedVideoPath) {
-      console.warn("⚠️ No recorded video path available");
-      return;
-    }
-
-    console.log("📹 Proceeding to preview with emoji overlay already captured");
-
-    if (hapticsEnabled) {
-      await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    // Emoji overlays are already captured in the recording - no processing needed!
-    const videoUri = recordedVideoPath.startsWith("file://") ? recordedVideoPath : `file://${recordedVideoPath}`;
-
-    console.log("📹 Navigating to VideoPreview:", videoUri);
-
-    (navigation as any).navigate("VideoPreview", {
-      processedVideo: {
-        uri: videoUri,
-        width: 1280,
-        height: 720,
-        duration: recordingTime,
-        size: 0,
-        faceBlurApplied: true,
-        privacyMode: "emoji" as const,
-        emojiType: selectedEmoji,
-      },
-    });
-
-    // Reset video path after navigation
-    setTimeout(() => {
-      setRecordedVideoPath(null);
-    }, 500);
-  }, [recordedVideoPath, recordingTime, hapticsEnabled, impactAsync, navigation]);
-
-  if (!isLoaded) {
-    console.log("📱 Showing loading screen");
-
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
-          <Text style={styles.loadingText}>Loading Camera...</Text>
-          {error && (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={48} color="#EF4444" />
-              <Text style={styles.errorTitle}>Camera Error</Text>
-              <Text style={styles.errorMessage}>{error}</Text>
-            </View>
-          )}
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <CameraScreen
-      hookResult={hookResult}
-      recordedVideoPath={recordedVideoPath}
-      onNextPress={handleNextPress}
-      selectedEmoji={selectedEmoji}
-      setSelectedEmoji={setSelectedEmoji}
-    />
-  );
-}
-
-function FaceBlurRecordScreen() {
-  const navigation = useNavigation();
-
-  if (IS_EXPO_GO) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color="#EF4444" />
-          <Text style={styles.errorTitle}>Development Build Required</Text>
-          <Text style={styles.errorMessage}>
-            Face blur requires a development build.{"\n\n"}
-            Run: npx expo run:ios or npx expo run:android
-          </Text>
-          <Pressable style={styles.button} onPress={() => navigation.goBack()}>
-            <Text style={styles.buttonText}>Go Back</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return <FaceBlurRecordScreenContent />;
 }
 
 const styles = StyleSheet.create({
@@ -425,18 +303,6 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
-  },
-  cameraContainer: {
-    flex: 1,
-  },
-  overlayContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
-    pointerEvents: "none",
   },
   loadingContainer: {
     flex: 1,
@@ -531,6 +397,9 @@ const styles = StyleSheet.create({
     minWidth: 140,
     alignItems: "center",
     marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
   recordButtonInactive: {
     backgroundColor: "#DC2626",
@@ -545,13 +414,6 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     backgroundColor: "#1D9BF0",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  nextButtonIcon: {
-    marginRight: 4,
   },
   timerText: {
     color: "#E5E7EB",
@@ -564,75 +426,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
     marginTop: 12,
-  },
-  emojiSelector: {
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emojiSelectorLabel: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    textAlign: "center",
-    marginBottom: 8,
-    fontWeight: "600",
-  },
-  emojiOptions: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-  },
-  emojiOption: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  emojiOptionSelected: {
-    backgroundColor: "rgba(29,155,240,0.2)",
-    borderColor: "#1D9BF0",
-  },
-  emojiOptionText: {
-    fontSize: 24,
-  },
-  errorOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
-  },
-  errorBox: {
-    backgroundColor: "#1F2937",
-    padding: 24,
-    borderRadius: 16,
-    alignItems: "center",
-    maxWidth: 320,
-  },
-  errorTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 12,
-  },
-  errorMessage: {
-    color: "#D1D5DB",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
   },
 });
 

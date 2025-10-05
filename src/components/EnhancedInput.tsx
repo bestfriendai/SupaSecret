@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, forwardRef } from "react";
 import { View, Text, TextInput, Pressable, TextInputProps } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
@@ -28,6 +28,11 @@ interface EnhancedInputProps extends Omit<TextInputProps, "onChangeText" | "onBl
 }
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+const ForwardedText = forwardRef<Text, React.ComponentProps<typeof Text>>(
+  (props, ref) => <Text ref={ref} {...props} />
+);
+ForwardedText.displayName = 'ForwardedText';
+const AnimatedText = Animated.createAnimatedComponent(ForwardedText);
 
 export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   label,
@@ -134,10 +139,10 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
     <View className="mb-4">
       {/* Label */}
       {label && (
-        <Animated.Text style={labelStyle} className={`font-medium mb-2 ${sizeStyles.text}`}>
+        <AnimatedText style={labelStyle} className={`font-medium mb-2 ${sizeStyles.text}`}>
           {label}
           {required && <Text className="text-red-400 ml-1">*</Text>}
-        </Animated.Text>
+        </AnimatedText>
       )}
 
       {/* Input Container */}

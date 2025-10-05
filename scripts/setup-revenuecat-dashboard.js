@@ -5,19 +5,19 @@
  * Generates configuration data and instructions for setting up RevenueCat dashboard
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 // Colors for console output
 const colors = {
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  magenta: '\x1b[35m',
-  reset: '\x1b[0m',
-  bold: '\x1b[1m'
+  green: "\x1b[32m",
+  red: "\x1b[31m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  cyan: "\x1b[36m",
+  magenta: "\x1b[35m",
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
 };
 
 function log(message, color = colors.reset) {
@@ -29,14 +29,14 @@ const REVENUECAT_CONFIG = {
   app: {
     name: "Toxic Confessions",
     bundleId: "com.toxic.confessions",
-    packageName: "com.toxic.confessions"
+    packageName: "com.toxic.confessions",
   },
   entitlements: [
     {
       identifier: "supasecret_plus",
       name: "Premium Access",
-      description: "Full access to all premium features"
-    }
+      description: "Full access to all premium features",
+    },
   ],
   products: [
     {
@@ -55,8 +55,8 @@ const REVENUECAT_CONFIG = {
         "Advanced filters",
         "Priority processing",
         "Custom themes",
-        "Early access to new features"
-      ]
+        "Early access to new features",
+      ],
     },
     {
       identifier: "supasecret_plus_annual",
@@ -75,10 +75,10 @@ const REVENUECAT_CONFIG = {
         "Priority processing",
         "Custom themes",
         "Early access to new features",
-        "Save 50% compared to monthly"
+        "Save 50% compared to monthly",
       ],
-      popular: true
-    }
+      popular: true,
+    },
   ],
   offerings: [
     {
@@ -88,16 +88,16 @@ const REVENUECAT_CONFIG = {
       packages: [
         {
           identifier: "monthly",
-          productIdentifier: "supasecret_plus_monthly"
+          productIdentifier: "supasecret_plus_monthly",
         },
         {
           identifier: "annual",
           productIdentifier: "supasecret_plus_annual",
-          recommended: true
-        }
-      ]
-    }
-  ]
+          recommended: true,
+        },
+      ],
+    },
+  ],
 };
 
 function generateDashboardInstructions() {
@@ -120,7 +120,7 @@ function generateDashboardInstructions() {
     log(`   • Name: ${colors.green}${entitlement.name}${colors.reset}`);
     log(`   • Description: ${colors.green}${entitlement.description}${colors.reset}`);
   });
-  log('');
+  log("");
 
   // Products
   log(`${colors.bold}${colors.blue}3. Create Products${colors.reset}`);
@@ -131,11 +131,11 @@ function generateDashboardInstructions() {
     log(`   • Type: ${colors.green}${product.type}${colors.reset}`);
     log(`   • Price: ${colors.green}$${product.price} ${product.currency}${colors.reset}`);
     log(`   • Duration: ${colors.green}${product.duration}${colors.reset}`);
-    log(`   • Entitlements: ${colors.green}${product.entitlements.join(', ')}${colors.reset}`);
+    log(`   • Entitlements: ${colors.green}${product.entitlements.join(", ")}${colors.reset}`);
     if (product.popular) {
       log(`   • ${colors.magenta}⭐ Mark as Popular${colors.reset}`);
     }
-    log('');
+    log("");
   });
 
   // Offerings
@@ -146,36 +146,38 @@ function generateDashboardInstructions() {
     log(`   • Name: ${colors.green}${offering.name}${colors.reset}`);
     log(`   • Description: ${colors.green}${offering.description}${colors.reset}`);
     log(`   • Packages:`);
-    offering.packages.forEach(pkg => {
-      log(`     - ${colors.green}${pkg.identifier}${colors.reset} → ${colors.green}${pkg.productIdentifier}${colors.reset}${pkg.recommended ? ` ${colors.magenta}(Recommended)${colors.reset}` : ''}`);
+    offering.packages.forEach((pkg) => {
+      log(
+        `     - ${colors.green}${pkg.identifier}${colors.reset} → ${colors.green}${pkg.productIdentifier}${colors.reset}${pkg.recommended ? ` ${colors.magenta}(Recommended)${colors.reset}` : ""}`,
+      );
     });
   });
-  log('');
+  log("");
 
   // Store Setup
   log(`${colors.bold}${colors.blue}5. Store Configuration${colors.reset}`);
   log(`   ${colors.yellow}App Store Connect (iOS):${colors.reset}`);
   log(`   • Connect your App Store Connect account`);
   log(`   • Create subscription group: ${colors.green}supasecret_plus_group${colors.reset}`);
-  REVENUECAT_CONFIG.products.forEach(product => {
+  REVENUECAT_CONFIG.products.forEach((product) => {
     log(`   • Create subscription: ${colors.green}${product.identifier}${colors.reset} ($${product.price})`);
   });
-  log('');
-  
+  log("");
+
   log(`   ${colors.yellow}Google Play Console (Android):${colors.reset}`);
   log(`   • Connect your Google Play Console account`);
   log(`   • Create subscription group: ${colors.green}supasecret_plus_group${colors.reset}`);
-  REVENUECAT_CONFIG.products.forEach(product => {
+  REVENUECAT_CONFIG.products.forEach((product) => {
     log(`   • Create subscription: ${colors.green}${product.identifier}${colors.reset} ($${product.price})`);
   });
-  log('');
+  log("");
 
   // API Keys
   log(`${colors.bold}${colors.blue}6. API Keys${colors.reset}`);
   log(`   Your API keys are already configured in .env:`);
   log(`   • iOS: ${colors.green}appl_DOIFtYSbtSxeplMuPlcSNIEapYvOz${colors.reset}`);
   log(`   • Android: ${colors.green}goog_DOIFtYSbtSxeplMuPlcSNIEapYvOz${colors.reset}`);
-  log('');
+  log("");
 
   // Testing
   log(`${colors.bold}${colors.blue}7. Testing${colors.reset}`);
@@ -183,7 +185,7 @@ function generateDashboardInstructions() {
   log(`   • Create test accounts in App Store Connect and Google Play Console`);
   log(`   • Run: ${colors.green}npm run verify-revenuecat${colors.reset}`);
   log(`   • Test purchase flow in your app`);
-  log('');
+  log("");
 
   // Final Steps
   log(`${colors.bold}${colors.green}✅ Final Checklist${colors.reset}`);
@@ -196,7 +198,7 @@ function generateDashboardInstructions() {
   log(`   □ In-app purchases created in both stores`);
   log(`   □ Sandbox testing completed`);
   log(`   □ Production testing completed`);
-  log('');
+  log("");
 
   log(`${colors.bold}${colors.cyan}🎉 Your RevenueCat setup is ready!${colors.reset}`);
   log(`${colors.yellow}Next: Test your integration with sandbox accounts${colors.reset}`);
@@ -204,7 +206,7 @@ function generateDashboardInstructions() {
 
 function generateConfigurationFiles() {
   // Update dashboard config
-  const configPath = path.join(process.cwd(), 'setup/revenuecat-dashboard-config.json');
+  const configPath = path.join(process.cwd(), "setup/revenuecat-dashboard-config.json");
   fs.writeFileSync(configPath, JSON.stringify(REVENUECAT_CONFIG, null, 2));
   log(`${colors.green}✅ Updated: ${configPath}${colors.reset}`);
 
@@ -212,27 +214,27 @@ function generateConfigurationFiles() {
   const storeConfig = {
     ios: {
       bundleId: REVENUECAT_CONFIG.app.bundleId,
-      subscriptions: REVENUECAT_CONFIG.products.map(product => ({
+      subscriptions: REVENUECAT_CONFIG.products.map((product) => ({
         productId: product.identifier,
         name: product.name,
         price: `$${product.price}`,
         duration: product.duration,
-        subscriptionGroup: "supasecret_plus_group"
-      }))
+        subscriptionGroup: "supasecret_plus_group",
+      })),
     },
     android: {
       packageName: REVENUECAT_CONFIG.app.packageName,
-      subscriptions: REVENUECAT_CONFIG.products.map(product => ({
+      subscriptions: REVENUECAT_CONFIG.products.map((product) => ({
         productId: product.identifier,
         name: product.name,
         price: `$${product.price}`,
         duration: product.duration,
-        subscriptionGroup: "supasecret_plus_group"
-      }))
-    }
+        subscriptionGroup: "supasecret_plus_group",
+      })),
+    },
   };
 
-  const storeConfigPath = path.join(process.cwd(), 'setup/store-configuration.json');
+  const storeConfigPath = path.join(process.cwd(), "setup/store-configuration.json");
   fs.writeFileSync(storeConfigPath, JSON.stringify(storeConfig, null, 2));
   log(`${colors.green}✅ Generated: ${storeConfigPath}${colors.reset}`);
 }
@@ -240,12 +242,12 @@ function generateConfigurationFiles() {
 // Main execution
 if (require.main === module) {
   log(`${colors.bold}${colors.cyan}RevenueCat Dashboard Setup${colors.reset}\n`);
-  
+
   generateDashboardInstructions();
-  
+
   log(`\n${colors.bold}Generating configuration files...${colors.reset}`);
   generateConfigurationFiles();
-  
+
   log(`\n${colors.bold}${colors.green}Setup complete! 🎉${colors.reset}`);
   log(`Run ${colors.cyan}npm run verify-revenuecat${colors.reset} to verify your configuration.`);
 }

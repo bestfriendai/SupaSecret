@@ -176,7 +176,12 @@ export const Modal: React.FC<ModalProps> = ({
         <Animated.View style={[backdropStyle]} className="absolute inset-0 bg-black" />
 
         {/* Backdrop pressable */}
-        <Pressable className="flex-1" onPress={handleBackdropPress} accessibilityRole="button" accessibilityLabel="Close modal">
+        <Pressable
+          className="flex-1"
+          onPress={handleBackdropPress}
+          accessibilityRole="button"
+          accessibilityLabel="Close modal"
+        >
           <View className={cn("flex-1 px-6", positionStyles[position])}>
             {/* Modal content */}
             <Pressable onPress={(e) => e.stopPropagation()} className={cn("w-full", sizeStyles[size])}>
@@ -269,7 +274,12 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   return (
     <Modal visible={visible} onClose={onClose} animationType="scale" size="sm">
       <View className="items-center">
-        <View className={cn("w-16 h-16 rounded-full items-center justify-center mb-4", destructive ? "bg-red-500" : "bg-yellow-500")}>
+        <View
+          className={cn(
+            "w-16 h-16 rounded-full items-center justify-center mb-4",
+            destructive ? "bg-red-500" : "bg-yellow-500",
+          )}
+        >
           <Text className="text-white text-2xl">{destructive ? "⚠️" : "❓"}</Text>
         </View>
         <Text className="text-white text-lg font-semibold mb-2 text-center">{title}</Text>
@@ -284,7 +294,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             <Text className="text-white font-semibold text-center">{cancelText}</Text>
           </Pressable>
           <Pressable
-            className={cn("flex-1 py-3 px-4 rounded-full active:opacity-80", destructive ? "bg-red-600" : "bg-blue-500")}
+            className={cn(
+              "flex-1 py-3 px-4 rounded-full active:opacity-80",
+              destructive ? "bg-red-600" : "bg-blue-500",
+            )}
             onPress={handleConfirm}
             accessibilityRole="button"
             accessibilityLabel={confirmText}

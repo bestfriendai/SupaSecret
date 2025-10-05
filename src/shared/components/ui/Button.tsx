@@ -94,7 +94,13 @@ export const Button = React.forwardRef<View, ButtonProps>(
         accessibilityState={{ disabled: isDisabled, busy: loading }}
         {...pressableProps}
       >
-        {loading && <ActivityIndicator size="small" color={variant === "outline" || variant === "ghost" ? "#3B82F6" : "#FFFFFF"} className="mr-2" />}
+        {loading && (
+          <ActivityIndicator
+            size="small"
+            color={variant === "outline" || variant === "ghost" ? "#3B82F6" : "#FFFFFF"}
+            className="mr-2"
+          />
+        )}
 
         {!loading && leftIcon && <View className="mr-2">{leftIcon}</View>}
 
@@ -111,7 +117,9 @@ Button.displayName = "Button";
 // Preset button components
 export const PrimaryButton: React.FC<Omit<ButtonProps, "variant">> = (props) => <Button {...props} variant="primary" />;
 
-export const SecondaryButton: React.FC<Omit<ButtonProps, "variant">> = (props) => <Button {...props} variant="secondary" />;
+export const SecondaryButton: React.FC<Omit<ButtonProps, "variant">> = (props) => (
+  <Button {...props} variant="secondary" />
+);
 
 export const OutlineButton: React.FC<Omit<ButtonProps, "variant">> = (props) => <Button {...props} variant="outline" />;
 

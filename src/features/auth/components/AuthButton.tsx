@@ -55,23 +55,12 @@ export default function AuthButton({
   };
 
   return (
-    <Pressable
-      style={getButtonStyle()}
-      onPress={onPress}
-      disabled={disabled || loading}
-    >
+    <Pressable style={getButtonStyle()} onPress={onPress} disabled={disabled || loading}>
       {loading ? (
         <ActivityIndicator size="small" color={getTextColor()} />
       ) : (
         <>
-          {leftIcon && (
-            <Ionicons
-              name={leftIcon}
-              size={18}
-              color={getTextColor()}
-              style={{ marginRight: 8 }}
-            />
-          )}
+          {leftIcon && <Ionicons name={leftIcon} size={18} color={getTextColor()} style={{ marginRight: 8 }} />}
           <Text
             style={{
               color: getTextColor(),

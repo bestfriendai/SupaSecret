@@ -4,9 +4,9 @@
  * Provides state management and playback controls
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useVideoPlayer as useExpoVideoPlayer } from 'expo-video';
-import type { VideoPlayerState, VideoPlayerControls } from '../types';
+import { useState, useCallback, useEffect } from "react";
+import { useVideoPlayer as useExpoVideoPlayer } from "expo-video";
+import type { VideoPlayerState, VideoPlayerControls } from "../types";
 
 export interface UseVideoPlayerOptions {
   autoPlay?: boolean;
@@ -25,17 +25,8 @@ export interface UseVideoPlayerReturn {
 /**
  * Custom hook for video playback
  */
-export const useVideoPlayer = (
-  videoUri: string,
-  options: UseVideoPlayerOptions = {},
-): UseVideoPlayerReturn => {
-  const {
-    autoPlay = false,
-    loop = false,
-    muted = false,
-    onPlaybackStateChange,
-    onError,
-  } = options;
+export const useVideoPlayer = (videoUri: string, options: UseVideoPlayerOptions = {}): UseVideoPlayerReturn => {
+  const { autoPlay = false, loop = false, muted = false, onPlaybackStateChange, onError } = options;
 
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [isMuted, setIsMuted] = useState(muted);
@@ -49,7 +40,7 @@ export const useVideoPlayer = (
   // Create video player using expo-video
   const player = useExpoVideoPlayer(videoUri, (player) => {
     if (!player) {
-      const errorMsg = 'Failed to initialize video player';
+      const errorMsg = "Failed to initialize video player";
       setError(errorMsg);
       onError?.(errorMsg);
       return;

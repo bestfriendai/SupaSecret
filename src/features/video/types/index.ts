@@ -7,13 +7,13 @@
 // Core Video Types
 // ============================================
 
-export type VideoQuality = 'highest' | 'high' | 'medium' | 'low';
-export type VoiceEffect = 'none' | 'deep' | 'light';
-export type VideoFormat = 'mp4' | 'mov' | 'avi' | 'mkv' | 'm4v' | '3gp' | 'webm';
-export type ProcessingMode = 'local' | 'server' | 'hybrid';
-export type ContentType = 'thumbnail' | 'preview' | 'full';
-export type CameraFacing = 'front' | 'back';
-export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopped';
+export type VideoQuality = "highest" | "high" | "medium" | "low";
+export type VoiceEffect = "none" | "deep" | "light";
+export type VideoFormat = "mp4" | "mov" | "avi" | "mkv" | "m4v" | "3gp" | "webm";
+export type ProcessingMode = "local" | "server" | "hybrid";
+export type ContentType = "thumbnail" | "preview" | "full";
+export type CameraFacing = "front" | "back";
+export type RecordingState = "idle" | "recording" | "paused" | "stopped";
 
 // ============================================
 // Video Metadata
@@ -28,7 +28,7 @@ export interface VideoMetadata {
   bitrate?: number;
   framerate?: number;
   codec?: string;
-  orientation?: 'portrait' | 'landscape';
+  orientation?: "portrait" | "landscape";
   createdAt?: string;
 }
 
@@ -94,7 +94,7 @@ export interface VideoUploadOptions {
 
 export interface VideoUploadResult {
   uploadId: string;
-  status: 'uploading' | 'processing' | 'completed' | 'failed';
+  status: "uploading" | "processing" | "completed" | "failed";
   processedVideoUrl?: string;
   thumbnailUrl?: string;
   transcription?: string;
@@ -148,7 +148,7 @@ export interface VideoPlayerControls {
 
 export interface FaceBlurOptions {
   blurIntensity?: number; // 1-50, default 15
-  detectionMode?: 'fast' | 'accurate'; // default 'fast'
+  detectionMode?: "fast" | "accurate"; // default 'fast'
   onProgress?: (progress: number, status: string) => void;
 }
 
@@ -241,8 +241,8 @@ export interface CameraFormat {
 }
 
 export interface CameraPermissions {
-  camera: 'granted' | 'denied' | 'not-determined';
-  microphone: 'granted' | 'denied' | 'not-determined';
+  camera: "granted" | "denied" | "not-determined";
+  microphone: "granted" | "denied" | "not-determined";
 }
 
 // ============================================
@@ -264,7 +264,7 @@ export interface VideoProcessingJob {
   retries: number;
 }
 
-export type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+export type ProcessingStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
 
 export interface ProcessingProgress {
   jobId: string;
@@ -275,17 +275,17 @@ export interface ProcessingProgress {
 }
 
 export type ProcessingStage =
-  | 'initializing'
-  | 'downloading'
-  | 'processing'
-  | 'applying-effects'
-  | 'face-detection'
-  | 'face-blur'
-  | 'voice-processing'
-  | 'transcribing'
-  | 'generating-thumbnail'
-  | 'uploading'
-  | 'finalizing';
+  | "initializing"
+  | "downloading"
+  | "processing"
+  | "applying-effects"
+  | "face-detection"
+  | "face-blur"
+  | "voice-processing"
+  | "transcribing"
+  | "generating-thumbnail"
+  | "uploading"
+  | "finalizing";
 
 // ============================================
 // Error Types
@@ -298,25 +298,25 @@ export class VideoProcessingError extends Error {
     public originalError?: Error,
   ) {
     super(message);
-    this.name = 'VideoProcessingError';
+    this.name = "VideoProcessingError";
   }
 }
 
 export enum VideoProcessingErrorCode {
-  INVALID_INPUT = 'INVALID_INPUT',
-  FILE_NOT_FOUND = 'FILE_NOT_FOUND',
-  UNSUPPORTED_FORMAT = 'UNSUPPORTED_FORMAT',
-  SIZE_LIMIT_EXCEEDED = 'SIZE_LIMIT_EXCEEDED',
-  PROCESSING_FAILED = 'PROCESSING_FAILED',
-  FACE_DETECTION_FAILED = 'FACE_DETECTION_FAILED',
-  VOICE_PROCESSING_FAILED = 'VOICE_PROCESSING_FAILED',
-  TRANSCRIPTION_FAILED = 'TRANSCRIPTION_FAILED',
-  UPLOAD_FAILED = 'UPLOAD_FAILED',
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  PERMISSION_DENIED = 'PERMISSION_DENIED',
-  TIMEOUT = 'TIMEOUT',
-  CANCELLED = 'CANCELLED',
-  UNKNOWN = 'UNKNOWN',
+  INVALID_INPUT = "INVALID_INPUT",
+  FILE_NOT_FOUND = "FILE_NOT_FOUND",
+  UNSUPPORTED_FORMAT = "UNSUPPORTED_FORMAT",
+  SIZE_LIMIT_EXCEEDED = "SIZE_LIMIT_EXCEEDED",
+  PROCESSING_FAILED = "PROCESSING_FAILED",
+  FACE_DETECTION_FAILED = "FACE_DETECTION_FAILED",
+  VOICE_PROCESSING_FAILED = "VOICE_PROCESSING_FAILED",
+  TRANSCRIPTION_FAILED = "TRANSCRIPTION_FAILED",
+  UPLOAD_FAILED = "UPLOAD_FAILED",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  PERMISSION_DENIED = "PERMISSION_DENIED",
+  TIMEOUT = "TIMEOUT",
+  CANCELLED = "CANCELLED",
+  UNKNOWN = "UNKNOWN",
 }
 
 export class VideoRecordingError extends Error {
@@ -325,18 +325,18 @@ export class VideoRecordingError extends Error {
     public code: VideoRecordingErrorCode,
   ) {
     super(message);
-    this.name = 'VideoRecordingError';
+    this.name = "VideoRecordingError";
   }
 }
 
 export enum VideoRecordingErrorCode {
-  CAMERA_NOT_AVAILABLE = 'CAMERA_NOT_AVAILABLE',
-  MICROPHONE_NOT_AVAILABLE = 'MICROPHONE_NOT_AVAILABLE',
-  PERMISSION_DENIED = 'PERMISSION_DENIED',
-  RECORDING_FAILED = 'RECORDING_FAILED',
-  SAVE_FAILED = 'SAVE_FAILED',
-  INVALID_STATE = 'INVALID_STATE',
-  UNKNOWN = 'UNKNOWN',
+  CAMERA_NOT_AVAILABLE = "CAMERA_NOT_AVAILABLE",
+  MICROPHONE_NOT_AVAILABLE = "MICROPHONE_NOT_AVAILABLE",
+  PERMISSION_DENIED = "PERMISSION_DENIED",
+  RECORDING_FAILED = "RECORDING_FAILED",
+  SAVE_FAILED = "SAVE_FAILED",
+  INVALID_STATE = "INVALID_STATE",
+  UNKNOWN = "UNKNOWN",
 }
 
 // ============================================
@@ -392,25 +392,25 @@ export interface ProcessingStats {
 // ============================================
 
 export function isVideoQuality(value: unknown): value is VideoQuality {
-  return typeof value === 'string' && ['highest', 'high', 'medium', 'low'].includes(value);
+  return typeof value === "string" && ["highest", "high", "medium", "low"].includes(value);
 }
 
 export function isVoiceEffect(value: unknown): value is VoiceEffect {
-  return typeof value === 'string' && ['none', 'deep', 'light'].includes(value);
+  return typeof value === "string" && ["none", "deep", "light"].includes(value);
 }
 
 export function isVideoFormat(value: unknown): value is VideoFormat {
-  return typeof value === 'string' && ['mp4', 'mov', 'avi', 'mkv', 'm4v', '3gp', 'webm'].includes(value);
+  return typeof value === "string" && ["mp4", "mov", "avi", "mkv", "m4v", "3gp", "webm"].includes(value);
 }
 
 export function isProcessedVideo(value: unknown): value is ProcessedVideo {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== "object") return false;
   const v = value as Partial<ProcessedVideo>;
-  return typeof v?.uri === 'string' && typeof v?.duration === 'number';
+  return typeof v?.uri === "string" && typeof v?.duration === "number";
 }
 
 export function isCameraFacing(value: unknown): value is CameraFacing {
-  return typeof value === 'string' && ['front', 'back'].includes(value);
+  return typeof value === "string" && ["front", "back"].includes(value);
 }
 
 // ============================================
@@ -420,9 +420,9 @@ export function isCameraFacing(value: unknown): value is CameraFacing {
 export const VIDEO_CONSTANTS = {
   MAX_DURATION: 60, // seconds
   MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
-  DEFAULT_QUALITY: 'medium' as VideoQuality,
+  DEFAULT_QUALITY: "medium" as VideoQuality,
   DEFAULT_BLUR_INTENSITY: 15,
-  DEFAULT_VOICE_EFFECT: 'deep' as VoiceEffect,
+  DEFAULT_VOICE_EFFECT: "deep" as VoiceEffect,
   POLL_INTERVAL: 5000, // 5 seconds
   MAX_RETRIES: 60, // 5 minutes with 5-second intervals
 } as const;

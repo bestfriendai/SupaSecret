@@ -46,10 +46,7 @@ export type TabRoutes = {
 /**
  * All Routes (Combined)
  */
-export type AllRoutes =
-  | keyof RootRoutes
-  | `(auth)/${keyof AuthRoutes}`
-  | `(tabs)/${keyof TabRoutes}`;
+export type AllRoutes = keyof RootRoutes | `(auth)/${keyof AuthRoutes}` | `(tabs)/${keyof TabRoutes}`;
 
 /**
  * Route Parameter Types
@@ -80,11 +77,11 @@ export interface NavigationState {
   key: string;
   index: number;
   routeNames: string[];
-  routes: Array<{
+  routes: {
     key: string;
     name: string;
     params?: RouteParams;
-  }>;
+  }[];
 }
 
 /**

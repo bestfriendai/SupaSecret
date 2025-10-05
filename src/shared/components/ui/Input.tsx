@@ -11,6 +11,11 @@ import Animated, {
 import { cn } from "../../../utils/cn";
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+const ForwardedText = forwardRef<Text, React.ComponentProps<typeof Text>>(
+  (props, ref) => <Text ref={ref} {...props} />
+);
+ForwardedText.displayName = 'ForwardedText';
+const AnimatedText = Animated.createAnimatedComponent(ForwardedText);
 
 export interface InputProps extends Omit<TextInputProps, "onChangeText" | "onBlur" | "onFocus"> {
   label?: string;
@@ -145,10 +150,10 @@ export const Input = forwardRef<TextInput, InputProps>(
       <View className={cn("mb-4", containerClassName)}>
         {/* Label */}
         {label && (
-          <Animated.Text style={labelStyle} className={cn("font-medium mb-2", sizeStyles[size].text, labelClassName)}>
+          <AnimatedText style={labelStyle} className={cn("font-medium mb-2", sizeStyles[size].text, labelClassName)}>
             {label}
             {required && <Text className="text-red-400 ml-1">*</Text>}
-          </Animated.Text>
+          </AnimatedText>
         )}
 
         {/* Input Container */}
@@ -234,17 +239,9 @@ export const Input = forwardRef<TextInput, InputProps>(
 Input.displayName = "Input";
 
 // Preset input components
-export const EmailInput = forwardRef<TextInput, Omit<InputProps, "keyboardType" | "autoCapitalize">>(
-  (props, ref) => (
-    <Input
-      ref={ref}
-      {...props}
-      keyboardType="email-address"
-      autoCapitalize="none"
-      autoCorrect={false}
-    />
-  ),
-);
+export const EmailInput = forwardRef<TextInput, Omit<InputProps, "keyboardType" | "autoCapitalize">>((props, ref) => (
+  <Input ref={ref} {...props} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+));
 
 EmailInput.displayName = "EmailInput";
 
@@ -255,9 +252,7 @@ export const PasswordInput = forwardRef<TextInput, Omit<InputProps, "secureTextE
     <Input
       ref={ref}
       {...props}
-      rightIcon={
-        <Text className="text-gray-400 text-lg">{isSecure ? "👁" : "👁‍🗨"}</Text>
-      }
+      rightIcon={<Text className="text-gray-400 text-lg">{isSecure ? "👁" : "👁‍🗨"}</Text>}
       onRightIconPress={() => setIsSecure(!isSecure)}
       secureTextEntry={isSecure}
       autoCapitalize="none"

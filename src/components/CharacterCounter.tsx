@@ -1,4 +1,4 @@
-import React from "react";
+import React, { forwardRef } from "react";
 import { View, Text } from "react-native";
 import Animated, {
   useSharedValue,
@@ -8,6 +8,12 @@ import Animated, {
   useDerivedValue,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+
+const ForwardedText = forwardRef<Text, React.ComponentProps<typeof Text>>(
+  (props, ref) => <Text ref={ref} {...props} />
+);
+ForwardedText.displayName = 'ForwardedText';
+const AnimatedText = Animated.createAnimatedComponent(ForwardedText);
 
 interface CharacterCounterProps {
   currentLength: number;
@@ -142,15 +148,15 @@ export default function CharacterCounter({
           )}
 
           {warningMessage && (
-            <Animated.Text style={textStyle} className="text-13 font-medium">
+            <AnimatedText style={textStyle} className="text-13 font-medium">
               {warningMessage}
-            </Animated.Text>
+            </AnimatedText>
           )}
         </View>
 
-        <Animated.Text style={textStyle} className="text-13 font-mono">
+        <AnimatedText style={textStyle} className="text-13 font-mono">
           {currentLength}/{maxLength}
-        </Animated.Text>
+        </AnimatedText>
       </View>
     </View>
   );

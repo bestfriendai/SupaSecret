@@ -20,7 +20,7 @@ describe("Button", () => {
     const { getByText } = render(
       <Button onPress={onPressMock} disabled>
         Press me
-      </Button>
+      </Button>,
     );
     fireEvent.press(getByText("Press me"));
     expect(onPressMock).not.toHaveBeenCalled();
@@ -54,7 +54,7 @@ describe("Button", () => {
     const { getByText } = render(
       <Button leftIcon="heart" rightIcon="arrow-forward">
         With Icons
-      </Button>
+      </Button>,
     );
     expect(getByText("With Icons")).toBeTruthy();
     // Icons are rendered via Ionicons, which might need mocking

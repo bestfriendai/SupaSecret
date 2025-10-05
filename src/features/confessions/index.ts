@@ -1,9 +1,9 @@
 // Types
-export * from './types/confession.types';
+export * from "./types/confession.types";
 
 // Services
-export { confessionService } from './services/confessionService';
-export { confessionRepository } from './services/confessionRepository';
+export { confessionService } from "./services/confessionService";
+export { confessionRepository } from "./services/confessionRepository";
 
 // Hooks
 export {
@@ -17,10 +17,10 @@ export {
   useUserPreferences,
   useUpdateUserPreferences,
   confessionKeys,
-} from './hooks/useConfessions';
+} from "./hooks/useConfessions";
 
 // Components
-export { ConfessionCard } from './components/ConfessionCard';
-export { ConfessionList } from './components/ConfessionList';
-export { ConfessionForm } from './components/ConfessionForm';
-export { ConfessionSkeleton } from './components/ConfessionSkeleton';
+export { ConfessionCard } from "./components/ConfessionCard";
+export { ConfessionList } from "./components/ConfessionList";
+export { ConfessionForm } from "./components/ConfessionForm";
+export { ConfessionSkeleton } from "./components/ConfessionSkeleton";

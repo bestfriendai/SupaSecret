@@ -4,14 +4,10 @@
  * Handles camera setup, permissions, and recording state
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Alert } from 'react-native';
-import type {
-  VideoRecordingOptions,
-  VideoRecordingState,
-  CameraPermissions,
-} from '../types';
-import { VIDEO_CONSTANTS } from '../types';
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Alert } from "react-native";
+import type { VideoRecordingOptions, VideoRecordingState, CameraPermissions } from "../types";
+import { VIDEO_CONSTANTS } from "../types";
 
 const IS_EXPO_GO = !!(global as any).__expo?.isExpoGo;
 
@@ -22,17 +18,17 @@ let useCameraPermission: any;
 
 const loadVisionCamera = async () => {
   if (IS_EXPO_GO) {
-    throw new Error('Vision Camera not available in Expo Go');
+    throw new Error("Vision Camera not available in Expo Go");
   }
 
   try {
-    const visionCamera = await import('react-native-vision-camera');
+    const visionCamera = await import("react-native-vision-camera");
     Camera = visionCamera.Camera;
     useCameraDevice = visionCamera.useCameraDevice;
     useCameraPermission = visionCamera.useCameraPermission;
     return true;
   } catch (error) {
-    console.error('Failed to load Vision Camera:', error);
+    console.error("Failed to load Vision Camera:", error);
     return false;
   }
 };
@@ -51,14 +47,12 @@ export interface UseVideoRecordingReturn {
 /**
  * Custom hook for video recording
  */
-export const useVideoRecording = (
-  options: VideoRecordingOptions = {},
-): UseVideoRecordingReturn => {
+export const useVideoRecording = (options: VideoRecordingOptions = {}): UseVideoRecordingReturn => {
   const {
     maxDuration = VIDEO_CONSTANTS.MAX_DURATION,
     enableFaceBlur = false,
     blurIntensity = VIDEO_CONSTANTS.DEFAULT_BLUR_INTENSITY,
-    facing: initialFacing = 'front',
+    facing: initialFacing = "front",
     enableAudio = true,
     onRecordingStart,
     onRecordingStop,
@@ -88,7 +82,7 @@ export const useVideoRecording = (
           setIsVisionCameraLoaded(true);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to initialize Vision Camera';
+        const errorMessage = error instanceof Error ? error.message : "Failed to initialize Vision Camera";
         setError(errorMessage);
         onError?.(errorMessage);
       }
@@ -104,7 +98,7 @@ export const useVideoRecording = (
         const device = useCameraDevice(facing);
         setCameraDevice(device);
       } catch (error) {
-        console.error('Failed to get camera device:', error);
+        console.error("Failed to get camera device:", error);
       }
     }
   }, [isVisionCameraLoaded, facing]);
@@ -138,7 +132,7 @@ export const useVideoRecording = (
   // Request permissions
   const requestPermissions = useCallback(async (): Promise<boolean> => {
     if (!isVisionCameraLoaded || !Camera) {
-      setError('Vision Camera not loaded');
+      setError("Vision Camera not loaded");
       return false;
     }
 
@@ -146,17 +140,17 @@ export const useVideoRecording = (
       const cameraPermission = await Camera.requestCameraPermission();
       const microphonePermission = await Camera.requestMicrophonePermission();
 
-      const granted = cameraPermission === 'granted' && microphonePermission === 'granted';
+      const granted = cameraPermission === "granted" && microphonePermission === "granted";
       setHasPermissions(granted);
 
       if (!granted) {
-        Alert.alert('Permissions Required', 'Camera and microphone permissions are required to record videos.');
+        Alert.alert("Permissions Required", "Camera and microphone permissions are required to record videos.");
       }
 
       return granted;
     } catch (error) {
-      console.error('Permission request failed:', error);
-      setError('Failed to request permissions');
+      console.error("Permission request failed:", error);
+      setError("Failed to request permissions");
       return false;
     }
   }, [isVisionCameraLoaded]);
@@ -181,29 +175,29 @@ export const useVideoRecording = (
 
       onRecordingStart?.();
 
-      console.log('Starting Vision Camera recording...');
+      console.log("Starting Vision Camera recording...");
 
       await cameraRef.current.startRecording({
         onRecordingFinished: (video: any) => {
-          console.log('Recording finished:', video.path);
+          console.log("Recording finished:", video.path);
           isRecordingRef.current = false;
           setIsRecording(false);
           setRecordingTime(0);
           onRecordingStop?.(video.path);
         },
         onRecordingError: (error: any) => {
-          console.error('Recording error:', error);
+          console.error("Recording error:", error);
           isRecordingRef.current = false;
           setIsRecording(false);
           setRecordingTime(0);
-          const errorMessage = error?.message || 'Recording failed';
+          const errorMessage = error?.message || "Recording failed";
           setError(errorMessage);
           onError?.(errorMessage);
         },
       });
     } catch (error) {
-      console.error('Failed to start recording:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to start recording';
+      console.error("Failed to start recording:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to start recording";
       setError(errorMessage);
       onError?.(errorMessage);
       isRecordingRef.current = false;
@@ -218,11 +212,11 @@ export const useVideoRecording = (
     }
 
     try {
-      console.log('Stopping Vision Camera recording...');
+      console.log("Stopping Vision Camera recording...");
       await cameraRef.current.stopRecording();
     } catch (error) {
-      console.error('Failed to stop recording:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to stop recording';
+      console.error("Failed to stop recording:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to stop recording";
       setError(errorMessage);
       onError?.(errorMessage);
     }
@@ -230,7 +224,7 @@ export const useVideoRecording = (
 
   // Toggle camera
   const toggleCamera = useCallback(() => {
-    setFacing((prev) => (prev === 'front' ? 'back' : 'front'));
+    setFacing((prev) => (prev === "front" ? "back" : "front"));
   }, []);
 
   const state: VideoRecordingState = {

@@ -3,10 +3,10 @@
  * Displays ads within list/feed items at regular intervals
  */
 
-import React, { memo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { BannerAdComponent } from './BannerAd';
-import type { FeedAdProps, AdConfig } from '../types';
+import React, { memo } from "react";
+import { View, StyleSheet } from "react-native";
+import { BannerAdComponent } from "./BannerAd";
+import type { FeedAdProps, AdConfig } from "../types";
 
 interface FeedAdComponentProps extends FeedAdProps {
   config: AdConfig;
@@ -19,7 +19,7 @@ interface FeedAdComponentProps extends FeedAdProps {
  * Shows ads at specified intervals in a feed
  */
 export const FeedAdComponent: React.FC<FeedAdComponentProps> = memo(
-  ({ index, interval = 5, placement = 'home-feed', size = 'medium', config, isPremium, hasConsent }) => {
+  ({ index, interval = 5, placement = "home-feed", size = "medium", config, isPremium, hasConsent }) => {
     // Don't show ads for premium users
     if (isPremium) return null;
 
@@ -44,14 +44,14 @@ export const FeedAdComponent: React.FC<FeedAdComponentProps> = memo(
         />
       </View>
     );
-  }
+  },
 );
 
-FeedAdComponent.displayName = 'FeedAdComponent';
+FeedAdComponent.displayName = "FeedAdComponent";
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     marginVertical: 8,
     borderRadius: 12,
     padding: 16,

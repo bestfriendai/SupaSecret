@@ -4,8 +4,8 @@
  * Uses latest expo-video and react-native-vision-camera APIs
  */
 
-import * as FileSystem from '../../../utils/legacyFileSystem';
-import { Platform } from 'react-native';
+import * as FileSystem from "../../../utils/legacyFileSystem";
+import { Platform } from "react-native";
 import type {
   VideoRecordingOptions,
   VideoRecordingState,
@@ -16,7 +16,7 @@ import type {
   CameraPermissions,
   VideoRecordingError,
   VideoRecordingErrorCode,
-} from '../types';
+} from "../types";
 
 // Lazy load native modules to prevent crashes in Expo Go
 let Camera: any;
@@ -30,18 +30,18 @@ const IS_EXPO_GO = !!(global as any).__expo?.isExpoGo;
  */
 const loadVisionCamera = async () => {
   if (IS_EXPO_GO) {
-    throw new Error('Vision Camera not available in Expo Go. Please use a development build.');
+    throw new Error("Vision Camera not available in Expo Go. Please use a development build.");
   }
 
   try {
-    const visionCamera = await import('react-native-vision-camera');
+    const visionCamera = await import("react-native-vision-camera");
     Camera = visionCamera.Camera;
     useCameraDevice = visionCamera.useCameraDevice;
     useCameraPermission = visionCamera.useCameraPermission;
     return true;
   } catch (error) {
-    console.error('Failed to load Vision Camera:', error);
-    throw new Error('Vision Camera is not available. Please ensure react-native-vision-camera is installed.');
+    console.error("Failed to load Vision Camera:", error);
+    throw new Error("Vision Camera is not available. Please ensure react-native-vision-camera is installed.");
   }
 };
 
@@ -56,7 +56,7 @@ export class VideoService {
     recordingTime: 0,
     hasPermissions: false,
     isReady: false,
-    facing: 'front',
+    facing: "front",
   };
 
   /**
@@ -72,7 +72,7 @@ export class VideoService {
       this.isInitialized = true;
       this.recordingState.isReady = true;
     } catch (error) {
-      console.error('Video service initialization failed:', error);
+      console.error("Video service initialization failed:", error);
       throw error;
     }
   }
@@ -83,8 +83,8 @@ export class VideoService {
   async requestPermissions(): Promise<CameraPermissions> {
     if (IS_EXPO_GO) {
       return {
-        camera: 'denied',
-        microphone: 'denied',
+        camera: "denied",
+        microphone: "denied",
       };
     }
 
@@ -101,15 +101,14 @@ export class VideoService {
         microphone: microphonePermission as any,
       };
 
-      this.recordingState.hasPermissions =
-        permissions.camera === 'granted' && permissions.microphone === 'granted';
+      this.recordingState.hasPermissions = permissions.camera === "granted" && permissions.microphone === "granted";
 
       return permissions;
     } catch (error) {
-      console.error('Permission request failed:', error);
+      console.error("Permission request failed:", error);
       return {
-        camera: 'denied',
-        microphone: 'denied',
+        camera: "denied",
+        microphone: "denied",
       };
     }
   }
@@ -146,7 +145,7 @@ export class VideoService {
       const fileInfo = await FileSystem.getInfoAsync(videoUri);
 
       if (!fileInfo.exists) {
-        throw new Error('Video file does not exist');
+        throw new Error("Video file does not exist");
       }
 
       // Basic metadata - duration would need expo-av or native module
@@ -158,7 +157,7 @@ export class VideoService {
         format: this.getVideoFormat(videoUri),
       };
     } catch (error) {
-      console.error('Failed to get video metadata:', error);
+      console.error("Failed to get video metadata:", error);
       throw error;
     }
   }
@@ -167,9 +166,9 @@ export class VideoService {
    * Extract video format from URI
    */
   private getVideoFormat(uri: string): VideoFormat {
-    const extension = uri.split('.').pop()?.toLowerCase() || 'mp4';
-    const validFormats: VideoFormat[] = ['mp4', 'mov', 'avi', 'mkv', 'm4v', '3gp', 'webm'];
-    return validFormats.includes(extension as VideoFormat) ? (extension as VideoFormat) : 'mp4';
+    const extension = uri.split(".").pop()?.toLowerCase() || "mp4";
+    const validFormats: VideoFormat[] = ["mp4", "mov", "avi", "mkv", "m4v", "3gp", "webm"];
+    return validFormats.includes(extension as VideoFormat) ? (extension as VideoFormat) : "mp4";
   }
 
   /**
@@ -180,7 +179,7 @@ export class VideoService {
       const fileInfo = await FileSystem.getInfoAsync(videoUri);
 
       if (!fileInfo.exists) {
-        throw new Error('Video file does not exist');
+        throw new Error("Video file does not exist");
       }
 
       if (fileInfo.size && fileInfo.size > maxSize) {
@@ -189,7 +188,7 @@ export class VideoService {
 
       return true;
     } catch (error) {
-      console.error('Video validation failed:', error);
+      console.error("Video validation failed:", error);
       return false;
     }
   }
@@ -197,11 +196,7 @@ export class VideoService {
   /**
    * Create a processed video object
    */
-  createProcessedVideo(
-    uri: string,
-    options: VideoProcessingOptions = {},
-    metadata?: VideoMetadata,
-  ): ProcessedVideo {
+  createProcessedVideo(uri: string, options: VideoProcessingOptions = {}, metadata?: VideoMetadata): ProcessedVideo {
     return {
       uri,
       duration: metadata?.duration || 0,
@@ -218,10 +213,10 @@ export class VideoService {
     try {
       // This would use expo-video-thumbnails or a native implementation
       // For now, return a placeholder or the video URI
-      console.log('Thumbnail generation not implemented, returning video URI');
+      console.log("Thumbnail generation not implemented, returning video URI");
       return videoUri;
     } catch (error) {
-      console.error('Thumbnail generation failed:', error);
+      console.error("Thumbnail generation failed:", error);
       return videoUri;
     }
   }
@@ -241,7 +236,7 @@ export class VideoService {
 
       return cacheUri;
     } catch (error) {
-      console.error('Failed to copy video to cache:', error);
+      console.error("Failed to copy video to cache:", error);
       throw error;
     }
   }
@@ -256,7 +251,7 @@ export class VideoService {
         await FileSystem.deleteAsync(videoUri);
       }
     } catch (error) {
-      console.error('Failed to delete video:', error);
+      console.error("Failed to delete video:", error);
     }
   }
 
@@ -267,8 +262,8 @@ export class VideoService {
     try {
       if (FileSystem.cacheDirectory) {
         const files = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory);
-        const videoFiles = files.filter((file) =>
-          file.endsWith('.mp4') || file.endsWith('.mov') || file.endsWith('.m4v')
+        const videoFiles = files.filter(
+          (file) => file.endsWith(".mp4") || file.endsWith(".mov") || file.endsWith(".m4v"),
         );
 
         for (const file of videoFiles) {
@@ -277,7 +272,7 @@ export class VideoService {
         }
       }
     } catch (error) {
-      console.error('Failed to clear cache:', error);
+      console.error("Failed to clear cache:", error);
     }
   }
 
@@ -292,7 +287,7 @@ export class VideoService {
       let totalSize = 0;
 
       for (const file of files) {
-        if (file.endsWith('.mp4') || file.endsWith('.mov') || file.endsWith('.m4v')) {
+        if (file.endsWith(".mp4") || file.endsWith(".mov") || file.endsWith(".m4v")) {
           const uri = `${FileSystem.cacheDirectory}${file}`;
           const info = await FileSystem.getInfoAsync(uri);
           if (info.exists && info.size) {
@@ -303,7 +298,7 @@ export class VideoService {
 
       return totalSize;
     } catch (error) {
-      console.error('Failed to get cache size:', error);
+      console.error("Failed to get cache size:", error);
       return 0;
     }
   }
@@ -313,7 +308,7 @@ export class VideoService {
    */
   createRecordingError(message: string, code: VideoRecordingErrorCode): VideoRecordingError {
     const error = new Error(message) as VideoRecordingError;
-    error.name = 'VideoRecordingError';
+    error.name = "VideoRecordingError";
     error.code = code;
     return error;
   }
@@ -327,7 +322,7 @@ export class VideoService {
       recordingTime: 0,
       hasPermissions: false,
       isReady: this.isInitialized,
-      facing: 'front',
+      facing: "front",
     };
   }
 }

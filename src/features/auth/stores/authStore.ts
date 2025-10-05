@@ -3,12 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import {
-  User,
-  AuthCredentials,
-  SignUpData,
-  AuthState,
-} from "../types/auth.types";
+import { User, AuthCredentials, SignUpData, AuthState } from "../types/auth.types";
 import {
   signUpUser,
   signInUser,
@@ -345,7 +340,7 @@ export const useAuthStore = create<AuthStore>()(
             } finally {
               authCheckInFlight = null;
             }
-          })()
+          })(),
         );
 
         return authCheckInFlight;
@@ -427,6 +422,6 @@ export const useAuthStore = create<AuthStore>()(
           }
         }
       },
-    }
-  )
+    },
+  ),
 );

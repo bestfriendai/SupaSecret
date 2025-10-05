@@ -6,11 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGlobalVideoStore } from "../../src/state/globalVideoStore";
 import AppHeader from "../../src/components/AppHeader";
 
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof Ionicons>["name"];
-  color: string;
-  focused: boolean;
-}) {
+function TabBarIcon(props: { name: React.ComponentProps<typeof Ionicons>["name"]; color: string; focused: boolean }) {
   return <Ionicons name={props.name} size={24} color={props.color} />;
 }
 

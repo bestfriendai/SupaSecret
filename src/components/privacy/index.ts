@@ -1,1 +1,1 @@
-export { FaceEmojiOverlay, type EmojiType } from './FaceEmojiOverlay';
+export { FaceEmojiOverlay, type EmojiType } from "./FaceEmojiOverlay";

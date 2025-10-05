@@ -2,11 +2,11 @@
  * Ad Types and Interfaces
  */
 
-export type AdPlacement = 'home-feed' | 'video-feed' | 'profile' | 'post-creation' | 'settings';
+export type AdPlacement = "home-feed" | "video-feed" | "profile" | "post-creation" | "settings";
 
-export type AdSize = 'banner' | 'medium' | 'large' | 'full-banner' | 'leaderboard';
+export type AdSize = "banner" | "medium" | "large" | "full-banner" | "leaderboard";
 
-export type AdType = 'banner' | 'interstitial' | 'rewarded';
+export type AdType = "banner" | "interstitial" | "rewarded";
 
 export interface AdConfig {
   enabled: boolean;
@@ -35,7 +35,7 @@ export interface AdRequestOptions {
   requestNonPersonalizedAdsOnly?: boolean;
   tagForChildDirectedTreatment?: boolean;
   tagForUnderAgeOfConsent?: boolean;
-  maxAdContentRating?: 'G' | 'PG' | 'T' | 'MA';
+  maxAdContentRating?: "G" | "PG" | "T" | "MA";
 }
 
 export interface BannerAdProps {
@@ -94,15 +94,15 @@ export interface AdError {
 // Test ad unit IDs from Google
 export const TEST_AD_UNITS = {
   banner: {
-    ios: 'ca-app-pub-3940256099942544/2934735716',
-    android: 'ca-app-pub-3940256099942544/6300978111',
+    ios: "ca-app-pub-3940256099942544/2934735716",
+    android: "ca-app-pub-3940256099942544/6300978111",
   },
   interstitial: {
-    ios: 'ca-app-pub-3940256099942544/4411468910',
-    android: 'ca-app-pub-3940256099942544/1033173712',
+    ios: "ca-app-pub-3940256099942544/4411468910",
+    android: "ca-app-pub-3940256099942544/1033173712",
   },
   rewarded: {
-    ios: 'ca-app-pub-3940256099942544/1712485313',
-    android: 'ca-app-pub-3940256099942544/5224354917',
+    ios: "ca-app-pub-3940256099942544/1712485313",
+    android: "ca-app-pub-3940256099942544/5224354917",
   },
 } as const;

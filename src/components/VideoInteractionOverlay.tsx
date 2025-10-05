@@ -70,13 +70,13 @@ export default function VideoInteractionOverlay({
   const user = useAuthStore((state) => state.user);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
   const confessions = useConfessionStore((state) => state.confessions);
-  
+
   // Use useMemo to create stable reference and prevent infinite loops
   const currentConfession = useMemo(
     () => confessions.find((c) => c.id === confession.id),
-    [confessions, confession.id]
+    [confessions, confession.id],
   );
-  
+
   const { isSaved: checkIsSaved, saveConfession, unsaveConfession } = useSavedStore();
   const getReplies = useReplyStore((state) => state.getRepliesForConfession);
   const subscribeToReplies = useReplyStore((state) => state.subscribeToReplies);

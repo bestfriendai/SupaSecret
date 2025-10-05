@@ -1,8 +1,13 @@
-import "react-native-gesture-handler";
-import "react-native-reanimated";
+console.log("[DIAG] App.tsx: Module loading started...");
 import React, { useEffect, useState } from "react";
+console.log("[DIAG] App.tsx: React imported");
 import { AppState, Platform } from "react-native";
+console.log("[DIAG] App.tsx: React Native imports completed");
+console.log("[DIAG] App.tsx: About to import supabase...");
 import { supabase } from "./src/lib/supabase";
+console.log("[DIAG] App.tsx: Supabase imported successfully");
+import { startNetworkWatcher } from "./src/lib/offlineQueue";
+console.log("[DIAG] App.tsx: offlineQueue imported successfully");
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
 import "./global.css";
@@ -37,6 +42,16 @@ const debugInitializeApp = async () => {
     // Step 1: Check environment
     console.log("[DEBUG] Step 1: Checking environment...");
     checkEnvironment();
+
+    // Step 1.5: Start network watcher (safe after bundle loaded)
+    console.log("[DEBUG] Step 1.5: Starting network watcher...");
+    try {
+      await startNetworkWatcher();
+      console.log("[DEBUG] Network watcher started successfully");
+    } catch (watcherError) {
+      console.error("[DEBUG] Network watcher failed (non-critical):", watcherError);
+      // Continue - offline queue will work without network detection
+    }
 
     // Step 2: Initialize services (with error handling)
     console.log("[DEBUG] Step 2: Initializing services...");

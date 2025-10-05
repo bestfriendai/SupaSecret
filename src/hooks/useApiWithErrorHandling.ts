@@ -14,7 +14,7 @@ interface UseApiOptions extends ApiRequestOptions {
 
 export function useApiWithErrorHandling<T = any>(
   apiCall: (options?: ApiRequestOptions) => Promise<ApiResponse<T>>,
-  defaultOptions: UseApiOptions = {}
+  defaultOptions: UseApiOptions = {},
 ) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<T | null>(null);
@@ -94,7 +94,7 @@ export function useApiWithErrorHandling<T = any>(
         setLoading(false);
       }
     },
-    [apiCall, defaultOptions, isConnected, manualRetry, handleError, handleSuccess]
+    [apiCall, defaultOptions, isConnected, manualRetry, handleError, handleSuccess],
   );
 
   const retry = useCallback(() => {

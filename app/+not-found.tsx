@@ -7,9 +7,7 @@ export default function NotFoundScreen() {
       <Stack.Screen options={{ title: "Oops! Page Not Found" }} />
       <View style={styles.container}>
         <Text style={styles.title}>This page doesn't exist.</Text>
-        <Text style={styles.description}>
-          The page you're looking for could not be found.
-        </Text>
+        <Text style={styles.description}>The page you're looking for could not be found.</Text>
 
         <Link href="/(tabs)" asChild>
           <Pressable style={styles.button}>

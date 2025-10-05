@@ -94,56 +94,18 @@ export const useRealtimeFaceBlur = () => {
    */
   /**
    * Create a face blur frame processor
-   * NOTE: This returns a factory function, not the processor itself.
-   * The actual processor must be created in a component using useSkiaFrameProcessor.
+   * Uses the same approach as Marc Rousavy's FaceBlurApp reference implementation
    */
   const createFaceBlurFrameProcessor = useCallback(
-    (blurIntensity: number = 15) => {
+    (blurIntensity: number = 25) => {
       if (!isReady) {
         console.warn("Face blur not initialized. Call initializeFaceBlur() first.");
         return null;
       }
 
-      // Return a factory function that can be used in a component
-      return (frame: any) => {
-        "worklet";
-
-        try {
-          // Detect faces in the current frame
-          const faces = detectFaces(frame);
-
-          if (faces && faces.length > 0) {
-            // Create blur effect
-            const paint = Skia.Paint();
-            paint.setMaskFilter(
-              Skia.MaskFilter.MakeBlur(
-                Skia.BlurStyle.Normal,
-                blurIntensity / 2, // Convert intensity to sigma value
-                true,
-              ),
-            );
-
-            // Apply blur to each detected face
-            faces.forEach((face: any) => {
-              const { bounds } = face;
-
-              // Draw blurred rectangle over face
-              frame.drawRect(
-                {
-                  x: bounds.x,
-                  y: bounds.y,
-                  width: bounds.width,
-                  height: bounds.height,
-                },
-                paint,
-              );
-            });
-          }
-        } catch (error) {
-          // Silently fail on individual frames to avoid disrupting recording
-          console.warn("Frame processing error:", error);
-        }
-      };
+      // This must be used inside a component with useSkiaFrameProcessor
+      // Return null - the actual processor setup happens in the component
+      return null;
     },
     [isReady],
   );

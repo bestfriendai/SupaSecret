@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { View, Text, Pressable, Alert, StyleSheet, ActivityIndicator, Switch, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -14,7 +14,9 @@ import { ProcessedVideo } from "../services/IAnonymiser";
 import { ProcessingMode } from "../hooks/useVideoRecorder";
 import { useVideoCapabilities } from "../services/UnifiedVideoService";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
-import FaceBlurRecordScreen from "./FaceBlurRecordScreen";
+
+// Lazy load FaceBlurRecordScreen to prevent worklets from being loaded in Expo Go
+const FaceBlurRecordScreen = lazy(() => import("./FaceBlurRecordScreen"));
 
 const MAX_DURATION = 60; // seconds
 
@@ -27,7 +29,17 @@ function VideoRecordScreen() {
   // Uses react-native-vision-camera-face-detector for precise contour-based face masking
   // Use Expo Camera for Expo Go with post-processing fallback
   if (!IS_EXPO_GO) {
-    return <FaceBlurRecordScreen />;
+    return (
+      <Suspense
+        fallback={
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" />
+          </View>
+        }
+      >
+        <FaceBlurRecordScreen />
+      </Suspense>
+    );
   }
 
   // Expo Go implementation below

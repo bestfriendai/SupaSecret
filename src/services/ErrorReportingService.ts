@@ -72,7 +72,7 @@ class ErrorReportingService {
       networkStatus?: boolean;
       severity?: "low" | "medium" | "high" | "critical";
       tags?: string[];
-    } = {}
+    } = {},
   ): Promise<void> {
     try {
       const errorObj = error instanceof Error ? error : new Error(String(error));

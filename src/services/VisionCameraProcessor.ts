@@ -63,19 +63,7 @@ const loadVisionCamera = async () => {
       console.log("⚠️ Skia not available for advanced effects");
     }
 
-    // Load worklets
-    try {
-      const workletsModule = await import("react-native-worklets");
-      Worklets = workletsModule;
-    } catch {
-      // Fallback to worklets-core for Vision Camera compatibility
-      try {
-        const workletsCore = await import("react-native-worklets-core");
-        Worklets = workletsCore;
-      } catch {
-        console.log("⚠️ Worklets not available");
-      }
-    }
+    console.log("⚠️ Worklets disabled (requires New Architecture)");
 
     console.log("✅ Vision Camera v4 loaded successfully");
     return true;

@@ -3,9 +3,9 @@
  * Provides easy access to rewarded ads with reward callbacks
  */
 
-import { useCallback, useRef, useState } from 'react';
-import { adService } from '../services/adService';
-import type { AdConfig, RewardedAdOptions, RewardedAdResult } from '../types';
+import { useCallback, useRef, useState } from "react";
+import { adService } from "../services/adService";
+import type { AdConfig, RewardedAdOptions, RewardedAdResult } from "../types";
 
 interface UseRewardedAdParams {
   config: AdConfig;
@@ -19,7 +19,7 @@ export const useRewardedAd = ({ config }: UseRewardedAdParams) => {
     async (options: RewardedAdOptions = {}): Promise<RewardedAdResult> => {
       // Prevent multiple simultaneous ad requests
       if (isShowing) {
-        console.log('Rewarded ad already showing');
+        console.log("Rewarded ad already showing");
         return { shown: false, rewarded: false };
       }
 
@@ -29,7 +29,7 @@ export const useRewardedAd = ({ config }: UseRewardedAdParams) => {
         const result = await adService.showRewarded(config, {
           ...options,
           onEarnedReward: (reward) => {
-            console.log('User earned reward:', reward);
+            console.log("User earned reward:", reward);
             setLastReward(reward);
             options.onEarnedReward?.(reward);
           },
@@ -46,11 +46,11 @@ export const useRewardedAd = ({ config }: UseRewardedAdParams) => {
         return result;
       } catch (error) {
         setIsShowing(false);
-        console.error('Failed to show rewarded ad:', error);
+        console.error("Failed to show rewarded ad:", error);
         return { shown: false, rewarded: false };
       }
     },
-    [config, isShowing]
+    [config, isShowing],
   );
 
   return {

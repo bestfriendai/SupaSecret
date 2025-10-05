@@ -54,8 +54,7 @@ export default function OnboardingScreen() {
               lineHeight: 24,
             }}
           >
-            Share your secrets anonymously in a safe space. Your confessions are never linked to your
-            identity.
+            Share your secrets anonymously in a safe space. Your confessions are never linked to your identity.
           </Text>
         </View>
 

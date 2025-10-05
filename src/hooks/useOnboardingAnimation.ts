@@ -66,9 +66,7 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
 
   // Animation functions
   const animateButtonPress = () => {
-    "worklet";
     buttonScale.value = withSpring(0.95, { duration: 100 }, (finished) => {
-      "worklet";
       if (finished) {
         buttonScale.value = withSpring(1, { duration: 100 });
       }
@@ -77,9 +75,7 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
   };
 
   const animateSlideTransition = () => {
-    "worklet";
     slideOpacity.value = withTiming(0.9, { duration: 150 }, (finished) => {
-      "worklet";
       if (finished) {
         slideOpacity.value = withTiming(1, { duration: 150 });
       }
@@ -87,9 +83,7 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
   };
 
   const animateProgressUpdate = () => {
-    "worklet";
     progressScale.value = withSpring(1.1, { duration: 200 }, (finished) => {
-      "worklet";
       if (finished) {
         progressScale.value = withSpring(1, { duration: 200 });
       }

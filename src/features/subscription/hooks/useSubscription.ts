@@ -3,10 +3,10 @@
  * Custom hook for accessing subscription functionality
  */
 
-import { useEffect, useCallback } from 'react';
-import { useSubscriptionStore } from '../store/subscriptionStore';
-import { SubscriptionService } from '../services/subscriptionService';
-import type { RevenueCatPackage } from '../types';
+import { useEffect, useCallback } from "react";
+import { useSubscriptionStore } from "../store/subscriptionStore";
+import { SubscriptionService } from "../services/subscriptionService";
+import type { RevenueCatPackage } from "../types";
 
 export function useSubscription() {
   const {
@@ -36,11 +36,11 @@ export function useSubscription() {
       try {
         return await purchaseSubscription(pkg);
       } catch (error) {
-        console.error('Purchase error in hook:', error);
+        console.error("Purchase error in hook:", error);
         return false;
       }
     },
-    [purchaseSubscription]
+    [purchaseSubscription],
   );
 
   // Restore handler with error handling
@@ -48,7 +48,7 @@ export function useSubscription() {
     try {
       return await restorePurchases();
     } catch (error) {
-      console.error('Restore error in hook:', error);
+      console.error("Restore error in hook:", error);
       return false;
     }
   }, [restorePurchases]);

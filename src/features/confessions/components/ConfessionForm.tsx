@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from "react";
+import { View, Text, TextInput, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface ConfessionFormProps {
   onSubmitText?: (content: string) => void;
@@ -8,12 +8,8 @@ interface ConfessionFormProps {
   isSubmitting?: boolean;
 }
 
-export function ConfessionForm({
-  onSubmitText,
-  onVideoRecord,
-  isSubmitting = false,
-}: ConfessionFormProps) {
-  const [textContent, setTextContent] = useState('');
+export function ConfessionForm({ onSubmitText, onVideoRecord, isSubmitting = false }: ConfessionFormProps) {
+  const [textContent, setTextContent] = useState("");
 
   const handleTextSubmit = () => {
     const trimmedContent = textContent.trim();
@@ -23,10 +19,7 @@ export function ConfessionForm({
     onSubmitText?.(trimmedContent);
   };
 
-  const isValid =
-    textContent.trim().length >= 10 &&
-    textContent.trim().length <= 280 &&
-    !isSubmitting;
+  const isValid = textContent.trim().length >= 10 && textContent.trim().length <= 280 && !isSubmitting;
 
   return (
     <View className="flex-1 bg-black">
@@ -34,15 +27,11 @@ export function ConfessionForm({
       <View className="px-4 py-2 border-b border-gray-800 flex-row items-center justify-between">
         <Text className="text-white text-18 font-semibold">Share Secret</Text>
         <Pressable
-          className={`rounded-full px-4 py-2 ${
-            isValid ? 'bg-blue-500' : 'bg-gray-700'
-          }`}
+          className={`rounded-full px-4 py-2 ${isValid ? "bg-blue-500" : "bg-gray-700"}`}
           onPress={handleTextSubmit}
           disabled={!isValid}
         >
-          <Text className="text-white font-semibold">
-            {isSubmitting ? 'Sharing...' : 'Share'}
-          </Text>
+          <Text className="text-white font-semibold">{isSubmitting ? "Sharing..." : "Share"}</Text>
         </Pressable>
       </View>
 
@@ -70,18 +59,16 @@ export function ConfessionForm({
               <Text
                 className={`text-13 ${
                   textContent.length > 260
-                    ? 'text-red-500'
+                    ? "text-red-500"
                     : textContent.length > 240
-                    ? 'text-yellow-500'
-                    : 'text-gray-500'
+                      ? "text-yellow-500"
+                      : "text-gray-500"
                 }`}
               >
                 {textContent.length}/280
               </Text>
               {textContent.length < 10 && textContent.length > 0 && (
-                <Text className="text-gray-500 text-13">
-                  Min 10 characters
-                </Text>
+                <Text className="text-gray-500 text-13">Min 10 characters</Text>
               )}
             </View>
 
@@ -99,9 +86,7 @@ export function ConfessionForm({
 
       {/* Video Option */}
       <View className="p-4">
-        <Text className="text-white text-17 font-bold mb-2">
-          Or record a video confession
-        </Text>
+        <Text className="text-white text-17 font-bold mb-2">Or record a video confession</Text>
         <Text className="text-gray-500 text-15 mb-4 leading-5">
           Your face will be automatically blurred and voice changed for complete anonymity
         </Text>
@@ -115,9 +100,7 @@ export function ConfessionForm({
           </View>
           <View className="flex-1">
             <Text className="text-white font-bold text-15">Record Video</Text>
-            <Text className="text-gray-500 text-13">
-              Face blur & voice change enabled
-            </Text>
+            <Text className="text-gray-500 text-13">Face blur & voice change enabled</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
         </Pressable>
@@ -128,13 +111,10 @@ export function ConfessionForm({
         <View className="bg-gray-900 border border-gray-700 rounded-2xl p-4">
           <View className="flex-row items-center mb-2">
             <Ionicons name="lock-closed" size={16} color="#1D9BF0" />
-            <Text className="text-blue-400 font-bold text-15 ml-2">
-              Privacy Protected
-            </Text>
+            <Text className="text-blue-400 font-bold text-15 ml-2">Privacy Protected</Text>
           </View>
           <Text className="text-gray-400 text-13 leading-4">
-            All confessions are completely anonymous. No personal information is stored or
-            shared.
+            All confessions are completely anonymous. No personal information is stored or shared.
           </Text>
         </View>
       </View>

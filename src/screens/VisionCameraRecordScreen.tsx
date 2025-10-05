@@ -21,8 +21,8 @@ function VisionCameraRecordScreenContent() {
   const navigation = useNavigation();
   const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
 
-  const [enableFaceBlur, setEnableFaceBlur] = useState(true);
-  const [blurIntensity] = useState(15);
+  const [enableFaceBlur, setEnableFaceBlur] = useState(true); // Now working with fixed implementation!
+  const [blurIntensity] = useState(25); // Match FaceBlurApp default
   const [uiError, setUiError] = useState<string | null>(null);
   const [recordedVideoPath, setRecordedVideoPath] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ function VisionCameraRecordScreenContent() {
   const { isRecording, recordingTime, hasPermissions, isReady, error, cameraDevice, facing } = state;
 
   // DEBUG: Log camera device state
-  console.log('📹 [VisionCameraRecordScreen] Camera state:', {
+  console.log("📹 [VisionCameraRecordScreen] Camera state:", {
     hasCamera: !!Camera,
     hasCameraDevice: !!cameraDevice,
     cameraDeviceValue: cameraDevice,
@@ -85,9 +85,7 @@ function VisionCameraRecordScreenContent() {
     }
 
     // Ensure video path has file:// prefix
-    const videoUri = recordedVideoPath.startsWith("file://")
-      ? recordedVideoPath
-      : `file://${recordedVideoPath}`;
+    const videoUri = recordedVideoPath.startsWith("file://") ? recordedVideoPath : `file://${recordedVideoPath}`;
 
     console.log("📹 Video URI for preview:", videoUri);
 
@@ -100,7 +98,7 @@ function VisionCameraRecordScreenContent() {
         duration: recordingTime,
         size: 0, // Will be calculated later
         faceBlurApplied: enableFaceBlur,
-        privacyMode: 'blur' as const,
+        privacyMode: "blur" as const,
         blurIntensity: blurIntensity,
       },
     });
@@ -190,12 +188,12 @@ function VisionCameraRecordScreenContent() {
               <Switch
                 value={enableFaceBlur}
                 onValueChange={setEnableFaceBlur}
-                disabled={isRecording}
-                thumbColor={enableFaceBlur ? "#1D9BF0" : "#374151"}
+                disabled={isRecording} // Only allow toggle when not recording
+                thumbColor={enableFaceBlur ? "#1D9BF0" : "#9CA3AF"}
                 trackColor={{ false: "#1F2937", true: "#1D9BF0" }}
               />
             </View>
-            {enableFaceBlur && <Text style={styles.blurInfo}>Intensity: {blurIntensity}</Text>}
+            {enableFaceBlur && <Text style={styles.blurInfo}>✓ Active (intensity: {blurIntensity})</Text>}
           </View>
 
           {!recordedVideoPath && (

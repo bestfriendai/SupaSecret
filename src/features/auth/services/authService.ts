@@ -1,12 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
-import {
-  User,
-  AuthCredentials,
-  SignUpData,
-  PasswordValidation,
-  PasswordStrength,
-} from "../types/auth.types";
+import { User, AuthCredentials, SignUpData, PasswordValidation, PasswordStrength } from "../types/auth.types";
 
 /**
  * Custom AuthServiceError class for better error handling
@@ -218,13 +212,13 @@ export const signInUser = async (credentials: AuthCredentials): Promise<User> =>
     if (authError.message.includes("Invalid login credentials")) {
       throw new AuthServiceError(
         "INVALID_CREDENTIALS",
-        "Invalid email or password. Please check your credentials and try again."
+        "Invalid email or password. Please check your credentials and try again.",
       );
     }
     if (authError.message.includes("Email not confirmed")) {
       throw new AuthServiceError(
         "EMAIL_NOT_CONFIRMED",
-        "Please check your email and click the confirmation link before signing in."
+        "Please check your email and click the confirmation link before signing in.",
       );
     }
     if (authError.message.includes("Too many requests")) {

@@ -17,11 +17,11 @@ export interface HeaderProps extends ViewProps {
     onPress: () => void;
     accessibilityLabel?: string;
   };
-  rightActions?: Array<{
+  rightActions?: {
     icon: React.ReactNode;
     onPress: () => void;
     accessibilityLabel?: string;
-  }>;
+  }[];
   showBorder?: boolean;
   variant?: "default" | "transparent" | "gradient";
   size?: "sm" | "md" | "lg";
@@ -72,11 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
   const styles = sizeStyles[size];
 
   return (
-    <View
-      style={{ paddingTop: insets.top }}
-      className={cn(variantStyles[variant], className)}
-      {...viewProps}
-    >
+    <View style={{ paddingTop: insets.top }} className={cn(variantStyles[variant], className)} {...viewProps}>
       {/* Status Bar */}
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
@@ -111,11 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
             </View>
           ) : (
             <>
-              <Text
-                className={cn("text-white font-bold", styles.title)}
-                numberOfLines={1}
-                accessibilityRole="header"
-              >
+              <Text className={cn("text-white font-bold", styles.title)} numberOfLines={1} accessibilityRole="header">
                 {title}
               </Text>
               {subtitle && (
@@ -192,10 +184,10 @@ export const SimpleHeader: React.FC<SimpleHeaderProps> = ({
 // Tabbed Header Component
 export interface TabbedHeaderProps extends ViewProps {
   title: string;
-  tabs: Array<{
+  tabs: {
     label: string;
     value: string;
-  }>;
+  }[];
   activeTab: string;
   onTabChange: (value: string) => void;
   leftAction?: HeaderProps["leftAction"];
@@ -260,22 +252,12 @@ export const TabbedHeader: React.FC<TabbedHeaderProps> = ({
             <Pressable
               key={tab.value}
               onPress={() => onTabChange(tab.value)}
-              className={cn(
-                "px-4 py-3 mr-4",
-                isActive && "border-b-2 border-blue-500",
-              )}
+              className={cn("px-4 py-3 mr-4", isActive && "border-b-2 border-blue-500")}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
               accessibilityLabel={tab.label}
             >
-              <Text
-                className={cn(
-                  "font-medium",
-                  isActive ? "text-white" : "text-gray-400",
-                )}
-              >
-                {tab.label}
-              </Text>
+              <Text className={cn("font-medium", isActive ? "text-white" : "text-gray-400")}>{tab.label}</Text>
             </Pressable>
           );
         })}

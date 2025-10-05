@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type DimensionValue, type ViewStyle } from 'react-native';
+import React from "react";
+import { View, type DimensionValue, type ViewStyle } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
   interpolate,
   cancelAnimation,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
 interface ConfessionSkeletonProps {
   showVideo?: boolean;
@@ -33,7 +33,7 @@ export function ConfessionSkeleton({ showVideo = false }: ConfessionSkeletonProp
   const SkeletonBox = ({
     width,
     height,
-    className = '',
+    className = "",
   }: {
     width: DimensionValue;
     height: number;

@@ -56,18 +56,18 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
         }
         return false;
       }
-      
+
       if (!c.id) {
         if (__DEV__) {
           console.warn("OptimizedVideoList: Filtered out confession without ID:", c);
         }
         return false;
       }
-      
+
       if (c.type !== "video") {
         return false;
       }
-      
+
       // Ensure required fields exist
       if (!c.content && !c.videoUri) {
         if (__DEV__) {
@@ -75,7 +75,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
         }
         return false;
       }
-      
+
       return true;
     });
 

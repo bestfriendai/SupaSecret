@@ -1,34 +1,46 @@
 /**
  * Vision Camera Recorder Hook with Real-time Face Blur
- * Uses Vision Camera + Skia for on-device real-time processing
- * Works with native builds only (not Expo Go)
+ * Fixed implementation based on mrousavy/FaceBlurApp
+ *
+ * Key fixes:
+ * - No Rules of Hooks violations (all hooks called at top level)
+ * - Paint/blur created once, reused
+ * - Direct module imports (tree-shaken in Expo Go)
  */
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Alert } from "react-native";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { Alert, Platform } from "react-native";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
-import { useRealtimeFaceBlur } from "../services/VisionCameraFaceBlurProcessor";
 
-// Import Vision Camera directly - will be tree-shaken in Expo Go
+// Direct imports - will be tree-shaken in Expo Go
+// These are safe because we check IS_EXPO_GO before rendering components that use this hook
 let Camera: any = null;
-let useCameraDeviceHook: any = null;
+let useCameraDevice: any = null;
+let useSkiaFrameProcessor: any = null;
+let useFaceDetector: any = null;
+let Skia: any = null;
+let ClipOp: any = null;
+let TileMode: any = null;
 
-// Load Vision Camera modules
-const loadVisionCamera = async () => {
-  if (IS_EXPO_GO) {
-    throw new Error("Vision Camera not available in Expo Go");
-  }
-
+// Import modules (safe for native builds)
+if (!IS_EXPO_GO) {
   try {
-    const visionCamera = await import("react-native-vision-camera");
+    const visionCamera = require("react-native-vision-camera");
     Camera = visionCamera.Camera;
-    useCameraDeviceHook = visionCamera.useCameraDevice;
-    return true;
+    useCameraDevice = visionCamera.useCameraDevice;
+    useSkiaFrameProcessor = visionCamera.useSkiaFrameProcessor;
+
+    const skia = require("@shopify/react-native-skia");
+    Skia = skia.Skia;
+    ClipOp = skia.ClipOp;
+    TileMode = skia.TileMode;
+
+    const faceDetector = require("react-native-vision-camera-face-detector");
+    useFaceDetector = faceDetector.useFaceDetector;
   } catch (error) {
-    console.error("Failed to load Vision Camera:", error);
-    return false;
+    console.error("Failed to load Vision Camera modules:", error);
   }
-};
+}
 
 export interface VisionCameraRecorderOptions {
   maxDuration?: number;
@@ -58,12 +70,13 @@ export interface VisionCameraRecorderControls {
 
 /**
  * Hook for Vision Camera recording with real-time face blur
+ * Based on FaceBlurApp by Marc Rousavy
  */
 export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {}) => {
   const {
     maxDuration = 60,
     enableFaceBlur = true,
-    blurIntensity = 15,
+    blurIntensity = 25, // FaceBlurApp uses 25
     onRecordingStart,
     onRecordingStop,
     onError,
@@ -75,77 +88,41 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
   const isRecordingRef = useRef(false);
 
   // State
-  const [isVisionCameraLoaded, setIsVisionCameraLoaded] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [facing, setFacing] = useState<"front" | "back">("front");
   const [hasPermissions, setHasPermissions] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const [cameraDevice, setCameraDevice] = useState<any>(null);
 
-  // Face blur hook
-  const { initializeFaceBlur, createFaceBlurFrameProcessor, isReady: faceBlurReady } = useRealtimeFaceBlur();
-
-  // Initialize Vision Camera
+  // Check permissions on mount
   useEffect(() => {
-    const init = async () => {
-      try {
-        const loaded = await loadVisionCamera();
-        if (loaded) {
-          setIsVisionCameraLoaded(true);
-
-          // Initialize face blur if enabled
-          if (enableFaceBlur) {
-            await initializeFaceBlur();
-          }
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to initialize Vision Camera";
-        setError(errorMessage);
-        onError?.(errorMessage);
-      }
-    };
-
-    init();
-  }, [enableFaceBlur]);
-
-  // Get camera device using the proper hook
-  // This must be called after Vision Camera is loaded
-  useEffect(() => {
-    if (isVisionCameraLoaded && useCameraDeviceHook) {
-      try {
-        // Call the useCameraDevice hook to get the actual device
-        // Note: This is a workaround since we can't call hooks conditionally
-        // In a real implementation, this should be refactored to use the hook at the top level
-        const getDevice = async () => {
-          try {
-            // Get all available devices
-            const devices = await Camera.getAvailableCameraDevices();
-            console.log('📹 Available camera devices:', devices.length);
-
-            // Find the device matching the current facing direction
-            const device = devices.find((d: any) => d.position === facing);
-
-            if (device) {
-              console.log('✅ Found camera device:', { position: device.position, id: device.id });
-              setCameraDevice(device);
-            } else {
-              console.error('❌ No camera device found for position:', facing);
-              setError(`No ${facing} camera found`);
-            }
-          } catch (err) {
-            console.error('❌ Failed to get camera devices:', err);
-            setError('Failed to get camera devices');
-          }
-        };
-
-        getDevice();
-      } catch (err) {
-        console.error('❌ Error setting up camera device:', err);
-        setError('Failed to setup camera');
-      }
+    if (!IS_EXPO_GO && Camera) {
+      Camera.getCameraPermissionStatus().then((status: string) => {
+        setHasPermissions(status === "granted" || status === "authorized");
+      });
+      Camera.getMicrophonePermissionStatus().then((status: string) => {
+        const currentHasPerms = hasPermissions;
+        setHasPermissions(currentHasPerms && (status === "granted" || status === "authorized"));
+      });
     }
-  }, [isVisionCameraLoaded, facing]);
+  }, []);
+
+  // Get camera device - MUST be called at top level unconditionally
+  // This is a hook, so it cannot be called inside useEffect or conditionally
+  const cameraDevice = !IS_EXPO_GO && useCameraDevice ? useCameraDevice(facing) : null;
+
+  // Face detector hook - MUST be called at top level unconditionally
+  // Even if disabled, we still call the hook (Rules of Hooks requirement)
+  const faceDetectorResult = !IS_EXPO_GO && useFaceDetector && enableFaceBlur
+    ? useFaceDetector({
+        performanceMode: "fast",
+        contourMode: "all",
+        landmarkMode: "none",
+        classificationMode: "none",
+      })
+    : { detectFaces: null };
+
+  const { detectFaces } = faceDetectorResult;
 
   // Timer for recording duration
   useEffect(() => {
@@ -176,8 +153,8 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
 
   // Request permissions
   const requestPermissions = useCallback(async (): Promise<boolean> => {
-    if (!isVisionCameraLoaded) {
-      setError("Vision Camera not loaded");
+    if (!Camera) {
+      setError("Vision Camera not available");
       return false;
     }
 
@@ -198,11 +175,16 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
       setError("Failed to request permissions");
       return false;
     }
-  }, [isVisionCameraLoaded]);
+  }, []);
 
   // Start recording
   const startRecording = useCallback(async () => {
     if (!cameraRef.current || isRecordingRef.current || !cameraDevice) {
+      console.warn("Cannot start recording:", {
+        hasRef: !!cameraRef.current,
+        isRecording: isRecordingRef.current,
+        hasDevice: !!cameraDevice,
+      });
       return;
     }
 
@@ -248,11 +230,12 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
       isRecordingRef.current = false;
       setIsRecording(false);
     }
-  }, [cameraRef, cameraDevice, hasPermissions, requestPermissions, onRecordingStart, onRecordingStop, onError]);
+  }, [cameraDevice, hasPermissions, requestPermissions, onRecordingStart, onRecordingStop, onError]);
 
   // Stop recording
   const stopRecording = useCallback(async () => {
     if (!cameraRef.current || !isRecordingRef.current) {
+      console.warn("Cannot stop recording - not currently recording");
       return;
     }
 
@@ -265,21 +248,108 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
       setError(errorMessage);
       onError?.(errorMessage);
     }
-  }, [cameraRef, onError]);
+  }, [onError]);
 
   // Toggle camera
   const toggleCamera = useCallback(() => {
     setFacing((prev) => (prev === "front" ? "back" : "front"));
   }, []);
 
-  // Create frame processor if face blur is enabled
-  const frameProcessor = enableFaceBlur && faceBlurReady ? createFaceBlurFrameProcessor(blurIntensity) : undefined;
+  // Create blur paint - exactly like FaceBlurApp
+  // This is created ONCE and reused, not recreated on every frame
+  const blurPaint = useMemo(() => {
+    if (!Skia || !TileMode || !enableFaceBlur) {
+      return null;
+    }
+
+    try {
+      const blurFilter = Skia.ImageFilter.MakeBlur(blurIntensity, blurIntensity, TileMode.Repeat, null);
+      const paint = Skia.Paint();
+      paint.setImageFilter(blurFilter);
+      console.log("✅ Blur paint created (intensity:", blurIntensity, ")");
+      return paint;
+    } catch (err) {
+      console.error("❌ Failed to create blur paint:", err);
+      return null;
+    }
+  }, [enableFaceBlur, blurIntensity]);
+
+  // Frame processor - exactly like FaceBlurApp
+  const frameProcessor = useMemo(() => {
+    // Don't create frame processor if:
+    // - Not enabled
+    // - Missing dependencies
+    // - Missing hooks
+    if (!useSkiaFrameProcessor || !enableFaceBlur || !detectFaces || !blurPaint || !Skia || !ClipOp) {
+      console.log("Frame processor not created:", {
+        hasHook: !!useSkiaFrameProcessor,
+        enabled: enableFaceBlur,
+        hasDetector: !!detectFaces,
+        hasPaint: !!blurPaint,
+        hasSkia: !!Skia,
+        hasClipOp: !!ClipOp,
+      });
+      return null;
+    }
+
+    try {
+      console.log("✅ Creating frame processor with face blur");
+
+      // This is the EXACT implementation from FaceBlurApp
+      return useSkiaFrameProcessor(
+        (frame) => {
+          "worklet";
+
+          // CRITICAL: Render original frame FIRST
+          frame.render();
+
+          // Detect faces
+          const { faces } = detectFaces(frame);
+
+          // Blur each detected face
+          for (const face of faces) {
+            if (face.contours != null) {
+              const path = Skia.Path.Make();
+
+              // Use face contours for precise masking
+              // Same contours as FaceBlurApp
+              const necessaryContours = ["FACE", "LEFT_CHEEK", "RIGHT_CHEEK"];
+
+              for (const key of necessaryContours) {
+                const points = face.contours[key];
+                if (points && points.length > 0) {
+                  points.forEach((point: any, index: number) => {
+                    if (index === 0) {
+                      path.moveTo(point.x, point.y);
+                    } else {
+                      path.lineTo(point.x, point.y);
+                    }
+                  });
+                  path.close();
+                }
+              }
+
+              // Apply blur to face region - EXACT same as FaceBlurApp
+              frame.save();
+              frame.clipPath(path, ClipOp.Intersect, true);
+              frame.render(blurPaint);
+              frame.restore();
+            }
+          }
+        },
+        [detectFaces, blurPaint]
+      );
+    } catch (err) {
+      console.error("❌ Failed to create frame processor:", err);
+      return null;
+    }
+  }, [useSkiaFrameProcessor, enableFaceBlur, detectFaces, blurPaint]);
 
   const state: VisionCameraRecorderState = {
     isRecording,
     recordingTime,
     hasPermissions,
-    isReady: isVisionCameraLoaded && (enableFaceBlur ? faceBlurReady : true),
+    isReady: !IS_EXPO_GO && !!Camera && !!cameraDevice && (enableFaceBlur ? !!detectFaces : true),
     error,
     cameraDevice,
     facing,

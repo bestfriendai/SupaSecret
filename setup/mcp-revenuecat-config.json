@@ -2,10 +2,7 @@
   "project": {
     "name": "Toxic Confessions",
     "bundleId": "com.toxic.confessions",
-    "platforms": [
-      "ios",
-      "android"
-    ]
+    "platforms": ["ios", "android"]
   },
   "apiKeys": {
     "ios": "appl_DOIFtYSbtSxeplMuPlcSNIEapYvOz",
@@ -27,9 +24,7 @@
       "duration": "P1M",
       "price": 4.99,
       "currency": "USD",
-      "entitlements": [
-        "supasecret_plus"
-      ],
+      "entitlements": ["supasecret_plus"],
       "storeProductIds": {
         "ios": "supasecret_plus_monthly",
         "android": "supasecret_plus_monthly"
@@ -42,9 +37,7 @@
       "duration": "P1Y",
       "price": 29.99,
       "currency": "USD",
-      "entitlements": [
-        "supasecret_plus"
-      ],
+      "entitlements": ["supasecret_plus"],
       "popular": true,
       "storeProductIds": {
         "ios": "supasecret_plus_annual",

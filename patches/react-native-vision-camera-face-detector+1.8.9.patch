@@ -1,0 +1,19 @@
+diff --git a/node_modules/react-native-vision-camera-face-detector/ios/VisionCameraFaceDetectorOrientation.swift b/node_modules/react-native-vision-camera-face-detector/ios/VisionCameraFaceDetectorOrientation.swift
+index 33c8ac9..f0d5dd5 100644
+--- a/node_modules/react-native-vision-camera-face-detector/ios/VisionCameraFaceDetectorOrientation.swift
++++ b/node_modules/react-native-vision-camera-face-detector/ios/VisionCameraFaceDetectorOrientation.swift
+@@ -4,6 +4,14 @@ import CoreMotion
+ import Foundation
+ import UIKit
+ 
++// Local Orientation enum since VisionCamera's Orientation is not public
++enum Orientation: String {
++  case portrait
++  case landscapeLeft = "landscape-left"
++  case portraitUpsideDown = "portrait-upside-down"
++  case landscapeRight = "landscape-right"
++}
++
+ final class VisionCameraFaceDetectorOrientation {
+   private let motionManager = CMMotionManager()
+   private let operationQueue = OperationQueue()

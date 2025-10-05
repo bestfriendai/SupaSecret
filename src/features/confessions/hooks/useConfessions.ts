@@ -1,17 +1,17 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
-import { confessionService } from '../services/confessionService';
-import type { Confession, CreateConfessionInput, VideoAnalytics, UserPreferences } from '../types/confession.types';
-import { supabase } from '../../../lib/supabase';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { confessionService } from "../services/confessionService";
+import type { Confession, CreateConfessionInput, VideoAnalytics, UserPreferences } from "../types/confession.types";
+import { supabase } from "../../../lib/supabase";
 
 // Query keys
 export const confessionKeys = {
-  all: ['confessions'] as const,
-  lists: () => [...confessionKeys.all, 'list'] as const,
+  all: ["confessions"] as const,
+  lists: () => [...confessionKeys.all, "list"] as const,
   list: (filters?: any) => [...confessionKeys.lists(), filters] as const,
-  details: () => [...confessionKeys.all, 'detail'] as const,
+  details: () => [...confessionKeys.all, "detail"] as const,
   detail: (id: string) => [...confessionKeys.details(), id] as const,
-  userConfessions: (userId: string) => [...confessionKeys.all, 'user', userId] as const,
-  userPreferences: (userId: string) => ['userPreferences', userId] as const,
+  userConfessions: (userId: string) => [...confessionKeys.all, "user", userId] as const,
+  userPreferences: (userId: string) => ["userPreferences", userId] as const,
 };
 
 /**
@@ -49,7 +49,7 @@ export function useConfession(id: string) {
  */
 export function useUserConfessions(userId?: string) {
   return useQuery({
-    queryKey: confessionKeys.userConfessions(userId || ''),
+    queryKey: confessionKeys.userConfessions(userId || ""),
     queryFn: () => confessionService.fetchUserConfessions(userId!),
     enabled: !!userId,
   });
@@ -72,7 +72,7 @@ export function useCreateConfession() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) throw new Error("User not authenticated");
 
       return confessionService.createConfession(user.id, input, options);
     },
@@ -88,12 +88,10 @@ export function useCreateConfession() {
           return {
             ...old,
             pages: old.pages.map((page: { confessions: Confession[] }, index: number) =>
-              index === 0
-                ? { ...page, confessions: [newConfession, ...page.confessions] }
-                : page
+              index === 0 ? { ...page, confessions: [newConfession, ...page.confessions] } : page,
             ),
           };
-        }
+        },
       );
     },
   });
@@ -110,7 +108,7 @@ export function useDeleteConfession() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) throw new Error("User not authenticated");
 
       await confessionService.deleteConfession(confessionId, user.id);
     },
@@ -130,7 +128,7 @@ export function useDeleteConfession() {
               confessions: page.confessions.filter((c: Confession) => c.id !== confessionId),
             })),
           };
-        }
+        },
       );
     },
   });
@@ -169,11 +167,11 @@ export function useToggleLike() {
                       isLiked: !c.isLiked,
                       likes: c.likes + (c.isLiked ? -1 : 1),
                     }
-                  : c
+                  : c,
               ),
             })),
           };
-        }
+        },
       );
 
       return { previousData };
@@ -195,11 +193,11 @@ export function useToggleLike() {
             pages: old.pages.map((page: { confessions: Confession[] }) => ({
               ...page,
               confessions: page.confessions.map((c: Confession) =>
-                c.id === confessionId ? { ...c, likes: data.likes } : c
+                c.id === confessionId ? { ...c, likes: data.likes } : c,
               ),
             })),
           };
-        }
+        },
       );
     },
   });
@@ -210,13 +208,7 @@ export function useToggleLike() {
  */
 export function useUpdateVideoAnalytics() {
   return useMutation({
-    mutationFn: async ({
-      confessionId,
-      analytics,
-    }: {
-      confessionId: string;
-      analytics: Partial<VideoAnalytics>;
-    }) => {
+    mutationFn: async ({ confessionId, analytics }: { confessionId: string; analytics: Partial<VideoAnalytics> }) => {
       await confessionService.updateVideoAnalytics(confessionId, analytics);
     },
   });
@@ -227,7 +219,7 @@ export function useUpdateVideoAnalytics() {
  */
 export function useUserPreferences(userId?: string) {
   return useQuery({
-    queryKey: confessionKeys.userPreferences(userId || ''),
+    queryKey: confessionKeys.userPreferences(userId || ""),
     queryFn: () => confessionService.fetchUserPreferences(userId!),
     enabled: !!userId,
   });
@@ -244,7 +236,7 @@ export function useUpdateUserPreferences() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) throw new Error("User not authenticated");
 
       await confessionService.updateUserPreferences(user.id, preferences);
     },

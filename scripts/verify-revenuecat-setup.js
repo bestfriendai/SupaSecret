@@ -5,17 +5,17 @@
  * Verifies that RevenueCat is properly configured and can connect to the dashboard
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 // Colors for console output
 const colors = {
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  reset: '\x1b[0m',
-  bold: '\x1b[1m'
+  green: "\x1b[32m",
+  red: "\x1b[31m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
 };
 
 function log(message, color = colors.reset) {
@@ -36,19 +36,19 @@ function warning() {
 
 // Load environment variables
 function loadEnvFile() {
-  const envPath = path.join(process.cwd(), '.env');
+  const envPath = path.join(process.cwd(), ".env");
   if (!fs.existsSync(envPath)) {
     log(`${crossmark()} .env file not found`, colors.red);
     return {};
   }
 
-  const envContent = fs.readFileSync(envPath, 'utf8');
+  const envContent = fs.readFileSync(envPath, "utf8");
   const env = {};
-  
-  envContent.split('\n').forEach(line => {
-    const [key, ...valueParts] = line.split('=');
+
+  envContent.split("\n").forEach((line) => {
+    const [key, ...valueParts] = line.split("=");
     if (key && valueParts.length > 0) {
-      env[key.trim()] = valueParts.join('=').trim();
+      env[key.trim()] = valueParts.join("=").trim();
     }
   });
 
@@ -64,14 +64,11 @@ async function verifyRevenueCatSetup() {
 
   // Check 1: Environment Variables
   log(`${colors.bold}1. Environment Variables${colors.reset}`);
-  
-  const requiredEnvVars = [
-    'EXPO_PUBLIC_REVENUECAT_IOS_KEY',
-    'EXPO_PUBLIC_REVENUECAT_ANDROID_KEY'
-  ];
 
-  requiredEnvVars.forEach(varName => {
-    if (env[varName] && env[varName] !== 'your_revenuecat_key_here') {
+  const requiredEnvVars = ["EXPO_PUBLIC_REVENUECAT_IOS_KEY", "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY"];
+
+  requiredEnvVars.forEach((varName) => {
+    if (env[varName] && env[varName] !== "your_revenuecat_key_here") {
       log(`   ${checkmark()} ${varName}: ${env[varName].substring(0, 20)}...`);
     } else {
       log(`   ${crossmark()} ${varName}: Missing or placeholder value`, colors.red);
@@ -81,18 +78,18 @@ async function verifyRevenueCatSetup() {
 
   // Check 2: API Key Format
   log(`\n${colors.bold}2. API Key Format Validation${colors.reset}`);
-  
-  const iosKey = env['EXPO_PUBLIC_REVENUECAT_IOS_KEY'];
-  const androidKey = env['EXPO_PUBLIC_REVENUECAT_ANDROID_KEY'];
 
-  if (iosKey && iosKey.startsWith('appl_')) {
+  const iosKey = env["EXPO_PUBLIC_REVENUECAT_IOS_KEY"];
+  const androidKey = env["EXPO_PUBLIC_REVENUECAT_ANDROID_KEY"];
+
+  if (iosKey && iosKey.startsWith("appl_")) {
     log(`   ${checkmark()} iOS API key has correct format (appl_)`);
   } else {
     log(`   ${crossmark()} iOS API key should start with 'appl_'`, colors.red);
     allChecksPass = false;
   }
 
-  if (androidKey && androidKey.startsWith('goog_')) {
+  if (androidKey && androidKey.startsWith("goog_")) {
     log(`   ${checkmark()} Android API key has correct format (goog_)`);
   } else {
     log(`   ${crossmark()} Android API key should start with 'goog_'`, colors.red);
@@ -101,14 +98,14 @@ async function verifyRevenueCatSetup() {
 
   // Check 3: Configuration Files
   log(`\n${colors.bold}3. Configuration Files${colors.reset}`);
-  
+
   const configFiles = [
-    'src/config/production.ts',
-    'src/services/RevenueCatService.ts',
-    'setup/revenuecat-dashboard-config.json'
+    "src/config/production.ts",
+    "src/services/RevenueCatService.ts",
+    "setup/revenuecat-dashboard-config.json",
   ];
 
-  configFiles.forEach(filePath => {
+  configFiles.forEach((filePath) => {
     if (fs.existsSync(filePath)) {
       log(`   ${checkmark()} ${filePath} exists`);
     } else {
@@ -119,14 +116,14 @@ async function verifyRevenueCatSetup() {
 
   // Check 4: Package Dependencies
   log(`\n${colors.bold}4. Package Dependencies${colors.reset}`);
-  
-  const packageJsonPath = path.join(process.cwd(), 'package.json');
+
+  const packageJsonPath = path.join(process.cwd(), "package.json");
   if (fs.existsSync(packageJsonPath)) {
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
     const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
 
-    if (dependencies['react-native-purchases']) {
-      log(`   ${checkmark()} react-native-purchases: ${dependencies['react-native-purchases']}`);
+    if (dependencies["react-native-purchases"]) {
+      log(`   ${checkmark()} react-native-purchases: ${dependencies["react-native-purchases"]}`);
     } else {
       log(`   ${crossmark()} react-native-purchases not found in dependencies`, colors.red);
       allChecksPass = false;
@@ -135,23 +132,23 @@ async function verifyRevenueCatSetup() {
 
   // Check 5: App Configuration
   log(`\n${colors.bold}5. App Configuration${colors.reset}`);
-  
-  const appConfigPath = path.join(process.cwd(), 'app.config.js');
+
+  const appConfigPath = path.join(process.cwd(), "app.config.js");
   if (fs.existsSync(appConfigPath)) {
     log(`   ${checkmark()} app.config.js exists`);
-    
+
     // Check bundle identifier
     try {
       const appConfig = require(path.resolve(appConfigPath));
-      const config = typeof appConfig === 'function' ? appConfig({}) : appConfig;
-      
-      if (config.expo?.ios?.bundleIdentifier === 'com.toxic.confessions') {
+      const config = typeof appConfig === "function" ? appConfig({}) : appConfig;
+
+      if (config.expo?.ios?.bundleIdentifier === "com.toxic.confessions") {
         log(`   ${checkmark()} iOS bundle identifier: ${config.expo.ios.bundleIdentifier}`);
       } else {
         log(`   ${warning()} iOS bundle identifier may not match RevenueCat setup`);
       }
 
-      if (config.expo?.android?.package === 'com.toxic.confessions') {
+      if (config.expo?.android?.package === "com.toxic.confessions") {
         log(`   ${checkmark()} Android package name: ${config.expo.android.package}`);
       } else {
         log(`   ${warning()} Android package name may not match RevenueCat setup`);
@@ -163,21 +160,21 @@ async function verifyRevenueCatSetup() {
 
   // Check 6: Dashboard Configuration
   log(`\n${colors.bold}6. Dashboard Configuration${colors.reset}`);
-  
-  const dashboardConfigPath = path.join(process.cwd(), 'setup/revenuecat-dashboard-config.json');
+
+  const dashboardConfigPath = path.join(process.cwd(), "setup/revenuecat-dashboard-config.json");
   if (fs.existsSync(dashboardConfigPath)) {
     try {
-      const dashboardConfig = JSON.parse(fs.readFileSync(dashboardConfigPath, 'utf8'));
-      
+      const dashboardConfig = JSON.parse(fs.readFileSync(dashboardConfigPath, "utf8"));
+
       log(`   ${checkmark()} Entitlements: ${dashboardConfig.entitlements?.length || 0}`);
       log(`   ${checkmark()} Products: ${dashboardConfig.products?.length || 0}`);
       log(`   ${checkmark()} Offerings: ${dashboardConfig.offerings?.length || 0}`);
-      
+
       // Verify product IDs
-      const expectedProducts = ['supasecret_plus_monthly', 'supasecret_plus_annual'];
-      const configuredProducts = dashboardConfig.products?.map(p => p.identifier) || [];
-      
-      expectedProducts.forEach(productId => {
+      const expectedProducts = ["supasecret_plus_monthly", "supasecret_plus_annual"];
+      const configuredProducts = dashboardConfig.products?.map((p) => p.identifier) || [];
+
+      expectedProducts.forEach((productId) => {
         if (configuredProducts.includes(productId)) {
           log(`   ${checkmark()} Product configured: ${productId}`);
         } else {
@@ -185,7 +182,6 @@ async function verifyRevenueCatSetup() {
           allChecksPass = false;
         }
       });
-      
     } catch (error) {
       log(`   ${crossmark()} Error parsing dashboard config: ${error.message}`, colors.red);
       allChecksPass = false;
@@ -194,7 +190,7 @@ async function verifyRevenueCatSetup() {
 
   // Final Result
   log(`\n${colors.bold}📊 Verification Summary${colors.reset}`);
-  
+
   if (allChecksPass) {
     log(`${checkmark()} All checks passed! RevenueCat setup looks good.`, colors.green);
     log(`\n${colors.bold}Next Steps:${colors.reset}`);
@@ -217,10 +213,10 @@ async function verifyRevenueCatSetup() {
 // Run verification
 if (require.main === module) {
   verifyRevenueCatSetup()
-    .then(success => {
+    .then((success) => {
       process.exit(success ? 0 : 1);
     })
-    .catch(error => {
+    .catch((error) => {
       log(`${crossmark()} Verification failed: ${error.message}`, colors.red);
       process.exit(1);
     });
