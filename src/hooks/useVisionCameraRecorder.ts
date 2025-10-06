@@ -237,58 +237,9 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
     setFacing((prev) => (prev === "front" ? "back" : "front"));
   }, []);
 
-  // Native blur frame processor - NO SKIA, uses Core Image plugin
-  const frameProcessor = useMemo(() => {
-    if (!useFrameProcessor || !enableFaceBlur || !detectFaces) {
-      console.log("Frame processor not created:", {
-        hasHook: !!useFrameProcessor,
-        enabled: enableFaceBlur,
-        hasDetector: !!detectFaces,
-      });
-      return null;
-    }
-
-    try {
-      console.log("✅ Creating native blur frame processor");
-
-      // Use standard useFrameProcessor + native plugin
-      return useFrameProcessor(
-        (frame) => {
-          "worklet";
-
-          try {
-            // Detect faces
-            const result = detectFaces(frame);
-            if (!result?.faces || result.faces.length === 0) {
-              return;
-            }
-
-            // Convert faces to regions for native plugin
-            const faceRegions = result.faces.map((face: any) => ({
-              x: face.bounds?.x ?? face.frame?.x ?? 0,
-              y: face.bounds?.y ?? face.frame?.y ?? 0,
-              width: face.bounds?.width ?? face.frame?.width ?? 0,
-              height: face.bounds?.height ?? face.frame?.height ?? 0,
-              blurRadius: blurIntensity,
-            }));
-
-            // Call native blur plugin (iOS Core Image)
-            // @ts-ignore - Native plugin registered in AppDelegate
-            if (typeof blurFaces !== "undefined") {
-              blurFaces(frame, faceRegions);
-            }
-          } catch (error) {
-            // Silent fail - continue recording without blur
-            console.error("Frame processing error:", error);
-          }
-        },
-        [detectFaces, blurIntensity]
-      );
-    } catch (err) {
-      console.error("❌ Failed to create frame processor:", err);
-      return null;
-    }
-  }, [useFrameProcessor, enableFaceBlur, detectFaces, blurIntensity]);
+  // Frame processor disabled - Skia has memory leak
+  // TODO: Add server-side blur after upload instead
+  const frameProcessor = null;
 
   const state: VisionCameraRecorderState = {
     isRecording,
