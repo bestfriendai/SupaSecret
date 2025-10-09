@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["FaceBlurModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.faceblur.FaceBlurModule"]
+  }
+}

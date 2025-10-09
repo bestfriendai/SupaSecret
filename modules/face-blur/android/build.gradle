@@ -1,0 +1,51 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+group = 'expo.modules.faceblur'
+version = '1.0.0'
+
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath("com.android.tools.build:gradle:8.1.1")
+    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+android {
+  namespace "expo.modules.faceblur"
+  compileSdkVersion 35
+
+  defaultConfig {
+    minSdkVersion 24
+    targetSdkVersion 35
+  }
+
+  kotlinOptions {
+    jvmTarget = '17'
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+dependencies {
+  implementation project(':expo-modules-core')
+
+  // Kotlin
+  implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0'
+
+  // TODO: Add when implementing Android video blur:
+  // implementation 'com.google.mlkit:face-detection:17.0.0'
+}
