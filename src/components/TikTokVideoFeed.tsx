@@ -10,7 +10,6 @@ import {
   AppState,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import type { FlashListRef } from "@shopify/flash-list";
 import type { ViewToken } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
@@ -150,7 +149,7 @@ class CircuitBreaker {
 
 export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVideoFeedProps) {
   const isFocused = useIsFocused();
-  const flashListRef = useRef<FlashListRef<Confession>>(null);
+  const flashListRef = useRef<React.ElementRef<typeof FlashList<Confession>>>(null);
   const [videos, setVideos] = useState<Confession[]>([]);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [isLoading, setIsLoading] = useState(true);
