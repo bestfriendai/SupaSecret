@@ -1,5 +1,5 @@
-import React, { forwardRef } from "react";
-import { View, Text } from "react-native";
+import React from "react";
+import { View } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -9,11 +9,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 
-const ForwardedText = forwardRef<Text, React.ComponentProps<typeof Text>>(
-  (props, ref) => <Text ref={ref} {...props} />
-);
-ForwardedText.displayName = 'ForwardedText';
-const AnimatedText = Animated.createAnimatedComponent(ForwardedText);
+// Use Reanimated's built-in Animated.Text instead of creating our own
+const AnimatedText = Animated.Text;
 
 interface CharacterCounterProps {
   currentLength: number;

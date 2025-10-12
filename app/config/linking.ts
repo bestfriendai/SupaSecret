@@ -5,8 +5,6 @@
  * Expo Router handles most of the deep linking automatically through file-based routing.
  */
 
-import * as Linking from "expo-linking";
-
 /**
  * URL Prefixes for deep linking
  * These are automatically configured in app.config.js

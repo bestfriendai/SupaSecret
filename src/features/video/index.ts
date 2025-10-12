@@ -8,12 +8,7 @@ export * from "./types";
 
 // Services
 export { VideoService, getVideoService, initializeVideoService } from "./services/videoService";
-export {
-  FaceBlurService,
-  getFaceBlurService,
-  isFaceBlurAvailable,
-  requestFaceBlurPermissions,
-} from "./services/faceBlurService";
+// FaceBlurService removed - use native iOS blur module instead
 export {
   VoiceProcessingService,
   getVoiceProcessingService,

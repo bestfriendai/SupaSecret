@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text, Pressable, RefreshControl, type GestureResponderEvent } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,7 +15,7 @@ import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { checkConfessionStoreState } from "../utils/debugConfessions";
 import { useOptimizedReplies } from "../hooks/useOptimizedReplies";
 import { useScreenStatus } from "../hooks/useScreenStatus";
-import { NetworkErrorState, ErrorState } from "../components/ErrorState";
+import { ErrorState } from "../components/ErrorState";
 import { withErrorBoundary } from "../components/ErrorBoundary";
 import OptimizedAdBanner from "../components/OptimizedAdBanner";
 import { useScrollRestoration } from "../hooks/useScrollRestoration";
@@ -30,7 +30,6 @@ import { Image } from "expo-image";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11yProps } from "../utils/accessibility";
 import { useDebouncedLikeToggle } from "../utils/consolidatedUtils";
-import { withRefreshErrorHandling } from "../utils/refreshErrorHandler";
 import Animated from "react-native-reanimated";
 import { createScreenValidator } from "../utils/screenValidation";
 
@@ -464,7 +463,8 @@ function HomeScreen() {
             }}
             viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
             extraData={{ refreshing, isLoadingMore, networkError }}
-            // FlashList v2 performance props
+            // FlashList performance optimization
+            estimatedItemSize={340}
           />
         </Animated.View>
       </View>

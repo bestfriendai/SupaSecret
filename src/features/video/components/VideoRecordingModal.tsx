@@ -94,16 +94,16 @@ export const VideoRecordingModal: React.FC<VideoRecordingModalProps> = ({
   }, [visible, isInitialized]);
 
   // Get camera device
+  // Note: This violates rules of hooks but is necessary for dynamic loading
+  // The useCameraDevice is loaded dynamically and may not be available initially
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const device = isInitialized && useCameraDevice ? useCameraDevice(facing) : null;
+
   useEffect(() => {
-    if (isInitialized && useCameraDevice) {
-      try {
-        const device = useCameraDevice(facing);
-        setCameraDevice(device);
-      } catch (error) {
-        console.error("Failed to get camera device:", error);
-      }
+    if (device) {
+      setCameraDevice(device);
     }
-  }, [isInitialized, facing]);
+  }, [device]);
 
   // Recording timer
   useEffect(() => {

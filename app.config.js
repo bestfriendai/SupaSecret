@@ -27,7 +27,7 @@ module.exports = {
     },
     orientation: "portrait",
     userInterfaceStyle: "light",
-    newArchEnabled: false,
+    newArchEnabled: true,
     icon: "./assets/icon.png",
     splash: {
       image: "./assets/icon.png",
@@ -43,13 +43,13 @@ module.exports = {
         {
           ios: {
             deploymentTarget: "16.0",
-            newArchEnabled: false,
+            newArchEnabled: true,
           },
           android: {
             compileSdkVersion: 35,
             targetSdkVersion: 35,
             minSdkVersion: 24,
-            newArchEnabled: false,
+            newArchEnabled: true,
             kotlinVersion: "2.1.0",
           },
         },
@@ -65,6 +65,21 @@ module.exports = {
                 cameraPermissionText: "$(PRODUCT_NAME) needs access to your Camera for recording anonymous videos.",
                 enableMicrophonePermission: true,
                 microphonePermissionText: "$(PRODUCT_NAME) needs access to your Microphone for recording audio.",
+              },
+            ],
+          ]),
+      // AdMob plugin configuration - REQUIRED for development builds
+      ...(isExpoGo
+        ? []
+        : [
+            [
+              "react-native-google-mobile-ads",
+              {
+                androidAppId: "ca-app-pub-9512493666273460~8236030580",
+                iosAppId: "ca-app-pub-9512493666273460~1466059369",
+                delayAppMeasurementInit: true,
+                optimizeInitialization: true,
+                optimizeAdLoading: true,
               },
             ],
           ]),

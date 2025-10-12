@@ -1,0 +1,41 @@
+diff --git a/node_modules/react-native/ReactCommon/jsinspector-modern/InspectorPackagerConnection.cpp b/node_modules/react-native/ReactCommon/jsinspector-modern/InspectorPackagerConnection.cpp
+index 4063b6b..4a5a00f 100644
+--- a/node_modules/react-native/ReactCommon/jsinspector-modern/InspectorPackagerConnection.cpp
++++ b/node_modules/react-native/ReactCommon/jsinspector-modern/InspectorPackagerConnection.cpp
+@@ -51,18 +51,24 @@ InspectorPackagerConnection::Impl::Impl(
+ 
+ void InspectorPackagerConnection::Impl::handleProxyMessage(
+     folly::const_dynamic_view message) {
+-  std::string event = message.descend("event").string_or(INVALID);
+-  if (event == "getPages") {
+-    sendToPackager(
+-        folly::dynamic::object("event", "getPages")("payload", pages()));
+-  } else if (event == "wrappedEvent") {
+-    handleWrappedEvent(message.descend("payload"));
+-  } else if (event == "connect") {
+-    handleConnect(message.descend("payload"));
+-  } else if (event == "disconnect") {
+-    handleDisconnect(message.descend("payload"));
+-  } else {
+-    LOG(ERROR) << "Unknown event: " << event;
++  try {
++    std::string event = message.descend("event").string_or(INVALID);
++    if (event == "getPages") {
++      sendToPackager(
++          folly::dynamic::object("event", "getPages")("payload", pages()));
++    } else if (event == "wrappedEvent") {
++      handleWrappedEvent(message.descend("payload"));
++    } else if (event == "connect") {
++      handleConnect(message.descend("payload"));
++    } else if (event == "disconnect") {
++      handleDisconnect(message.descend("payload"));
++    } else {
++      LOG(ERROR) << "Unknown event: " << event;
++    }
++  } catch (const std::exception& e) {
++    LOG(ERROR) << "Failed to handle proxy message: " << e.what();
++  } catch (...) {
++    LOG(ERROR) << "Failed to handle proxy message: unknown error";
+   }
+ }
+ 

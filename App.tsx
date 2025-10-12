@@ -1,12 +1,12 @@
 console.log("[DIAG] App.tsx: Module loading started...");
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 console.log("[DIAG] App.tsx: React imported");
 import { AppState, Platform } from "react-native";
 console.log("[DIAG] App.tsx: React Native imports completed");
 console.log("[DIAG] App.tsx: About to import supabase...");
 import { supabase } from "./src/lib/supabase";
 console.log("[DIAG] App.tsx: Supabase imported successfully");
-import { startNetworkWatcher } from "./src/lib/offlineQueue";
+import { startNetworkWatcher, stopNetworkWatcher } from "./src/lib/offlineQueue";
 console.log("[DIAG] App.tsx: offlineQueue imported successfully");
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
@@ -15,72 +15,21 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { View, Text, Pressable } from "react-native";
-import * as Audio from "expo-audio";
 import AppNavigator from "./src/navigation/AppNavigator";
-import { useAuthStore, cleanupAuthListener, setupAuthListener } from "./src/state/authStore";
-import {
-  useConfessionStore,
-  cleanupConfessionSubscriptions,
-  setupConfessionSubscriptions,
-} from "./src/state/confessionStore";
-import { cleanupNotificationSubscriptions, setupNotificationSubscriptions } from "./src/state/notificationStore";
+import { useAuthStore, cleanupAuthListener } from "./src/state/authStore";
+import { useConfessionStore, cleanupConfessionSubscriptions } from "./src/state/confessionStore";
+import { cleanupNotificationSubscriptions } from "./src/state/notificationStore";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ToastProvider } from "./src/contexts/ToastContext";
 import RetryBanner from "./src/components/RetryBanner";
-import { initializeServices } from "./src/services/ServiceInitializer";
-import { checkEnvironment } from "./src/utils/environmentCheck";
+import { initializeApp, loadUserData, setupGlobalErrorHandlers } from "./src/initialization/appInitializer";
 import "./src/utils/hermesTestUtils"; // Auto-run Hermes compatibility tests
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-// Debug: Simple initialization to isolate issues
-const debugInitializeApp = async () => {
-  try {
-    console.log("[DEBUG] Starting minimal app initialization...");
-
-    // Step 1: Check environment
-    console.log("[DEBUG] Step 1: Checking environment...");
-    checkEnvironment();
-
-    // Step 1.5: Start network watcher (safe after bundle loaded)
-    console.log("[DEBUG] Step 1.5: Starting network watcher...");
-    try {
-      await startNetworkWatcher();
-      console.log("[DEBUG] Network watcher started successfully");
-    } catch (watcherError) {
-      console.error("[DEBUG] Network watcher failed (non-critical):", watcherError);
-      // Continue - offline queue will work without network detection
-    }
-
-    // Step 2: Initialize services (with error handling)
-    console.log("[DEBUG] Step 2: Initializing services...");
-    try {
-      await initializeServices();
-      console.log("[DEBUG] Services initialized successfully");
-    } catch (serviceError) {
-      console.error("[DEBUG] Service initialization failed:", serviceError);
-      // Continue anyway for debugging
-    }
-
-    // Step 3: Set up audio session
-    console.log("[DEBUG] Step 3: Setting up audio...");
-    try {
-      await Audio.setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-      console.log("[DEBUG] Audio setup successful");
-    } catch (audioError) {
-      console.error("[DEBUG] Audio setup failed:", audioError);
-    }
-
-    console.log("[DEBUG] Minimal initialization completed");
-  } catch (error) {
-    console.error("[DEBUG] Initialization error:", error);
-    throw error;
-  }
-};
+// Setup global error handlers once at app startup
+setupGlobalErrorHandlers();
 
 /*
 IMPORTANT NOTICE: DO NOT REMOVE
@@ -110,6 +59,9 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    let initTimeout: ReturnType<typeof setTimeout> | null = null;
+
     // AppState listener for session refresh
     const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (Platform.OS !== "web" && nextAppState === "active") {
@@ -119,92 +71,53 @@ export default function App() {
       }
     });
 
-    const initializeApp = async () => {
-      const MAX_INIT_TIME = 5000; // Reduced from 15s to 5s for faster recovery
-      const initTimeout = setTimeout(() => {
-        console.warn("[DEBUG] Initialization taking too long, forcing app to show");
+    const runInitialization = async () => {
+      const MAX_INIT_TIME = 5000;
+      initTimeout = setTimeout(() => {
+        if (!mounted) return;
+        console.warn("[App.tsx] Initialization timeout - forcing app to show");
         setIsInitializing(false);
         SplashScreen.hideAsync().catch((e) => console.error("Failed to hide splash:", e));
       }, MAX_INIT_TIME);
 
       try {
-        if (__DEV__) {
-          console.log("[App] Starting simplified app initialization...");
+        // Step 1: Initialize app services (shared logic)
+        const initResult = await initializeApp();
+        if (!initResult.success && !__DEV__) {
+          console.error("[App.tsx] Critical initialization failure:", initResult.errors);
         }
 
-        // Use the debug initialization function
-        await debugInitializeApp();
-
-        // Set up auth listener
-        console.log("[DEBUG] Step 4: Setting up auth listener...");
-        try {
-          setupAuthListener();
-          console.log("[DEBUG] Auth listener setup successful");
-        } catch (authError) {
-          console.error("[DEBUG] Auth listener setup failed:", authError);
+        // Step 2: Load user data
+        const userDataResult = await loadUserData(checkAuthState, loadUserPreferences, loadConfessions);
+        if (!userDataResult.success) {
+          console.warn("[App.tsx] User data loading incomplete:", userDataResult.warnings);
         }
 
-        // Set up store subscriptions
-        console.log("[DEBUG] Step 5: Setting up store subscriptions...");
-        try {
-          setupConfessionSubscriptions();
-          setupNotificationSubscriptions();
-          console.log("[DEBUG] Store subscriptions setup successful");
-        } catch (storeError) {
-          console.error("[DEBUG] Store subscriptions setup failed:", storeError);
-        }
-
-        // Check auth state first
-        console.log("[DEBUG] Step 6: Checking auth state...");
-        try {
-          await checkAuthState();
-          console.log("[DEBUG] Auth state check successful");
-        } catch (authStateError) {
-          console.error("[DEBUG] Auth state check failed:", authStateError);
-        }
-
-        // Load user preferences before confessions (ensures store is initialized)
-        console.log("[DEBUG] Step 7: Loading user preferences...");
-        try {
-          await loadUserPreferences();
-          console.log("[DEBUG] User preferences loaded successfully");
-        } catch (error) {
-          console.error("[DEBUG] Failed to load user preferences:", error);
-          // Continue with default preferences
-        }
-
-        // Load confessions after preferences are set
-        console.log("[DEBUG] Step 8: Loading confessions...");
-        try {
-          await loadConfessions();
-          console.log("[DEBUG] Confessions loaded successfully");
-        } catch (confessionError) {
-          console.error("[DEBUG] Failed to load confessions:", confessionError);
-        }
-
-        // Offline queue starts automatically
-        console.log("[DEBUG] App initialization completed successfully");
+        console.log("[App.tsx] Initialization completed");
       } catch (error) {
-        console.error("[DEBUG] App initialization failed:", error);
-        // Don't throw - let the app continue to show error in UI
+        console.error("[App.tsx] Initialization failed:", error);
       } finally {
-        clearTimeout(initTimeout);
-        setIsInitializing(false);
+        if (initTimeout) {
+          clearTimeout(initTimeout);
+          initTimeout = null;
+        }
+        if (mounted) {
+          setIsInitializing(false);
 
-        // Hide splash screen after initialization completes
-        try {
-          await SplashScreen.hideAsync();
-          console.log("[DEBUG] Splash screen hidden successfully");
-        } catch (error) {
-          console.error("[DEBUG] Error hiding splash screen:", error);
+          try {
+            await SplashScreen.hideAsync();
+          } catch (error) {
+            console.error("[App.tsx] Error hiding splash screen:", error);
+          }
         }
       }
     };
 
-    initializeApp();
+    runInitialization();
 
     // Deep linking for auth callbacks (magic links, OAuth, etc.)
     const handleDeepLink = async ({ url }: { url: string }) => {
+      if (!mounted) return;
       if (url.includes("auth/callback") || url.includes("/auth/v1/verify")) {
         const { queryParams } = Linking.parse(url);
         if (!queryParams) return;
@@ -231,17 +144,26 @@ export default function App() {
 
     // Handle initial URL
     Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink({ url });
+      if (url && mounted) handleDeepLink({ url });
     });
 
     // Cleanup
     return () => {
+      mounted = false;
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+        initTimeout = null;
+      }
       subscription?.remove();
       linkingSubscription?.remove();
       cleanupAuthListener();
       cleanupConfessionSubscriptions();
       cleanupNotificationSubscriptions();
-      // Offline queue cleanup is handled automatically
+      stopNetworkWatcher();
+
+      if (__DEV__) {
+        console.log('[App.tsx] Cleanup completed - all listeners and timers cleared');
+      }
     };
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
 
@@ -271,7 +193,7 @@ export default function App() {
         }
       }}
       resetOnPropsChange={true}
-      fallback={(error, errorInfo) => (
+      fallback={(error, _errorInfo) => (
         <SafeAreaProvider>
           <GestureHandlerRootView
             style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000", padding: 20 }}

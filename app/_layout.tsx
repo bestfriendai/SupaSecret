@@ -2,7 +2,7 @@ import "react-native-gesture-handler";
 import "react-native-reanimated";
 import React, { useEffect, useState } from "react";
 import { AppState, Platform, LogBox } from "react-native";
-import { Slot, SplashScreen, Stack, useRouter, useSegments } from "expo-router";
+import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -11,13 +11,9 @@ import * as Linking from "expo-linking";
 import { StatusBar } from "expo-status-bar";
 
 // Import stores and utilities
-import { useAuthStore, cleanupAuthListener, setupAuthListener } from "../src/state/authStore";
-import {
-  useConfessionStore,
-  cleanupConfessionSubscriptions,
-  setupConfessionSubscriptions,
-} from "../src/state/confessionStore";
-import { cleanupNotificationSubscriptions, setupNotificationSubscriptions } from "../src/state/notificationStore";
+import { useAuthStore, cleanupAuthListener } from "../src/state/authStore";
+import { useConfessionStore, cleanupConfessionSubscriptions } from "../src/state/confessionStore";
+import { cleanupNotificationSubscriptions } from "../src/state/notificationStore";
 
 // Import contexts and error boundaries
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
@@ -25,10 +21,10 @@ import { ToastProvider } from "../src/contexts/ToastContext";
 import RetryBanner from "../src/components/RetryBanner";
 import LoadingSpinner from "../src/components/LoadingSpinner";
 
-// Import services
-import { initializeServices } from "../src/services/ServiceInitializer";
-import { checkEnvironment } from "../src/utils/environmentCheck";
+// Import shared initialization
+import { initializeApp, loadUserData, setupGlobalErrorHandlers } from "../src/initialization/appInitializer";
 import { supabase } from "../src/lib/supabase";
+import { stopNetworkWatcher } from "../src/lib/offlineQueue";
 
 // Global CSS
 import "../global.css";
@@ -44,6 +40,9 @@ LogBox.ignoreLogs([
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
+// Setup global error handlers once at app startup
+setupGlobalErrorHandlers();
+
 // Export error boundary from expo-router
 export { ErrorBoundary } from "expo-router";
 
@@ -52,51 +51,12 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 };
 
-// Debug initialization function
-const debugInitializeApp = async () => {
-  try {
-    console.log("[DEBUG] Starting minimal app initialization...");
-
-    // Step 1: Check environment
-    console.log("[DEBUG] Step 1: Checking environment...");
-    checkEnvironment();
-
-    // Step 2: Initialize services (with error handling)
-    console.log("[DEBUG] Step 2: Initializing services...");
-    try {
-      await initializeServices();
-      console.log("[DEBUG] Services initialized successfully");
-    } catch (serviceError) {
-      console.error("[DEBUG] Service initialization failed:", serviceError);
-      // Continue anyway for debugging
-    }
-
-    // Step 3: Set up audio session
-    console.log("[DEBUG] Step 3: Setting up audio...");
-    try {
-      await Audio.setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-      console.log("[DEBUG] Audio setup successful");
-    } catch (audioError) {
-      console.error("[DEBUG] Audio setup failed:", audioError);
-    }
-
-    console.log("[DEBUG] Minimal initialization completed");
-  } catch (error) {
-    console.error("[DEBUG] Initialization error:", error);
-    throw error;
-  }
-};
-
 function useProtectedRoute(user: any) {
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     const inAuthGroup = segments[0] === "(auth)";
-    const inTabsGroup = segments[0] === "(tabs)";
 
     if (!user && !inAuthGroup) {
       // Redirect to auth if not logged in
@@ -112,7 +72,7 @@ function useProtectedRoute(user: any) {
 }
 
 function RootLayoutContent() {
-  const { isAuthenticated, user, checkAuthState } = useAuthStore();
+  const { user, checkAuthState } = useAuthStore();
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
   const loadUserPreferences = useConfessionStore((state) => state.loadUserPreferences);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -121,6 +81,9 @@ function RootLayoutContent() {
   useProtectedRoute(user);
 
   useEffect(() => {
+    let mounted = true;
+    let initTimeout: ReturnType<typeof setTimeout> | null = null;
+
     // AppState listener for session refresh
     const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (Platform.OS !== "web" && nextAppState === "active") {
@@ -130,88 +93,53 @@ function RootLayoutContent() {
       }
     });
 
-    const initializeApp = async () => {
+    const runInitialization = async () => {
       const MAX_INIT_TIME = 15000;
-      const initTimeout = setTimeout(() => {
-        console.warn("[DEBUG] Initialization taking too long, forcing app to show");
+      initTimeout = setTimeout(() => {
+        if (!mounted) return;
+        console.warn("[_layout.tsx] Initialization timeout - forcing app to show");
         setIsInitializing(false);
         SplashScreen.hideAsync().catch((e) => console.error("Failed to hide splash:", e));
       }, MAX_INIT_TIME);
 
       try {
-        if (__DEV__) {
-          console.log("[App] Starting simplified app initialization...");
+        // Step 1: Initialize app services (shared logic)
+        const initResult = await initializeApp();
+        if (!initResult.success && !__DEV__) {
+          console.error("[_layout.tsx] Critical initialization failure:", initResult.errors);
         }
 
-        // Use the debug initialization function
-        await debugInitializeApp();
-
-        // Set up auth listener
-        console.log("[DEBUG] Step 4: Setting up auth listener...");
-        try {
-          setupAuthListener();
-          console.log("[DEBUG] Auth listener setup successful");
-        } catch (authError) {
-          console.error("[DEBUG] Auth listener setup failed:", authError);
+        // Step 2: Load user data
+        const userDataResult = await loadUserData(checkAuthState, loadUserPreferences, loadConfessions);
+        if (!userDataResult.success) {
+          console.warn("[_layout.tsx] User data loading incomplete:", userDataResult.warnings);
         }
 
-        // Set up store subscriptions
-        console.log("[DEBUG] Step 5: Setting up store subscriptions...");
-        try {
-          setupConfessionSubscriptions();
-          setupNotificationSubscriptions();
-          console.log("[DEBUG] Store subscriptions setup successful");
-        } catch (storeError) {
-          console.error("[DEBUG] Store subscriptions setup failed:", storeError);
-        }
-
-        // Check auth state first
-        console.log("[DEBUG] Step 6: Checking auth state...");
-        try {
-          await checkAuthState();
-          console.log("[DEBUG] Auth state check successful");
-        } catch (authStateError) {
-          console.error("[DEBUG] Auth state check failed:", authStateError);
-        }
-
-        // Load user preferences before confessions
-        console.log("[DEBUG] Step 7: Loading user preferences...");
-        try {
-          await loadUserPreferences();
-          console.log("[DEBUG] User preferences loaded successfully");
-        } catch (error) {
-          console.error("[DEBUG] Failed to load user preferences:", error);
-        }
-
-        // Load confessions after preferences are set
-        console.log("[DEBUG] Step 8: Loading confessions...");
-        try {
-          await loadConfessions();
-          console.log("[DEBUG] Confessions loaded successfully");
-        } catch (confessionError) {
-          console.error("[DEBUG] Failed to load confessions:", confessionError);
-        }
-
-        console.log("[DEBUG] App initialization completed successfully");
+        console.log("[_layout.tsx] Initialization completed");
       } catch (error) {
-        console.error("[DEBUG] App initialization failed:", error);
+        console.error("[_layout.tsx] Initialization failed:", error);
       } finally {
-        clearTimeout(initTimeout);
-        setIsInitializing(false);
+        if (initTimeout) {
+          clearTimeout(initTimeout);
+          initTimeout = null;
+        }
+        if (mounted) {
+          setIsInitializing(false);
 
-        try {
-          await SplashScreen.hideAsync();
-          console.log("[DEBUG] Splash screen hidden successfully");
-        } catch (error) {
-          console.error("[DEBUG] Error hiding splash screen:", error);
+          try {
+            await SplashScreen.hideAsync();
+          } catch (error) {
+            console.error("[_layout.tsx] Error hiding splash screen:", error);
+          }
         }
       }
     };
 
-    initializeApp();
+    runInitialization();
 
     // Deep linking for auth callbacks
     const handleDeepLink = async ({ url }: { url: string }) => {
+      if (!mounted) return;
       if (url.includes("auth/callback") || url.includes("/auth/v1/verify")) {
         const { queryParams } = Linking.parse(url);
         if (!queryParams) return;
@@ -238,16 +166,26 @@ function RootLayoutContent() {
 
     // Handle initial URL
     Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink({ url });
+      if (url && mounted) handleDeepLink({ url });
     });
 
     // Cleanup
     return () => {
+      mounted = false;
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+        initTimeout = null;
+      }
       subscription?.remove();
       linkingSubscription?.remove();
       cleanupAuthListener();
       cleanupConfessionSubscriptions();
       cleanupNotificationSubscriptions();
+      stopNetworkWatcher();
+
+      if (__DEV__) {
+        console.log('[_layout.tsx] Cleanup completed - all listeners and timers cleared');
+      }
     };
   }, [checkAuthState, loadConfessions, loadUserPreferences]);
 

@@ -47,6 +47,7 @@ let online = true; // optimistic default
 let watcherStarted = false;
 let flushing = false;
 let networkType: "wifi" | "cellular" | "unknown" = "unknown";
+let networkUnsubscribe: (() => void) | null = null;
 
 const QUEUE_STORAGE_KEY = "@offline_queue";
 const ANALYTICS_BATCH_KEY = "@analytics_batch";
@@ -276,7 +277,8 @@ export const startNetworkWatcher = async () => {
       return null as any;
     });
     if (netinfo && netinfo.default) {
-      netinfo.default.addEventListener((state: any) => {
+      // Store unsubscribe function for cleanup
+      networkUnsubscribe = netinfo.default.addEventListener((state: any) => {
         const wasOnline = online;
         online = !!state?.isConnected && !!state?.isInternetReachable;
         networkType = state?.type === "wifi" ? "wifi" : state?.type === "cellular" ? "cellular" : "unknown";
@@ -292,6 +294,19 @@ export const startNetworkWatcher = async () => {
     }
   } catch {
     // Ignore watcher errors; rely on manual setOnline/flush or retries
+  }
+};
+
+// Cleanup function for network watcher
+export const stopNetworkWatcher = () => {
+  if (networkUnsubscribe) {
+    networkUnsubscribe();
+    networkUnsubscribe = null;
+  }
+  watcherStarted = false;
+
+  if (__DEV__) {
+    console.log('[OfflineQueue] Network watcher stopped');
   }
 };
 
@@ -442,6 +457,7 @@ export const offlineQueue = {
   setOnline,
   registerProcessor,
   startNetworkWatcher,
+  stopNetworkWatcher,
   configureQueue,
   getQueueStats,
   clearQueue,

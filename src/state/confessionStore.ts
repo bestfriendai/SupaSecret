@@ -13,6 +13,7 @@ import { trackStoreOperation } from "../utils/storePerformanceMonitor";
 import { normalizeConfession, normalizeConfessions } from "../utils/confessionNormalizer";
 import { confessionValidation, videoValidation } from "../utils/validation";
 import * as FileSystem from "../utils/legacyFileSystem";
+import { compressVideo, deleteVideoFile, getVideoSize } from "../utils/videoCompression";
 
 // Debounce utility for preventing race conditions in like toggles
 const pendingOperations = new Map<string, Promise<any>>();
@@ -372,11 +373,39 @@ export const useConfessionStore = create<ConfessionState>()(
                 // TODO: Add duration validation when duration info is available
                 // This would require video metadata extraction which is complex
 
-                const result = await uploadVideoToSupabase(confession.videoUri, user.id, {
-                  onProgress: opts?.onUploadProgress,
+                // Log video size before upload
+                const videoSize = await getVideoSize(confession.videoUri);
+                console.log(`📹 Uploading video: ${videoSize.toFixed(2)}MB`);
+
+                // Compress video if needed (currently just validates)
+                const compressionResult = await compressVideo(confession.videoUri, {
+                  quality: "medium",
+                  onProgress: (progress) => {
+                    // Report compression progress (0-20% of total)
+                    opts?.onUploadProgress?.(progress * 0.2);
+                  },
+                });
+
+                if (!compressionResult.success) {
+                  throw new Error(compressionResult.error || "Video compression failed");
+                }
+
+                const videoToUpload = compressionResult.uri || confession.videoUri;
+
+                const result = await uploadVideoToSupabase(videoToUpload, user.id, {
+                  onProgress: (progress) => {
+                    // Report upload progress (20-100% of total)
+                    opts?.onUploadProgress?.(20 + progress * 0.8);
+                  },
                 });
                 videoStoragePath = result.path; // store path in DB
                 signedVideoUrl = result.signedUrl; // use for immediate playback
+
+                // Clean up temporary file after successful upload
+                if (videoToUpload !== confession.videoUri) {
+                  await deleteVideoFile(videoToUpload);
+                }
+                await deleteVideoFile(confession.videoUri);
               } catch (uploadError) {
                 if (__DEV__) {
                   console.error("Video upload failed:", uploadError);
@@ -401,6 +430,8 @@ export const useConfessionStore = create<ConfessionState>()(
               video_uri: videoStoragePath,
               transcription: confession.transcription,
               is_anonymous: confession.isAnonymous,
+              has_face_blur: confession.type === "video" ? ((confession as any).faceBlurApplied ?? false) : false,
+              has_voice_change: confession.type === "video" ? ((confession as any).voiceChangeApplied ?? false) : false,
             })
             .select()
             .single();
@@ -948,6 +979,10 @@ const cleanupConfessionSubscriptions = () => {
     confessionReconnectTimer = null;
   }
   confessionReconnectAttempts = 0;
+
+  if (__DEV__) {
+    console.log('[ConfessionStore] Cleaned up subscriptions and timers');
+  }
 };
 
 // Function to set up real-time subscriptions for confessions

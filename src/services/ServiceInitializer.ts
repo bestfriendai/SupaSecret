@@ -89,6 +89,28 @@ export class ServiceInitializer {
       console.error("❌", errorMsg);
     }
 
+    // Initialize App Tracking Transparency (ATT) - REQUIRED for iOS 14.5+
+    try {
+      const { TrackingService } = await import("./TrackingService");
+      const trackingService = TrackingService.getInstance();
+
+      // Check if we should request permission
+      const shouldRequest = await trackingService.shouldRequestPermission();
+      if (shouldRequest) {
+        console.log("📱 Requesting App Tracking Transparency permission...");
+        const result = await trackingService.requestTrackingPermission();
+        console.log("✅ ATT Permission Status:", result.status);
+      } else {
+        const status = await trackingService.getTrackingStatus();
+        console.log("✅ ATT Status (already determined):", status.status);
+      }
+      result.initializedServices.push("App Tracking Transparency");
+    } catch (error) {
+      const errorMsg = `ATT initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`;
+      result.errors.push(errorMsg);
+      console.error("❌", errorMsg);
+    }
+
     // Initialize AdMob (gated behind ENABLE_ADS) and skip on critical validation errors
     if (isFeatureEnabled("ENABLE_ADS")) {
       const adMobHasCritical = adMobRes?.issues?.some((i) => i.severity === "critical");

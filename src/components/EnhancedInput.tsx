@@ -1,5 +1,5 @@
-import React, { useState, forwardRef } from "react";
-import { View, Text, TextInput, Pressable, TextInputProps } from "react-native";
+import React, { useState } from "react";
+import { View, TextInput, Pressable, TextInputProps } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
@@ -28,11 +28,8 @@ interface EnhancedInputProps extends Omit<TextInputProps, "onChangeText" | "onBl
 }
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
-const ForwardedText = forwardRef<Text, React.ComponentProps<typeof Text>>(
-  (props, ref) => <Text ref={ref} {...props} />
-);
-ForwardedText.displayName = 'ForwardedText';
-const AnimatedText = Animated.createAnimatedComponent(ForwardedText);
+// Use Reanimated's built-in Animated.Text instead of creating our own
+const AnimatedText = Animated.Text;
 
 export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   label,

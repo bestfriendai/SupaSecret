@@ -33,7 +33,6 @@ let Camera: any = null;
 let useCameraDevice: any = null;
 let useCameraFormat: any = null;
 let useFrameProcessor: any = null;
-let useSkiaFrameProcessor: any = null;
 let Worklets: any = null;
 
 const loadVisionCamera = async () => {
@@ -49,19 +48,6 @@ const loadVisionCamera = async () => {
     useCameraDevice = visionCameraModule.useCameraDevice;
     useCameraFormat = visionCameraModule.useCameraFormat;
     useFrameProcessor = visionCameraModule.useFrameProcessor;
-
-    // Load Skia integration if available
-    try {
-      const skiaModule = await import("@shopify/react-native-skia");
-      // Check if useSkiaFrameProcessor exists in the module
-      if ("useSkiaFrameProcessor" in skiaModule) {
-        useSkiaFrameProcessor = skiaModule.useSkiaFrameProcessor;
-      } else {
-        console.log("⚠️ Skia frame processor not available in this version");
-      }
-    } catch {
-      console.log("⚠️ Skia not available for advanced effects");
-    }
 
     console.log("⚠️ Worklets disabled (requires New Architecture)");
 
@@ -116,7 +102,6 @@ export class VisionCameraProcessor {
         useCameraDevice,
         useCameraFormat,
         useFrameProcessor,
-        useSkiaFrameProcessor,
         isAvailable: true,
       };
     }
@@ -127,7 +112,6 @@ export class VisionCameraProcessor {
       useCameraDevice: null,
       useCameraFormat: null,
       useFrameProcessor: null,
-      useSkiaFrameProcessor: null,
       isAvailable: false,
     };
   }
@@ -145,23 +129,15 @@ export class VisionCameraProcessor {
   }
 
   /**
-   * Create a Skia frame processor for advanced drawing
-   *
-   * NOTE: This method is deprecated. Use VisionCameraFaceBlurProcessor instead.
-   * Hooks cannot be called inside class methods.
+   * Skia frame processors removed - memory leak issue
+   * Use native iOS blur module instead
    */
-  createSkiaFrameProcessor(_draw: (canvas: any, frame: any) => void) {
-    console.warn("createSkiaFrameProcessor is deprecated. Use VisionCameraFaceBlurProcessor instead.");
-    return null;
-  }
 
   /**
-   * Apply face blur effect using ML Kit
-   *
-   * NOTE: This method is deprecated. Use VisionCameraFaceBlurProcessor instead.
+   * Face blur processor removed - use native iOS blur module
    */
   createFaceBlurProcessor() {
-    console.warn("createFaceBlurProcessor is deprecated. Use VisionCameraFaceBlurProcessor instead.");
+    console.warn("createFaceBlurProcessor is deprecated. Use native iOS blur module instead.");
     return null;
   }
 
@@ -339,7 +315,6 @@ export class VisionCameraProcessor {
     return {
       visionCamera: instance.isVisionCameraAvailable,
       frameProcessors: instance.isVisionCameraAvailable && !!useFrameProcessor,
-      skiaIntegration: !!useSkiaFrameProcessor,
       reanimatedV4: true, // We're using v4
       worklets: !!Worklets,
       features: {
@@ -347,7 +322,6 @@ export class VisionCameraProcessor {
         photo: instance.isVisionCameraAvailable,
         frameProcessing: instance.isVisionCameraAvailable && !!useFrameProcessor,
         faceBlur: instance.isVisionCameraAvailable && !!useFrameProcessor,
-        skiaEffects: !!useSkiaFrameProcessor,
         hdr: instance.isVisionCameraAvailable,
         stabilization: instance.isVisionCameraAvailable,
       },

@@ -9,7 +9,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-import { runVisionCameraDiagnostics, DiagnosticResult } from "../utils/visionCameraDiagnostics";
+// Diagnostics removed - visionCameraDiagnostics.ts deleted (Skia cleanup)
+// import { runVisionCameraDiagnostics, DiagnosticResult } from "../utils/visionCameraDiagnostics";
+
+interface DiagnosticResult {
+  module: string;
+  loaded: boolean;
+  error?: string;
+  exports?: string[];
+}
 
 export default function VisionCameraDiagnosticsScreen() {
   const navigation = useNavigation();
@@ -22,8 +30,14 @@ export default function VisionCameraDiagnosticsScreen() {
     setHasRun(false);
 
     try {
-      const diagnosticResults = await runVisionCameraDiagnostics();
-      setResults(diagnosticResults);
+      // Diagnostics function removed with visionCameraDiagnostics.ts
+      setResults([
+        {
+          module: "Diagnostics Disabled",
+          loaded: false,
+          error: "Diagnostics utility removed during Skia cleanup",
+        },
+      ]);
       setHasRun(true);
     } catch (error) {
       console.error("Failed to run diagnostics:", error);

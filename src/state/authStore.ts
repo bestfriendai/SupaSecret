@@ -411,6 +411,10 @@ const cleanupAuthListener = () => {
     clearTimeout(sessionRefreshTimer);
     sessionRefreshTimer = null;
   }
+
+  if (__DEV__) {
+    console.log('[AuthStore] Cleaned up auth listener and session refresh timer');
+  }
 };
 
 // Function to set up auth state listener with proper state management

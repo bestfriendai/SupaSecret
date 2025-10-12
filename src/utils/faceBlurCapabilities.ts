@@ -8,7 +8,6 @@ import { IS_EXPO_GO } from "./environmentCheck";
 
 export interface FaceBlurCapabilities {
   canUseFrameProcessor: boolean;
-  canUseSkia: boolean;
   canUseFaceDetection: boolean;
   canUseRealTimeBlur: boolean;
   reason: string;
@@ -27,7 +26,6 @@ export const detectFaceBlurCapabilities = async (): Promise<FaceBlurCapabilities
 
   const capabilities: FaceBlurCapabilities = {
     canUseFrameProcessor: false,
-    canUseSkia: false,
     canUseFaceDetection: false,
     canUseRealTimeBlur: false,
     reason: "Unknown",
@@ -62,22 +60,7 @@ export const detectFaceBlurCapabilities = async (): Promise<FaceBlurCapabilities
     return capabilities;
   }
 
-  // Check 4: Skia available
-  try {
-    const skia = require("@shopify/react-native-skia");
-    if (!skia.Skia) {
-      capabilities.reason = "Skia not available";
-      cachedCapabilities = capabilities;
-      return capabilities;
-    }
-    capabilities.canUseSkia = true;
-  } catch (e) {
-    capabilities.reason = "Skia not installed";
-    cachedCapabilities = capabilities;
-    return capabilities;
-  }
-
-  // Check 5: Face detector available
+  // Check 4: Face detector available (Skia removed - memory leak)
   try {
     const faceDetector = require("react-native-vision-camera-face-detector");
     if (!faceDetector.useFaceDetector) {
@@ -92,11 +75,7 @@ export const detectFaceBlurCapabilities = async (): Promise<FaceBlurCapabilities
     return capabilities;
   }
 
-  // Check 6: New Architecture (best effort detection)
-  // Note: There's no reliable runtime check for New Architecture
-  // We'll assume it's available if all other checks pass
-  // The actual test is when we try to use useSkiaFrameProcessor
-
+  // Real-time blur now uses native iOS module (not Skia)
   capabilities.canUseRealTimeBlur = true;
   capabilities.reason = "All capabilities available";
   cachedCapabilities = capabilities;

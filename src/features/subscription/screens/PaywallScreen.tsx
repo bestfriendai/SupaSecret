@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, Alert, ActivityIndicator, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSubscription } from "../hooks/useSubscription";
 import type { RevenueCatPackage } from "../types";
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "../../../constants/urls";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
@@ -91,16 +92,50 @@ export function PaywallScreen() {
       const offerings = await getOfferings();
       if (offerings?.current) {
         const availablePackages = offerings.current.availablePackages || [];
-        setPackages(availablePackages);
 
-        // Auto-select annual (most popular) or first package
-        const annualPackage = availablePackages.find(
-          (pkg) => pkg.packageType === "ANNUAL" || pkg.identifier.includes("annual"),
+        if (availablePackages.length === 0) {
+          console.warn("No subscription packages available");
+          Alert.alert(
+            "Subscriptions Unavailable",
+            "Subscription options are temporarily unavailable. This may be due to:\n\n" +
+              "• App Store Connect configuration pending\n" +
+              "• Network connectivity issues\n" +
+              "• Regional restrictions\n\n" +
+              "Please try again later or contact support if the issue persists.",
+            [{ text: "OK" }],
+          );
+        } else {
+          setPackages(availablePackages);
+
+          // Auto-select annual (most popular) or first package
+          const annualPackage = availablePackages.find(
+            (pkg) => pkg.packageType === "ANNUAL" || pkg.identifier.includes("annual"),
+          );
+          setSelectedPackage(annualPackage || availablePackages[0] || null);
+        }
+      } else {
+        console.warn("No current offering available");
+        Alert.alert(
+          "Subscriptions Unavailable",
+          "Unable to load subscription options. Please ensure:\n\n" +
+            "• You have an active internet connection\n" +
+            "• Your App Store account is properly configured\n" +
+            "• You're signed in to the App Store\n\n" +
+            "Try again later or contact support if the issue persists.",
+          [{ text: "OK" }],
         );
-        setSelectedPackage(annualPackage || availablePackages[0] || null);
       }
     } catch (error) {
       console.error("Failed to load offerings:", error);
+      Alert.alert(
+        "Error Loading Subscriptions",
+        "We encountered an error loading subscription options. Please check your internet connection and try again.\n\n" +
+          "If you're using TestFlight, ensure the app is properly configured in App Store Connect.",
+        [
+          { text: "Retry", onPress: () => loadOfferings() },
+          { text: "Cancel", style: "cancel" },
+        ],
+      );
     } finally {
       setLoadingOfferings(false);
     }
@@ -371,8 +406,8 @@ export function PaywallScreen() {
           </Pressable>
         </View>
 
-        {/* Terms */}
-        <View style={{ paddingHorizontal: 20 }}>
+        {/* Terms and Privacy Policy Links - Required by App Store Guideline 3.1.2 */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
           <Text
             style={{
               color: "#4B5563",
@@ -381,10 +416,41 @@ export function PaywallScreen() {
               lineHeight: 16,
             }}
           >
-            By subscribing, you agree to our Terms of Service and Privacy Policy. Subscriptions auto-renew unless
-            cancelled 24 hours before the end of the current period.
+            By subscribing, you agree to our{" "}
+            <Text
+              style={{ color: "#3B82F6", textDecorationLine: "underline" }}
+              onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}
+            >
+              Terms of Service
+            </Text>{" "}
+            and{" "}
+            <Text
+              style={{ color: "#3B82F6", textDecorationLine: "underline" }}
+              onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+            >
+              Privacy Policy
+            </Text>
+            . Subscriptions auto-renew unless cancelled 24 hours before the end of the current period.
           </Text>
         </View>
+
+        {/* Subscription Details - Required by App Store Guideline 3.1.2 */}
+        {selectedPackage && (
+          <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+            <View style={{ backgroundColor: "#1F2937", borderRadius: 12, padding: 16 }}>
+              <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 8, fontWeight: "600" }}>
+                SUBSCRIPTION DETAILS
+              </Text>
+              <Text style={{ color: "#D1D5DB", fontSize: 13, lineHeight: 20 }}>
+                • Title: {selectedPackage.product.title}
+                {"\n"}• Duration: {selectedPackage.product.subscriptionPeriod || "Annual"}
+                {"\n"}• Price: {selectedPackage.product.priceString}
+                {"\n"}• Auto-renews unless cancelled
+                {"\n"}• Manage in App Store settings
+              </Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

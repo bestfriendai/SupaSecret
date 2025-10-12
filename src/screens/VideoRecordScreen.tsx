@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { View, Text, Pressable, Alert, StyleSheet, ActivityIndicator, Switch, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -278,7 +278,7 @@ function ExpoCameraRecordScreen() {
           facing={data.facing}
           mode="video"
           active={!processing}
-          videoQuality="1080p"
+          videoQuality="720p"
           animateShutter={false}
         />
 

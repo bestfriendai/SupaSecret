@@ -546,3 +546,22 @@ export const useTrendingStore = create<TrendingState>()(
     },
   ),
 );
+
+// Cleanup function for trending store
+const cleanupTrendingStore = () => {
+  if (trendingRealtimeChannel) {
+    trendingRealtimeChannel.unsubscribe();
+    trendingRealtimeChannel = null;
+  }
+  if (trendingRefreshTimer) {
+    clearTimeout(trendingRefreshTimer);
+    trendingRefreshTimer = null;
+  }
+
+  if (__DEV__) {
+    console.log('[TrendingStore] Cleaned up subscriptions and timers');
+  }
+};
+
+// Export cleanup function
+export { cleanupTrendingStore };

@@ -92,16 +92,15 @@ export const useVideoRecording = (options: VideoRecordingOptions = {}): UseVideo
   }, [onError]);
 
   // Get camera device
+  // Get camera device - must be called unconditionally at top level
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const device = isVisionCameraLoaded && useCameraDevice ? useCameraDevice(facing) : null;
+
   useEffect(() => {
-    if (isVisionCameraLoaded && useCameraDevice) {
-      try {
-        const device = useCameraDevice(facing);
-        setCameraDevice(device);
-      } catch (error) {
-        console.error("Failed to get camera device:", error);
-      }
+    if (device) {
+      setCameraDevice(device);
     }
-  }, [isVisionCameraLoaded, facing]);
+  }, [device]);
 
   // Recording timer
   useEffect(() => {

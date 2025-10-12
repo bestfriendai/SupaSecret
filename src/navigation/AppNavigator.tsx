@@ -259,6 +259,7 @@ export default function AppNavigator() {
   const { isAuthenticated, isLoading, user, checkAuthState } = useAuthStore();
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
   const AUTH_CHECK_TIMEOUT = 10000; // 10 seconds timeout
 
   // Robust initialization with timeout handling
@@ -370,6 +371,7 @@ export default function AppNavigator() {
       }}
       fallback={<View style={{ flex: 1, backgroundColor: "#000000" }} />}
       onReady={() => {
+        setIsNavigationReady(true);
         logNavigationState("Container Ready", { timestamp: Date.now() });
       }}
       onStateChange={(state) => {

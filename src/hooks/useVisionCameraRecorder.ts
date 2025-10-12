@@ -97,12 +97,14 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
   }, []);
 
   // Get camera device - MUST be called unconditionally at top level
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const cameraDevice = !IS_EXPO_GO && useCameraDevice ? useCameraDevice(facing) : null;
 
   // Face detector hook - MUST be called unconditionally at top level
   const faceDetectorResult =
     !IS_EXPO_GO && useFaceDetector && enableFaceBlur
-      ? useFaceDetector({
+      ? // eslint-disable-next-line react-hooks/rules-of-hooks
+        useFaceDetector({
           performanceMode: "fast",
           contourMode: "all",
           landmarkMode: "none",

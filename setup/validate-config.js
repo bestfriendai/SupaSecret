@@ -7,6 +7,11 @@
 
 const fs = require("fs");
 const path = require("path");
+const { fileURLToPath } = require("url");
+
+// For CommonJS, __dirname is available
+// eslint-disable-next-line no-undef
+const __dirname = typeof __dirname !== "undefined" ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 const REQUIRED_ENV_VARS = [
   "EXPO_PUBLIC_REVENUECAT_IOS_KEY",
@@ -35,6 +40,7 @@ function validateEnvironmentVariables() {
   const placeholders = [];
 
   REQUIRED_ENV_VARS.forEach((envVar) => {
+    // eslint-disable-next-line expo/no-dynamic-env-var
     const value = process.env[envVar];
 
     if (!value) {

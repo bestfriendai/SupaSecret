@@ -14,6 +14,7 @@ import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { ProcessedVideo } from "../services/IAnonymiser";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import { applyPostProcessBlur, getBlurProcessingMethod } from "../services/PostProcessBlurService";
 
 type VideoPreviewScreenRouteProp = RouteProp<RootStackParamList, "VideoPreview">;
 
@@ -41,9 +42,15 @@ export default function VideoPreviewScreen() {
   const { hapticsEnabled, impactAsync } = usePreferenceAwareHaptics();
   const { addConfession } = useConfessionStore();
   const hasStartedPlayingRef = useRef(false);
+  const playerStatusRef = useRef<string>("idle");
+
+  const [isBlurring, setIsBlurring] = useState(false);
+  const [blurProgress, setBlurProgress] = useState(0);
+  const [hasBlurApplied, setHasBlurApplied] = useState(processedVideo.faceBlurApplied || false);
+  const [currentVideoUri, setCurrentVideoUri] = useState(processedVideo.uri);
 
   // Validate video URI format
-  const videoUri = processedVideo.uri.startsWith("file://") ? processedVideo.uri : `file://${processedVideo.uri}`;
+  const videoUri = currentVideoUri.startsWith("file://") ? currentVideoUri : `file://${currentVideoUri}`;
 
   console.log("📹 VideoPreviewScreen - Video URI:", videoUri);
 
@@ -59,6 +66,7 @@ export default function VideoPreviewScreen() {
     if (!event) return;
     const { status, error } = event;
     console.log("📊 Player status changed:", status);
+    playerStatusRef.current = status;
 
     if (status === "error") {
       console.error("❌ Video player error:", error);
@@ -122,8 +130,13 @@ export default function VideoPreviewScreen() {
 
       return () => {
         console.log("VideoPreview blurred");
-        if (player.status === "readyToPlay") {
-          player.pause();
+        try {
+          if (player && playerStatusRef.current === "readyToPlay") {
+            player.pause();
+          }
+        } catch (error) {
+          // Player reference may be invalid after video URI change, ignore
+          console.log("Player cleanup error (expected after blur):", error);
         }
         setIsPlaying(false);
       };
@@ -154,14 +167,20 @@ export default function VideoPreviewScreen() {
     setUploadProgress(0);
 
     try {
+      // Use currentVideoUri which contains the blurred video path if blur was applied
+      const finalVideoUri = currentVideoUri;
+
+      console.log("📤 Uploading video:", finalVideoUri);
+      console.log("🎭 Face blur applied:", hasBlurApplied);
+
       const confessionPayload = {
         type: "video" as const,
         content: "Anonymous video confession",
-        videoUri: processedVideo.uri,
+        videoUri: finalVideoUri,
         transcription: processedVideo.transcription,
         isAnonymous: true,
-        faceBlurApplied: processedVideo.faceBlurApplied ?? true,
-        voiceChangeApplied: processedVideo.voiceChangeApplied ?? true,
+        faceBlurApplied: processedVideo.faceBlurApplied ?? false,
+        voiceChangeApplied: processedVideo.voiceChangeApplied ?? false,
         duration: processedVideo.duration,
         likes: 0,
         views: 0,
@@ -170,7 +189,9 @@ export default function VideoPreviewScreen() {
 
       await addConfession(confessionPayload, {
         onUploadProgress: (progress: number) => {
-          setUploadProgress(progress);
+          // Adjust progress to account for blur processing (if any)
+          const adjustedProgress = processedVideo.faceBlurApplied ? 20 + progress * 0.8 : progress;
+          setUploadProgress(adjustedProgress);
         },
       });
 
@@ -217,7 +238,82 @@ export default function VideoPreviewScreen() {
       setIsSharing(false);
       setUploadProgress(0);
     }
-  }, [isSharing, processedVideo, addConfession, hapticsEnabled, impactAsync, navigation]);
+  }, [
+    isSharing,
+    currentVideoUri,
+    hasBlurApplied,
+    processedVideo,
+    addConfession,
+    hapticsEnabled,
+    impactAsync,
+    navigation,
+  ]);
+
+  const handleBlurFaces = useCallback(async () => {
+    if (isBlurring || hasBlurApplied) return;
+
+    setIsBlurring(true);
+    setBlurProgress(0);
+
+    try {
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      console.log("🎭 Starting face blur processing...");
+
+      // Import blur service
+      const { applyPostProcessBlur } = await import("../services/PostProcessBlurService");
+
+      const result = await applyPostProcessBlur(videoUri, {
+        blurIntensity: 25,
+        onProgress: (progress, status) => {
+          console.log(`🎭 Blur progress: ${progress}% - ${status}`);
+          setBlurProgress(progress);
+        },
+      });
+
+      if (result.success && result.processedVideoUri) {
+        console.log("✅ Blur applied successfully:", result.processedVideoUri);
+
+        // Pause current player before changing video
+        try {
+          if (player) {
+            player.pause();
+          }
+        } catch (e) {
+          // Ignore player errors
+        }
+
+        setIsPlaying(false);
+        setCurrentVideoUri(result.processedVideoUri);
+        setHasBlurApplied(true);
+
+        if (hapticsEnabled) {
+          await impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
+
+        Alert.alert(
+          "Success",
+          "Face blur has been applied to your video! 🎭\n\nThe video now has a pixelated privacy effect.",
+        );
+      } else {
+        throw new Error(result.error || "Blur processing failed");
+      }
+    } catch (error) {
+      console.error("❌ Face blur failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to apply face blur";
+
+      Alert.alert(
+        "Blur Failed",
+        errorMessage + "\n\nYou can still upload the video and blur will be applied server-side.",
+        [{ text: "OK" }],
+      );
+    } finally {
+      setIsBlurring(false);
+      setBlurProgress(0);
+    }
+  }, [isBlurring, hasBlurApplied, videoUri, hapticsEnabled, impactAsync]);
 
   const handleDiscard = useCallback(() => {
     Alert.alert("Discard Video?", "Are you sure you want to discard this video? This action cannot be undone.", [
@@ -303,6 +399,18 @@ export default function VideoPreviewScreen() {
           </View>
         )}
 
+        {/* Blur Progress Overlay */}
+        {isBlurring && (
+          <View style={styles.uploadProgressOverlay}>
+            <View style={styles.uploadProgressContainer}>
+              <Text style={styles.uploadProgressText}>Blurring faces... {Math.round(blurProgress)}%</Text>
+              <View style={styles.uploadProgressBar}>
+                <View style={[styles.uploadProgressFill, { width: `${blurProgress}%` }]} />
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Upload Progress Overlay */}
         {isSharing && uploadProgress > 0 && (
           <View style={styles.uploadProgressOverlay}>
@@ -318,6 +426,29 @@ export default function VideoPreviewScreen() {
 
       {/* Controls */}
       <View style={styles.controlsContainer}>
+        {/* BIG BLUR SECTION - TOP AND PROMINENT */}
+        {!hasBlurApplied && !isBlurring && (
+          <View style={styles.blurSection}>
+            <Text style={styles.blurSectionTitle}>🎭 Privacy Protection</Text>
+            <Text style={styles.blurSectionSubtitle}>Blur faces in your video for complete anonymity</Text>
+
+            <Pressable style={styles.bigBlurButton} onPress={handleBlurFaces} disabled={isSharing}>
+              <Ionicons name="eye-off-outline" size={28} color="#8B5CF6" />
+              <Text style={styles.bigBlurButtonText}>Blur Faces Now</Text>
+            </Pressable>
+
+            <Text style={styles.blurNote}>Processing takes 10-30 seconds</Text>
+          </View>
+        )}
+
+        {/* SUCCESS BANNER - AFTER BLUR */}
+        {hasBlurApplied && (
+          <View style={styles.successBanner}>
+            <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
+            <Text style={styles.successText}>Faces Blurred Successfully!</Text>
+          </View>
+        )}
+
         <View style={styles.infoContainer}>
           <Text style={styles.title}>Video Preview</Text>
           <Text style={styles.subtitle}>
@@ -325,25 +456,6 @@ export default function VideoPreviewScreen() {
               ? `"${processedVideo.transcription.substring(0, 50)}${processedVideo.transcription.length > 50 ? "..." : ""}"`
               : "Your anonymous video confession"}
           </Text>
-
-          {processedVideo.faceBlurApplied && (
-            <View style={styles.featureList}>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                <Text style={styles.featureText}>
-                  {processedVideo.privacyMode === "emoji" && processedVideo.emojiType
-                    ? `${EMOJI_MAP[processedVideo.emojiType as EmojiType]} Emoji privacy applied`
-                    : "Face blur applied"}
-                </Text>
-              </View>
-              {processedVideo.voiceChangeApplied && (
-                <View style={styles.featureItem}>
-                  <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                  <Text style={styles.featureText}>Voice change applied</Text>
-                </View>
-              )}
-            </View>
-          )}
         </View>
 
         {/* Error Message */}
@@ -355,20 +467,28 @@ export default function VideoPreviewScreen() {
         )}
 
         <View style={styles.buttonContainer}>
-          <Pressable style={[styles.button, styles.secondaryButton]} onPress={handleRetake} disabled={isSharing}>
+          <Pressable
+            style={[styles.button, styles.secondaryButton]}
+            onPress={handleRetake}
+            disabled={isSharing || isBlurring}
+          >
             <Ionicons name="camera" size={20} color="#ffffff" />
             <Text style={styles.buttonText}>Retake</Text>
           </Pressable>
 
-          <Pressable style={[styles.button, styles.dangerButton]} onPress={handleDiscard} disabled={isSharing}>
+          <Pressable
+            style={[styles.button, styles.dangerButton]}
+            onPress={handleDiscard}
+            disabled={isSharing || isBlurring}
+          >
             <Ionicons name="trash" size={20} color="#ffffff" />
             <Text style={styles.buttonText}>Discard</Text>
           </Pressable>
 
           <Pressable
-            style={[styles.button, styles.primaryButton, isSharing && styles.buttonDisabled]}
+            style={[styles.button, styles.primaryButton, (isSharing || isBlurring) && styles.buttonDisabled]}
             onPress={handleShare}
-            disabled={isSharing}
+            disabled={isSharing || isBlurring}
           >
             {isSharing ? (
               <ActivityIndicator size="small" color="#ffffff" />
@@ -475,6 +595,68 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  blurSection: {
+    backgroundColor: "#8B5CF6",
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  blurSectionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#ffffff",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  blurSectionSubtitle: {
+    fontSize: 14,
+    color: "#E9D5FF",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  bigBlurButton: {
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  bigBlurButtonText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#8B5CF6",
+  },
+  blurNote: {
+    fontSize: 12,
+    color: "#E9D5FF",
+    marginTop: 12,
+    textAlign: "center",
+  },
+  successBanner: {
+    backgroundColor: "#DCFCE7",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 2,
+    borderColor: "#22C55E",
+  },
+  successText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#166534",
   },
   errorContainer: {
     flexDirection: "row",

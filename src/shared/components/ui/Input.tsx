@@ -1,5 +1,5 @@
-import React, { useState, forwardRef } from "react";
-import { View, Text, TextInput, Pressable } from "react-native";
+import React, { useState } from "react";
+import { View, TextInput, Pressable } from "react-native";
 import type { TextInputProps, ViewProps } from "react-native";
 import Animated, {
   useSharedValue,
@@ -11,11 +11,8 @@ import Animated, {
 import { cn } from "../../../utils/cn";
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
-const ForwardedText = forwardRef<Text, React.ComponentProps<typeof Text>>(
-  (props, ref) => <Text ref={ref} {...props} />
-);
-ForwardedText.displayName = 'ForwardedText';
-const AnimatedText = Animated.createAnimatedComponent(ForwardedText);
+// Use Reanimated's built-in Animated.Text instead of creating our own
+const AnimatedText = Animated.Text;
 
 export interface InputProps extends Omit<TextInputProps, "onChangeText" | "onBlur" | "onFocus"> {
   label?: string;

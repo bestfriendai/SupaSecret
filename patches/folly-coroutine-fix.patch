@@ -1,0 +1,12 @@
+--- a/ios/Pods/Headers/Public/RCT-Folly/folly/Expected.h
++++ b/ios/Pods/Headers/Public/RCT-Folly/folly/Expected.h
+@@ -1584,7 +1584,7 @@
+ 
+ // Enable the use of folly::Expected with `co_await`
+ // Inspired by https://github.com/toby-allsopp/coroutine_monad
+-#if FOLLY_HAS_COROUTINES
++#if 0 // FOLLY_HAS_COROUTINES - Disabled due to missing coroutine headers in RCT-Folly
+ #include <folly/coro/Coroutine.h>
+ 
+ namespace folly {
+

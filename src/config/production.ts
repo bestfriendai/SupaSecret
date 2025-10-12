@@ -49,22 +49,16 @@ export const PRODUCTION_CONFIG = {
     }),
     AD_UNITS: {
       banner: Platform.select({
-        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_BANNER_ID", { default: "ca-app-pub-9512493666273460/6903779371" }),
-        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID", {
-          default: "ca-app-pub-9512493666273460/6470974033",
-        }),
+        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_BANNER_ID"),
+        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID"),
       }),
       interstitial: Platform.select({
-        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID", { default: "ca-app-pub-9512493666273460/6847939052" }),
-        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID", {
-          default: "ca-app-pub-9512493666273460/8136969992",
-        }),
+        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID"),
+        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID"),
       }),
       rewarded: Platform.select({
-        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID", { default: "ca-app-pub-9512493666273460/1862193927" }),
-        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID", {
-          default: "ca-app-pub-9512493666273460/9041297053",
-        }),
+        ios: getEnvVar("EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID"),
+        android: getEnvVar("EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID"),
       }),
     },
   },

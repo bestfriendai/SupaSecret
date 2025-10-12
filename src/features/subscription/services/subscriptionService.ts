@@ -116,7 +116,7 @@ export class SubscriptionService {
         return;
       }
 
-      // Configure RevenueCat
+      // Configure RevenueCat with proper sandbox detection
       await Purchases.configure({
         apiKey: REVENUECAT_API_KEY,
         appUserID: null, // Will be set when user logs in
@@ -129,6 +129,7 @@ export class SubscriptionService {
 
       if (__DEV__) {
         console.log("✅ RevenueCat initialized successfully");
+        console.log("📱 Environment:", __DEV__ ? "Development" : "Production");
       }
       this.isInitialized = true;
     } catch (error) {

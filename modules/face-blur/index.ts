@@ -6,7 +6,29 @@ import { requireNativeModule } from 'expo-modules-core';
  * iOS: Uses Vision Framework + Core Image
  * Android: Uses ML Kit + RenderEffect/RenderScript
  */
-const FaceBlurModule = requireNativeModule('FaceBlurModule');
+
+// Lazy-load the native module to prevent crashes at import time
+let FaceBlurModule: any = null;
+let moduleLoadError: Error | null = null;
+
+function getFaceBlurModule() {
+  if (FaceBlurModule) {
+    return FaceBlurModule;
+  }
+
+  if (moduleLoadError) {
+    throw moduleLoadError;
+  }
+
+  try {
+    FaceBlurModule = requireNativeModule('FaceBlurModule');
+    return FaceBlurModule;
+  } catch (error) {
+    moduleLoadError = error instanceof Error ? error : new Error(String(error));
+    console.warn('⚠️ FaceBlurModule not available:', error);
+    throw moduleLoadError;
+  }
+}
 
 export interface BlurResult {
   success: boolean;
@@ -32,9 +54,10 @@ export async function blurFacesInVideo(
   const { blurIntensity = 50, onProgress } = options;
 
   try {
+    const module = getFaceBlurModule();
     onProgress?.(0, 'Initializing...');
 
-    const result = await FaceBlurModule.blurFacesInVideo(
+    const result = await module.blurFacesInVideo(
       videoPath,
       blurIntensity
     );
@@ -56,7 +79,8 @@ export async function blurFacesInVideo(
  */
 export function isNativeFaceBlurAvailable(): boolean {
   try {
-    return FaceBlurModule.isAvailable();
+    const module = getFaceBlurModule();
+    return module.isAvailable();
   } catch {
     return false;
   }

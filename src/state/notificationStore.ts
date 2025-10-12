@@ -327,6 +327,10 @@ const cleanupNotificationSubscriptions = () => {
     notificationReconnectTimer = null;
   }
   notificationReconnectAttempts = 0;
+
+  if (__DEV__) {
+    console.log('[NotificationStore] Cleaned up subscriptions and timers');
+  }
 };
 
 // Function to set up real-time subscriptions for notifications

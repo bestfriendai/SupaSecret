@@ -230,9 +230,16 @@ class VideoCacheManager {
       if (entry.variantUris) {
         for (const [quality, variantPath] of entry.variantUris) {
           try {
-            await FileSystem.deleteAsync(variantPath, { idempotent: true });
+            // Check if file exists before attempting to delete
+            const fileInfo = await FileSystem.getInfoAsync(variantPath);
+            if (fileInfo.exists) {
+              await FileSystem.deleteAsync(variantPath, { idempotent: true });
+            }
           } catch (error) {
-            console.error(`Failed to evict variant ${quality}:`, error);
+            // Silently ignore file not found errors
+            if (__DEV__ && !String(error).includes("not writable") && !String(error).includes("not found")) {
+              console.warn(`Failed to evict variant ${quality}:`, error);
+            }
           }
         }
       }
@@ -244,7 +251,10 @@ class VideoCacheManager {
         console.log(`[VideoCache] Evicted ${key}, freed ${(entry.size / 1024 / 1024).toFixed(2)}MB`);
       }
     } catch (error) {
-      console.error("Failed to evict cache entry:", error);
+      // Only log non-trivial errors
+      if (__DEV__ && !String(error).includes("not writable") && !String(error).includes("not found")) {
+        console.error("Failed to evict cache entry:", error);
+      }
     }
   }
 

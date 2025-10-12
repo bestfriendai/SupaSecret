@@ -169,14 +169,19 @@ export const LoadingDots: React.FC<LoadingProps> = ({
     animateDot(dot3, 300);
   }, [dot1, dot2, dot3]);
 
-  const createDotStyle = (value: SharedValue<number>) =>
-    useAnimatedStyle(() => ({
-      transform: [{ translateY: value.value }],
-    }));
+  // Create animated styles directly instead of using a helper function
+  // to avoid "hook in non-component" error
+  const dot1Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot1.value }],
+  }));
 
-  const dot1Style = createDotStyle(dot1);
-  const dot2Style = createDotStyle(dot2);
-  const dot3Style = createDotStyle(dot3);
+  const dot2Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot2.value }],
+  }));
+
+  const dot3Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dot3.value }],
+  }));
 
   const containerClassName = cn("items-center justify-center", fullScreen ? "flex-1 bg-black" : "py-8", className);
 

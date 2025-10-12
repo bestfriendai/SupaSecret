@@ -40,7 +40,7 @@ export const isSupabaseConfigured = !!(resolvedSupabaseUrl && resolvedSupabaseAn
   try {
     const { ok, report } = logValidationResults();
     console.log("[DIAG] supabase.ts: logValidationResults completed", { ok });
-    
+
     const supabaseValidation = validateSupabaseConfig();
     console.log("[DIAG] supabase.ts: validateSupabaseConfig completed", { ok: supabaseValidation.ok });
 

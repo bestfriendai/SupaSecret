@@ -1,13 +1,11 @@
 /**
  * Face Blur Record Screen
- * Hybrid implementation with graceful fallback
- * - Attempts real-time blur if capable
- * - Falls back to regular recording if blur fails
- * - Never breaks recording functionality
+ * Modern UI with 2025 design trends
+ * Features: Circular progress, glassmorphism, smooth animations
  */
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Platform, Switch } from "react-native";
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,7 +13,7 @@ import { Camera, useCameraDevice } from "react-native-vision-camera";
 import * as Haptics from "expo-haptics";
 
 import { usePreferenceAwareHaptics } from "../utils/haptics";
-import { useSafeFaceBlur } from "../hooks/useSafeFaceBlur";
+import { RecordButton, TimerDisplay, GlassButton, StatusBadge } from "../components/ModernRecordingUI";
 
 const MAX_DURATION = 60;
 
@@ -24,25 +22,41 @@ function FaceBlurRecordScreen() {
   const { hapticsEnabled, impactAsync, notificationAsync } = usePreferenceAwareHaptics();
 
   const cameraRef = useRef<Camera>(null);
+  const mountTimeRef = useRef(Date.now());
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [hasPermissions, setHasPermissions] = useState(false);
   const [facing, setFacing] = useState<"front" | "back">("front");
   const [recordedVideoPath, setRecordedVideoPath] = useState<string | null>(null);
-  const [blurEnabled, setBlurEnabled] = useState(true);
+
+  useEffect(() => {
+    console.log("🎬 FaceBlurRecordScreen mounted");
+    return () => {
+      const lifetime = Date.now() - mountTimeRef.current;
+      console.log(`🎬 FaceBlurRecordScreen unmounted after ${lifetime}ms`);
+    };
+  }, []);
 
   // Get camera device
   const device = useCameraDevice(facing);
 
-  // Safe face blur with automatic fallback
-  const { frameProcessor, blurStatus, blurReason, canAttemptBlur } = useSafeFaceBlur(blurEnabled);
-
+  useEffect(() => {
+    console.log("📷 Camera device:", {
+      facing,
+      hasDevice: !!device,
+      deviceId: device?.id,
+    });
+  }, [device, facing]);
+  // No frame processor - blur happens in preview screen
   // Request permissions
   useEffect(() => {
     (async () => {
+      console.log("📸 Requesting camera permissions...");
       const cameraPermission = await Camera.requestCameraPermission();
       const microphonePermission = await Camera.requestMicrophonePermission();
-      setHasPermissions(cameraPermission === "granted" && microphonePermission === "granted");
+      const granted = cameraPermission === "granted" && microphonePermission === "granted";
+      console.log("📸 Permissions:", { cameraPermission, microphonePermission, granted });
+      setHasPermissions(granted);
     })();
   }, []);
 
@@ -50,20 +64,29 @@ function FaceBlurRecordScreen() {
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (isRecording) {
+      console.log("⏱️ Recording timer started");
       interval = setInterval(() => {
         setRecordingTime((prev) => {
+          const newTime = prev + 1;
+          if (newTime % 5 === 0) {
+            console.log(`⏱️ Recording time: ${newTime}s / ${MAX_DURATION}s`);
+          }
           if (prev >= MAX_DURATION) {
+            console.log("⏱️ Max duration reached, stopping recording");
             if (cameraRef.current) {
               cameraRef.current.stopRecording();
             }
             return prev;
           }
-          return prev + 1;
+          return newTime;
         });
       }, 1000);
     }
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        console.log("⏱️ Recording timer cleared");
+        clearInterval(interval);
+      }
     };
   }, [isRecording]);
 
@@ -78,7 +101,7 @@ function FaceBlurRecordScreen() {
       setIsRecording(true);
       setRecordingTime(0);
 
-      console.log("🎬 Starting recording with blur status:", blurStatus);
+      console.log("🎬 Starting recording...");
 
       await cameraRef.current.startRecording({
         onRecordingFinished: (video) => {
@@ -95,7 +118,7 @@ function FaceBlurRecordScreen() {
       console.error("❌ Failed to start recording:", error);
       setIsRecording(false);
     }
-  }, [hapticsEnabled, notificationAsync, blurStatus]);
+  }, [hapticsEnabled, notificationAsync]);
 
   const stopRecording = useCallback(async () => {
     if (!cameraRef.current || !isRecording) return;
@@ -133,7 +156,7 @@ function FaceBlurRecordScreen() {
         height: 720,
         duration: recordingTime,
         size: 0,
-        faceBlurApplied: blurStatus === "active",
+        faceBlurApplied: false, // User will blur in preview if they want
         privacyMode: "blur" as const,
       },
     });
@@ -142,37 +165,7 @@ function FaceBlurRecordScreen() {
       setRecordedVideoPath(null);
       setRecordingTime(0);
     }, 500);
-  }, [recordedVideoPath, recordingTime, hapticsEnabled, impactAsync, navigation, blurStatus]);
-
-  // Get status indicator color
-  const getStatusColor = () => {
-    switch (blurStatus) {
-      case "active":
-        return "#22C55E"; // Green - blur working
-      case "available":
-        return "#3B82F6"; // Blue - blur ready
-      case "failed":
-        return "#EF4444"; // Red - blur failed
-      case "disabled":
-      default:
-        return "#F59E0B"; // Orange - blur off
-    }
-  };
-
-  // Get status text
-  const getStatusText = () => {
-    switch (blurStatus) {
-      case "active":
-        return "Blur Active ✓";
-      case "available":
-        return "Blur Ready";
-      case "failed":
-        return "Blur Failed";
-      case "disabled":
-      default:
-        return blurEnabled ? "Blur Not Available" : "Blur Disabled";
-    }
-  };
+  }, [recordedVideoPath, recordingTime, hapticsEnabled, impactAsync, navigation]);
 
   // Loading/Permission states
   if (!device) {
@@ -216,64 +209,55 @@ function FaceBlurRecordScreen() {
         isActive={true}
         video={true}
         audio={true}
-        frameProcessor={frameProcessor || undefined}
+        onError={(error) => {
+          console.error("❌ Camera error:", error);
+        }}
+        onInitialized={() => {
+          console.log("✅ Camera initialized");
+        }}
       />
 
+      {/* Modern UI Overlay */}
       <View style={styles.controlsOverlay}>
+        {/* Top Controls */}
         <View style={styles.topControls}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </Pressable>
+          <GlassButton icon="arrow-back" onPress={() => navigation.goBack()} />
 
-          <View style={styles.statusPill}>
-            <View style={[styles.statusIndicator, { backgroundColor: getStatusColor() }]} />
-            <Text style={styles.statusText}>{getStatusText()}</Text>
+          <View style={styles.topCenter}>
+            <StatusBadge
+              text={isRecording ? "Recording" : "Ready"}
+              icon={isRecording ? "radio-button-on" : "camera"}
+              variant={isRecording ? "error" : "info"}
+            />
           </View>
 
-          <Pressable onPress={toggleCamera} style={styles.iconButton}>
-            <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />
-          </Pressable>
+          <GlassButton icon="camera-reverse" onPress={toggleCamera} disabled={isRecording} />
         </View>
 
-        <View style={styles.bottomControls}>
-          {/* Blur toggle */}
-          <View style={styles.blurToggleRow}>
-            <View style={styles.blurToggleLeft}>
-              <Text style={styles.blurToggleLabel}>Face Blur</Text>
-              <Switch
-                value={blurEnabled}
-                onValueChange={setBlurEnabled}
-                disabled={isRecording || !canAttemptBlur}
-                thumbColor={blurEnabled ? "#1D9BF0" : "#9CA3AF"}
-                trackColor={{ false: "#374151", true: "#1D9BF0" }}
-              />
-            </View>
-            <Text style={styles.blurReasonText}>{blurReason}</Text>
+        {/* Center - Timer (only when recording) */}
+        {isRecording && (
+          <View style={styles.centerControls}>
+            <TimerDisplay seconds={recordingTime} maxSeconds={MAX_DURATION} isRecording={isRecording} />
           </View>
+        )}
 
-          {!recordedVideoPath && (
-            <Pressable
-              onPress={isRecording ? stopRecording : startRecording}
-              style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
-            >
-              <Text style={styles.recordButtonText}>{isRecording ? "Stop" : "Record"}</Text>
-            </Pressable>
+        {/* Bottom Controls */}
+        <View style={styles.bottomControls}>
+          {!recordedVideoPath ? (
+            <View style={styles.recordingControls}>
+              <RecordButton
+                isRecording={isRecording}
+                onPress={isRecording ? stopRecording : startRecording}
+                progress={recordingTime / MAX_DURATION}
+              />
+
+              {!isRecording && <Text style={styles.hintText}>Tap to start recording</Text>}
+            </View>
+          ) : (
+            <View style={styles.nextControls}>
+              <GlassButton icon="arrow-forward" label="Continue" onPress={handleNextPress} variant="primary" />
+            </View>
           )}
-
-          {recordedVideoPath && (
-            <Pressable onPress={handleNextPress} style={[styles.recordButton, styles.nextButton]}>
-              <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
-              <Text style={styles.recordButtonText}>Next</Text>
-            </Pressable>
-          )}
-
-          <Text style={styles.timerText}>
-            {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")} / {MAX_DURATION}s
-          </Text>
-
-          <Text style={styles.infoText}>
-            {blurStatus === "active" ? "✨ Blur active - faces hidden" : "📹 Recording works always"}
-          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -332,104 +316,40 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 32,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 40,
   },
   topControls: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: Platform.OS === "ios" ? 12 : 24,
   },
-  iconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(0,0,0,0.55)",
+  topCenter: {
+    flex: 1,
+    alignItems: "center",
+    marginHorizontal: 16,
+  },
+  centerControls: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.55)",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-  },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  statusText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
   },
   bottomControls: {
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
     alignItems: "center",
+    gap: 16,
   },
-  blurToggleRow: {
+  recordingControls: {
+    alignItems: "center",
+    gap: 16,
+  },
+  nextControls: {
     width: "100%",
-    marginBottom: 12,
-  },
-  blurToggleLeft: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 4,
   },
-  blurToggleLabel: {
-    color: "#F9FAFB",
+  hintText: {
+    color: "rgba(255, 255, 255, 0.7)",
     fontSize: 14,
     fontWeight: "500",
-  },
-  blurReasonText: {
-    color: "#9CA3AF",
-    fontSize: 11,
-    marginTop: 2,
-  },
-  recordButton: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 32,
-    minWidth: 140,
-    alignItems: "center",
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-  },
-  recordButtonInactive: {
-    backgroundColor: "#DC2626",
-  },
-  recordButtonActive: {
-    backgroundColor: "#991B1B",
-  },
-  recordButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  nextButton: {
-    backgroundColor: "#1D9BF0",
-  },
-  timerText: {
-    color: "#E5E7EB",
-    fontSize: 14,
-    fontVariant: ["tabular-nums"],
-    marginBottom: 4,
-  },
-  infoText: {
-    color: "#9CA3AF",
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: 12,
   },
 });
 

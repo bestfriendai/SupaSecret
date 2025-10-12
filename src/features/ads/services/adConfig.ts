@@ -9,10 +9,22 @@ import { TEST_AD_UNITS } from "../types";
 
 /**
  * Get environment variable helper
+ * Note: Using direct access to avoid dynamic env var access linting error
  */
 const getEnvVar = (name: string, fallback?: string): string => {
-  // @ts-ignore - process.env is available at runtime
-  const value = process.env[name];
+  // Map of known environment variables to avoid dynamic access
+  const envMap: Record<string, string | undefined> = {
+    EXPO_PUBLIC_ADMOB_IOS_APP_ID: process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID,
+    EXPO_PUBLIC_ADMOB_ANDROID_APP_ID: process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID,
+    EXPO_PUBLIC_ADMOB_IOS_BANNER_ID: process.env.EXPO_PUBLIC_ADMOB_IOS_BANNER_ID,
+    EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID: process.env.EXPO_PUBLIC_ADMOB_ANDROID_BANNER_ID,
+    EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID: process.env.EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL_ID,
+    EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID: process.env.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL_ID,
+    EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID: process.env.EXPO_PUBLIC_ADMOB_IOS_REWARDED_ID,
+    EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID: process.env.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED_ID,
+  };
+
+  const value = envMap[name];
   return value || fallback || "";
 };
 
