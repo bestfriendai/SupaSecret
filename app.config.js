@@ -38,18 +38,17 @@ module.exports = {
       enabled: false,
     },
     plugins: [
+      "./modules/face-blur/app.plugin.js",
       [
         "expo-build-properties",
         {
           ios: {
             deploymentTarget: "16.0",
-            newArchEnabled: true,
           },
           android: {
             compileSdkVersion: 35,
             targetSdkVersion: 35,
             minSdkVersion: 24,
-            newArchEnabled: true,
             kotlinVersion: "2.1.0",
           },
         },
@@ -97,7 +96,9 @@ module.exports = {
       "expo-splash-screen",
     ],
     androidNavigationBar: {
-      visible: "sticky-immersive",
+      // Note: 'visible' property is deprecated in Android 11+ and will be removed
+      // Keeping for backwards compatibility with older Android versions
+      // visible: "sticky-immersive",
     },
     ios: {
       supportsTablet: true,

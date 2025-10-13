@@ -228,7 +228,7 @@ function RootLayoutContent() {
         name="video-record"
         options={{
           title: "Record Video",
-          headerShown: true,
+          headerShown: false,
           presentation: "modal",
           animation: "slide_from_bottom",
         }}

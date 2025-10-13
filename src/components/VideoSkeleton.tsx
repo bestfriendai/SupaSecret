@@ -45,10 +45,13 @@ const SkeletonItem: React.FC<SkeletonItemProps> = ({ index, layout, delay }) => 
     scale.value = withDelay(delay, withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) }));
   }, [delay]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: opacity.value,
+      transform: [{ scale: scale.value }],
+    };
+  });
 
   if (layout === "tiktok") {
     return (
@@ -193,21 +196,33 @@ export default function VideoSkeleton({
     };
   }, [isVisible, state]);
 
-  const shimmerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shimmerTranslateX.value }],
-  }));
+  const shimmerStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ translateX: shimmerTranslateX.value }],
+    };
+  });
 
-  const containerStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(isVisible ? 1 : 0, { duration: 300 }),
-  }));
+  const containerStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: withTiming(isVisible ? 1 : 0, { duration: 300 }),
+    };
+  });
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    opacity: pulseOpacity.value,
-  }));
+  const pulseStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: pulseOpacity.value,
+    };
+  });
 
-  const progressStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value}%`,
-  }));
+  const progressStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      width: `${progressWidth.value}%`,
+    };
+  });
 
   if (!isVisible) return null;
 

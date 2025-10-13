@@ -4,7 +4,7 @@
  * Uses expo-av for audio extraction and react-native-audio-api for pitch shifting
  */
 
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { Audio } from "expo-av";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { Platform } from "react-native";

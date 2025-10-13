@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useShallow } from "zustand/react/shallow";
 import { useConfessionStore } from "../state/confessionStore";
 import OptimizedVideoList from "../components/OptimizedVideoList";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -15,10 +16,13 @@ export default function VideoPlayerScreen() {
   const { confessionId } = route.params || {};
   const validator = createScreenValidator("VideoPlayerScreen");
 
-  const confessions = useConfessionStore((state) => state.confessions);
+  // Use shallow equality for confessions array to prevent unnecessary re-renders
+  const confessions = useConfessionStore(useShallow((state) => state.confessions));
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
 
   const [initialIndex, setInitialIndex] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+  const indexCalculatedRef = useRef(false);
 
   // Load confessions if not already loaded
   useEffect(() => {
@@ -36,9 +40,10 @@ export default function VideoPlayerScreen() {
     }
   }, [confessions.length, loadConfessions, confessionId, validator]);
 
-  // Find the index of the specific video to start with
+  // Find the index of the specific video to start with - ONLY ONCE
   useEffect(() => {
-    if (confessions.length > 0) {
+    // Only calculate index once when confessions are loaded
+    if (confessions.length > 0 && !indexCalculatedRef.current) {
       const videoConfessions = confessions.filter((c) => c.type === "video");
       validator.log("Video confessions found:", videoConfessions.length);
 
@@ -55,8 +60,12 @@ export default function VideoPlayerScreen() {
         validator.log("No specific video requested, starting at index 0");
         setInitialIndex(0);
       }
+
+      // Mark as calculated and ready to render
+      indexCalculatedRef.current = true;
+      setIsReady(true);
     }
-  }, [confessions, confessionId, validator]);
+  }, [confessions.length, confessionId, validator]);
 
   const handleClose = useCallback(() => {
     try {
@@ -73,6 +82,15 @@ export default function VideoPlayerScreen() {
       (navigation as any).navigate("Home");
     }
   }, [navigation, validator]);
+
+  // Don't render until we've calculated the initial index
+  if (!isReady) {
+    return (
+      <SafeAreaView className="flex-1 bg-black items-center justify-center" edges={[]}>
+        <Text className="text-white">Loading...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-black" edges={[]}>

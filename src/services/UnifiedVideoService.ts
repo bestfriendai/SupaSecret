@@ -186,20 +186,43 @@ export class UnifiedVideoService {
     height?: number;
     thumbnail?: string;
   }> {
-    // Check if we can use FFmpeg or other processing
-    if (this.capabilities?.effects.postProcessCompress && this.visionCameraProcessor) {
-      // Use vision camera processor if available
-      console.log("Using native video processing");
+    let processedUri = videoUri;
+
+    // Apply face blur if requested and available
+    if (options.blur && !isExpoGo()) {
+      try {
+        console.log("🎭 Attempting to apply face blur to video...");
+        const { blurFacesInVideo, isNativeFaceBlurAvailable } = await import("../../modules/face-blur");
+
+        if (isNativeFaceBlurAvailable()) {
+          console.log("✅ Native face blur is available, processing video...");
+          const blurResult = await blurFacesInVideo(videoUri, {
+            blurIntensity: 50,
+            onProgress: (progress, status) => {
+              console.log(`Face blur progress: ${progress}% - ${status}`);
+            },
+          });
+
+          if (blurResult.success && blurResult.outputPath) {
+            processedUri = blurResult.outputPath;
+            console.log("✅ Face blur applied successfully:", processedUri);
+          } else {
+            console.warn("⚠️ Face blur failed, using original video");
+          }
+        } else {
+          console.warn("⚠️ Native face blur not available on this device");
+        }
+      } catch (error) {
+        console.error("❌ Face blur error:", error);
+        // Continue with original video
+      }
     }
 
-    // Fallback for Expo Go - minimal processing
-    console.log("Using minimal processing in Expo Go");
-
-    // Generate thumbnail at least
+    // Generate thumbnail
     let thumbnail: string | undefined;
     try {
       const VideoThumbnails = await import("expo-video-thumbnails");
-      const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+      const { uri } = await VideoThumbnails.getThumbnailAsync(processedUri, {
         time: 0,
         quality: 0.8,
       });
@@ -209,7 +232,7 @@ export class UnifiedVideoService {
     }
 
     return {
-      uri: videoUri,
+      uri: processedUri,
       duration: 60, // Default duration
       thumbnail,
     };

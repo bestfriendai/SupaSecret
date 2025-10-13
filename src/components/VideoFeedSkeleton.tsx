@@ -53,10 +53,13 @@ const FeedItemSkeleton: React.FC<FeedItemSkeletonProps> = ({ index, delay, orien
     scale.value = withDelay(delay, withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) }));
   }, [delay]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: opacity.value,
+      transform: [{ translateY: translateY.value }, { scale: scale.value }],
+    };
+  });
 
   const isLandscape = orientation === "landscape";
   const itemHeight = isLandscape ? screenHeight * 0.8 : screenHeight;
@@ -212,25 +215,40 @@ export default function VideoFeedSkeleton({
     };
   }, [isVisible, state, shimmer, fade, stagger, calculatedItemCount]);
 
-  const shimmerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shimmerTranslateX.value }],
-  }));
+  const shimmerStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ translateX: shimmerTranslateX.value }],
+    };
+  });
 
-  const containerStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(isVisible ? 1 : 0, { duration: fade }),
-  }));
+  const containerStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: withTiming(isVisible ? 1 : 0, { duration: fade }),
+    };
+  });
 
-  const refreshStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${refreshRotation.value}deg` }],
-  }));
+  const refreshStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ rotate: `${refreshRotation.value}deg` }],
+    };
+  });
 
-  const loadMoreStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: loadMoreScale.value }],
-  }));
+  const loadMoreStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: loadMoreScale.value }],
+    };
+  });
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    opacity: pulseOpacity.value,
-  }));
+  const pulseStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: pulseOpacity.value,
+    };
+  });
 
   if (!isVisible) return null;
 

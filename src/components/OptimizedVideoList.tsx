@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
+import { useShallow } from "zustand/react/shallow";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, FadeIn, FadeOut } from "react-native-reanimated";
 import type { Confession } from "../types/confession";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -44,7 +45,8 @@ interface OptimizedVideoListProps {
 }
 
 function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVideoListProps) {
-  const confessions = useConfessionStore((state) => state.confessions);
+  // Use shallow equality to prevent unnecessary re-renders when confessions array reference changes
+  const confessions = useConfessionStore(useShallow((state) => state.confessions));
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
   const isLoading = useConfessionStore((state) => state.isLoading);
   const videoConfessions = useMemo(() => {

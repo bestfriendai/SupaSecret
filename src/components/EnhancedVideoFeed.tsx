@@ -349,22 +349,34 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
 
   const composedGestures = Gesture.Simultaneous(panGesture, Gesture.Exclusive(doubleTapGesture, singleTapGesture));
 
-  const containerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
-  }));
+  const containerStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ translateY: translateY.value }, { scale: scale.value }],
+    };
+  });
 
-  const heartAnimationStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: heartScale.value }],
-    opacity: heartOpacity.value,
-  }));
+  const heartAnimationStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: heartScale.value }],
+      opacity: heartOpacity.value,
+    };
+  });
 
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value,
-  }));
+  const overlayStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: overlayOpacity.value,
+    };
+  });
 
-  const actionButtonsStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: actionButtonsTranslateX.value }],
-  }));
+  const actionButtonsStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ translateX: actionButtonsTranslateX.value }],
+    };
+  });
 
   if (videoConfessions.length === 0) {
     return (

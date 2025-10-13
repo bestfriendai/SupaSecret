@@ -36,6 +36,7 @@ export function CircularProgress({ progress, size = 80, strokeWidth = 4, color =
   }, [progress]);
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     const rotation = interpolate(animatedProgress.value, [0, 1], [0, 360]);
     return {
       transform: [{ rotate: `${rotation}deg` }],
@@ -94,9 +95,12 @@ export function RecordButton({ isRecording, onPress, progress = 0, disabled = fa
     }
   }, [isRecording]);
 
-  const animatedButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value * pulseScale.value }],
-  }));
+  const animatedButtonStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: scale.value * pulseScale.value }],
+    };
+  });
 
   const handlePressIn = () => {
     scale.value = withSpring(0.95);
@@ -153,9 +157,12 @@ export function TimerDisplay({ seconds, maxSeconds, isRecording }: TimerDisplayP
     }
   }, [isRecording]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: opacity.value,
+    };
+  });
 
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -190,9 +197,12 @@ interface GlassButtonProps {
 export function GlassButton({ icon, onPress, label, variant = "default", disabled = false }: GlassButtonProps) {
   const scale = useSharedValue(1);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
 
   const handlePressIn = () => {
     scale.value = withSpring(0.92);

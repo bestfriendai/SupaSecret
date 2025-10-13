@@ -50,13 +50,19 @@ export default function ShareModal({ isVisible, onClose, confessionId, confessio
       }
     });
 
-  const modalStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+  const modalStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ translateY: translateY.value }],
+    };
+  });
 
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
-  }));
+  const backdropStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: backdropOpacity.value,
+    };
+  });
 
   const handleNativeShare = async () => {
     try {

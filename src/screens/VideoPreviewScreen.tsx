@@ -7,7 +7,7 @@ import { VideoView, useVideoPlayer } from "expo-video";
 import { useEventListener } from "expo";
 
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system/legacy";
+import { File } from "expo-file-system";
 
 import { useConfessionStore } from "../state/confessionStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
@@ -101,10 +101,13 @@ export default function VideoPreviewScreen() {
     const validateVideo = async () => {
       try {
         const fileUri = videoUri.replace("file://", "");
-        const fileInfo = await FileSystem.getInfoAsync(fileUri);
-        console.log("📁 Video file info:", fileInfo);
+        const file = new File(fileUri);
+        const exists = file.exists; // Property, not method
+        const size = exists ? file.size : 0;
 
-        if (!fileInfo.exists) {
+        console.log("📁 Video file info:", { exists, size });
+
+        if (!exists) {
           console.error("❌ Video file does not exist:", fileUri);
           setVideoError("Video file not found");
           setIsLoading(false);

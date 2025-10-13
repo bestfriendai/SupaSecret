@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
   s.source         = { :git => 'https://github.com', :tag => "v#{s.version}" }
   s.static_framework = true
 
-  s.dependency 'ExpoModulesCore'
+  s.dependency 'React-Core'
 
   # Swift/Objective-C compatibility
   s.pod_target_xcconfig = {
@@ -24,4 +24,5 @@ Pod::Spec.new do |s|
   }
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
+  s.public_header_files = "ios/**/*.h"
 end

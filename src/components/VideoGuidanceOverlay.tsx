@@ -88,17 +88,26 @@ export default function VideoGuidanceOverlay({ isVisible, onDismiss }: VideoGuid
     }
   };
 
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value,
-  }));
+  const overlayStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: overlayOpacity.value,
+    };
+  });
 
-  const swipeIndicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: swipeIndicatorY.value }],
-  }));
+  const swipeIndicatorStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ translateY: swipeIndicatorY.value }],
+    };
+  });
 
-  const heartStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: heartScale.value }],
-  }));
+  const heartStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: heartScale.value }],
+    };
+  });
 
   if (!isVisible || !showGuidance) return null;
 

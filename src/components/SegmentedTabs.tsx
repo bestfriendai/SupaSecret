@@ -33,10 +33,13 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
 
   const tabWidth = containerWidth > 0 ? containerWidth / Math.max(1, tabs.length) : 0;
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    left: indicatorPosition.value * tabWidth,
-    width: tabWidth,
-  }));
+  const indicatorStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      left: indicatorPosition.value * tabWidth,
+      width: tabWidth,
+    };
+  });
 
   const handleTabPress = (tabId: string) => {
     // Only trigger haptic if it's a different tab to avoid excessive feedback

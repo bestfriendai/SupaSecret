@@ -11,6 +11,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useShallow } from "zustand/react/shallow";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -56,7 +57,7 @@ interface InteractionState {
   error: string | null;
 }
 
-export default function VideoInteractionOverlay({
+const VideoInteractionOverlay = React.memo(function VideoInteractionOverlay({
   confession,
   onLike,
   onComment,
@@ -69,20 +70,32 @@ export default function VideoInteractionOverlay({
 }: VideoInteractionOverlayProps) {
   const user = useAuthStore((state) => state.user);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
-  const confessions = useConfessionStore((state) => state.confessions);
 
-  // Use useMemo to create stable reference and prevent infinite loops
-  const currentConfession = useMemo(
-    () => confessions.find((c) => c.id === confession.id),
-    [confessions, confession.id],
+  // Only get the specific confession we need, not the entire array
+  const currentConfession = useConfessionStore(
+    (state) => state.confessions.find((c) => c.id === confession.id)
   );
 
-  const { isSaved: checkIsSaved, saveConfession, unsaveConfession } = useSavedStore();
-  const getReplies = useReplyStore((state) => state.getRepliesForConfession);
-  const subscribeToReplies = useReplyStore((state) => state.subscribeToReplies);
-  const unsubscribeFromReplies = useReplyStore((state) => state.unsubscribeFromReplies);
-  const replies = useReplyStore((state) => state.replies[confession.id] || []);
-  const typingUsers = useReplyStore((state) => state.typingUsers[confession.id] || []);
+  // Use proper Zustand selectors with useShallow to avoid infinite loops
+  const { isSaved: checkIsSaved, saveConfession, unsaveConfession } = useSavedStore(
+    useShallow((state) => ({
+      isSaved: state.isSaved,
+      saveConfession: state.saveConfession,
+      unsaveConfession: state.unsaveConfession,
+    }))
+  );
+
+  const { getReplies, subscribeToReplies, unsubscribeFromReplies } = useReplyStore(
+    useShallow((state) => ({
+      getReplies: state.getRepliesForConfession,
+      subscribeToReplies: state.subscribeToReplies,
+      unsubscribeFromReplies: state.unsubscribeFromReplies,
+    }))
+  );
+
+  // Use stable selectors with shallow comparison for arrays/objects
+  const replies = useReplyStore(useShallow((state) => state.replies[confession.id] || []));
+  const typingUsers = useReplyStore(useShallow((state) => state.typingUsers[confession.id] || []));
   const pagination = useReplyStore((state) => state.pagination[confession.id]);
 
   const [isLiked, setIsLiked] = useState(false);
@@ -123,7 +136,7 @@ export default function VideoInteractionOverlay({
       setLikeCount(typeof currentConfession?.likes === "number" ? currentConfession.likes : confession.likes || 0);
       setIsSaved(checkIsSaved(confession.id));
     }
-  }, [user?.id, confession.id, currentConfession?.isLiked, currentConfession?.likes, checkIsSaved, confession.likes]);
+  }, [user?.id, confession.id, currentConfession?.isLiked, currentConfession?.likes, confession.likes]);
 
   // Real-time comment count updates
   useEffect(() => {
@@ -432,35 +445,56 @@ export default function VideoInteractionOverlay({
     announceAction("Opening report options");
   }, [user?.id, confession.id, onReport, triggerHaptic, announceAction]);
 
-  const likeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: likeScale.value }, { rotate: `${likeRotation.value}deg` }],
-  }));
+  const likeAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: likeScale.value }, { rotate: `${likeRotation.value}deg` }],
+    };
+  });
 
-  const saveAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: saveScale.value }, { rotate: `${saveRotation.value}deg` }],
-  }));
+  const saveAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: saveScale.value }, { rotate: `${saveRotation.value}deg` }],
+    };
+  });
 
-  const commentAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(commentScale.value * commentPulse.value, [1, 1.4], [1, 1.2]) }],
-  }));
+  const commentAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: interpolate(commentScale.value * commentPulse.value, [1, 1.4], [1, 1.2]) }],
+    };
+  });
 
-  const commentBadgeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: commentBadgeScale.value }],
-    opacity: commentBadgeScale.value,
-  }));
+  const commentBadgeAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: commentBadgeScale.value }],
+      opacity: commentBadgeScale.value,
+    };
+  });
 
-  const shareAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: shareScale.value }],
-  }));
+  const shareAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: shareScale.value }],
+    };
+  });
 
-  const reportAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: reportScale.value }],
-  }));
+  const reportAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: reportScale.value }],
+    };
+  });
 
-  const overlayAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value,
-    transform: [{ translateX: overlayTranslateX.value }],
-  }));
+  const overlayAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: overlayOpacity.value,
+      transform: [{ translateX: overlayTranslateX.value }],
+    };
+  });
 
   const formatCount = useCallback((count: number): string => {
     if (count >= 1000000) {
@@ -595,7 +629,9 @@ export default function VideoInteractionOverlay({
       )}
     </>
   );
-}
+});
+
+export default VideoInteractionOverlay;
 
 const styles = StyleSheet.create({
   container: {

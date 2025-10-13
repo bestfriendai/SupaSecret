@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { Dimensions, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { VideoView, type VideoPlayer, type VideoPlayerStatus } from "expo-video";
 import Animated, {
@@ -50,7 +50,7 @@ const sanitizeUri = (uri?: string | null) => {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export default function UnifiedVideoItem({
+const UnifiedVideoItem = memo(function UnifiedVideoItem({
   confession,
   isActive,
   shouldPreload = false,
@@ -249,18 +249,27 @@ export default function UnifiedVideoItem({
     onClose?.();
   }, [onClose, closeButtonScale]);
 
-  const heartAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: heartOpacity.value,
-    transform: [{ scale: heartScale.value }],
-  }));
+  const heartAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: heartOpacity.value,
+      transform: [{ scale: heartScale.value }],
+    };
+  });
 
-  const muteButtonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: muteButtonScale.value }],
-  }));
+  const muteButtonAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: muteButtonScale.value }],
+    };
+  });
 
-  const closeButtonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: closeButtonScale.value }],
-  }));
+  const closeButtonAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: closeButtonScale.value }],
+    };
+  });
 
   useEffect(() => {
     if (isActive) {
@@ -313,22 +322,29 @@ export default function UnifiedVideoItem({
       runOnJS(handleTapEvaluation)(Date.now());
     });
 
-  const videoWrapperAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: tapScale.value }],
-  }));
+  const videoWrapperAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: tapScale.value }],
+    };
+  });
 
   const infoOverlayStyle = useAnimatedStyle(() => {
-    if (!progressY) {
+    'worklet';
+    if (!progressY || typeof progressY.value === 'undefined') {
       return { opacity: 1 };
     }
     const opacity = interpolate(Math.abs(progressY.value), [0, 0.1, 0.3], [1, 0.8, 0.4]);
     return { opacity };
   });
 
-  const playPauseOverlayStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(isPlaying ? 0 : 1, { duration: 200 }),
-    transform: [{ scale: withSpring(isPlaying ? 0.8 : 1, { damping: 15, stiffness: 200 }) }],
-  }));
+  const playPauseOverlayStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: withTiming(isPlaying ? 0 : 1, { duration: 200 }),
+      transform: [{ scale: withSpring(isPlaying ? 0.8 : 1, { damping: 15, stiffness: 200 }) }],
+    };
+  });
 
   if (!videoUri) {
     return (
@@ -478,7 +494,9 @@ export default function UnifiedVideoItem({
       {renderVariantSpecificUI()}
     </View>
   );
-}
+});
+
+export default UnifiedVideoItem;
 
 const styles = {
   container: {

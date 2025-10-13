@@ -1,4 +1,4 @@
-import { requireNativeModule } from 'expo-modules-core';
+import { NativeModules } from 'react-native';
 
 /**
  * Native Face Blur Module
@@ -7,27 +7,21 @@ import { requireNativeModule } from 'expo-modules-core';
  * Android: Uses ML Kit + RenderEffect/RenderScript
  */
 
-// Lazy-load the native module to prevent crashes at import time
-let FaceBlurModule: any = null;
+// Get the native module from React Native's NativeModules
+const { FaceBlurModule } = NativeModules;
+
 let moduleLoadError: Error | null = null;
 
 function getFaceBlurModule() {
-  if (FaceBlurModule) {
-    return FaceBlurModule;
-  }
-
-  if (moduleLoadError) {
+  if (!FaceBlurModule) {
+    if (!moduleLoadError) {
+      moduleLoadError = new Error('FaceBlurModule not found in NativeModules');
+      console.warn('⚠️ FaceBlurModule not available:', moduleLoadError);
+    }
     throw moduleLoadError;
   }
 
-  try {
-    FaceBlurModule = requireNativeModule('FaceBlurModule');
-    return FaceBlurModule;
-  } catch (error) {
-    moduleLoadError = error instanceof Error ? error : new Error(String(error));
-    console.warn('⚠️ FaceBlurModule not available:', error);
-    throw moduleLoadError;
-  }
+  return FaceBlurModule;
 }
 
 export interface BlurResult {

@@ -1,8 +1,13 @@
 {
-  "name": "face-blur",
+  "name": "@local/face-blur",
   "version": "1.0.0",
   "description": "Native face blur module for iOS and Android",
   "main": "index.ts",
   "license": "MIT",
-  "author": "Toxic Confessions"
+  "author": "Toxic Confessions",
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
 }

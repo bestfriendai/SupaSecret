@@ -6,7 +6,7 @@
  */
 
 import { Platform } from "react-native";
-import { blurFacesInVideo as nativeBlurFaces, isNativeFaceBlurAvailable as checkAvailability } from "face-blur";
+import { blurFacesInVideo as nativeBlurFaces, isNativeFaceBlurAvailable as checkAvailability } from "@local/face-blur";
 
 export interface NativeFaceBlurOptions {
   blurIntensity?: number; // 0-100

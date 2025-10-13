@@ -137,7 +137,7 @@ function VisionCameraRecordScreenContent() {
   const errorMessage = uiError || error;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Camera
         ref={cameraRef}
         style={styles.camera}
@@ -166,61 +166,59 @@ function VisionCameraRecordScreenContent() {
       <View style={styles.controlsOverlay}>
         {/* Top Controls */}
         <View style={styles.topControls}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.iconButton}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Text style={styles.backButtonText}>MainTabs</Text>
           </Pressable>
 
-          <View style={styles.statusPill}>
-            <View style={[styles.statusIndicator, { backgroundColor: isReady ? "#22C55E" : "#F59E0B" }]} />
-            <Text style={styles.statusText}>{enableFaceBlur ? "Face Blur Active" : "No Blur"}</Text>
-          </View>
+          <Text style={styles.headerTitle}>Record Video</Text>
 
-          <Pressable onPress={toggleCamera} style={styles.iconButton}>
+          <Pressable onPress={toggleCamera} style={styles.flipButton}>
             <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />
           </Pressable>
         </View>
 
+        {/* Center Status Indicator */}
+        <View style={styles.centerStatus}>
+          <View style={styles.statusPill}>
+            <View style={[styles.statusIndicator, { backgroundColor: isReady ? "#22C55E" : "#F59E0B" }]} />
+            <Text style={styles.statusText}>Ready</Text>
+          </View>
+        </View>
+
         {/* Bottom Controls */}
         <View style={styles.bottomControls}>
-          <View style={styles.togglesRow}>
-            <View style={styles.toggleItem}>
-              <Text style={styles.toggleLabel}>Face blur</Text>
-              <Switch
-                value={enableFaceBlur}
-                onValueChange={setEnableFaceBlur}
-                disabled={isRecording} // Only allow toggle when not recording
-                thumbColor={enableFaceBlur ? "#1D9BF0" : "#9CA3AF"}
-                trackColor={{ false: "#1F2937", true: "#1D9BF0" }}
-              />
-            </View>
-            {enableFaceBlur && <Text style={styles.blurInfo}>✓ Active (intensity: {blurIntensity})</Text>}
-          </View>
-
-          {!recordedVideoPath && (
-            <Pressable
-              onPress={isRecording ? stopRecording : startRecording}
-              style={[styles.recordButton, isRecording ? styles.recordButtonActive : styles.recordButtonInactive]}
-              disabled={!isReady}
-            >
-              <Text style={styles.recordButtonText}>{isRecording ? "Stop" : "Record"}</Text>
+          {recordedVideoPath ? (
+            <Pressable onPress={handleNextPress} style={styles.continueButton}>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" style={styles.continueIcon} />
+              <Text style={styles.continueButtonText}>Continue</Text>
             </Pressable>
+          ) : (
+            <>
+              <Pressable onPress={() => navigation.goBack()} style={styles.bottomBackButton}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </Pressable>
+
+              <Pressable
+                onPress={isRecording ? stopRecording : startRecording}
+                style={[styles.recordButtonCircle, isRecording && styles.recordButtonRecording]}
+                disabled={!isReady}
+              >
+                {isRecording ? (
+                  <View style={styles.stopSquare} />
+                ) : (
+                  <View style={styles.recordDot} />
+                )}
+              </Pressable>
+
+              <Pressable onPress={toggleCamera} style={styles.flipButtonBottom}>
+                <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />
+              </Pressable>
+            </>
           )}
-
-          {recordedVideoPath && (
-            <Pressable onPress={handleNextPress} style={[styles.recordButton, styles.nextButton]}>
-              <Ionicons name="arrow-forward" size={24} color="#FFFFFF" style={styles.nextButtonIcon} />
-              <Text style={styles.recordButtonText}>Next</Text>
-            </Pressable>
-          )}
-
-          <Text style={styles.timerText}>
-            {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, "0")} / {MAX_DURATION}s
-          </Text>
-
-          {enableFaceBlur && <Text style={styles.infoText}>✨ Real-time face blur active</Text>}
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -301,30 +299,53 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 32,
   },
   topControls: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: Platform.OS === "ios" ? 12 : 24,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 16,
   },
-  iconButton: {
-    width: 48,
-    height: 48,
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 24,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    gap: 8,
+  },
+  backButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  headerTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  flipButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  centerStatus: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.55)",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
   statusIndicator: {
     width: 8,
@@ -334,76 +355,77 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "600",
   },
   bottomControls: {
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  togglesRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 12,
+    paddingHorizontal: 40,
+    paddingBottom: Platform.OS === "ios" ? 40 : 30,
   },
-  toggleItem: {
-    flexDirection: "row",
+  bottomBackButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
     alignItems: "center",
   },
-  toggleLabel: {
-    color: "#F9FAFB",
-    fontSize: 13,
-    fontWeight: "500",
-    marginRight: 8,
-  },
-  blurInfo: {
-    color: "#9CA3AF",
-    fontSize: 12,
-  },
-  recordButton: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 32,
-    minWidth: 140,
+  recordButtonCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
   },
-  recordButtonInactive: {
-    backgroundColor: "#DC2626",
+  recordButtonRecording: {
+    backgroundColor: "rgba(239,68,68,0.3)",
+    borderColor: "#EF4444",
   },
-  recordButtonActive: {
-    backgroundColor: "#991B1B",
+  recordDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#EF4444",
   },
-  recordButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  stopSquare: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    backgroundColor: "#FFFFFF",
   },
-  nextButton: {
-    backgroundColor: "#1D9BF0",
+  flipButtonBottom: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  continueButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#1D9BF0",
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 32,
     gap: 8,
+    flex: 1,
+    marginHorizontal: 40,
   },
-  nextButtonIcon: {
+  continueIcon: {
     marginRight: 4,
   },
-  timerText: {
-    color: "#E5E7EB",
-    fontSize: 14,
-    fontVariant: ["tabular-nums"],
-    marginBottom: 4,
-  },
-  infoText: {
-    color: "#22C55E",
-    fontSize: 12,
-    textAlign: "center",
+  continueButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
   },
   errorOverlay: {
     position: "absolute",

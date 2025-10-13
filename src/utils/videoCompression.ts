@@ -3,7 +3,8 @@
  * Compresses videos before upload to reduce file size and improve upload speed
  */
 
-import * as FileSystem from "expo-file-system";
+import { File } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 
 export interface CompressionOptions {
@@ -62,16 +63,18 @@ export async function compressVideo(videoUri: string, options: CompressionOption
   try {
     onProgress?.(0);
 
-    // Get original file info
-    const fileInfo = await FileSystem.getInfoAsync(videoUri);
-    if (!fileInfo.exists) {
+    // Get original file info using new File API
+    const file = new File(videoUri);
+    const exists = file.exists; // Property, not method
+
+    if (!exists) {
       return {
         success: false,
         error: "Video file not found",
       };
     }
 
-    const originalSize = (fileInfo as any).size || 0;
+    const originalSize = file.size; // Property, not method
 
     // For now, we'll skip actual compression and just validate the file
     // In production, you would use ffmpeg-kit-react-native here
@@ -114,10 +117,11 @@ export async function compressVideo(videoUri: string, options: CompressionOption
  */
 export async function shouldCompressVideo(videoUri: string): Promise<boolean> {
   try {
-    const fileInfo = await FileSystem.getInfoAsync(videoUri);
-    if (!fileInfo.exists) return false;
+    const file = new File(videoUri);
+    const exists = file.exists; // Property, not method
+    if (!exists) return false;
 
-    const size = (fileInfo as any).size || 0;
+    const size = file.size; // Property, not method
     const threshold = 20 * 1024 * 1024; // 20MB
 
     return size > threshold;
@@ -132,10 +136,11 @@ export async function shouldCompressVideo(videoUri: string): Promise<boolean> {
  */
 export async function getVideoSize(videoUri: string): Promise<number> {
   try {
-    const fileInfo = await FileSystem.getInfoAsync(videoUri);
-    if (!fileInfo.exists) return 0;
+    const file = new File(videoUri);
+    const exists = file.exists; // Property, not method
+    if (!exists) return 0;
 
-    const size = (fileInfo as any).size || 0;
+    const size = file.size; // Property, not method
     return size / 1024 / 1024; // Convert to MB
   } catch (error) {
     console.error("Failed to get video size:", error);
@@ -149,10 +154,11 @@ export async function getVideoSize(videoUri: string): Promise<number> {
 export async function deleteVideoFile(videoUri: string): Promise<boolean> {
   try {
     const cleanUri = videoUri.replace("file://", "");
-    const fileInfo = await FileSystem.getInfoAsync(cleanUri);
+    const file = new File(cleanUri);
+    const exists = file.exists; // Property, not method
 
-    if (fileInfo.exists) {
-      await FileSystem.deleteAsync(cleanUri, { idempotent: true });
+    if (exists) {
+      file.delete(); // Synchronous method
       console.log("✅ Deleted temporary video file:", cleanUri);
       return true;
     }

@@ -38,6 +38,7 @@ export default function TrendingBarChart({
   }, [percentage, animated]);
 
   const barStyle = useAnimatedStyle(() => {
+    'worklet';
     const height = interpolate(progress.value, [0, 1], [2, maxHeight]);
 
     return {
@@ -47,13 +48,16 @@ export default function TrendingBarChart({
   }, [maxHeight]);
 
   const containerStyle = useAnimatedStyle(
-    () => ({
-      transform: [
-        {
-          scaleY: withTiming(progress.value > 0 ? 1 : 0.8, { duration: 300 }),
-        },
-      ],
-    }),
+    () => {
+      'worklet';
+      return {
+        transform: [
+          {
+            scaleY: withTiming(progress.value > 0 ? 1 : 0.8, { duration: 300 }),
+          },
+        ],
+      };
+    },
     [],
   );
 
