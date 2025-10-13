@@ -197,6 +197,7 @@ export class LoadingTransitions {
     value.value = withDelay(
       delay,
       withTiming(1, { duration, easing }, (finished) => {
+        'worklet';
         if (finished) {
           this.endPerformanceTracking(animationId);
           if (onComplete) runOnJS(onComplete)();
@@ -214,6 +215,7 @@ export class LoadingTransitions {
     value.value = withDelay(
       delay,
       withTiming(0, { duration, easing }, (finished) => {
+        'worklet';
         if (finished && onComplete) runOnJS(onComplete)();
       }),
     );
@@ -234,6 +236,7 @@ export class LoadingTransitions {
     value.value = withDelay(
       delay,
       withTiming(0, { duration, easing }, (finished) => {
+        'worklet';
         if (finished && onComplete) runOnJS(onComplete)();
       }),
     );
@@ -249,6 +252,7 @@ export class LoadingTransitions {
     value.value = withDelay(
       delay,
       withSpring(1, springConfig, (finished) => {
+        'worklet';
         if (finished && onComplete) runOnJS(onComplete)();
       }),
     );
@@ -324,6 +328,7 @@ export class LoadingTransitions {
       withTiming(-amplitude, { duration: 100 }),
       withTiming(amplitude, { duration: 100 }),
       withTiming(0, { duration: 50 }, (finished) => {
+        'worklet';
         if (finished && onComplete) {
           runOnJS(onComplete)();
           runOnJS(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium))();
@@ -340,6 +345,7 @@ export class LoadingTransitions {
 
     value.value = 0.8;
     value.value = withSpring(1, springConfig, (finished) => {
+      'worklet';
       if (finished && onComplete) {
         runOnJS(onComplete)();
         runOnJS(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light))();
