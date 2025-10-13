@@ -218,18 +218,24 @@ export function useVideoFeedGestures({
   );
 
   // Animated styles
-  const containerStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: translateY.value },
-      { translateX: translateX.value },
-      { scale: scale.value * pinchScale.value },
-    ],
-    opacity: opacity.value,
-  }));
+  const containerStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [
+        { translateY: translateY.value },
+        { translateX: translateX.value },
+        { scale: scale.value * pinchScale.value },
+      ],
+      opacity: opacity.value,
+    };
+  });
 
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: isScrolling.value ? 0.5 : 1,
-  }));
+  const overlayStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: isScrolling.value ? 0.5 : 1,
+    };
+  });
 
   // Reset animations
   const resetAnimations = useCallback(() => {

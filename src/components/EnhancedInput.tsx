@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, TextInput, Pressable, TextInputProps } from "react-native";
+import { View, Text, TextInput, Pressable, TextInputProps } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
@@ -80,6 +80,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
 
   // Animated styles
   const containerStyle = useAnimatedStyle(() => {
+    'worklet';
     const borderColor = interpolateColor(
       errorAnimation.value,
       [0, 1],
@@ -93,6 +94,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   });
 
   const labelStyle = useAnimatedStyle(() => {
+    'worklet';
     const color = interpolateColor(
       errorAnimation.value,
       [0, 1],

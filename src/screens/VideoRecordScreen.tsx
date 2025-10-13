@@ -271,7 +271,7 @@ function ExpoCameraRecordScreen() {
 
   return (
     <PermissionGate permissions={["camera", "microphone"]}>
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <CameraView
           ref={data.cameraRef}
           style={styles.camera}

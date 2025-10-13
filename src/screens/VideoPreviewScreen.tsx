@@ -54,9 +54,16 @@ export default function VideoPreviewScreen() {
 
   console.log("📹 VideoPreviewScreen - Video URI:", videoUri);
 
+  // Reset hasStartedPlayingRef when video URI changes
+  useEffect(() => {
+    hasStartedPlayingRef.current = false;
+    setIsLoading(true);
+    setVideoError(null);
+  }, [videoUri]);
+
   // Create video player
   const player = useVideoPlayer(videoUri, (player) => {
-    console.log("🎬 Video player initialized");
+    console.log("🎬 Video player initialized with URI:", videoUri);
     player.loop = true;
     player.muted = false;
   });
@@ -85,16 +92,22 @@ export default function VideoPreviewScreen() {
     }
   });
 
-  // Loading timeout
+  // Loading timeout - reset whenever loading state changes
   useEffect(() => {
+    if (!isLoading) {
+      return undefined;
+    }
+
     const timeout = setTimeout(() => {
-      if (isLoading) {
+      if (isLoading && playerStatusRef.current !== "readyToPlay") {
+        console.warn("⏱️ Video loading timed out");
         setVideoError("Video loading timed out");
         setIsLoading(false);
       }
-    }, 10000); // 10 seconds
+    }, 15000); // 15 seconds (increased from 10)
+
     return () => clearTimeout(timeout);
-  }, []);
+  }, [isLoading]);
 
   // Validate video file exists
   useEffect(() => {

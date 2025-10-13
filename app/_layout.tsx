@@ -237,7 +237,7 @@ function RootLayoutContent() {
         name="video-preview"
         options={{
           title: "Preview Video",
-          headerShown: true,
+          headerShown: false,
           animation: "slide_from_right",
         }}
       />

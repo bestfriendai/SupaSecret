@@ -1,5 +1,5 @@
 import React from "react";
-import { View } from "react-native";
+import { View, Text } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -48,6 +48,7 @@ export default function CharacterCounter({
   });
 
   const textStyle = useAnimatedStyle(() => {
+    'worklet';
     const color = interpolateColor(
       colorState.value,
       [0, 1, 2],
@@ -68,6 +69,7 @@ export default function CharacterCounter({
   });
 
   const iconStyle = useAnimatedStyle(() => {
+    'worklet';
     const color = interpolateColor(
       colorState.value,
       [0, 1, 2],
@@ -88,6 +90,7 @@ export default function CharacterCounter({
   });
 
   const progressBarStyle = useAnimatedStyle(() => {
+    'worklet';
     const backgroundColor = interpolateColor(
       colorState.value,
       [0, 1, 2],

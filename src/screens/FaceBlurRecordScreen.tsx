@@ -201,7 +201,7 @@ function FaceBlurRecordScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <Camera
         ref={cameraRef}
         style={styles.camera}

@@ -84,6 +84,12 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   const tapScale = useSharedValue(1);
   const muteButtonScale = useSharedValue(1);
   const closeButtonScale = useSharedValue(1);
+  const isPlayingShared = useSharedValue(isPlaying ? 1 : 0);
+
+  // Update shared value when isPlaying prop changes
+  useEffect(() => {
+    isPlayingShared.value = isPlaying ? 1 : 0;
+  }, [isPlaying, isPlayingShared]);
 
   useEffect(() => {
     if (!videoPlayer) {
@@ -331,7 +337,7 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
 
   const infoOverlayStyle = useAnimatedStyle(() => {
     'worklet';
-    if (!progressY || typeof progressY.value === 'undefined') {
+    if (!progressY) {
       return { opacity: 1 };
     }
     const opacity = interpolate(Math.abs(progressY.value), [0, 0.1, 0.3], [1, 0.8, 0.4]);
@@ -340,6 +346,7 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
 
   const playPauseOverlayStyle = useAnimatedStyle(() => {
     'worklet';
+    const isPlaying = isPlayingShared.value === 1;
     return {
       opacity: withTiming(isPlaying ? 0 : 1, { duration: 200 }),
       transform: [{ scale: withSpring(isPlaying ? 0.8 : 1, { damping: 15, stiffness: 200 }) }],

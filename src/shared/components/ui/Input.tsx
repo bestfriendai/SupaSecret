@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, TextInput, Pressable } from "react-native";
+import React, { useState, forwardRef } from "react";
+import { View, Text, TextInput, Pressable } from "react-native";
 import type { TextInputProps, ViewProps } from "react-native";
 import Animated, {
   useSharedValue,
@@ -94,6 +94,7 @@ export const Input = forwardRef<TextInput, InputProps>(
 
     // Animated styles
     const containerStyle = useAnimatedStyle(() => {
+      'worklet';
       const borderColor = interpolateColor(
         errorAnimation.value,
         [0, 1],
@@ -107,6 +108,7 @@ export const Input = forwardRef<TextInput, InputProps>(
     });
 
     const labelStyle = useAnimatedStyle(() => {
+      'worklet';
       const color = interpolateColor(
         errorAnimation.value,
         [0, 1],

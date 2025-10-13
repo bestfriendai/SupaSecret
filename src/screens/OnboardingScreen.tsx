@@ -53,28 +53,43 @@ export default function OnboardingScreen() {
     buttonScale.value = withDelay(800, withSpring(1, { damping: 15, stiffness: 100 }));
   }, []);
 
-  const logoAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }, { rotate: `${logoRotation.value}deg` }],
-  }));
+  const logoAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: logoScale.value }, { rotate: `${logoRotation.value}deg` }],
+    };
+  });
 
-  const titleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: titleOpacity.value,
-    transform: [{ translateY: interpolate(titleOpacity.value, [0, 1], [20, 0]) }],
-  }));
+  const titleAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: titleOpacity.value,
+      transform: [{ translateY: interpolate(titleOpacity.value, [0, 1], [20, 0]) }],
+    };
+  });
 
-  const subtitleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: subtitleOpacity.value,
-    transform: [{ translateY: interpolate(subtitleOpacity.value, [0, 1], [20, 0]) }],
-  }));
+  const subtitleAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: subtitleOpacity.value,
+      transform: [{ translateY: interpolate(subtitleOpacity.value, [0, 1], [20, 0]) }],
+    };
+  });
 
-  const featuresAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: featuresOpacity.value,
-    transform: [{ translateY: interpolate(featuresOpacity.value, [0, 1], [20, 0]) }],
-  }));
+  const featuresAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: featuresOpacity.value,
+      transform: [{ translateY: interpolate(featuresOpacity.value, [0, 1], [20, 0]) }],
+    };
+  });
 
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
+  const buttonAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      transform: [{ scale: buttonScale.value }],
+    };
+  });
 
   const handleGetStarted = async () => {
     if (isProcessing) return;
