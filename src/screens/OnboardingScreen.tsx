@@ -54,14 +54,14 @@ export default function OnboardingScreen() {
   }, []);
 
   const logoAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: logoScale.value }, { rotate: `${logoRotation.value}deg` }],
     };
   });
 
   const titleAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: titleOpacity.value,
       transform: [{ translateY: interpolate(titleOpacity.value, [0, 1], [20, 0]) }],
@@ -69,7 +69,7 @@ export default function OnboardingScreen() {
   });
 
   const subtitleAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: subtitleOpacity.value,
       transform: [{ translateY: interpolate(subtitleOpacity.value, [0, 1], [20, 0]) }],
@@ -77,7 +77,7 @@ export default function OnboardingScreen() {
   });
 
   const featuresAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: featuresOpacity.value,
       transform: [{ translateY: interpolate(featuresOpacity.value, [0, 1], [20, 0]) }],
@@ -85,7 +85,7 @@ export default function OnboardingScreen() {
   });
 
   const buttonAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: buttonScale.value }],
     };

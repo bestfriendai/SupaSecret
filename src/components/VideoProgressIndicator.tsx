@@ -27,19 +27,19 @@ export default function VideoProgressIndicator({
     opacity.value = withTiming(isVisible ? 1 : 0, { duration: 300 });
   }, [isVisible]);
 
-  const progressStyle = useAnimatedStyle(
-    () => ({
+  const progressStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
       width: `${interpolate(progress.value, [0, 1], [0, 100])}%`,
-    }),
-    [],
-  );
+    };
+  });
 
-  const containerStyle = useAnimatedStyle(
-    () => ({
+  const containerStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
       opacity: opacity.value,
-    }),
-    [],
-  );
+    };
+  });
 
   return (
     <Animated.View

@@ -1,7 +1,7 @@
 import React from "react";
 import { View } from "react-native";
 import { BannerAdComponent } from "./BannerAdComponent";
-import { useSubscriptionStore } from "../../state/subscriptionStore";
+import { useSubscriptionStore } from "../../features/subscription";
 
 interface FeedAdComponentProps {
   index: number;

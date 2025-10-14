@@ -115,6 +115,7 @@ export default function PullToRefreshOverlay({
   };
 
   const containerStyle = useAnimatedStyle(() => {
+    "worklet";
     const opacity = interpolate(pullDistance, [0, threshold], [0, 1], {
       extrapolateLeft: Extrapolation.CLAMP,
       extrapolateRight: Extrapolation.CLAMP,
@@ -130,17 +131,26 @@ export default function PullToRefreshOverlay({
     };
   });
 
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
-  }));
+  const iconStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
+    };
+  });
 
-  const progressStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${progressArc.value * 360}deg` }],
-  }));
+  const progressStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ rotate: `${progressArc.value * 360}deg` }],
+    };
+  });
 
-  const trendingHintStyle = useAnimatedStyle(() => ({
-    opacity: trendingHintOpacity.value,
-  }));
+  const trendingHintStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      opacity: trendingHintOpacity.value,
+    };
+  });
 
   return (
     <>

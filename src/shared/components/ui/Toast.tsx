@@ -309,10 +309,13 @@ export const SimpleToast: React.FC<SimpleToastProps> = ({
     return undefined;
   }, [visible, duration, opacity, translateY, position, onDismiss]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      opacity: opacity.value,
+      transform: [{ translateY: translateY.value }],
+    };
+  });
 
   const getTypeStyles = () => {
     switch (type) {

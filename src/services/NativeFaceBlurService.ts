@@ -42,7 +42,7 @@ export const blurFacesInVideo = async (
       blurIntensity,
       onProgress: (progress, status) => {
         onProgress?.(progress, status);
-      }
+      },
     });
 
     if (result.success && result.outputPath) {

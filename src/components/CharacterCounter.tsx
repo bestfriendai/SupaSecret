@@ -30,25 +30,44 @@ export default function CharacterCounter({
   className = "",
 }: CharacterCounterProps) {
   const progress = useSharedValue(0);
+  const currentLengthShared = useSharedValue(currentLength);
+  const maxLengthShared = useSharedValue(maxLength);
+  const warningThresholdShared = useSharedValue(warningThreshold);
+  const dangerThresholdShared = useSharedValue(dangerThreshold);
 
   // Calculate progress (0 to 1)
   React.useEffect(() => {
+    currentLengthShared.value = currentLength;
+    maxLengthShared.value = maxLength;
+    warningThresholdShared.value = warningThreshold;
+    dangerThresholdShared.value = dangerThreshold;
+
     progress.value = withSpring(currentLength / maxLength, {
       damping: 20,
       stiffness: 300,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLength, maxLength]);
+  }, [
+    currentLength,
+    maxLength,
+    warningThreshold,
+    dangerThreshold,
+    currentLengthShared,
+    maxLengthShared,
+    warningThresholdShared,
+    dangerThresholdShared,
+    progress,
+  ]);
 
   // Determine color state
   const colorState = useDerivedValue(() => {
-    if (currentLength >= dangerThreshold) return 2; // Danger (red)
-    if (currentLength >= warningThreshold) return 1; // Warning (yellow)
+    "worklet";
+    if (currentLengthShared.value >= dangerThresholdShared.value) return 2; // Danger (red)
+    if (currentLengthShared.value >= warningThresholdShared.value) return 1; // Warning (yellow)
     return 0; // Normal (gray)
   });
 
   const textStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const color = interpolateColor(
       colorState.value,
       [0, 1, 2],
@@ -59,7 +78,7 @@ export default function CharacterCounter({
       color,
       transform: [
         {
-          scale: withSpring(currentLength > maxLength ? 1.1 : 1, {
+          scale: withSpring(currentLengthShared.value > maxLengthShared.value ? 1.1 : 1, {
             damping: 15,
             stiffness: 400,
           }),
@@ -69,7 +88,7 @@ export default function CharacterCounter({
   });
 
   const iconStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const color = interpolateColor(
       colorState.value,
       [0, 1, 2],
@@ -80,7 +99,7 @@ export default function CharacterCounter({
       color,
       transform: [
         {
-          scale: withSpring(currentLength >= warningThreshold ? 1.1 : 1, {
+          scale: withSpring(currentLengthShared.value >= warningThresholdShared.value ? 1.1 : 1, {
             damping: 15,
             stiffness: 400,
           }),
@@ -90,7 +109,7 @@ export default function CharacterCounter({
   });
 
   const progressBarStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const backgroundColor = interpolateColor(
       colorState.value,
       [0, 1, 2],

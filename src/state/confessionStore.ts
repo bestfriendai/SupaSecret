@@ -981,7 +981,7 @@ const cleanupConfessionSubscriptions = () => {
   confessionReconnectAttempts = 0;
 
   if (__DEV__) {
-    console.log('[ConfessionStore] Cleaned up subscriptions and timers');
+    console.log("[ConfessionStore] Cleaned up subscriptions and timers");
   }
 };
 

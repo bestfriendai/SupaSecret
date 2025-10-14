@@ -41,20 +41,20 @@ export default function VideoControls({
     });
   }, [showSpeedOptions]);
 
-  const controlsStyle = useAnimatedStyle(
-    () => ({
+  const controlsStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
       opacity: controlsOpacity.value,
-    }),
-    [],
-  );
+    };
+  });
 
-  const speedOptionsStyle = useAnimatedStyle(
-    () => ({
+  const speedOptionsStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
       transform: [{ scale: speedOptionsScale.value }],
       opacity: speedOptionsScale.value,
-    }),
-    [],
-  );
+    };
+  });
 
   const handleSpeedChange = async (speed: number) => {
     try {

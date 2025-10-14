@@ -413,7 +413,7 @@ const cleanupAuthListener = () => {
   }
 
   if (__DEV__) {
-    console.log('[AuthStore] Cleaned up auth listener and session refresh timer');
+    console.log("[AuthStore] Cleaned up auth listener and session refresh timer");
   }
 };
 

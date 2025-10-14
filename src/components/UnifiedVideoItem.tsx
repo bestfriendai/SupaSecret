@@ -256,7 +256,7 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   }, [onClose, closeButtonScale]);
 
   const heartAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: heartOpacity.value,
       transform: [{ scale: heartScale.value }],
@@ -264,14 +264,14 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   });
 
   const muteButtonAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: muteButtonScale.value }],
     };
   });
 
   const closeButtonAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: closeButtonScale.value }],
     };
@@ -329,14 +329,14 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
     });
 
   const videoWrapperAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: tapScale.value }],
     };
   });
 
   const infoOverlayStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     if (!progressY) {
       return { opacity: 1 };
     }
@@ -345,7 +345,7 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   });
 
   const playPauseOverlayStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const isPlaying = isPlayingShared.value === 1;
     return {
       opacity: withTiming(isPlaying ? 0 : 1, { duration: 200 }),

@@ -197,7 +197,11 @@ export const useModerationStore = create<ModerationState>()(
             data: { user },
           } = await supabase.auth.getUser();
           if (user) {
-            await supabase.from("hidden_content" as any).delete().eq("user_id", user.id).eq("content_id", contentId);
+            await supabase
+              .from("hidden_content" as any)
+              .delete()
+              .eq("user_id", user.id)
+              .eq("content_id", contentId);
           }
         } catch (error) {
           set({
@@ -229,7 +233,7 @@ export const useModerationStore = create<ModerationState>()(
             return;
           }
 
-          const { data, error} = await supabase
+          const { data, error } = await supabase
             .from("blocked_users" as any)
             .select("blocked_user_id, reason, created_at")
             .eq("user_id", user.id);

@@ -34,7 +34,7 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
   const tabWidth = containerWidth > 0 ? containerWidth / Math.max(1, tabs.length) : 0;
 
   const indicatorStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       left: indicatorPosition.value * tabWidth,
       width: tabWidth,

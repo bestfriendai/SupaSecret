@@ -26,7 +26,7 @@ export function ConfessionSkeleton({ showVideo = false }: ConfessionSkeletonProp
   }, []);
 
   const shimmerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const opacity = interpolate(shimmer.value, [0, 1], [0.3, 0.7]);
     return { opacity };
   }, []);

@@ -559,7 +559,7 @@ const cleanupTrendingStore = () => {
   }
 
   if (__DEV__) {
-    console.log('[TrendingStore] Cleaned up subscriptions and timers');
+    console.log("[TrendingStore] Cleaned up subscriptions and timers");
   }
 };
 

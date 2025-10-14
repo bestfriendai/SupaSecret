@@ -28,7 +28,7 @@ export default function ConfessionSkeleton({ showVideo = false }: ConfessionSkel
   }, []);
 
   const shimmerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const opacity = interpolate(shimmer.value, [0, 1], [0.3, 0.7]);
     return { opacity };
   }, []);

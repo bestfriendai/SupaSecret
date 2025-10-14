@@ -204,11 +204,7 @@ function VisionCameraRecordScreenContent() {
                 style={[styles.recordButtonCircle, isRecording && styles.recordButtonRecording]}
                 disabled={!isReady}
               >
-                {isRecording ? (
-                  <View style={styles.stopSquare} />
-                ) : (
-                  <View style={styles.recordDot} />
-                )}
+                {isRecording ? <View style={styles.stopSquare} /> : <View style={styles.recordDot} />}
               </Pressable>
 
               <Pressable onPress={toggleCamera} style={styles.flipButtonBottom}>

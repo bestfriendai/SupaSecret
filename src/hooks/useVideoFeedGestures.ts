@@ -219,7 +219,7 @@ export function useVideoFeedGestures({
 
   // Animated styles
   const containerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [
         { translateY: translateY.value },
@@ -231,7 +231,7 @@ export function useVideoFeedGestures({
   });
 
   const overlayStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: isScrolling.value ? 0.5 : 1,
     };

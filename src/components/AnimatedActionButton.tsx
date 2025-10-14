@@ -48,19 +48,19 @@ export default function AnimatedActionButton({
     onPress();
   };
 
-  const buttonStyle = useAnimatedStyle(
-    () => ({
+  const buttonStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
       transform: [{ scale: scale.value }],
-    }),
-    [],
-  );
+    };
+  });
 
-  const heartStyle = useAnimatedStyle(
-    () => ({
+  const heartStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
       transform: [{ scale: heartScale.value }],
-    }),
-    [],
-  );
+    };
+  });
 
   const iconColor = isActive ? (icon === "heart" ? "#FF3040" : activeColor) : inactiveColor;
 

@@ -32,9 +32,12 @@ export default function LoadingSpinner({ message, size = 40, color = "#1D9BF0" }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
+    };
+  });
 
   return (
     <View className="items-center justify-center py-8">

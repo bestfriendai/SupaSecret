@@ -292,6 +292,7 @@ export default function NetworkStatusIndicator({
   };
 
   const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
     const baseTranslateY = translateY.value;
     const scrollAdjustment = scrollOffset ? scrollOffset.value * 0.5 : 0;
 
@@ -301,13 +302,19 @@ export default function NetworkStatusIndicator({
     };
   });
 
-  const dotAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: dotScale.value }],
-  }));
+  const dotAnimatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ scale: dotScale.value }],
+    };
+  });
 
-  const retryAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${retryRotation.value}deg` }],
-  }));
+  const retryAnimatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ rotate: `${retryRotation.value}deg` }],
+    };
+  });
 
   if (!isVisible && metrics.status === "online" && !persistentMode) {
     return null;

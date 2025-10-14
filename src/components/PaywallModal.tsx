@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, Modal, ScrollView, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useSubscriptionStore } from "../state/subscriptionStore";
-import { RevenueCatService } from "../services/RevenueCatService";
+import { useSubscription } from "../features/subscription";
+import type { RevenueCatPackage } from "../features/subscription/types";
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
@@ -18,11 +18,19 @@ interface PaywallModalProps {
 }
 
 export const PaywallModal: React.FC<PaywallModalProps> = ({ visible, onClose, onPurchaseSuccess }) => {
-  const { isLoading, error, purchaseSubscription, restorePurchases, clearError } = useSubscriptionStore();
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "annual">("monthly");
+  const { isLoading, error, purchaseSubscription, restorePurchases, clearError, getOfferings } = useSubscription();
+  const [packages, setPackages] = useState<RevenueCatPackage[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<RevenueCatPackage | null>(null);
+  const [loadingOfferings, setLoadingOfferings] = useState(true);
 
-  const mockOfferings = RevenueCatService.getMockOfferings();
+  // Load offerings when modal opens
+  useEffect(() => {
+    if (visible) {
+      loadOfferings();
+    }
+  }, [visible]);
 
+  // Auto-dismiss error after 5 seconds
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => {
@@ -33,9 +41,34 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ visible, onClose, on
     return undefined;
   }, [error, clearError]);
 
-  const handlePurchase = async () => {
+  const loadOfferings = async () => {
+    setLoadingOfferings(true);
     try {
-      const success = await purchaseSubscription(selectedPlan);
+      const offerings = await getOfferings();
+      if (offerings?.current) {
+        const availablePackages = offerings.current.availablePackages || [];
+        setPackages(availablePackages);
+
+        // Auto-select annual (most popular) or first package
+        const annualPackage = availablePackages.find(
+          (pkg) => pkg.packageType === "ANNUAL" || pkg.identifier.includes("annual"),
+        );
+        setSelectedPackage(annualPackage || availablePackages[0] || null);
+      }
+    } catch (error) {
+      console.error("Failed to load offerings:", error);
+    } finally {
+      setLoadingOfferings(false);
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (!selectedPackage) {
+      return;
+    }
+
+    try {
+      const success = await purchaseSubscription(selectedPackage);
       if (success) {
         onPurchaseSuccess?.();
         onClose();
@@ -119,68 +152,83 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ visible, onClose, on
 
             {/* Pricing Plans */}
             <View style={{ marginBottom: 24 }}>
-              {mockOfferings.map((offering) => (
-                <Pressable
-                  key={offering.id}
-                  onPress={() => setSelectedPlan(offering.id as "monthly" | "annual")}
-                  style={{
-                    backgroundColor: selectedPlan === offering.id ? "#1D4ED8" : "#374151",
-                    borderRadius: 16,
-                    padding: 16,
-                    marginBottom: 12,
-                    borderWidth: 2,
-                    borderColor: selectedPlan === offering.id ? "#3B82F6" : "transparent",
-                  }}
-                >
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-                        <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "600" }}>{offering.name}</Text>
-                        {offering.isPopular && (
-                          <View
-                            style={{
-                              backgroundColor: "#F59E0B",
-                              borderRadius: 8,
-                              paddingHorizontal: 8,
-                              paddingVertical: 2,
-                              marginLeft: 8,
-                            }}
-                          >
-                            <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "600" }}>POPULAR</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={{ color: "#9CA3AF", fontSize: 16 }}>{offering.price}</Text>
-                      {offering.id === "annual" && (
-                        <Text style={{ color: "#10B981", fontSize: 12, marginTop: 2 }}>Save 33%</Text>
-                      )}
-                    </View>
-                    <View
+              {loadingOfferings ? (
+                <View style={{ padding: 20, alignItems: "center" }}>
+                  <ActivityIndicator size="large" color="#3B82F6" />
+                  <Text style={{ color: "#9CA3AF", marginTop: 12 }}>Loading plans...</Text>
+                </View>
+              ) : packages.length === 0 ? (
+                <View style={{ padding: 20, alignItems: "center" }}>
+                  <Text style={{ color: "#9CA3AF" }}>No subscription plans available</Text>
+                </View>
+              ) : (
+                packages.map((pkg) => {
+                  const isAnnual = pkg.packageType === "ANNUAL" || pkg.identifier.includes("annual");
+                  const isSelected = selectedPackage?.identifier === pkg.identifier;
+                  return (
+                    <Pressable
+                      key={pkg.identifier}
+                      onPress={() => setSelectedPackage(pkg)}
                       style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
+                        backgroundColor: isSelected ? "#1D4ED8" : "#374151",
+                        borderRadius: 16,
+                        padding: 16,
+                        marginBottom: 12,
                         borderWidth: 2,
-                        borderColor: selectedPlan === offering.id ? "#3B82F6" : "#6B7280",
-                        backgroundColor: selectedPlan === offering.id ? "#3B82F6" : "transparent",
+                        borderColor: isSelected ? "#3B82F6" : "transparent",
                       }}
                     >
-                      {selectedPlan === offering.id && (
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+                            <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "600" }}>
+                              {pkg.product.title}
+                            </Text>
+                            {isAnnual && (
+                              <View
+                                style={{
+                                  backgroundColor: "#F59E0B",
+                                  borderRadius: 8,
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 2,
+                                  marginLeft: 8,
+                                }}
+                              >
+                                <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "600" }}>POPULAR</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={{ color: "#9CA3AF", fontSize: 16 }}>{pkg.product.priceString}</Text>
+                          {isAnnual && <Text style={{ color: "#10B981", fontSize: 12, marginTop: 2 }}>Best Value</Text>}
+                        </View>
                         <View
                           style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: "#FFFFFF",
-                            alignSelf: "center",
-                            marginTop: 4,
+                            width: 20,
+                            height: 20,
+                            borderRadius: 10,
+                            borderWidth: 2,
+                            borderColor: isSelected ? "#3B82F6" : "#6B7280",
+                            backgroundColor: isSelected ? "#3B82F6" : "transparent",
                           }}
-                        />
-                      )}
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
+                        >
+                          {isSelected && (
+                            <View
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: "#FFFFFF",
+                                alignSelf: "center",
+                                marginTop: 4,
+                              }}
+                            />
+                          )}
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })
+              )}
             </View>
 
             {/* Error Message */}

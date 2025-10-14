@@ -80,7 +80,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
 
   // Animated styles
   const containerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const borderColor = interpolateColor(
       errorAnimation.value,
       [0, 1],
@@ -94,7 +94,7 @@ export const EnhancedInput: React.FC<EnhancedInputProps> = ({
   });
 
   const labelStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const color = interpolateColor(
       errorAnimation.value,
       [0, 1],

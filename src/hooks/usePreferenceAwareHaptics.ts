@@ -54,7 +54,7 @@ export function usePreferenceAwareHaptics() {
         await Haptics.notificationAsync(notificationType);
       }
     },
-    [hapticsEnabled]
+    [hapticsEnabled],
   );
 
   return {
@@ -66,4 +66,3 @@ export function usePreferenceAwareHaptics() {
     hapticsEnabled,
   };
 }
-

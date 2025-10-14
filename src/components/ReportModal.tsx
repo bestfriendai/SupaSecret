@@ -76,13 +76,19 @@ export default function ReportModal({ isVisible, onClose, confessionId, replyId,
       }
     });
 
-  const modalStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+  const modalStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ translateY: translateY.value }],
+    };
+  });
 
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
-  }));
+  const backdropStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      opacity: backdropOpacity.value,
+    };
+  });
 
   const handleSubmit = async () => {
     if (!selectedReason) {

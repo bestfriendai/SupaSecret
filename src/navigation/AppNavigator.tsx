@@ -26,6 +26,7 @@ import SecretDetailScreen from "../screens/SecretDetailScreen";
 import SavedScreen from "../screens/SavedScreen";
 import PaywallScreen from "../screens/PaywallScreen";
 import WebViewScreen from "../screens/WebViewScreen";
+import AgeGateScreen, { checkAgeVerification } from "../screens/AgeGateScreen";
 import { useAuthStore } from "../state/authStore";
 import { useGlobalVideoStore } from "../state/globalVideoStore";
 
@@ -260,7 +261,22 @@ export default function AppNavigator() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const [isNavigationReady, setIsNavigationReady] = useState(false);
+  const [isAgeVerified, setIsAgeVerified] = useState<boolean | null>(null);
   const AUTH_CHECK_TIMEOUT = 10000; // 10 seconds timeout
+
+  // Check age verification on mount
+  useEffect(() => {
+    const checkAge = async () => {
+      const verified = await checkAgeVerification();
+      setIsAgeVerified(verified);
+    };
+    checkAge();
+  }, []);
+
+  // Handle age verification completion
+  const handleAgeVerified = useCallback(async () => {
+    setIsAgeVerified(true);
+  }, []);
 
   // Robust initialization with timeout handling
   const initializeAuth = useCallback(async () => {
@@ -305,9 +321,14 @@ export default function AppNavigator() {
     }
   }, [isAuthenticated, isLoading, user, isInitializing]);
 
-  // Show loading screen during initialization
-  if (isInitializing || isLoading) {
-    logNavigationState("Loading", { isInitializing, isLoading });
+  // Show age gate if not verified (BLOCKING - highest priority)
+  if (isAgeVerified === false) {
+    return <AgeGateScreen onVerified={handleAgeVerified} />;
+  }
+
+  // Show loading screen during age check or auth initialization
+  if (isAgeVerified === null || isInitializing || isLoading) {
+    logNavigationState("Loading", { isAgeVerified, isInitializing, isLoading });
     return (
       <View style={{ flex: 1, backgroundColor: "black", alignItems: "center", justifyContent: "center" }}>
         <LoadingSpinner size={48} color="#1D9BF0" />

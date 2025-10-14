@@ -62,6 +62,9 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
   const [error, setError] = useState<string | null>(null);
   const [networkStatus] = useState(isOnline());
 
+  // SharedValue for error state to use in worklets
+  const errorShared = useSharedValue(0);
+
   const [retryAttempts, setRetryAttempts] = useState(0);
   const scrollOffset = useSharedValue(0);
   const hasInitializedScroll = useRef(false);
@@ -403,9 +406,17 @@ export default function OptimizedTikTokVideoFeed({ onClose, initialIndex = 0 }: 
     ],
   );
 
-  const errorOpacity = useAnimatedStyle(() => ({
-    opacity: withTiming(error && !videos.length ? 1 : 0, { duration: 300 }),
-  }));
+  // Sync error state to SharedValue for worklet access
+  useEffect(() => {
+    errorShared.value = error && !videos.length ? 1 : 0;
+  }, [error, videos.length, errorShared]);
+
+  const errorOpacity = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      opacity: withTiming(errorShared.value, { duration: 300 }),
+    };
+  });
 
   console.log(
     "OptimizedTikTokVideoFeed render: isLoading=",

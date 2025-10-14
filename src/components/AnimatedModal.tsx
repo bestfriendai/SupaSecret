@@ -103,24 +103,32 @@ export default function AnimatedModal({
     }
   };
 
-  const backdropStyle = useAnimatedStyle(
-    () => ({
+  const backdropStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
       opacity: backdropOpacityValue.value,
-    }),
-    [],
-  );
+    };
+  });
+
+  // Create SharedValue for animationType to use in worklet
+  const animationTypeShared = useSharedValue(animationType);
+
+  React.useEffect(() => {
+    animationTypeShared.value = animationType;
+  }, [animationType, animationTypeShared]);
 
   const contentStyle = useAnimatedStyle(() => {
+    "worklet";
     const baseStyle: any = {};
 
-    if (animationType === "scale") {
+    if (animationTypeShared.value === "scale") {
       baseStyle.transform = [{ scale: scaleValue.value }];
-    } else if (animationType === "slide") {
+    } else if (animationTypeShared.value === "slide") {
       baseStyle.transform = [{ translateY: translateYValue.value }];
     }
 
     return baseStyle;
-  }, [animationType]);
+  });
 
   const handleBackdropPress = () => {
     if (dismissOnBackdrop && !isClosing.current) {

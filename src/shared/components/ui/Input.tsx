@@ -94,7 +94,7 @@ export const Input = forwardRef<TextInput, InputProps>(
 
     // Animated styles
     const containerStyle = useAnimatedStyle(() => {
-      'worklet';
+      "worklet";
       const borderColor = interpolateColor(
         errorAnimation.value,
         [0, 1],
@@ -108,7 +108,7 @@ export const Input = forwardRef<TextInput, InputProps>(
     });
 
     const labelStyle = useAnimatedStyle(() => {
-      'worklet';
+      "worklet";
       const color = interpolateColor(
         errorAnimation.value,
         [0, 1],

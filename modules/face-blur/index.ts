@@ -1,4 +1,4 @@
-import { NativeModules } from 'react-native';
+import { NativeModules } from "react-native";
 
 /**
  * Native Face Blur Module
@@ -15,8 +15,8 @@ let moduleLoadError: Error | null = null;
 function getFaceBlurModule() {
   if (!FaceBlurModule) {
     if (!moduleLoadError) {
-      moduleLoadError = new Error('FaceBlurModule not found in NativeModules');
-      console.warn('⚠️ FaceBlurModule not available:', moduleLoadError);
+      moduleLoadError = new Error("FaceBlurModule not found in NativeModules");
+      console.warn("⚠️ FaceBlurModule not available:", moduleLoadError);
     }
     throw moduleLoadError;
   }
@@ -41,29 +41,23 @@ export interface BlurOptions {
  * @param options - Blur configuration options
  * @returns Promise with output video path
  */
-export async function blurFacesInVideo(
-  videoPath: string,
-  options: BlurOptions = {}
-): Promise<BlurResult> {
+export async function blurFacesInVideo(videoPath: string, options: BlurOptions = {}): Promise<BlurResult> {
   const { blurIntensity = 50, onProgress } = options;
 
   try {
     const module = getFaceBlurModule();
-    onProgress?.(0, 'Initializing...');
+    onProgress?.(0, "Initializing...");
 
-    const result = await module.blurFacesInVideo(
-      videoPath,
-      blurIntensity
-    );
+    const result = await module.blurFacesInVideo(videoPath, blurIntensity);
 
-    onProgress?.(100, 'Complete!');
+    onProgress?.(100, "Complete!");
 
     return result;
   } catch (error) {
-    console.error('Face blur error:', error);
+    console.error("Face blur error:", error);
     return {
       success: false,
-      outputPath: undefined
+      outputPath: undefined,
     };
   }
 }
@@ -82,5 +76,5 @@ export function isNativeFaceBlurAvailable(): boolean {
 
 export default {
   blurFacesInVideo,
-  isNativeFaceBlurAvailable
+  isNativeFaceBlurAvailable,
 };

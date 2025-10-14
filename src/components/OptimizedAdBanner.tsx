@@ -1,7 +1,7 @@
 import React, { memo, useMemo, useRef } from "react";
 import { View } from "react-native";
 import { FeedAdComponent } from "./ads/FeedAdComponent";
-import { useSubscriptionStore } from "../state/subscriptionStore";
+import { useSubscriptionStore } from "../features/subscription";
 
 interface OptimizedAdBannerProps {
   index: number;

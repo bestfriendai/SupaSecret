@@ -309,6 +309,189 @@ Questions? Contact us at support@toxicconfessions.app
 
 ---
 
+## 🔔 APP STORE SERVER NOTIFICATIONS (RevenueCat)
+
+### What Are App Store Server Notifications?
+App Store Server Notifications (ASSN) provide real-time updates about subscription events like:
+- New purchases
+- Renewals
+- Cancellations
+- Billing issues
+- Refunds
+- Grace periods
+
+**Why You Need This:**
+- Real-time subscription status updates
+- Accurate premium status across devices
+- Better user experience
+- Reduced support tickets
+
+---
+
+### Setup Instructions
+
+#### Step 1: Get Your RevenueCat Webhook URL
+
+1. **Log in to RevenueCat Dashboard**
+   - Go to: https://app.revenuecat.com
+
+2. **Navigate to Your Project**
+   - Select "Toxic Confessions" project
+
+3. **Go to Integrations**
+   - Click on "Integrations" in left sidebar
+   - Find "Apple App Store Server Notifications"
+
+4. **Copy Your Webhook URL**
+   - It will look like:
+   ```
+   https://api.revenuecat.com/v1/webhooks/apple/YOUR_PROJECT_ID
+   ```
+   - **Save this URL** - you'll need it for App Store Connect
+
+---
+
+#### Step 2: Configure in App Store Connect
+
+1. **Go to App Store Connect**
+   - Visit: https://appstoreconnect.apple.com
+
+2. **Select Your App**
+   - Go to "My Apps"
+   - Select "Toxic Confessions"
+
+3. **Navigate to App Information**
+   - Click "App Information" in left sidebar
+
+4. **Scroll to "App Store Server Notifications"**
+   - Find the section near the bottom
+
+5. **Add Production Server URL**
+   - Paste your RevenueCat webhook URL:
+   ```
+   https://api.revenuecat.com/v1/webhooks/apple/YOUR_PROJECT_ID
+   ```
+   - Click "Save"
+
+6. **Add Sandbox Server URL (Optional but Recommended)**
+   - Use the same URL for testing:
+   ```
+   https://api.revenuecat.com/v1/webhooks/apple/YOUR_PROJECT_ID
+   ```
+   - RevenueCat automatically handles sandbox vs production
+
+---
+
+#### Step 3: Verify Setup
+
+1. **In RevenueCat Dashboard**
+   - Go to "Integrations" → "Apple App Store Server Notifications"
+   - Status should show: ✅ "Connected"
+
+2. **Test Notifications**
+   - Make a test purchase in sandbox
+   - Check RevenueCat dashboard for event
+   - Should see "INITIAL_BUY" event within seconds
+
+---
+
+### What Events You'll Receive
+
+| Event | Description | When It Happens |
+|-------|-------------|-----------------|
+| **INITIAL_BUY** | First purchase | User buys subscription |
+| **RENEWAL** | Subscription renewed | Auto-renewal successful |
+| **CANCELLATION** | User cancelled | User turns off auto-renew |
+| **BILLING_ISSUE** | Payment failed | Credit card declined |
+| **REFUND** | Purchase refunded | Apple issues refund |
+| **GRACE_PERIOD** | Billing retry | Payment failed, grace period started |
+| **PRODUCT_CHANGE** | Plan changed | User upgrades/downgrades |
+
+---
+
+### Benefits for Your App
+
+✅ **Real-Time Updates**
+- Premium status updates instantly
+- No need to manually refresh
+
+✅ **Better User Experience**
+- Ads disappear immediately after purchase
+- Premium features unlock instantly
+
+✅ **Accurate Analytics**
+- Track subscription metrics in real-time
+- Monitor churn and retention
+
+✅ **Reduced Support**
+- Fewer "I paid but still see ads" tickets
+- Automatic status synchronization
+
+---
+
+### Troubleshooting
+
+**Issue: "Invalid URL" error**
+```
+Solution: Make sure you copied the full URL from RevenueCat
+including the project ID at the end
+```
+
+**Issue: "Connection failed"**
+```
+Solution:
+1. Verify URL is correct
+2. Check RevenueCat project is active
+3. Wait 5-10 minutes and try again
+```
+
+**Issue: "Not receiving notifications"**
+```
+Solution:
+1. Make a test purchase in sandbox
+2. Check RevenueCat dashboard → Customer History
+3. Verify webhook URL is saved in App Store Connect
+4. Contact RevenueCat support if still not working
+```
+
+---
+
+### Important Notes
+
+⚠️ **Set This Up BEFORE Launch**
+- Notifications only work for purchases made AFTER setup
+- Historical purchases won't trigger notifications
+
+⚠️ **Use Same URL for Sandbox and Production**
+- RevenueCat automatically detects environment
+- No need for separate URLs
+
+⚠️ **Don't Share Your Webhook URL**
+- It's specific to your project
+- Keep it secure
+
+✅ **This is Required for Production**
+- Without it, subscription status may be delayed
+- Users may see ads even after purchasing
+
+---
+
+### Quick Setup Checklist
+
+- [ ] Log in to RevenueCat dashboard
+- [ ] Copy webhook URL from Integrations
+- [ ] Go to App Store Connect
+- [ ] Navigate to App Information
+- [ ] Add Production Server URL
+- [ ] Add Sandbox Server URL (optional)
+- [ ] Save changes
+- [ ] Verify connection in RevenueCat
+- [ ] Test with sandbox purchase
+
+**Estimated Time:** 5 minutes
+
+---
+
 ## 🏷️ CATEGORY & AGE RATING
 
 ### Primary Category

@@ -64,13 +64,13 @@ export default function TrendingBar({ visible = true }: TrendingBarProps) {
     navigation.navigate("Trending");
   };
 
-  const animatedStyle = useAnimatedStyle(
-    () => ({
+  const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
       opacity: opacity.value,
       transform: [{ translateY: translateY.value }],
-    }),
-    [],
-  );
+    };
+  });
 
   if (!visible) return null;
 

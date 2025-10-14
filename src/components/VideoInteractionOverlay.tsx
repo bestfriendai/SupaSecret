@@ -72,17 +72,19 @@ const VideoInteractionOverlay = React.memo(function VideoInteractionOverlay({
   const toggleLike = useConfessionStore((state) => state.toggleLike);
 
   // Only get the specific confession we need, not the entire array
-  const currentConfession = useConfessionStore(
-    (state) => state.confessions.find((c) => c.id === confession.id)
-  );
+  const currentConfession = useConfessionStore((state) => state.confessions.find((c) => c.id === confession.id));
 
   // Use proper Zustand selectors with useShallow to avoid infinite loops
-  const { isSaved: checkIsSaved, saveConfession, unsaveConfession } = useSavedStore(
+  const {
+    isSaved: checkIsSaved,
+    saveConfession,
+    unsaveConfession,
+  } = useSavedStore(
     useShallow((state) => ({
       isSaved: state.isSaved,
       saveConfession: state.saveConfession,
       unsaveConfession: state.unsaveConfession,
-    }))
+    })),
   );
 
   const { getReplies, subscribeToReplies, unsubscribeFromReplies } = useReplyStore(
@@ -90,7 +92,7 @@ const VideoInteractionOverlay = React.memo(function VideoInteractionOverlay({
       getReplies: state.getRepliesForConfession,
       subscribeToReplies: state.subscribeToReplies,
       unsubscribeFromReplies: state.unsubscribeFromReplies,
-    }))
+    })),
   );
 
   // Use stable selectors with shallow comparison for arrays/objects
@@ -446,28 +448,28 @@ const VideoInteractionOverlay = React.memo(function VideoInteractionOverlay({
   }, [user?.id, confession.id, onReport, triggerHaptic, announceAction]);
 
   const likeAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: likeScale.value }, { rotate: `${likeRotation.value}deg` }],
     };
   });
 
   const saveAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: saveScale.value }, { rotate: `${saveRotation.value}deg` }],
     };
   });
 
   const commentAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: interpolate(commentScale.value * commentPulse.value, [1, 1.4], [1, 1.2]) }],
     };
   });
 
   const commentBadgeAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: commentBadgeScale.value }],
       opacity: commentBadgeScale.value,
@@ -475,21 +477,21 @@ const VideoInteractionOverlay = React.memo(function VideoInteractionOverlay({
   });
 
   const shareAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: shareScale.value }],
     };
   });
 
   const reportAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: reportScale.value }],
     };
   });
 
   const overlayAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: overlayOpacity.value,
       transform: [{ translateX: overlayTranslateX.value }],

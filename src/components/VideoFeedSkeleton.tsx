@@ -54,7 +54,7 @@ const FeedItemSkeleton: React.FC<FeedItemSkeletonProps> = ({ index, delay, orien
   }, [delay]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: opacity.value,
       transform: [{ translateY: translateY.value }, { scale: scale.value }],
@@ -216,35 +216,35 @@ export default function VideoFeedSkeleton({
   }, [isVisible, state, shimmer, fade, stagger, calculatedItemCount]);
 
   const shimmerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ translateX: shimmerTranslateX.value }],
     };
   });
 
   const containerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: withTiming(isVisible ? 1 : 0, { duration: fade }),
     };
   });
 
   const refreshStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ rotate: `${refreshRotation.value}deg` }],
     };
   });
 
   const loadMoreStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: loadMoreScale.value }],
     };
   });
 
   const pulseStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: pulseOpacity.value,
     };

@@ -306,7 +306,7 @@ export const stopNetworkWatcher = () => {
   watcherStarted = false;
 
   if (__DEV__) {
-    console.log('[OfflineQueue] Network watcher stopped');
+    console.log("[OfflineQueue] Network watcher stopped");
   }
 };
 

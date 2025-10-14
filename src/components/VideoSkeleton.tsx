@@ -46,7 +46,7 @@ const SkeletonItem: React.FC<SkeletonItemProps> = ({ index, layout, delay }) => 
   }, [delay]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: opacity.value,
       transform: [{ scale: scale.value }],
@@ -197,28 +197,28 @@ export default function VideoSkeleton({
   }, [isVisible, state]);
 
   const shimmerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ translateX: shimmerTranslateX.value }],
     };
   });
 
   const containerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: withTiming(isVisible ? 1 : 0, { duration: 300 }),
     };
   });
 
   const pulseStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: pulseOpacity.value,
     };
   });
 
   const progressStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       width: `${progressWidth.value}%`,
     };

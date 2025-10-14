@@ -109,9 +109,12 @@ export const LoadingSpinner: React.FC<LoadingProps> = ({
     );
   }, [rotation, scale]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
+    };
+  });
 
   const containerClassName = cn("items-center justify-center", fullScreen ? "flex-1 bg-black" : "py-8", className);
 
@@ -171,17 +174,26 @@ export const LoadingDots: React.FC<LoadingProps> = ({
 
   // Create animated styles directly instead of using a helper function
   // to avoid "hook in non-component" error
-  const dot1Style = useAnimatedStyle(() => ({
-    transform: [{ translateY: dot1.value }],
-  }));
+  const dot1Style = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ translateY: dot1.value }],
+    };
+  });
 
-  const dot2Style = useAnimatedStyle(() => ({
-    transform: [{ translateY: dot2.value }],
-  }));
+  const dot2Style = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ translateY: dot2.value }],
+    };
+  });
 
-  const dot3Style = useAnimatedStyle(() => ({
-    transform: [{ translateY: dot3.value }],
-  }));
+  const dot3Style = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ translateY: dot3.value }],
+    };
+  });
 
   const containerClassName = cn("items-center justify-center", fullScreen ? "flex-1 bg-black" : "py-8", className);
 
@@ -227,10 +239,13 @@ export const LoadingPulse: React.FC<LoadingProps> = ({
     );
   }, [scale, opacity]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
+  });
 
   const containerClassName = cn("items-center justify-center", fullScreen ? "flex-1 bg-black" : "py-8", className);
 
@@ -272,9 +287,12 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     opacity.value = withRepeat(withSequence(withTiming(1, { duration: 800 }), withTiming(0.3, { duration: 800 })), -1);
   }, [opacity]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      opacity: opacity.value,
+    };
+  });
 
   return (
     <Animated.View

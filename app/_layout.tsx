@@ -184,7 +184,7 @@ function RootLayoutContent() {
       stopNetworkWatcher();
 
       if (__DEV__) {
-        console.log('[_layout.tsx] Cleanup completed - all listeners and timers cleared');
+        console.log("[_layout.tsx] Cleanup completed - all listeners and timers cleared");
       }
     };
   }, [checkAuthState, loadConfessions, loadUserPreferences]);

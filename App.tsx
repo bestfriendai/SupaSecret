@@ -162,7 +162,7 @@ export default function App() {
       stopNetworkWatcher();
 
       if (__DEV__) {
-        console.log('[App.tsx] Cleanup completed - all listeners and timers cleared');
+        console.log("[App.tsx] Cleanup completed - all listeners and timers cleared");
       }
     };
   }, [checkAuthState, loadConfessions, loadUserPreferences]);

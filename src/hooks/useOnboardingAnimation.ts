@@ -28,7 +28,7 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
 
   // Skip button animation - fades out on last slide
   const skipButtonStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const opacity = interpolate(scrollX.value, [0, (totalSlides - 1) * screenWidth], [1, 0], {
       extrapolateLeft: Extrapolation.CLAMP,
       extrapolateRight: Extrapolation.CLAMP,
@@ -46,7 +46,7 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
 
   // Slide container animation - subtle breathing effect
   const slideContainerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: slideOpacity.value,
     };
@@ -54,7 +54,7 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
 
   // Button press animation
   const buttonAnimatedStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: buttonScale.value }],
     };
@@ -62,7 +62,7 @@ export const useOnboardingAnimation = ({ totalSlides, currentIndex, scrollX }: O
 
   // Progress indicator container animation
   const progressContainerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: progressScale.value }],
     };
@@ -118,7 +118,7 @@ export const useSlideAnimation = (index: number, scrollX: any) => {
   const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
 
   const slideStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const scale = interpolate(scrollX.value, inputRange, [0.85, 1, 0.85], {
       extrapolateLeft: Extrapolation.CLAMP,
       extrapolateRight: Extrapolation.CLAMP,
@@ -139,7 +139,7 @@ export const useSlideAnimation = (index: number, scrollX: any) => {
   });
 
   const iconStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const rotate = interpolate(scrollX.value, inputRange, [-8, 0, 8], {
       extrapolateLeft: Extrapolation.CLAMP,
       extrapolateRight: Extrapolation.CLAMP,
@@ -165,7 +165,7 @@ export const useProgressDotAnimation = (index: number, scrollX: any) => {
   const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
 
   const dotStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     const width = interpolate(scrollX.value, inputRange, [8, 28, 8], {
       extrapolateLeft: Extrapolation.CLAMP,
       extrapolateRight: Extrapolation.CLAMP,

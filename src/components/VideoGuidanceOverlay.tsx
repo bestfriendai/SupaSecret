@@ -89,21 +89,21 @@ export default function VideoGuidanceOverlay({ isVisible, onDismiss }: VideoGuid
   };
 
   const overlayStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: overlayOpacity.value,
     };
   });
 
   const swipeIndicatorStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ translateY: swipeIndicatorY.value }],
     };
   });
 
   const heartStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: heartScale.value }],
     };

@@ -221,23 +221,48 @@ export default function OptimizedVideoItem({
   }, [handleLike, onSingleTap]);
 
   // Video loading handlers
+  // SharedValues for props to use in worklets
+  const isActiveShared = useSharedValue(isActive);
+  const isPlayingShared = useSharedValue(isPlaying);
+  const isLoadingShared = useSharedValue(isLoading);
+
+  useEffect(() => {
+    isActiveShared.value = isActive;
+    isPlayingShared.value = isPlaying;
+    isLoadingShared.value = isLoading;
+  }, [isActive, isPlaying, isLoading, isActiveShared, isPlayingShared, isLoadingShared]);
+
   // Animated styles
-  const likeButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: likeScale.value }],
-  }));
+  const likeButtonStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ scale: likeScale.value }],
+    };
+  });
 
-  const heartAnimationStyle = useAnimatedStyle(() => ({
-    opacity: heartOpacity.value,
-    transform: [{ scale: heartScale.value }],
-  }));
+  const heartAnimationStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      opacity: heartOpacity.value,
+      transform: [{ scale: heartScale.value }],
+    };
+  });
 
-  const playButtonOpacity = useAnimatedStyle(() => ({
-    opacity: withTiming(isActive && !isPlaying && !isLoading ? 1 : 0, { duration: 300 }),
-  }));
+  const playButtonOpacity = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      opacity: withTiming(isActiveShared.value && !isPlayingShared.value && !isLoadingShared.value ? 1 : 0, {
+        duration: 300,
+      }),
+    };
+  });
 
-  const loadingOpacity = useAnimatedStyle(() => ({
-    opacity: withTiming(isLoading ? 1 : 0, { duration: 300 }),
-  }));
+  const loadingOpacity = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      opacity: withTiming(isLoadingShared.value ? 1 : 0, { duration: 300 }),
+    };
+  });
 
   return (
     <View style={styles.container}>

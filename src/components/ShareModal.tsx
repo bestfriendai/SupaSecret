@@ -51,14 +51,14 @@ export default function ShareModal({ isVisible, onClose, confessionId, confessio
     });
 
   const modalStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ translateY: translateY.value }],
     };
   });
 
   const backdropStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: backdropOpacity.value,
     };

@@ -350,14 +350,14 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   const composedGestures = Gesture.Simultaneous(panGesture, Gesture.Exclusive(doubleTapGesture, singleTapGesture));
 
   const containerStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ translateY: translateY.value }, { scale: scale.value }],
     };
   });
 
   const heartAnimationStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ scale: heartScale.value }],
       opacity: heartOpacity.value,
@@ -365,14 +365,14 @@ export default function EnhancedVideoFeed({ onClose }: EnhancedVideoFeedProps) {
   });
 
   const overlayStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       opacity: overlayOpacity.value,
     };
   });
 
   const actionButtonsStyle = useAnimatedStyle(() => {
-    'worklet';
+    "worklet";
     return {
       transform: [{ translateX: actionButtonsTranslateX.value }],
     };

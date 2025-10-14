@@ -59,8 +59,10 @@ function ExpoCameraRecordScreen() {
   const resetRef = useRef<(() => void) | null>(null);
 
   const [enableFaceBlur, setEnableFaceBlur] = useState(true);
-  const [enableVoiceChange, setEnableVoiceChange] = useState(true);
-  const [voiceEffect, setVoiceEffect] = useState<"deep" | "light">("deep");
+  // Voice modification disabled for v1.0 - incomplete implementation
+  // Will be added in v1.1 after proper audio/video merging is implemented
+  const [enableVoiceChange] = useState(false);
+  const [voiceEffect] = useState<"deep" | "light">("deep");
   const [uiError, setUiError] = useState<string | null>(null);
   const [showNextButton, setShowNextButton] = useState(false);
   const [recordedVideoUri, setRecordedVideoUri] = useState<string | null>(null);
@@ -248,9 +250,10 @@ function ExpoCameraRecordScreen() {
     return "Using Expo Camera fallback";
   }, [capabilities]);
 
-  const toggleVoiceEffect = useCallback(() => {
-    setVoiceEffect((prev) => (prev === "deep" ? "light" : "deep"));
-  }, []);
+  // Voice modification disabled for v1.0
+  // const toggleVoiceEffect = useCallback(() => {
+  //   setVoiceEffect((prev) => (prev === "deep" ? "light" : "deep"));
+  // }, []);
 
   if (!hasPermissions) {
     return (
@@ -271,7 +274,7 @@ function ExpoCameraRecordScreen() {
 
   return (
     <PermissionGate permissions={["camera", "microphone"]}>
-      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
         <CameraView
           ref={data.cameraRef}
           style={styles.camera}
@@ -356,7 +359,8 @@ function ExpoCameraRecordScreen() {
                   trackColor={{ false: "#1F2937", true: "#1D9BF0" }}
                 />
               </View>
-              <View style={styles.toggleItem}>
+              {/* Voice modification disabled for v1.0 - will be added in v1.1 */}
+              {/* <View style={styles.toggleItem}>
                 <Text style={styles.toggleLabel}>Voice mod</Text>
                 <Switch
                   value={enableVoiceChange}
@@ -367,7 +371,7 @@ function ExpoCameraRecordScreen() {
               </View>
               <Pressable onPress={toggleVoiceEffect} style={styles.voiceButton} accessibilityRole="button">
                 <Text style={styles.voiceButtonText}>{voiceEffect === "deep" ? "Deep" : "Light"} voice</Text>
-              </Pressable>
+              </Pressable> */}
             </View>
 
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}

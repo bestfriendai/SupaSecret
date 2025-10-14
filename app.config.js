@@ -102,7 +102,7 @@ module.exports = {
     },
     ios: {
       supportsTablet: true,
-      buildNumber: "1",
+      buildNumber: "20",
       icon: "./assets/icon.png",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,

@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../state/authStore";
 import { useConfessionStore } from "../state/confessionStore";
 import { useMembershipStore } from "../state/membershipStore";
-import { useSubscriptionStore } from "../state/subscriptionStore";
+import { useSubscriptionStore } from "../features/subscription";
 import { cn } from "../utils/cn";
 import { calculateBulkViews } from "../utils/viewsCalculator";
 import type { RootStackParamList } from "../navigation/AppNavigator";

@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleProp, ViewStyle } from "react-native";
-import { useSubscriptionStore } from "../../state/subscriptionStore";
+import { useSubscriptionStore } from "../../features/subscription";
 import { AdMobService } from "../../services/AdMobService";
 
 interface BannerAdComponentProps {

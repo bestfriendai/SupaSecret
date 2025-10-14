@@ -329,7 +329,7 @@ const cleanupNotificationSubscriptions = () => {
   notificationReconnectAttempts = 0;
 
   if (__DEV__) {
-    console.log('[NotificationStore] Cleaned up subscriptions and timers');
+    console.log("[NotificationStore] Cleaned up subscriptions and timers");
   }
 };
 
