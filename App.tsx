@@ -23,7 +23,7 @@ import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ToastProvider } from "./src/contexts/ToastContext";
 import RetryBanner from "./src/components/RetryBanner";
 import { initializeApp, loadUserData, setupGlobalErrorHandlers } from "./src/initialization/appInitializer";
-import "./src/utils/hermesTestUtils"; // Auto-run Hermes compatibility tests
+import "./src/utils/hermesPolyfill"; // Auto-run Hermes compatibility polyfill
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();

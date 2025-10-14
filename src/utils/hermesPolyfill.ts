@@ -1,25 +1,33 @@
 /**
- * Hermes Polyfill for compatibility
- * Ensures dynamic imports work properly in Hermes runtime
+ * Hermes Compatibility Utilities
+ * Basic compatibility checks and polyfills for Hermes runtime
  */
 
-if (typeof global !== "undefined") {
-  // Store original import for fallback if needed
-  const originalImport = (global as any).import;
+// Check if we're running on Hermes
+const isHermes = () => {
+  return typeof HermesInternal === 'object' && HermesInternal !== null;
+};
 
-  // Override global import with Hermes-safe async version
-  (global as any).import = async function (specifier: string) {
-    try {
-      if (originalImport && typeof originalImport === "function") {
-        return await originalImport.call(this, specifier);
-      }
-      // Fallback to native dynamic import
-      return await import(specifier);
-    } catch (error) {
-      console.warn(`Dynamic import failed for ${specifier}:`, error);
-      throw error;
-    }
-  };
+// Log Hermes status for debugging
+if (__DEV__) {
+  console.log('[Hermes] Runtime detected:', isHermes());
+}
+
+// Basic global polyfills for Hermes compatibility
+if (typeof global !== "undefined") {
+  // Ensure global.performance exists for timing operations
+  if (!global.performance) {
+    global.performance = {
+      now: () => Date.now(),
+    } as any;
+  }
+
+  // Ensure global.requestAnimationFrame exists
+  if (!global.requestAnimationFrame) {
+    global.requestAnimationFrame = (callback: FrameRequestCallback) => {
+      return setTimeout(callback, 16); // ~60fps
+    };
+  }
 }
 
 export {};
