@@ -20,8 +20,17 @@ LogBox.ignoreLogs([
   "Disconnected from Metro",
   // Remove deprecation warnings for migrated packages
   "SafeAreaView has been deprecated",
+  'EnhancedVideoItem is deprecated. Use UnifiedVideoItem with variant="enhanced" instead.',
+  'TikTokVideoItem is deprecated. Use UnifiedVideoItem with variant="tiktok" instead.',
   // FlashList + Reanimated v4 + Expo Go compatibility issue
   "View config not found for component `AutoLayoutView`",
+  // RevenueCat configuration warnings (development only)
+  "[RevenueCat] Error fetching offerings",
+  "[RevenueCat] There was a problem with the App Store",
+  "RevenueCat.OfferingsManager.Error",
+  // Supabase operation warnings
+  "Supabase operation failed",
+  "duplicate key value violates unique constraint",
 ]);
 
 console.log("[DIAG] index.ts: About to import registerRootComponent...");

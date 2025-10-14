@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable } from "react-native";
+import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSpamProtection } from "../../../hooks/useSpamProtection";
 
 interface ConfessionFormProps {
   onSubmitText?: (content: string) => void;
@@ -11,15 +12,29 @@ interface ConfessionFormProps {
 export function ConfessionForm({ onSubmitText, onVideoRecord, isSubmitting = false }: ConfessionFormProps) {
   const [textContent, setTextContent] = useState("");
 
-  const handleTextSubmit = () => {
+  const { validateAndProcess, isChecking } = useSpamProtection({
+    showAlerts: true,
+    autoSanitize: true,
+  });
+
+  const handleTextSubmit = async () => {
     const trimmedContent = textContent.trim();
     if (!trimmedContent || trimmedContent.length < 10 || trimmedContent.length > 280) {
+      Alert.alert("Invalid Content", "Your confession must be between 10 and 280 characters.");
       return;
     }
-    onSubmitText?.(trimmedContent);
+
+    // Validate for spam
+    const validation = await validateAndProcess(trimmedContent);
+    if (!validation.isValid) {
+      Alert.alert("Content Not Allowed", validation.error || "Please revise your confession.");
+      return;
+    }
+
+    onSubmitText?.(validation.processedContent);
   };
 
-  const isValid = textContent.trim().length >= 10 && textContent.trim().length <= 280 && !isSubmitting;
+  const isValid = textContent.trim().length >= 10 && textContent.trim().length <= 280 && !isSubmitting && !isChecking;
 
   return (
     <View className="flex-1 bg-black">

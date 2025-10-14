@@ -851,12 +851,25 @@ export default function TikTokVideoFeed({ onClose, initialIndex = 0 }: TikTokVid
   useEffect(() => {
     if (!videoPlayer) return;
 
+    // Listen for playing state changes
+    const updatePlayingState = () => {
+      setIsPlaying(videoPlayer.playing);
+    };
+
+    const playingListener = videoPlayer.addListener("playingChange", updatePlayingState);
+
     if (!isFocused || !videos.length || appStateRef.current !== "active") {
       pausePlayer();
-      return;
+      return () => {
+        playingListener?.remove();
+      };
     }
 
     playPlayer();
+
+    return () => {
+      playingListener?.remove();
+    };
   }, [videoPlayer, isFocused, videos.length, pausePlayer, playPlayer]);
 
   useEffect(() => {

@@ -118,7 +118,10 @@ export const useMembershipStore = create<MembershipState>()(
             updated_at: new Date().toISOString(),
           };
 
-          const { error } = await supabase.from("user_memberships").upsert(membership, { onConflict: "user_id" });
+          const { error } = await supabase.from("user_memberships").upsert(membership, {
+            onConflict: "user_id",
+            ignoreDuplicates: false,
+          });
 
           if (error) throw error;
 

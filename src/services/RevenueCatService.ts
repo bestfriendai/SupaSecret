@@ -395,12 +395,18 @@ export class RevenueCatService {
       const { enqueue, isOnline } = await import("../lib/offlineQueue");
       const doUpsert = async () => {
         const { error } = await withSupabaseRetry(async () =>
-          supabase.from("user_memberships").upsert({
-            user_id: user.id,
-            tier: isPremium ? "plus" : "free",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }),
+          supabase.from("user_memberships").upsert(
+            {
+              user_id: user.id,
+              tier: isPremium ? "plus" : "free",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            {
+              onConflict: "user_id",
+              ignoreDuplicates: false,
+            },
+          ),
         );
         if (error) throw error;
       };

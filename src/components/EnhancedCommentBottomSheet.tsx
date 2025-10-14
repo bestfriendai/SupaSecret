@@ -33,6 +33,7 @@ import { PreferenceAwareHaptics } from "../utils/haptics";
 import { InlineCharacterCounter } from "./CharacterCounter";
 import { sanitizeText } from "../utils/consolidatedUtils";
 import { useToastHelpers } from "../contexts/ToastContext";
+import { useSpamProtection } from "../hooks/useSpamProtection";
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -532,6 +533,12 @@ const EnhancedCommentBottomSheet = React.memo(
 
     const { showSuccess, showError } = useToastHelpers();
 
+    // Spam protection hook
+    const { validateAndProcess, recordAttempt, isChecking } = useSpamProtection({
+      showAlerts: true,
+      autoSanitize: true,
+    });
+
     const {
       replies: allReplies,
       pagination: allPagination,
@@ -614,31 +621,57 @@ const EnhancedCommentBottomSheet = React.memo(
     }, [confessionId, loadRepliesStable]); // Only depend on confessionId and the memoized loadRepliesStable
 
     const handleSendComment = useCallback(async () => {
-      if (!comment.trim()) return;
+      if (!comment.trim() || isChecking) return;
 
-      PreferenceAwareHaptics.impactAsync();
+      try {
+        // Validate and process content for spam
+        const validation = await validateAndProcess(comment);
 
-      const parentId = replyingTo?.id || null;
-      await addReply(confessionId, comment.trim(), true, parentId);
+        if (!validation.isValid) {
+          showError(validation.error || "Comment not allowed");
+          return;
+        }
 
-      // Track comment submission
-      VideoDataService.trackVideoEvent("comment_submitted", {
-        confession_id: confessionId,
-        parent_id: parentId,
-        comment_length: comment.length,
-        has_parent: !!parentId,
-        timestamp: Date.now(),
-      });
+        PreferenceAwareHaptics.impactAsync();
 
-      setComment("");
-      setReplyingTo(null);
-      showSuccess("Comment added successfully!");
+        const parentId = replyingTo?.id || null;
+        await addReply(confessionId, validation.processedContent, true, parentId);
 
-      // Scroll to the new comment
-      setTimeout(() => {
-        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-      }, 300);
-    }, [comment, confessionId, replyingTo, addReply, showSuccess]);
+        // Record successful attempt for rate limiting
+        await recordAttempt(validation.processedContent);
+
+        // Track comment submission
+        VideoDataService.trackVideoEvent("comment_submitted", {
+          confession_id: confessionId,
+          parent_id: parentId,
+          comment_length: validation.processedContent.length,
+          has_parent: !!parentId,
+          timestamp: Date.now(),
+        });
+
+        setComment("");
+        setReplyingTo(null);
+        showSuccess("Comment added successfully!");
+
+        // Scroll to the new comment
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }, 300);
+      } catch (error) {
+        console.error("Failed to send comment:", error);
+        showError("Failed to post comment. Please try again.");
+      }
+    }, [
+      comment,
+      confessionId,
+      replyingTo,
+      addReply,
+      showSuccess,
+      showError,
+      validateAndProcess,
+      recordAttempt,
+      isChecking,
+    ]);
 
     const handleReply = useCallback(
       (item: any) => {
@@ -977,12 +1010,16 @@ const EnhancedCommentBottomSheet = React.memo(
 
                   <TouchableOpacity
                     onPress={handleSendComment}
-                    disabled={!comment.trim()}
+                    disabled={!comment.trim() || isChecking}
                     className={`ml-2 w-9 h-9 rounded-full items-center justify-center ${
-                      comment.trim() ? "bg-purple-500" : "bg-gray-700"
+                      comment.trim() && !isChecking ? "bg-purple-500" : "bg-gray-700"
                     }`}
                   >
-                    <Ionicons name="send" size={18} color={comment.trim() ? "white" : "#94A3B8"} />
+                    {isChecking ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Ionicons name="send" size={18} color={comment.trim() ? "white" : "#94A3B8"} />
+                    )}
                   </TouchableOpacity>
                 </View>
 

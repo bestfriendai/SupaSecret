@@ -431,7 +431,7 @@ export default function AppNavigator() {
               component={VideoRecordScreen}
               options={{
                 title: "Record Video",
-                headerShown: true,
+                headerShown: false,
                 animation: "slide_from_bottom",
                 gestureEnabled: true,
                 gestureDirection: "vertical",
@@ -442,7 +442,7 @@ export default function AppNavigator() {
               component={VideoPreviewScreen}
               options={{
                 title: "Preview Video",
-                headerShown: true,
+                headerShown: false,
                 animation: "slide_from_right",
                 gestureEnabled: true,
               }}

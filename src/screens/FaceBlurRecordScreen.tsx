@@ -103,16 +103,19 @@ function FaceBlurRecordScreen() {
 
       console.log("🎬 Starting recording...");
 
-      await cameraRef.current.startRecording({
+      cameraRef.current.startRecording({
         onRecordingFinished: (video) => {
           console.log("✅ Recording finished:", video.path);
           setRecordedVideoPath(video.path);
           setIsRecording(false);
         },
         onRecordingError: (error) => {
-          console.error("❌ Recording error:", error);
+          console.error("❌ Camera error:", error);
           setIsRecording(false);
         },
+        // Add recording configuration to prevent AssetWriter errors
+        fileType: "mov",
+        videoCodec: "h264",
       });
     } catch (error) {
       console.error("❌ Failed to start recording:", error);
@@ -156,7 +159,7 @@ function FaceBlurRecordScreen() {
         height: 720,
         duration: recordingTime,
         size: 0,
-        faceBlurApplied: false, // User will blur in preview if they want
+        faceBlurApplied: false, // No real-time blur in this screen - blur happens in preview
         privacyMode: "blur" as const,
       },
     });
@@ -234,17 +237,17 @@ function FaceBlurRecordScreen() {
           <GlassButton icon="camera-reverse" onPress={toggleCamera} disabled={isRecording} />
         </View>
 
-        {/* Center - Timer (only when recording) */}
-        {isRecording && (
-          <View style={styles.centerControls}>
-            <TimerDisplay seconds={recordingTime} maxSeconds={MAX_DURATION} isRecording={isRecording} />
-          </View>
-        )}
-
         {/* Bottom Controls */}
         <View style={styles.bottomControls}>
           {!recordedVideoPath ? (
             <View style={styles.recordingControls}>
+              {/* Timer above record button */}
+              {isRecording && (
+                <View style={styles.timerAboveButton}>
+                  <TimerDisplay seconds={recordingTime} maxSeconds={MAX_DURATION} isRecording={isRecording} />
+                </View>
+              )}
+
               <RecordButton
                 isRecording={isRecording}
                 onPress={isRecording ? stopRecording : startRecording}
@@ -341,6 +344,10 @@ const styles = StyleSheet.create({
   recordingControls: {
     alignItems: "center",
     gap: 16,
+  },
+  timerAboveButton: {
+    marginBottom: 20,
+    alignItems: "center",
   },
   nextControls: {
     width: "100%",

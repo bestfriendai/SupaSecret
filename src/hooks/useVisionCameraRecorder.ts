@@ -190,7 +190,7 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
       setRecordingTime(0);
       onRecordingStart?.();
 
-      await cameraRef.current.startRecording({
+      cameraRef.current.startRecording({
         onRecordingFinished: (video: any) => {
           console.log("✅ Recording finished:", video.path);
           isRecordingRef.current = false;
@@ -198,13 +198,16 @@ export const useVisionCameraRecorder = (options: VisionCameraRecorderOptions = {
           onRecordingStop?.(video.path);
         },
         onRecordingError: (error: any) => {
-          console.error("❌ Recording error:", error);
+          console.error("❌ Camera error:", error);
           const errorMessage = error.message || "Recording failed";
           setError(errorMessage);
           onError?.(errorMessage);
           isRecordingRef.current = false;
           setIsRecording(false);
         },
+        // Add recording configuration to prevent AssetWriter errors
+        fileType: "mov",
+        videoCodec: "h264",
       });
     } catch (error) {
       console.error("❌ Failed to start recording:", error);

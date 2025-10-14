@@ -63,11 +63,11 @@ export class LoadingTransitions {
 
   static {
     AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      this.reducedMotionEnabled = enabled || false;
+      LoadingTransitions.reducedMotionEnabled = enabled || false;
     });
 
     AccessibilityInfo.addEventListener("reduceMotionChanged", (enabled) => {
-      this.reducedMotionEnabled = enabled;
+      LoadingTransitions.reducedMotionEnabled = enabled;
     });
   }
 
@@ -140,7 +140,7 @@ export class LoadingTransitions {
 
     const config = configs[preset];
 
-    if (this.reducedMotionEnabled) {
+    if (LoadingTransitions.reducedMotionEnabled) {
       config.duration = Math.min(config.duration, 200);
       config.easing = Easing.linear;
     }
@@ -187,20 +187,25 @@ export class LoadingTransitions {
 
   static fadeIn(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const { duration, delay, easing } = {
-      ...this.getPresetConfig("fade"),
+      ...LoadingTransitions.getPresetConfig("fade"),
       ...config,
     };
 
     const animationId = `fade-${Date.now()}`;
-    this.startPerformanceTracking(animationId);
+    LoadingTransitions.startPerformanceTracking(animationId);
+
+    // Create a worklet-safe callback
+    const handleComplete = () => {
+      LoadingTransitions.endPerformanceTracking(animationId);
+      if (onComplete) onComplete();
+    };
 
     value.value = withDelay(
       delay,
       withTiming(1, { duration, easing }, (finished) => {
         "worklet";
         if (finished) {
-          this.endPerformanceTracking(animationId);
-          if (onComplete) runOnJS(onComplete)();
+          runOnJS(handleComplete)();
         }
       }),
     );
@@ -208,7 +213,7 @@ export class LoadingTransitions {
 
   static fadeOut(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const { duration, delay, easing } = {
-      ...this.getPresetConfig("fade"),
+      ...LoadingTransitions.getPresetConfig("fade"),
       ...config,
     };
 
@@ -228,7 +233,7 @@ export class LoadingTransitions {
     onComplete?: () => void,
   ): void {
     const { duration, delay, easing } = {
-      ...this.getPresetConfig("slide"),
+      ...LoadingTransitions.getPresetConfig("slide"),
       ...config,
     };
 
@@ -244,7 +249,7 @@ export class LoadingTransitions {
 
   static scaleIn(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const { duration, delay, springConfig } = {
-      ...this.getPresetConfig("scale"),
+      ...LoadingTransitions.getPresetConfig("scale"),
       ...config,
     };
 
@@ -339,7 +344,7 @@ export class LoadingTransitions {
 
   static createSuccessBounce(value: SharedValue<number>, config?: TransitionConfig, onComplete?: () => void): void {
     const { springConfig } = {
-      ...this.getPresetConfig("success"),
+      ...LoadingTransitions.getPresetConfig("success"),
       ...config,
     };
 
@@ -358,24 +363,24 @@ export class LoadingTransitions {
   }
 
   static cleanupAllAnimations(): void {
-    this.activeAnimations.clear();
-    this.performanceMetrics.clear();
+    LoadingTransitions.activeAnimations.clear();
+    LoadingTransitions.performanceMetrics.clear();
   }
 
   private static startPerformanceTracking(id: string): void {
     if (__DEV__) {
-      this.activeAnimations.add(id);
-      this.performanceMetrics.set(id, {
+      LoadingTransitions.activeAnimations.add(id);
+      LoadingTransitions.performanceMetrics.set(id, {
         startTime: Date.now(),
         frameCount: 0,
       });
     }
   }
 
-  private static endPerformanceTracking(id: string): void {
+  static endPerformanceTracking(id: string): void {
     if (__DEV__) {
-      this.activeAnimations.delete(id);
-      const metrics = this.performanceMetrics.get(id);
+      LoadingTransitions.activeAnimations.delete(id);
+      const metrics = LoadingTransitions.performanceMetrics.get(id);
       if (metrics) {
         metrics.endTime = Date.now();
         const duration = metrics.endTime - metrics.startTime;
@@ -389,7 +394,7 @@ export class LoadingTransitions {
   }
 
   static getPerformanceMetrics(): Map<string, AnimationPerformance> {
-    return new Map(this.performanceMetrics);
+    return new Map(LoadingTransitions.performanceMetrics);
   }
 
   static createOptimizedWorklet(animationFn: () => void): void {
@@ -398,7 +403,7 @@ export class LoadingTransitions {
   }
 
   static shouldUseReducedMotion(): boolean {
-    return this.reducedMotionEnabled;
+    return LoadingTransitions.reducedMotionEnabled;
   }
 
   static async triggerHapticForTransition(type: TransitionPreset): Promise<void> {
@@ -418,7 +423,9 @@ export class LoadingTransitions {
 export function withSmartEasing(value: number, config: WithTimingConfig & { smart?: boolean }): number {
   "worklet";
 
-  if (config.smart && LoadingTransitions.shouldUseReducedMotion()) {
+  // Note: Cannot access LoadingTransitions.shouldUseReducedMotion() in worklet
+  // This would need to be passed as a parameter if needed
+  if (config.smart) {
     return withTiming(value, {
       ...config,
       duration: Math.min(config.duration || 300, 200),

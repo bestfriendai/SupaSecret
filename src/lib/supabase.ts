@@ -172,7 +172,11 @@ export const withSupabaseConfig = async <T>(operation: () => Promise<T>, fallbac
     return await operation();
   } catch (error) {
     if (__DEV__) {
-      console.error("Supabase operation failed:", error);
+      // Don't log duplicate key errors as they're expected in upsert operations
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!errorMessage.includes("duplicate key value violates unique constraint")) {
+        console.error("Supabase operation failed:", error);
+      }
     }
     return fallbackValue ?? null;
   }

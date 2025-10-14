@@ -8,6 +8,13 @@ import { useEventListener } from "expo";
 
 import * as Haptics from "expo-haptics";
 import { File } from "expo-file-system";
+import {
+  downloadVideoToGallery,
+  showDownloadSuccessMessage,
+  showDownloadErrorMessage,
+  checkMediaLibraryPermissions,
+} from "../services/VideoDownloadService";
+import { isPostProcessBlurAvailable } from "../services/PostProcessBlurService";
 
 import { useConfessionStore } from "../state/confessionStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
@@ -39,6 +46,9 @@ export default function VideoPreviewScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isBlurAvailable, setIsBlurAvailable] = useState(false);
   const { hapticsEnabled, impactAsync } = usePreferenceAwareHaptics();
   const { addConfession } = useConfessionStore();
   const hasStartedPlayingRef = useRef(false);
@@ -53,6 +63,11 @@ export default function VideoPreviewScreen() {
   const videoUri = currentVideoUri.startsWith("file://") ? currentVideoUri : `file://${currentVideoUri}`;
 
   console.log("📹 VideoPreviewScreen - Video URI:", videoUri);
+
+  // Check blur availability on mount
+  useEffect(() => {
+    isPostProcessBlurAvailable().then(setIsBlurAvailable);
+  }, []);
 
   // Reset hasStartedPlayingRef when video URI changes
   useEffect(() => {
@@ -195,7 +210,7 @@ export default function VideoPreviewScreen() {
         videoUri: finalVideoUri,
         transcription: processedVideo.transcription,
         isAnonymous: true,
-        faceBlurApplied: processedVideo.faceBlurApplied ?? false,
+        faceBlurApplied: hasBlurApplied, // Use current blur state, not original
         voiceChangeApplied: processedVideo.voiceChangeApplied ?? false,
         duration: processedVideo.duration,
         likes: 0,
@@ -206,7 +221,7 @@ export default function VideoPreviewScreen() {
       await addConfession(confessionPayload, {
         onUploadProgress: (progress: number) => {
           // Adjust progress to account for blur processing (if any)
-          const adjustedProgress = processedVideo.faceBlurApplied ? 20 + progress * 0.8 : progress;
+          const adjustedProgress = hasBlurApplied ? 20 + progress * 0.8 : progress;
           setUploadProgress(adjustedProgress);
         },
       });
@@ -282,7 +297,7 @@ export default function VideoPreviewScreen() {
       const { applyPostProcessBlur } = await import("../services/PostProcessBlurService");
 
       const result = await applyPostProcessBlur(videoUri, {
-        blurIntensity: 25,
+        blurIntensity: 50, // Consistent with other blur implementations
         onProgress: (progress, status) => {
           console.log(`🎭 Blur progress: ${progress}% - ${status}`);
           setBlurProgress(progress);
@@ -357,6 +372,73 @@ export default function VideoPreviewScreen() {
     navigation.goBack();
   }, [hapticsEnabled, impactAsync, navigation]);
 
+  const handleDownload = useCallback(async () => {
+    try {
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      setIsDownloading(true);
+      setDownloadProgress(0);
+
+      // Check if we have media library permissions
+      const hasPermission = await checkMediaLibraryPermissions();
+      if (!hasPermission) {
+        setIsDownloading(false);
+        Alert.alert("Permission Required", "To save your blurred video, we need access to your photo library.", [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Grant Permission",
+            onPress: async () => {
+              setIsDownloading(true);
+              await handleDownloadWithPermission();
+            },
+          },
+        ]);
+        return;
+      }
+
+      await handleDownloadWithPermission();
+    } catch (error) {
+      console.error("Download error:", error);
+      setIsDownloading(false);
+      showDownloadErrorMessage(error instanceof Error ? error.message : "Unknown error occurred");
+    }
+  }, [hapticsEnabled, impactAsync, currentVideoUri]);
+
+  const handleDownloadWithPermission = useCallback(async () => {
+    try {
+      const result = await downloadVideoToGallery(currentVideoUri, {
+        onProgress: (progress, message) => {
+          setDownloadProgress(progress);
+          console.log(`Download progress: ${progress}% - ${message}`);
+        },
+        albumName: "Toxic Confessions",
+      });
+
+      setIsDownloading(false);
+
+      if (result.success) {
+        if (hapticsEnabled) {
+          await impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
+
+        // Show specific success message based on whether blur was applied
+        const message = hasBlurApplied
+          ? 'Your blurred video has been saved to your photo gallery in the "Toxic Confessions" album. 🎭'
+          : 'Your video has been saved to your photo gallery in the "Toxic Confessions" album. 📱';
+
+        Alert.alert("Video Saved! 📱", message, [{ text: "Great!", style: "default" }]);
+      } else {
+        showDownloadErrorMessage(result.error || "Unknown error occurred");
+      }
+    } catch (error) {
+      console.error("Download with permission error:", error);
+      setIsDownloading(false);
+      showDownloadErrorMessage(error instanceof Error ? error.message : "Unknown error occurred");
+    }
+  }, [currentVideoUri, hapticsEnabled, impactAsync]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Video Player */}
@@ -427,6 +509,18 @@ export default function VideoPreviewScreen() {
           </View>
         )}
 
+        {/* Download Progress Overlay */}
+        {isDownloading && (
+          <View style={styles.uploadProgressOverlay}>
+            <View style={styles.uploadProgressContainer}>
+              <Text style={styles.uploadProgressText}>Saving to gallery... {Math.round(downloadProgress)}%</Text>
+              <View style={styles.uploadProgressBar}>
+                <View style={[styles.uploadProgressFill, { width: `${downloadProgress}%` }]} />
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Upload Progress Overlay */}
         {isSharing && uploadProgress > 0 && (
           <View style={styles.uploadProgressOverlay}>
@@ -443,17 +537,26 @@ export default function VideoPreviewScreen() {
       {/* Controls */}
       <View style={styles.controlsContainer}>
         {/* BIG BLUR SECTION - TOP AND PROMINENT */}
-        {!hasBlurApplied && !isBlurring && (
+        {!hasBlurApplied && !isBlurring && isBlurAvailable && (
           <View style={styles.blurSection}>
             <Text style={styles.blurSectionTitle}>🎭 Privacy Protection</Text>
             <Text style={styles.blurSectionSubtitle}>Blur faces in your video for complete anonymity</Text>
 
-            <Pressable style={styles.bigBlurButton} onPress={handleBlurFaces} disabled={isSharing}>
+            <Pressable style={styles.bigBlurButton} onPress={handleBlurFaces} disabled={isSharing || isDownloading}>
               <Ionicons name="eye-off-outline" size={28} color="#8B5CF6" />
               <Text style={styles.bigBlurButtonText}>Blur Faces Now</Text>
             </Pressable>
 
             <Text style={styles.blurNote}>Processing takes 10-30 seconds</Text>
+          </View>
+        )}
+
+        {/* BLUR NOT AVAILABLE MESSAGE */}
+        {!isBlurAvailable && !hasBlurApplied && (
+          <View style={styles.infoSection}>
+            <Ionicons name="information-circle" size={24} color="#3B82F6" />
+            <Text style={styles.infoTitle}>Face Blur Unavailable</Text>
+            <Text style={styles.infoSubtitle}>Face blur requires a native build. Run: npx expo run:ios</Text>
           </View>
         )}
 
@@ -482,37 +585,67 @@ export default function VideoPreviewScreen() {
           </View>
         )}
 
-        <View style={styles.buttonContainer}>
+        {/* Primary Action - Share */}
+        <Pressable
+          style={[styles.primaryActionButton, (isSharing || isBlurring || isDownloading) && styles.buttonDisabled]}
+          onPress={handleShare}
+          disabled={isSharing || isBlurring || isDownloading}
+        >
+          {isSharing ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Ionicons name="share" size={24} color="#ffffff" />
+          )}
+          <Text style={styles.primaryActionText}>{isSharing ? "Sharing..." : "Share"}</Text>
+        </Pressable>
+
+        {/* Secondary Actions Row */}
+        <View style={styles.secondaryButtonContainer}>
           <Pressable
-            style={[styles.button, styles.secondaryButton]}
+            style={[styles.secondaryActionButton, styles.retakeButton]}
             onPress={handleRetake}
-            disabled={isSharing || isBlurring}
+            disabled={isSharing || isBlurring || isDownloading}
           >
             <Ionicons name="camera" size={20} color="#ffffff" />
-            <Text style={styles.buttonText}>Retake</Text>
+            <Text style={styles.secondaryActionText}>Retake</Text>
           </Pressable>
 
           <Pressable
-            style={[styles.button, styles.dangerButton]}
-            onPress={handleDiscard}
-            disabled={isSharing || isBlurring}
+            style={[
+              styles.secondaryActionButton,
+              styles.downloadButton,
+              (isSharing || isBlurring || isDownloading) && styles.buttonDisabled,
+            ]}
+            onPress={handleDownload}
+            disabled={isSharing || isBlurring || isDownloading}
           >
-            <Ionicons name="trash" size={20} color="#ffffff" />
-            <Text style={styles.buttonText}>Discard</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.button, styles.primaryButton, (isSharing || isBlurring) && styles.buttonDisabled]}
-            onPress={handleShare}
-            disabled={isSharing || isBlurring}
-          >
-            {isSharing ? (
+            {isDownloading ? (
               <ActivityIndicator size="small" color="#ffffff" />
             ) : (
-              <Ionicons name="share" size={20} color="#ffffff" />
+              <Ionicons name="download" size={20} color="#ffffff" />
             )}
-            <Text style={styles.buttonText}>{isSharing ? "Sharing..." : "Share"}</Text>
+            <Text style={styles.secondaryActionText}>
+              {isDownloading ? "Saving..." : hasBlurApplied ? "Download Blurred" : "Download"}
+            </Text>
           </Pressable>
+
+          <Pressable
+            style={[styles.secondaryActionButton, styles.discardButton]}
+            onPress={handleDiscard}
+            disabled={isSharing || isBlurring || isDownloading}
+          >
+            <Ionicons name="trash" size={20} color="#ffffff" />
+            <Text style={styles.secondaryActionText}>Discard</Text>
+          </Pressable>
+        </View>
+
+        {/* Download Info */}
+        <View style={styles.downloadInfo}>
+          <Text style={styles.downloadInfoText}>
+            {hasBlurApplied
+              ? "📱 Download will save the blurred version to your gallery"
+              : "📱 Download will save the original video to your gallery"}
+          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -582,35 +715,67 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginLeft: 8,
   },
-  buttonContainer: {
+  primaryActionButton: {
+    backgroundColor: "#1D9BF0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    gap: 12,
+    marginBottom: 16,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  primaryActionText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  secondaryButtonContainer: {
     flexDirection: "row",
     gap: 12,
   },
-  button: {
+  secondaryActionButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 12,
-    gap: 8,
+    gap: 6,
   },
-  primaryButton: {
-    backgroundColor: "#1D9BF0",
+  secondaryActionText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
   },
-  secondaryButton: {
+  retakeButton: {
     backgroundColor: "#374151",
   },
-  dangerButton: {
-    backgroundColor: "#EF4444",
+  downloadButton: {
+    backgroundColor: "#10B981",
   },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
+  discardButton: {
+    backgroundColor: "#EF4444",
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  downloadInfo: {
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  downloadInfoText: {
+    color: "#8B98A5",
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 16,
   },
   blurSection: {
     backgroundColor: "#8B5CF6",
@@ -618,6 +783,26 @@ const styles = StyleSheet.create({
     padding: 24,
     marginBottom: 20,
     alignItems: "center",
+  },
+  infoSection: {
+    backgroundColor: "#1E3A8A",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#ffffff",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  infoSubtitle: {
+    fontSize: 14,
+    color: "#BFDBFE",
+    textAlign: "center",
+    lineHeight: 20,
   },
   blurSectionTitle: {
     fontSize: 22,

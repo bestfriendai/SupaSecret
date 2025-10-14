@@ -284,11 +284,17 @@ export class RevenueCatMCPService {
     const isPremium = activeSubscriptions.length > 0;
 
     // Update user membership in Supabase
-    await supabase.from("user_memberships").upsert({
-      user_id: user.id,
-      tier: isPremium ? "plus" : "free",
-      updated_at: new Date().toISOString(),
-    });
+    await supabase.from("user_memberships").upsert(
+      {
+        user_id: user.id,
+        tier: isPremium ? "plus" : "free",
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "user_id",
+        ignoreDuplicates: false,
+      },
+    );
   }
 
   private static getSubscriptionStatus(customerInfo: any): string {

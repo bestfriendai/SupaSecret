@@ -16,10 +16,11 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, FadeIn, FadeOut
 import type { Confession } from "../types/confession";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useVideoPlayer } from "expo-video";
 import { useConfessionStore } from "../state/confessionStore";
 import { useSavedStore } from "../state/savedStore";
 import { useGlobalVideoStore } from "../state/globalVideoStore";
-import EnhancedVideoItem from "./EnhancedVideoItem";
+import UnifiedVideoItem from "./UnifiedVideoItem";
 import EnhancedCommentBottomSheet from "./EnhancedCommentBottomSheet";
 import EnhancedShareBottomSheet from "./EnhancedShareBottomSheet";
 import ReportModal from "./ReportModal";
@@ -37,6 +38,115 @@ const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
 const PRELOAD_BUFFER = 2;
 const VELOCITY_THRESHOLD = 0.5;
 const CLEANUP_INTERVAL = 30000; // 30 seconds
+
+// Wrapper component to replace EnhancedVideoItem with UnifiedVideoItem
+interface VideoItemWrapperProps {
+  confession: Confession;
+  isActive: boolean;
+  onClose: () => void;
+  onCommentPress?: (confessionId: string) => void;
+  onSharePress?: (confessionId: string, confessionText: string) => void;
+  onSavePress?: (confessionId: string) => void;
+  onReportPress?: (confessionId: string, confessionText: string) => void;
+  forceUnmuted?: boolean;
+  screenFocused?: boolean;
+}
+
+const VideoItemWrapper = memo(function VideoItemWrapper({
+  confession,
+  isActive,
+  onClose,
+  onCommentPress,
+  onSharePress,
+  onSavePress,
+  onReportPress,
+  forceUnmuted = false,
+  screenFocused = true,
+}: VideoItemWrapperProps) {
+  const soundEnabled = useConfessionStore((state) => state.userPreferences.sound_enabled);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const sourceUri =
+    confession.videoUri || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
+  const player = useVideoPlayer(sourceUri, (p) => {
+    p.loop = true;
+    p.muted = forceUnmuted ? false : !soundEnabled;
+    if (isActive && screenFocused) {
+      try {
+        p.play();
+      } catch (error) {
+        if (__DEV__) {
+          console.warn(`Initial autoplay failed for ${confession.id}:`, error);
+        }
+      }
+    }
+  });
+
+  // Track playing state changes
+  useEffect(() => {
+    if (!player) return;
+
+    const updatePlayingState = () => {
+      setIsPlaying(player.playing);
+    };
+
+    // Initial state
+    updatePlayingState();
+
+    // Listen for playing state changes
+    const playingListener = player.addListener("playingChange", updatePlayingState);
+
+    return () => {
+      playingListener?.remove();
+    };
+  }, [player]);
+
+  // Map props to UnifiedVideoItem interface
+  const progressY = useSharedValue(0); // Create a default if not provided
+
+  const handleToggleMute = useCallback(() => {
+    if (player) {
+      player.muted = !player.muted;
+    }
+  }, [player]);
+
+  const handleRegisterLikeHandler = useCallback((handler: (() => Promise<void>) | null) => {
+    // This would be handled internally by UnifiedVideoItem
+  }, []);
+
+  const handleSingleTap = useCallback(() => {
+    if (player) {
+      if (player.playing) {
+        player.pause();
+      } else {
+        player.play();
+      }
+    }
+  }, [player]);
+
+  const handleDoubleTap = useCallback(() => {
+    // Double tap to like is handled in UnifiedVideoItem
+  }, []);
+
+  // Render UnifiedVideoItem with enhanced variant
+  return (
+    <UnifiedVideoItem
+      confession={confession}
+      isActive={isActive}
+      onClose={onClose}
+      videoPlayer={player}
+      muted={forceUnmuted ? false : !soundEnabled}
+      onToggleMute={handleToggleMute}
+      isPlaying={isPlaying}
+      onRegisterLikeHandler={handleRegisterLikeHandler}
+      progressY={progressY}
+      onSingleTap={handleSingleTap}
+      onDoubleTap={handleDoubleTap}
+      networkStatus={true}
+      variant="enhanced"
+    />
+  );
+});
 
 interface OptimizedVideoListProps {
   onClose: () => void;
@@ -448,7 +558,7 @@ function OptimizedVideoList({ onClose, initialIndex = 0, onError }: OptimizedVid
 
       return (
         <View style={{ height: screenHeight, width: screenWidth }}>
-          <EnhancedVideoItem
+          <VideoItemWrapper
             confession={item}
             isActive={index === currentIndex && isFocused && !isScrolling}
             onClose={onClose}

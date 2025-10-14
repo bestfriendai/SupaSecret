@@ -10,10 +10,12 @@ import {
   Platform,
   ActivityIndicator,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { useReplyStore } from "../state/replyStore";
+import { useSpamProtection } from "../hooks/useSpamProtection";
 
 interface SimpleCommentModalProps {
   visible: boolean;
@@ -26,6 +28,10 @@ export default function SimpleCommentModal({ visible, onClose, confessionId }: S
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { replies, loading, loadReplies, addReply } = useReplyStore();
+  const { validateAndProcess, recordAttempt, isChecking } = useSpamProtection({
+    showAlerts: true,
+    autoSanitize: true,
+  });
 
   const confessionReplies = replies[confessionId] || [];
 
@@ -36,14 +42,28 @@ export default function SimpleCommentModal({ visible, onClose, confessionId }: S
   }, [visible, confessionId, loadReplies]);
 
   const handleSubmit = async () => {
-    if (!comment.trim() || isSubmitting) return;
+    if (!comment.trim() || isSubmitting || isChecking) return;
 
     setIsSubmitting(true);
     try {
-      await addReply(confessionId, comment.trim(), true);
+      // Validate and process content for spam
+      const validation = await validateAndProcess(comment);
+
+      if (!validation.isValid) {
+        Alert.alert("Comment Not Allowed", validation.error || "Please revise your comment.");
+        return;
+      }
+
+      // Add the reply with processed content
+      await addReply(confessionId, validation.processedContent, true);
+
+      // Record successful attempt for rate limiting
+      await recordAttempt(validation.processedContent);
+
       setComment("");
     } catch (error) {
       console.error("Failed to add comment:", error);
+      Alert.alert("Error", "Failed to post comment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -120,10 +140,10 @@ export default function SimpleCommentModal({ visible, onClose, confessionId }: S
             />
             <Pressable
               onPress={handleSubmit}
-              disabled={!comment.trim() || isSubmitting}
-              style={[styles.sendButton, (!comment.trim() || isSubmitting) && styles.sendButtonDisabled]}
+              disabled={!comment.trim() || isSubmitting || isChecking}
+              style={[styles.sendButton, (!comment.trim() || isSubmitting || isChecking) && styles.sendButtonDisabled]}
             >
-              {isSubmitting ? (
+              {isSubmitting || isChecking ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
                 <Ionicons name="send" size={20} color="#ffffff" />

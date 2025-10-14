@@ -39,46 +39,47 @@ export const useSimpleFaceBlur = (enabled: boolean = true) => {
     });
   }, [enabled, isAvailable]);
 
-  const faceDetectorHook = isAvailable
-    ? useFaceDetector({
-        performanceMode: "fast",
-        contourMode: "none",
-        landmarkMode: "none",
-        classificationMode: "none",
-      })
-    : null;
+  // Always call hooks to avoid conditional hook usage
+  const faceDetectorHook = useFaceDetector({
+    performanceMode: "fast",
+    contourMode: "none",
+    landmarkMode: "none",
+    classificationMode: "none",
+  });
 
-  const detectFaces = faceDetectorHook?.detectFaces;
+  const detectFaces = isAvailable ? faceDetectorHook?.detectFaces : null;
 
-  const frameProcessor =
-    isAvailable && enabled && useFrameProcessor && detectFaces
-      ? useFrameProcessor(
-          (frame: any) => {
-            "worklet";
-            try {
-              frameCountRef.current++;
+  const frameProcessor = useFrameProcessor(
+    (frame: any) => {
+      "worklet";
+      // Only process if all conditions are met
+      if (!isAvailable || !enabled || !useFrameProcessor || !detectFaces) {
+        return;
+      }
 
-              const now = Date.now();
-              if (now - lastLogTimeRef.current > 3000) {
-                const fps = (frameCountRef.current * 1000) / (now - lastLogTimeRef.current);
-                console.log(`📊 Simple FP: ${fps.toFixed(1)} FPS, faces detected: ${faceCountRef.current} (last 3s)`);
-                lastLogTimeRef.current = now;
-                frameCountRef.current = 0;
-                faceCountRef.current = 0;
-              }
+      try {
+        frameCountRef.current++;
 
-              const faces = detectFaces(frame);
+        const now = Date.now();
+        if (now - lastLogTimeRef.current > 3000) {
+          const fps = (frameCountRef.current * 1000) / (now - lastLogTimeRef.current);
+          console.log(`📊 Simple FP: ${fps.toFixed(1)} FPS, faces detected: ${faceCountRef.current} (last 3s)`);
+          lastLogTimeRef.current = now;
+          frameCountRef.current = 0;
+          faceCountRef.current = 0;
+        }
 
-              if (faces && faces.length > 0) {
-                faceCountRef.current += faces.length;
-              }
-            } catch (error) {
-              console.error("❌ Simple frame processor error:", error);
-            }
-          },
-          [detectFaces],
-        )
-      : null;
+        const faces = detectFaces(frame);
+
+        if (faces && faces.length > 0) {
+          faceCountRef.current += faces.length;
+        }
+      } catch (error) {
+        console.error("❌ Simple frame processor error:", error);
+      }
+    },
+    [detectFaces, isAvailable, enabled, useFrameProcessor],
+  );
 
   useEffect(() => {
     if (frameProcessor) {

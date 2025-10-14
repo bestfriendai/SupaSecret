@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type RateLimitAction = "signIn" | "signUp" | "passwordReset";
+export type RateLimitAction = "signIn" | "signUp" | "passwordReset" | "comment" | "reply";
 
 interface RateLimitConfig {
   maxAttempts: number;
@@ -25,6 +25,14 @@ const RATE_LIMITS: Record<RateLimitAction, RateLimitConfig> = {
   passwordReset: {
     maxAttempts: 3,
     windowMs: 60 * 60 * 1000, // 1 hour
+  },
+  comment: {
+    maxAttempts: 10,
+    windowMs: 5 * 60 * 1000, // 5 minutes
+  },
+  reply: {
+    maxAttempts: 15,
+    windowMs: 5 * 60 * 1000, // 5 minutes
   },
 };
 

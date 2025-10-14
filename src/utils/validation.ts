@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import spamProtection from "./spamProtection";
 
 export interface ValidationResult {
   isValid: boolean;
@@ -660,3 +661,92 @@ export function useFormValidation<T extends Record<string, unknown>>(initialData
     isValid: Object.values(errors).every((error) => !error),
   };
 }
+
+// Spam detection validators
+export const spamValidators = {
+  /**
+   * Validates content for spam patterns
+   */
+  noSpam: (message = "Content appears to be spam"): ValidationRule<string> => ({
+    validate: (value) => {
+      if (!value || typeof value !== "string") {
+        return { isValid: true };
+      }
+
+      const spamResult = spamProtection.detectSpam(value);
+
+      return {
+        isValid: !spamResult.isSpam,
+        error: spamResult.isSpam ? `${message}: ${spamResult.reasons.join(", ")}` : undefined,
+      };
+    },
+  }),
+
+  /**
+   * Validates content for URLs/links
+   */
+  noLinks: (message = "Links are not allowed"): ValidationRule<string> => ({
+    validate: (value) => {
+      if (!value || typeof value !== "string") {
+        return { isValid: true };
+      }
+
+      // Check for various URL patterns
+      const urlPatterns = [
+        /https?:\/\/[^\s]+/gi,
+        /www\.[^\s]+/gi,
+        /[a-zA-Z0-9-]+\.(com|net|org|io|co|app|me|tv|ly|cc|tk|ml|ga|cf)[^\s]*/gi,
+      ];
+
+      const hasUrl = urlPatterns.some((pattern) => pattern.test(value));
+
+      return {
+        isValid: !hasUrl,
+        error: hasUrl ? message : undefined,
+      };
+    },
+  }),
+
+  /**
+   * Validates content for excessive repetition
+   */
+  noRepeatedCharacters: (message = "Excessive repetition is not allowed"): ValidationRule<string> => ({
+    validate: (value) => {
+      if (!value || typeof value !== "string") {
+        return { isValid: true };
+      }
+
+      // Check for repeated characters (5+ times)
+      const hasRepeatedChars = /(.)\1{4,}/.test(value);
+
+      // Check for repeated words (4+ times)
+      const hasRepeatedWords = /(\w+\s+)\1{3,}/gi.test(value);
+
+      const hasRepetition = hasRepeatedChars || hasRepeatedWords;
+
+      return {
+        isValid: !hasRepetition,
+        error: hasRepetition ? message : undefined,
+      };
+    },
+  }),
+
+  /**
+   * Validates content for excessive caps
+   */
+  noExcessiveCaps: (threshold = 0.5, message = "Please reduce the use of capital letters"): ValidationRule<string> => ({
+    validate: (value) => {
+      if (!value || typeof value !== "string" || value.length < 10) {
+        return { isValid: true };
+      }
+
+      const capsCount = (value.match(/[A-Z]/g) || []).length;
+      const capsRatio = capsCount / value.length;
+
+      return {
+        isValid: capsRatio <= threshold,
+        error: capsRatio > threshold ? message : undefined,
+      };
+    },
+  }),
+};
