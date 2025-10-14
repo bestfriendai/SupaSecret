@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://toxicconfessions.app/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 0
+
+# Disallow admin/config files if they exist
+Disallow: /config/
+Disallow: /setup/

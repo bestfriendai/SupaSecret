@@ -1,0 +1,31 @@
+{
+  "name": "Toxic Confessions",
+  "short_name": "Toxic Confessions",
+  "description": "Share your secrets anonymously with AI-powered face blur and voice modulation",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "entertainment", "lifestyle"],
+  "prefer_related_applications": true,
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.toxic.confessions",
+      "id": "com.toxic.confessions"
+    },
+    {
+      "platform": "itunes",
+      "url": "https://apps.apple.com/app/toxic-confessions"
+    }
+  ]
+}
