@@ -14,6 +14,9 @@ import * as Haptics from "expo-haptics";
 
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { RecordButton, TimerDisplay, GlassButton, StatusBadge } from "../components/ModernRecordingUI";
+import { TikTokCaptions, TIKTOK_CAPTION_STYLES, CaptionPosition } from "../components/TikTokCaptions";
+import { CaptionStyleSelector } from "../components/CaptionStyleSelector";
+import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
 const MAX_DURATION = 60;
 
@@ -28,6 +31,25 @@ function FaceBlurRecordScreen() {
   const [hasPermissions, setHasPermissions] = useState(false);
   const [facing, setFacing] = useState<"front" | "back">("front");
   const [recordedVideoPath, setRecordedVideoPath] = useState<string | null>(null);
+
+  // Caption system state
+  const [captionsEnabled, setCaptionsEnabled] = useState(true);
+  const [showStyleSelector, setShowStyleSelector] = useState(false);
+  const [selectedCaptionStyle, setSelectedCaptionStyle] = useState(TIKTOK_CAPTION_STYLES[0]);
+  const [captionPosition, setCaptionPosition] = useState<CaptionPosition>('bottom');
+
+  // Speech recognition
+  const {
+    isProcessing: isTranscribing,
+    isAvailable: speechAvailable,
+    segments,
+    error: speechError,
+    processAudioFile,
+    clearResults,
+    hasPermission: hasSpeechPermission,
+  } = useSpeechRecognition({
+    language: 'en-US',
+  });
 
   useEffect(() => {
     console.log("🎬 FaceBlurRecordScreen mounted");
@@ -101,13 +123,29 @@ function FaceBlurRecordScreen() {
       setIsRecording(true);
       setRecordingTime(0);
 
+      // Clear previous transcription results
+      if (captionsEnabled) {
+        console.log("🎤 Preparing for post-processing transcription");
+        clearResults();
+      }
+
       console.log("🎬 Starting recording...");
 
       cameraRef.current.startRecording({
-        onRecordingFinished: (video) => {
+        onRecordingFinished: async (video) => {
           console.log("✅ Recording finished:", video.path);
           setRecordedVideoPath(video.path);
           setIsRecording(false);
+
+          // Process audio for transcription after recording
+          if (captionsEnabled && speechAvailable && hasSpeechPermission) {
+            console.log("🎤 Starting post-processing transcription");
+            try {
+              await processAudioFile(video.path);
+            } catch (error) {
+              console.error("Failed to process audio for transcription:", error);
+            }
+          }
         },
         onRecordingError: (error) => {
           console.error("❌ Camera error:", error);
@@ -121,7 +159,7 @@ function FaceBlurRecordScreen() {
       console.error("❌ Failed to start recording:", error);
       setIsRecording(false);
     }
-  }, [hapticsEnabled, notificationAsync]);
+  }, [hapticsEnabled, notificationAsync, captionsEnabled, speechAvailable, hasSpeechPermission, clearResults, processAudioFile]);
 
   const stopRecording = useCallback(async () => {
     if (!cameraRef.current || !isRecording) return;
@@ -132,6 +170,7 @@ function FaceBlurRecordScreen() {
       }
 
       console.log("🛑 Stopping recording...");
+
       await cameraRef.current.stopRecording();
     } catch (error) {
       console.error("❌ Failed to stop recording:", error);
@@ -232,9 +271,24 @@ function FaceBlurRecordScreen() {
               icon={isRecording ? "radio-button-on" : "camera"}
               variant={isRecording ? "error" : "info"}
             />
+            {/* Speech recognition status */}
+            {captionsEnabled && (
+              <View style={styles.speechStatus}>
+                <Text style={styles.speechStatusText}>
+                  {isTranscribing ? "🎤 Processing Audio" : speechError ? "❌ Transcription Error" : isRecording ? "🎬 Recording" : "✅ Ready"}
+                </Text>
+              </View>
+            )}
           </View>
 
-          <GlassButton icon="camera-reverse" onPress={toggleCamera} disabled={isRecording} />
+          <View style={styles.topRightControls}>
+            <GlassButton
+              icon={captionsEnabled ? "chatbubble" : "chatbubble-outline"}
+              onPress={() => setCaptionsEnabled(!captionsEnabled)}
+              disabled={isRecording}
+            />
+            <GlassButton icon="camera-reverse" onPress={toggleCamera} disabled={isRecording} />
+          </View>
         </View>
 
         {/* Bottom Controls */}
@@ -254,7 +308,19 @@ function FaceBlurRecordScreen() {
                 progress={recordingTime / MAX_DURATION}
               />
 
-              {!isRecording && <Text style={styles.hintText}>Tap to start recording</Text>}
+              {!isRecording && (
+                <View style={styles.bottomHints}>
+                  <Text style={styles.hintText}>Tap to start recording</Text>
+                  {captionsEnabled && (
+                    <Pressable
+                      style={styles.styleButton}
+                      onPress={() => setShowStyleSelector(!showStyleSelector)}
+                    >
+                      <Text style={styles.styleButtonText}>Caption Style</Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
             </View>
           ) : (
             <View style={styles.nextControls}>
@@ -263,6 +329,27 @@ function FaceBlurRecordScreen() {
           )}
         </View>
       </View>
+
+      {/* TikTok-style Captions Overlay */}
+      {captionsEnabled && segments.length > 0 && (
+        <TikTokCaptions
+          segments={segments}
+          currentSegment={null}
+          style={selectedCaptionStyle}
+          position={captionPosition}
+          maxLines={3}
+          showConfidence={true}
+        />
+      )}
+
+      {/* Caption Style Selector */}
+      <CaptionStyleSelector
+        visible={showStyleSelector}
+        selectedStyle={selectedCaptionStyle}
+        selectedPosition={captionPosition}
+        onStyleChange={setSelectedCaptionStyle}
+        onPositionChange={setCaptionPosition}
+      />
     </SafeAreaView>
   );
 }
@@ -332,6 +419,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 16,
   },
+  topRightControls: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  speechStatus: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 12,
+  },
+  speechStatusText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "500",
+  },
   centerControls: {
     flex: 1,
     justifyContent: "center",
@@ -356,6 +459,23 @@ const styles = StyleSheet.create({
   hintText: {
     color: "rgba(255, 255, 255, 0.7)",
     fontSize: 14,
+    fontWeight: "500",
+  },
+  bottomHints: {
+    alignItems: "center",
+    gap: 12,
+  },
+  styleButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  styleButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
     fontWeight: "500",
   },
 });

@@ -5,12 +5,12 @@
 
 // Check if we're running on Hermes
 const isHermes = () => {
-  return typeof HermesInternal === 'object' && HermesInternal !== null;
+  return typeof HermesInternal === "object" && HermesInternal !== null;
 };
 
 // Log Hermes status for debugging
 if (__DEV__) {
-  console.log('[Hermes] Runtime detected:', isHermes());
+  console.log("[Hermes] Runtime detected:", isHermes());
 }
 
 // Basic global polyfills for Hermes compatibility

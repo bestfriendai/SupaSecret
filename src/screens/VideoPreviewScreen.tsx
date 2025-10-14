@@ -22,6 +22,7 @@ import { ProcessedVideo } from "../services/IAnonymiser";
 import { IS_EXPO_GO } from "../utils/environmentCheck";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { applyPostProcessBlur, getBlurProcessingMethod } from "../services/PostProcessBlurService";
+import { TikTokCaptions, TIKTOK_CAPTION_STYLES } from "../components/TikTokCaptions";
 
 type VideoPreviewScreenRouteProp = RouteProp<RootStackParamList, "VideoPreview">;
 
@@ -58,6 +59,14 @@ export default function VideoPreviewScreen() {
   const [blurProgress, setBlurProgress] = useState(0);
   const [hasBlurApplied, setHasBlurApplied] = useState(processedVideo.faceBlurApplied || false);
   const [currentVideoUri, setCurrentVideoUri] = useState(processedVideo.uri);
+
+  // Caption state
+  const [isAddingCaptions, setIsAddingCaptions] = useState(false);
+  const [captionProgress, setCaptionProgress] = useState(0);
+  const [hasCaptionsApplied, setHasCaptionsApplied] = useState(false);
+  const [captionSegments, setCaptionSegments] = useState<any[]>([]);
+  const [showCaptions, setShowCaptions] = useState(false);
+  const [currentCaptionSegment, setCurrentCaptionSegment] = useState<any>(null);
 
   // Validate video URI format
   const videoUri = currentVideoUri.startsWith("file://") ? currentVideoUri : `file://${currentVideoUri}`;
@@ -106,6 +115,24 @@ export default function VideoPreviewScreen() {
       setIsLoading(true);
     }
   });
+
+  // Update current caption segment based on video time
+  useEffect(() => {
+    if (!showCaptions || captionSegments.length === 0) {
+      setCurrentCaptionSegment(null);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const currentTime = player.currentTime;
+      const segment = captionSegments.find(
+        (seg: any) => currentTime >= seg.startTime && currentTime <= seg.endTime
+      );
+      setCurrentCaptionSegment(segment || null);
+    }, 100); // Update every 100ms for smooth caption sync
+
+    return () => clearInterval(interval);
+  }, [showCaptions, captionSegments, player]);
 
   // Loading timeout - reset whenever loading state changes
   useEffect(() => {
@@ -346,6 +373,190 @@ export default function VideoPreviewScreen() {
     }
   }, [isBlurring, hasBlurApplied, videoUri, hapticsEnabled, impactAsync]);
 
+  const handleAddCaptions = useCallback(async () => {
+    if (isAddingCaptions || hasCaptionsApplied) return;
+
+    setIsAddingCaptions(true);
+    setCaptionProgress(0);
+
+    try {
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      console.log("📝 Starting caption processing...");
+      setCaptionProgress(10);
+
+      // Get AssemblyAI API key
+      const ASSEMBLYAI_API_KEY = process.env.EXPO_PUBLIC_ASSEMBLYAI_API_KEY;
+
+      if (!ASSEMBLYAI_API_KEY || ASSEMBLYAI_API_KEY === 'your_assemblyai_api_key_here') {
+        throw new Error("AssemblyAI API key not configured. Please add EXPO_PUBLIC_ASSEMBLYAI_API_KEY to your .env file.");
+      }
+
+      console.log("🎤 Extracting audio from video...");
+      setCaptionProgress(20);
+
+      // Step 1: Extract audio from video using expo-av
+      const { Audio } = await import("expo-av");
+
+      // Load the video to extract audio
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: videoUri },
+        { shouldPlay: false }
+      );
+
+      // Get audio URI (the video file itself contains audio)
+      // AssemblyAI can process video files directly and extract audio
+      console.log("🎤 Uploading audio to AssemblyAI...");
+      setCaptionProgress(30);
+
+      // Step 2: Upload audio to AssemblyAI (using video file, AssemblyAI extracts audio)
+      const videoFile = await fetch(videoUri);
+      const videoBlob = await videoFile.blob();
+
+      const uploadResponse = await fetch("https://api.assemblyai.com/v2/upload", {
+        method: "POST",
+        headers: {
+          "authorization": ASSEMBLYAI_API_KEY,
+          "content-type": "application/octet-stream",
+        },
+        body: videoBlob,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+      }
+
+      const { upload_url } = await uploadResponse.json();
+      console.log("✅ Audio uploaded:", upload_url);
+      setCaptionProgress(45);
+
+      // Cleanup sound
+      await sound.unloadAsync();
+
+      // Step 3: Request transcription with word-level timestamps
+      console.log("🎤 Requesting transcription...");
+      const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
+        method: "POST",
+        headers: {
+          "authorization": ASSEMBLYAI_API_KEY,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          audio_url: upload_url,
+          word_boost: ["um", "uh", "like", "you know"],
+          format_text: true,
+          punctuate: true,
+          language_detection: true, // Auto-detect language
+        }),
+      });
+
+      if (!transcriptResponse.ok) {
+        throw new Error(`Transcription request failed: ${transcriptResponse.statusText}`);
+      }
+
+      const { id: transcriptId } = await transcriptResponse.json();
+      console.log("📝 Transcription ID:", transcriptId);
+      setCaptionProgress(55);
+
+      // Step 4: Poll for completion (faster polling for better UX)
+      console.log("⏳ Processing transcription...");
+      let transcript;
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutes max
+
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Poll every 3 seconds (faster)
+
+        const statusResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+          headers: { "authorization": ASSEMBLYAI_API_KEY },
+        });
+
+        if (!statusResponse.ok) {
+          throw new Error(`Status check failed: ${statusResponse.statusText}`);
+        }
+
+        transcript = await statusResponse.json();
+
+        if (transcript.status === "completed") {
+          console.log("✅ Transcription completed!");
+          break;
+        } else if (transcript.status === "error") {
+          throw new Error(transcript.error || "Transcription failed");
+        }
+
+        // Update progress (55% to 95% during polling)
+        const pollProgress = 55 + (attempts / maxAttempts) * 40;
+        setCaptionProgress(pollProgress);
+
+        console.log(`⏳ Status: ${transcript.status} (${Math.round(pollProgress)}%)`);
+
+        attempts++;
+      }
+
+      if (transcript.status !== "completed") {
+        throw new Error("Transcription timed out after 3 minutes");
+      }
+
+      setCaptionProgress(95);
+      console.log("📝 Transcription text:", transcript.text);
+      console.log("📝 Word count:", transcript.words?.length || 0);
+
+      // Store transcription in processed video data
+      processedVideo.transcription = transcript.text;
+
+      // Process words into caption segments (8-10 words per segment for TikTok style)
+      const words = transcript.words || [];
+      const segments = [];
+      const wordsPerSegment = 8;
+
+      for (let i = 0; i < words.length; i += wordsPerSegment) {
+        const segmentWords = words.slice(i, i + wordsPerSegment);
+        segments.push({
+          id: `segment_${i}`,
+          text: segmentWords.map((w: any) => w.text).join(' '),
+          startTime: segmentWords[0].start / 1000, // Convert to seconds
+          endTime: segmentWords[segmentWords.length - 1].end / 1000,
+          words: segmentWords.map((w: any) => ({
+            word: w.text,
+            startTime: w.start / 1000,
+            endTime: w.end / 1000,
+            confidence: w.confidence,
+          })),
+        });
+      }
+
+      console.log("📝 Created caption segments:", segments.length);
+      setCaptionSegments(segments);
+
+      setCaptionProgress(100);
+      setHasCaptionsApplied(true);
+      setShowCaptions(true);
+
+      if (hapticsEnabled) {
+        await impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+
+      Alert.alert(
+        "Success! 📝",
+        `Captions have been added to your video!\n\n"${transcript.text.substring(0, 100)}${transcript.text.length > 100 ? '...' : ''}"\n\nThe captions will appear when you share the video.`,
+      );
+    } catch (error) {
+      console.error("❌ Caption processing failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to add captions";
+
+      Alert.alert(
+        "Caption Processing Failed",
+        errorMessage + "\n\nYou can still upload the video without captions.",
+        [{ text: "OK" }],
+      );
+    } finally {
+      setIsAddingCaptions(false);
+      setCaptionProgress(0);
+    }
+  }, [isAddingCaptions, hasCaptionsApplied, videoUri, processedVideo, hapticsEnabled, impactAsync]);
+
   const handleDiscard = useCallback(() => {
     Alert.alert("Discard Video?", "Are you sure you want to discard this video? This action cannot be undone.", [
       {
@@ -445,6 +656,16 @@ export default function VideoPreviewScreen() {
       <View style={styles.videoContainer}>
         {!videoError && <VideoView player={player} style={styles.video} contentFit="cover" nativeControls={false} />}
 
+        {/* TikTok-Style Captions Overlay */}
+        {showCaptions && captionSegments.length > 0 && (
+          <TikTokCaptions
+            segments={[]}
+            currentSegment={currentCaptionSegment}
+            style={TIKTOK_CAPTION_STYLES[0]}
+            position="bottom"
+          />
+        )}
+
         {/* Loading Overlay */}
         {isLoading && !videoError && (
           <View style={styles.loadingOverlay}>
@@ -536,28 +757,19 @@ export default function VideoPreviewScreen() {
 
       {/* Controls */}
       <View style={styles.controlsContainer}>
-        {/* BIG BLUR SECTION - TOP AND PROMINENT */}
+        {/* COMPACT BLUR BUTTON */}
         {!hasBlurApplied && !isBlurring && isBlurAvailable && (
-          <View style={styles.blurSection}>
-            <Text style={styles.blurSectionTitle}>🎭 Privacy Protection</Text>
-            <Text style={styles.blurSectionSubtitle}>Blur faces in your video for complete anonymity</Text>
-
-            <Pressable style={styles.bigBlurButton} onPress={handleBlurFaces} disabled={isSharing || isDownloading}>
-              <Ionicons name="eye-off-outline" size={28} color="#8B5CF6" />
-              <Text style={styles.bigBlurButtonText}>Blur Faces Now</Text>
-            </Pressable>
-
-            <Text style={styles.blurNote}>Processing takes 10-30 seconds</Text>
-          </View>
-        )}
-
-        {/* BLUR NOT AVAILABLE MESSAGE */}
-        {!isBlurAvailable && !hasBlurApplied && (
-          <View style={styles.infoSection}>
-            <Ionicons name="information-circle" size={24} color="#3B82F6" />
-            <Text style={styles.infoTitle}>Face Blur Unavailable</Text>
-            <Text style={styles.infoSubtitle}>Face blur requires a native build. Run: npx expo run:ios</Text>
-          </View>
+          <Pressable
+            style={styles.compactBlurButton}
+            onPress={handleBlurFaces}
+            disabled={isSharing || isDownloading}
+          >
+            <View style={styles.compactButtonContent}>
+              <Ionicons name="eye-off" size={20} color="#8B5CF6" />
+              <Text style={styles.compactButtonText}>Blur Faces</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
+          </Pressable>
         )}
 
         {/* SUCCESS BANNER - AFTER BLUR */}
@@ -565,6 +777,65 @@ export default function VideoPreviewScreen() {
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
             <Text style={styles.successText}>Faces Blurred Successfully!</Text>
+          </View>
+        )}
+
+        {/* COMPACT CAPTION SECTION */}
+        {!hasCaptionsApplied && !isAddingCaptions && (
+          <Pressable
+            style={styles.compactCaptionButton}
+            onPress={handleAddCaptions}
+            disabled={isSharing || isDownloading || isBlurring}
+          >
+            <View style={styles.compactButtonContent}>
+              <Ionicons name="chatbubble-ellipses" size={20} color="#3B82F6" />
+              <Text style={styles.compactButtonText}>Add Captions</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
+          </Pressable>
+        )}
+
+        {/* CAPTION TOGGLE - AFTER CAPTIONS ADDED */}
+        {hasCaptionsApplied && (
+          <Pressable
+            style={[styles.compactCaptionButton, showCaptions && styles.compactButtonActive]}
+            onPress={() => setShowCaptions(!showCaptions)}
+          >
+            <View style={styles.compactButtonContent}>
+              <Ionicons
+                name={showCaptions ? "eye" : "eye-off"}
+                size={20}
+                color={showCaptions ? "#10B981" : "#6B7280"}
+              />
+              <Text style={styles.compactButtonText}>
+                {showCaptions ? "Captions On" : "Captions Off"}
+              </Text>
+            </View>
+            <Ionicons
+              name={showCaptions ? "checkmark-circle" : "ellipse-outline"}
+              size={20}
+              color={showCaptions ? "#10B981" : "#6B7280"}
+            />
+          </Pressable>
+        )}
+
+        {/* CAPTION SUCCESS BANNER */}
+        {hasCaptionsApplied && (
+          <View style={styles.successBanner}>
+            <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
+            <Text style={styles.successText}>Captions Added Successfully!</Text>
+          </View>
+        )}
+
+        {/* Caption Progress Overlay */}
+        {isAddingCaptions && (
+          <View style={styles.uploadProgressOverlay}>
+            <View style={styles.uploadProgressContainer}>
+              <Text style={styles.uploadProgressText}>Adding captions... {Math.round(captionProgress)}%</Text>
+              <View style={styles.uploadProgressBar}>
+                <View style={[styles.uploadProgressFill, { width: `${captionProgress}%` }]} />
+              </View>
+            </View>
           </View>
         )}
 
@@ -842,6 +1113,93 @@ const styles = StyleSheet.create({
     color: "#E9D5FF",
     marginTop: 12,
     textAlign: "center",
+  },
+  captionSection: {
+    backgroundColor: "#3B82F6",
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    alignItems: "center",
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  captionSectionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#ffffff",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  captionSectionSubtitle: {
+    fontSize: 14,
+    color: "#DBEAFE",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  bigCaptionButton: {
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  bigCaptionButtonText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#3B82F6",
+  },
+  captionNote: {
+    fontSize: 12,
+    color: "#DBEAFE",
+    marginTop: 12,
+    textAlign: "center",
+  },
+  compactBlurButton: {
+    backgroundColor: "#1F2937",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#8B5CF6",
+  },
+  compactCaptionButton: {
+    backgroundColor: "#1F2937",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#3B82F6",
+  },
+  compactButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  compactButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  compactButtonActive: {
+    backgroundColor: "#1F2937",
+    borderColor: "#10B981",
   },
   successBanner: {
     backgroundColor: "#DCFCE7",

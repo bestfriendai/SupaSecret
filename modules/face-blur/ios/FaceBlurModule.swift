@@ -18,13 +18,85 @@ class FaceBlurModule: NSObject {
     return CIContext(options: [.useSoftwareRenderer: false])
   }()
 
-  // Cache for face tracking across frames
-  private var lastDetectedFaces: [VNFaceObservation] = []
+  // Enhanced face tracking system for moving faces
+  private var trackedFaces: [TrackedFace] = []
   private var framesSinceLastDetection = 0
+  private var frameCount = 0
+  private var lastDetectionTime = CFAbsoluteTimeGetCurrent()
+
+  // Face tracking data structure
+  private struct TrackedFace {
+    let id: UUID
+    var observations: [VNFaceObservation]
+    var positions: [CGRect]
+    var velocities: [CGPoint]
+    var lastSeen: Int
+    var confidence: Float
+    var isMoving: Bool
+
+    init(observation: VNFaceObservation, frameNumber: Int) {
+      self.id = UUID()
+      self.observations = [observation]
+      self.positions = [observation.boundingBox]
+      self.velocities = []
+      self.lastSeen = frameNumber
+      self.confidence = observation.confidence
+      self.isMoving = false
+    }
+
+    mutating func update(with observation: VNFaceObservation, frameNumber: Int) {
+      observations.append(observation)
+      positions.append(observation.boundingBox)
+      lastSeen = frameNumber
+      confidence = max(confidence, observation.confidence)
+
+      // Calculate velocity if we have previous positions
+      if positions.count >= 2 {
+        let current = positions[positions.count - 1]
+        let previous = positions[positions.count - 2]
+        let velocity = CGPoint(
+          x: current.midX - previous.midX,
+          y: current.midY - previous.midY
+        )
+        velocities.append(velocity)
+
+        // Determine if face is moving (velocity threshold)
+        let speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
+        isMoving = speed > 0.02 // Threshold for movement detection
+      }
+
+      // Keep only recent data (last 10 frames)
+      if observations.count > 10 {
+        observations.removeFirst()
+        positions.removeFirst()
+        if !velocities.isEmpty {
+          velocities.removeFirst()
+        }
+      }
+    }
+
+    func predictNextPosition() -> CGRect? {
+      guard let lastPosition = positions.last,
+            let lastVelocity = velocities.last else {
+        return positions.last
+      }
+
+      // Simple linear prediction
+      return CGRect(
+        x: lastPosition.origin.x + lastVelocity.x,
+        y: lastPosition.origin.y + lastVelocity.y,
+        width: lastPosition.width,
+        height: lastPosition.height
+      )
+    }
+  }
 
   @objc
   func blurFacesInVideo(_ inputPath: String, blurIntensity: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.global(qos: .userInitiated).async {
+      // Reset tracking system for new video
+      self.resetTracking()
+
       do {
         let outputPath = try self.processVideo(inputPath: inputPath, blurIntensity: Int(blurIntensity))
         resolve([
@@ -35,6 +107,15 @@ class FaceBlurModule: NSObject {
         reject("BLUR_ERROR", error.localizedDescription, error)
       }
     }
+  }
+
+  // Reset tracking system
+  private func resetTracking() {
+    trackedFaces.removeAll()
+    framesSinceLastDetection = 0
+    frameCount = 0
+    lastDetectionTime = CFAbsoluteTimeGetCurrent()
+    print("🔄 Face tracking system reset")
   }
 
   @objc
@@ -141,8 +222,7 @@ class FaceBlurModule: NSObject {
     var facesDetectedCount = 0
 
     // Reset face tracking cache
-    self.lastDetectedFaces = []
-    self.framesSinceLastDetection = 0
+    self.resetTracking()
 
     // Process video frames
     writerInput.requestMediaDataWhenReady(on: processingQueue) {
@@ -207,20 +287,36 @@ class FaceBlurModule: NSObject {
     }
 
     let ciImage = CIImage(cvPixelBuffer: imageBuffer)
+    frameCount += 1
 
-    // Detect faces every 5 frames for performance, use cached results otherwise
+    // Adaptive detection frequency based on face movement
+    let hasMovingFaces = trackedFaces.contains { $0.isMoving }
+    let detectionInterval = hasMovingFaces ? 2 : 4 // More frequent for moving faces
+
     framesSinceLastDetection += 1
-    if framesSinceLastDetection >= 5 || lastDetectedFaces.isEmpty {
-      lastDetectedFaces = detectFaces(in: ciImage, orientation: orientation)
+    let shouldDetect = framesSinceLastDetection >= detectionInterval ||
+                      trackedFaces.isEmpty ||
+                      CFAbsoluteTimeGetCurrent() - lastDetectionTime > 0.5 // Force detection every 0.5s
+
+    if shouldDetect {
+      let newFaces = detectFaces(in: ciImage, orientation: orientation)
+      updateTrackedFaces(with: newFaces)
       framesSinceLastDetection = 0
+      lastDetectionTime = CFAbsoluteTimeGetCurrent()
     }
 
-    // If no faces detected, return original
-    if lastDetectedFaces.isEmpty {
+    // Clean up old tracked faces (not seen for 10 frames)
+    trackedFaces.removeAll { frameCount - $0.lastSeen > 10 }
+
+    // Get current face positions (either detected or predicted)
+    let currentFaceRects = getCurrentFaceRects()
+
+    // If no faces detected or predicted, return original
+    if currentFaceRects.isEmpty {
       // Log occasionally to show we're checking
       let now = Date()
       if now.timeIntervalSince(lastFaceDetectionLog) > 1.0 {
-        print("🔍 No faces detected in current frames")
+        print("🔍 No faces detected or tracked in current frames")
         lastFaceDetectionLog = now
       }
       return imageBuffer
@@ -229,23 +325,25 @@ class FaceBlurModule: NSObject {
     // Apply pixelation to face regions (better privacy than blur)
     var outputImage = ciImage
 
-    for (index, face) in lastDetectedFaces.enumerated() {
+    for (index, faceRect) in currentFaceRects.enumerated() {
       // Convert normalized coordinates to image coordinates
       let imageSize = ciImage.extent.size
-      let faceRect = VNImageRectForNormalizedRect(
-        face.boundingBox,
-        Int(imageSize.width),
-        Int(imageSize.height)
+      let actualRect = CGRect(
+        x: faceRect.origin.x * imageSize.width,
+        y: faceRect.origin.y * imageSize.height,
+        width: faceRect.width * imageSize.width,
+        height: faceRect.height * imageSize.height
       )
 
-      // Expand face region significantly for better coverage (60% expansion)
-      let expandedRect = faceRect.insetBy(dx: -faceRect.width * 0.6, dy: -faceRect.height * 0.6)
+      // Expand face region significantly for better coverage (70% expansion for moving faces)
+      let expansionFactor: CGFloat = hasMovingFaces ? 0.7 : 0.6
+      let expandedRect = actualRect.insetBy(dx: -actualRect.width * expansionFactor, dy: -actualRect.height * expansionFactor)
 
       // Clamp to image bounds
       let clampedRect = expandedRect.intersection(ciImage.extent)
 
-      if index == 0 && framesSinceLastDetection == 0 {
-        print("🎭 Blurring face \(index + 1): rect=\(clampedRect), confidence=\(face.confidence)")
+      if index == 0 && shouldDetect {
+        print("🎭 Blurring face \(index + 1): rect=\(clampedRect), moving=\(hasMovingFaces)")
       }
 
       // Create pixelated version of the face region
@@ -257,10 +355,12 @@ class FaceBlurModule: NSObject {
         continue
       }
 
-      // ✅ FIX: Much stronger pixelation for better face blur
+      // ✅ Enhanced pixelation with adaptive intensity for moving faces
       // Scale determines pixelation size (higher = more pixelated)
-      // Use full blurIntensity value with higher minimum for strong effect
-      let pixelScale = max(Double(blurIntensity), 30.0) // Minimum 30 for strong visible effect
+      // Use higher intensity for moving faces to ensure privacy
+      let baseIntensity = Double(blurIntensity)
+      let movingFaceBonus = hasMovingFaces ? 15.0 : 0.0 // Extra blur for moving faces
+      let pixelScale = max(baseIntensity + movingFaceBonus, 35.0) // Minimum 35 for strong effect
       pixellateFilter.setValue(faceRegion, forKey: kCIInputImageKey)
       pixellateFilter.setValue(pixelScale, forKey: kCIInputScaleKey)
       pixellateFilter.setValue(CIVector(x: clampedRect.midX, y: clampedRect.midY), forKey: kCIInputCenterKey)
@@ -299,26 +399,95 @@ class FaceBlurModule: NSObject {
     return outputBuffer
   }
 
+  // Update tracked faces with new detections
+  private func updateTrackedFaces(with newFaces: [VNFaceObservation]) {
+    // Match new faces with existing tracked faces
+    for newFace in newFaces {
+      var matched = false
+
+      // Try to match with existing tracked faces
+      for i in 0..<trackedFaces.count {
+        let trackedFace = trackedFaces[i]
+
+        // Calculate distance between face centers
+        let newCenter = CGPoint(x: newFace.boundingBox.midX, y: newFace.boundingBox.midY)
+        let trackedCenter = CGPoint(x: trackedFace.positions.last?.midX ?? 0, y: trackedFace.positions.last?.midY ?? 0)
+
+        let distance = sqrt(pow(newCenter.x - trackedCenter.x, 2) + pow(newCenter.y - trackedCenter.y, 2))
+
+        // If faces are close enough, update the tracked face
+        if distance < 0.1 { // Threshold for face matching
+          trackedFaces[i].update(with: newFace, frameNumber: frameCount)
+          matched = true
+          break
+        }
+      }
+
+      // If no match found, create new tracked face
+      if !matched {
+        let newTrackedFace = TrackedFace(observation: newFace, frameNumber: frameCount)
+        trackedFaces.append(newTrackedFace)
+        print("👤 New face detected and tracked (ID: \(newTrackedFace.id))")
+      }
+    }
+  }
+
+  // Get current face rectangles (detected or predicted)
+  private func getCurrentFaceRects() -> [CGRect] {
+    var faceRects: [CGRect] = []
+
+    for trackedFace in trackedFaces {
+      // If face was recently detected, use actual position
+      if frameCount - trackedFace.lastSeen <= 2 {
+        if let lastPosition = trackedFace.positions.last {
+          faceRects.append(lastPosition)
+        }
+      }
+      // If face is moving and not recently detected, use prediction
+      else if trackedFace.isMoving, let predictedPosition = trackedFace.predictNextPosition() {
+        faceRects.append(predictedPosition)
+        print("🔮 Using predicted position for moving face (ID: \(trackedFace.id))")
+      }
+      // For stationary faces, use last known position for a few more frames
+      else if frameCount - trackedFace.lastSeen <= 5 {
+        if let lastPosition = trackedFace.positions.last {
+          faceRects.append(lastPosition)
+        }
+      }
+    }
+
+    return faceRects
+  }
+
   private func detectFaces(in image: CIImage, orientation: CGImagePropertyOrientation) -> [VNFaceObservation] {
-    // Use face detection with proper orientation
-    let request = VNDetectFaceRectanglesRequest()
+    // Use enhanced face detection with landmarks for better tracking
+    let request = VNDetectFaceLandmarksRequest()
+
+    // Configure for better detection of moving faces
+    request.revision = VNDetectFaceLandmarksRequestRevision3 // Latest revision
 
     // Set options for better detection with correct orientation
-    let handler = VNImageRequestHandler(ciImage: image, orientation: orientation, options: [:])
+    let handler = VNImageRequestHandler(ciImage: image, orientation: orientation, options: [
+      VNImageOption.cameraIntrinsics: NSNull() // Helps with camera distortion
+    ])
 
     do {
       try handler.perform([request])
       let results = request.results as? [VNFaceObservation] ?? []
 
+      // Filter faces by confidence (higher threshold for better tracking)
+      let filteredResults = results.filter { $0.confidence > 0.6 }
+
       // Log detection results for debugging
-      if !results.isEmpty {
-        print("✅ Detected \(results.count) face(s) in frame (orientation: \(orientation.rawValue))")
-        for (index, face) in results.enumerated() {
-          print("  Face \(index + 1): bounds=\(face.boundingBox), confidence=\(face.confidence)")
+      if !filteredResults.isEmpty {
+        print("✅ Detected \(filteredResults.count) high-confidence face(s) in frame \(frameCount)")
+        for (index, face) in filteredResults.enumerated() {
+          let landmarks = face.landmarks?.allPoints?.pointCount ?? 0
+          print("  Face \(index + 1): bounds=\(face.boundingBox), confidence=\(face.confidence), landmarks=\(landmarks)")
         }
       }
 
-      return results
+      return filteredResults
     } catch {
       print("❌ Face detection error: \(error)")
       return []
