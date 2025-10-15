@@ -666,8 +666,8 @@ export default function VideoPreviewScreen() {
   }, [currentVideoUri, hapticsEnabled, impactAsync]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Video Player */}
+    <View style={styles.container}>
+      {/* Full-Screen Video Player */}
       <View style={styles.videoContainer}>
         {/* Always show video player unless there's an error */}
         {!videoError && (
@@ -773,183 +773,182 @@ export default function VideoPreviewScreen() {
             </View>
           </View>
         )}
-      </View>
+        {/* Bottom Controls Overlay - Floating on video */}
+        <View style={styles.bottomControlsOverlay}>
+          {/* COMPACT BLUR BUTTON */}
+          {!hasBlurApplied && !isBlurring && isBlurAvailable && (
+            <Pressable
+              style={styles.compactBlurButton}
+              onPress={handleBlurFaces}
+              disabled={isSharing || isDownloading || isAddingCaptions}
+            >
+              <View style={styles.compactButtonContent}>
+                <Ionicons name="eye-off" size={20} color="#8B5CF6" />
+                <Text style={styles.compactButtonText}>Blur Faces</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
+            </Pressable>
+          )}
 
-      {/* Controls */}
-      <View style={styles.controlsContainer}>
-        {/* COMPACT BLUR BUTTON */}
-        {!hasBlurApplied && !isBlurring && isBlurAvailable && (
-          <Pressable
-            style={styles.compactBlurButton}
-            onPress={handleBlurFaces}
-            disabled={isSharing || isDownloading || isAddingCaptions}
-          >
-            <View style={styles.compactButtonContent}>
-              <Ionicons name="eye-off" size={20} color="#8B5CF6" />
-              <Text style={styles.compactButtonText}>Blur Faces</Text>
+          {/* SUCCESS BANNER - AFTER BLUR */}
+          {hasBlurApplied && (
+            <View style={styles.successBanner}>
+              <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
+              <Text style={styles.successText}>Faces Blurred Successfully!</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
-          </Pressable>
-        )}
+          )}
 
-        {/* SUCCESS BANNER - AFTER BLUR */}
-        {hasBlurApplied && (
-          <View style={styles.successBanner}>
-            <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
-            <Text style={styles.successText}>Faces Blurred Successfully!</Text>
-          </View>
-        )}
+          {/* COMPACT CAPTION SECTION */}
+          {!hasCaptionsApplied && !isAddingCaptions && (
+            <Pressable
+              style={styles.compactCaptionButton}
+              onPress={handleAddCaptions}
+              disabled={isSharing || isDownloading || isBlurring}
+            >
+              <View style={styles.compactButtonContent}>
+                <Ionicons name="chatbubble-ellipses" size={20} color="#3B82F6" />
+                <Text style={styles.compactButtonText}>Add Captions</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
+            </Pressable>
+          )}
 
-        {/* COMPACT CAPTION SECTION */}
-        {!hasCaptionsApplied && !isAddingCaptions && (
-          <Pressable
-            style={styles.compactCaptionButton}
-            onPress={handleAddCaptions}
-            disabled={isSharing || isDownloading || isBlurring}
-          >
-            <View style={styles.compactButtonContent}>
-              <Ionicons name="chatbubble-ellipses" size={20} color="#3B82F6" />
-              <Text style={styles.compactButtonText}>Add Captions</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
-          </Pressable>
-        )}
-
-        {/* CAPTION TOGGLE - AFTER CAPTIONS ADDED */}
-        {hasCaptionsApplied && (
-          <Pressable
-            style={[styles.compactCaptionButton, showCaptions && styles.compactButtonActive]}
-            onPress={() => setShowCaptions(!showCaptions)}
-          >
-            <View style={styles.compactButtonContent}>
+          {/* CAPTION TOGGLE - AFTER CAPTIONS ADDED */}
+          {hasCaptionsApplied && (
+            <Pressable
+              style={[styles.compactCaptionButton, showCaptions && styles.compactButtonActive]}
+              onPress={() => setShowCaptions(!showCaptions)}
+            >
+              <View style={styles.compactButtonContent}>
+                <Ionicons
+                  name={showCaptions ? "eye" : "eye-off"}
+                  size={20}
+                  color={showCaptions ? "#10B981" : "#6B7280"}
+                />
+                <Text style={styles.compactButtonText}>{showCaptions ? "Captions On" : "Captions Off"}</Text>
+              </View>
               <Ionicons
-                name={showCaptions ? "eye" : "eye-off"}
+                name={showCaptions ? "checkmark-circle" : "ellipse-outline"}
                 size={20}
                 color={showCaptions ? "#10B981" : "#6B7280"}
               />
-              <Text style={styles.compactButtonText}>{showCaptions ? "Captions On" : "Captions Off"}</Text>
+            </Pressable>
+          )}
+
+          {/* CAPTION SUCCESS BANNER */}
+          {hasCaptionsApplied && (
+            <View style={styles.successBanner}>
+              <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
+              <Text style={styles.successText}>Captions Added Successfully!</Text>
             </View>
-            <Ionicons
-              name={showCaptions ? "checkmark-circle" : "ellipse-outline"}
-              size={20}
-              color={showCaptions ? "#10B981" : "#6B7280"}
-            />
-          </Pressable>
-        )}
+          )}
 
-        {/* CAPTION SUCCESS BANNER */}
-        {hasCaptionsApplied && (
-          <View style={styles.successBanner}>
-            <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
-            <Text style={styles.successText}>Captions Added Successfully!</Text>
-          </View>
-        )}
-
-        {/* Caption Progress Overlay */}
-        {isAddingCaptions && (
-          <View style={styles.uploadProgressOverlay}>
-            <View style={styles.uploadProgressContainer}>
-              <Text style={styles.uploadProgressText}>Adding captions... {Math.round(captionProgress)}%</Text>
-              <View style={styles.uploadProgressBar}>
-                <View style={[styles.uploadProgressFill, { width: `${captionProgress}%` }]} />
+          {/* Caption Progress Overlay */}
+          {isAddingCaptions && (
+            <View style={styles.uploadProgressOverlay}>
+              <View style={styles.uploadProgressContainer}>
+                <Text style={styles.uploadProgressText}>Adding captions... {Math.round(captionProgress)}%</Text>
+                <View style={styles.uploadProgressBar}>
+                  <View style={[styles.uploadProgressFill, { width: `${captionProgress}%` }]} />
+                </View>
               </View>
             </View>
-          </View>
-        )}
-
-        <View style={styles.infoContainer}>
-          <Text style={styles.title}>Video Preview</Text>
-          <Text style={styles.subtitle}>
-            {processedVideo.transcription
-              ? (() => {
-                  // Parse caption segments and extract plain text
-                  try {
-                    const parsed = JSON.parse(processedVideo.transcription);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                      const fullText = parsed.map((seg: any) => seg.text).join(" ");
-                      return `"${fullText.substring(0, 80)}${fullText.length > 80 ? "..." : ""}"`;
-                    }
-                  } catch {
-                    // Plain text transcription
-                  }
-                  return `"${processedVideo.transcription.substring(0, 80)}${processedVideo.transcription.length > 80 ? "..." : ""}"`;
-                })()
-              : "Your anonymous video confession"}
-          </Text>
-        </View>
-
-        {/* Error Message */}
-        {shareError && (
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={16} color="#EF4444" />
-            <Text style={styles.errorText}>{shareError}</Text>
-          </View>
-        )}
-
-        {/* Primary Action - Share */}
-        <Pressable
-          style={[styles.primaryActionButton, (isSharing || isBlurring || isDownloading) && styles.buttonDisabled]}
-          onPress={handleShare}
-          disabled={isSharing || isBlurring || isDownloading}
-        >
-          {isSharing ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Ionicons name="share" size={24} color="#ffffff" />
           )}
-          <Text style={styles.primaryActionText}>{isSharing ? "Sharing..." : "Share"}</Text>
-        </Pressable>
 
-        {/* Secondary Actions Row */}
-        <View style={styles.secondaryButtonContainer}>
+          <View style={styles.infoContainer}>
+            <Text style={styles.title}>Video Preview</Text>
+            <Text style={styles.subtitle}>
+              {processedVideo.transcription
+                ? (() => {
+                    // Parse caption segments and extract plain text
+                    try {
+                      const parsed = JSON.parse(processedVideo.transcription);
+                      if (Array.isArray(parsed) && parsed.length > 0) {
+                        const fullText = parsed.map((seg: any) => seg.text).join(" ");
+                        return `"${fullText.substring(0, 80)}${fullText.length > 80 ? "..." : ""}"`;
+                      }
+                    } catch {
+                      // Plain text transcription
+                    }
+                    return `"${processedVideo.transcription.substring(0, 80)}${processedVideo.transcription.length > 80 ? "..." : ""}"`;
+                  })()
+                : "Your anonymous video confession"}
+            </Text>
+          </View>
+
+          {/* Error Message */}
+          {shareError && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={16} color="#EF4444" />
+              <Text style={styles.errorText}>{shareError}</Text>
+            </View>
+          )}
+
+          {/* Primary Action - Share */}
           <Pressable
-            style={[styles.secondaryActionButton, styles.retakeButton]}
-            onPress={handleRetake}
+            style={[styles.primaryActionButton, (isSharing || isBlurring || isDownloading) && styles.buttonDisabled]}
+            onPress={handleShare}
             disabled={isSharing || isBlurring || isDownloading}
           >
-            <Ionicons name="camera" size={20} color="#ffffff" />
-            <Text style={styles.secondaryActionText}>Retake</Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.secondaryActionButton,
-              styles.downloadButton,
-              (isSharing || isBlurring || isDownloading) && styles.buttonDisabled,
-            ]}
-            onPress={handleDownload}
-            disabled={isSharing || isBlurring || isDownloading}
-          >
-            {isDownloading ? (
+            {isSharing ? (
               <ActivityIndicator size="small" color="#ffffff" />
             ) : (
-              <Ionicons name="download" size={20} color="#ffffff" />
+              <Ionicons name="share" size={24} color="#ffffff" />
             )}
-            <Text style={styles.secondaryActionText}>
-              {isDownloading ? "Saving..." : hasBlurApplied ? "Download Blurred" : "Download"}
+            <Text style={styles.primaryActionText}>{isSharing ? "Sharing..." : "Share"}</Text>
+          </Pressable>
+
+          {/* Secondary Actions Row */}
+          <View style={styles.secondaryButtonContainer}>
+            <Pressable
+              style={[styles.secondaryActionButton, styles.retakeButton]}
+              onPress={handleRetake}
+              disabled={isSharing || isBlurring || isDownloading}
+            >
+              <Ionicons name="camera" size={20} color="#ffffff" />
+              <Text style={styles.secondaryActionText}>Retake</Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.secondaryActionButton,
+                styles.downloadButton,
+                (isSharing || isBlurring || isDownloading) && styles.buttonDisabled,
+              ]}
+              onPress={handleDownload}
+              disabled={isSharing || isBlurring || isDownloading}
+            >
+              {isDownloading ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Ionicons name="download" size={20} color="#ffffff" />
+              )}
+              <Text style={styles.secondaryActionText}>
+                {isDownloading ? "Saving..." : hasBlurApplied ? "Download Blurred" : "Download"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.secondaryActionButton, styles.discardButton]}
+              onPress={handleDiscard}
+              disabled={isSharing || isBlurring || isDownloading}
+            >
+              <Ionicons name="trash" size={20} color="#ffffff" />
+              <Text style={styles.secondaryActionText}>Discard</Text>
+            </Pressable>
+          </View>
+
+          {/* Download Info */}
+          <View style={styles.downloadInfo}>
+            <Text style={styles.downloadInfoText}>
+              {hasBlurApplied
+                ? "📱 Download will save the blurred version to your gallery"
+                : "📱 Download will save the original video to your gallery"}
             </Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.secondaryActionButton, styles.discardButton]}
-            onPress={handleDiscard}
-            disabled={isSharing || isBlurring || isDownloading}
-          >
-            <Ionicons name="trash" size={20} color="#ffffff" />
-            <Text style={styles.secondaryActionText}>Discard</Text>
-          </Pressable>
-        </View>
-
-        {/* Download Info */}
-        <View style={styles.downloadInfo}>
-          <Text style={styles.downloadInfoText}>
-            {hasBlurApplied
-              ? "📱 Download will save the blurred version to your gallery"
-              : "📱 Download will save the original video to your gallery"}
-          </Text>
+          </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -959,11 +958,87 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
   },
   videoContainer: {
-    flex: 1,
-    position: "relative",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   video: {
+    width: "100%",
+    height: "100%",
+  },
+  bottomControlsOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 44,
+    paddingTop: 32,
+  },
+  featurePills: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+    flexWrap: "wrap",
+  },
+  featurePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  featurePillActive: {
+    backgroundColor: "rgba(16, 185, 129, 0.2)",
+    borderWidth: 1,
+    borderColor: "#10B981",
+  },
+  featurePillText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  mainActions: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
+  shareButton: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1D9BF0",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    gap: 8,
+    elevation: 4,
+    shadowColor: "#1D9BF0",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  shareButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  iconActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  iconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   privacyOverlay: {
     position: "absolute",
