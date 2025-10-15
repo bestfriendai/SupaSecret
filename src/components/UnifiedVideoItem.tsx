@@ -26,6 +26,8 @@ import type { Confession } from "../types/confession";
 import { isOnline, enqueue } from "../lib/offlineQueue";
 import { normalizeVideoError } from "../types/videoErrors";
 import type { VideoItemProps } from "../types/videoComponents";
+import { TikTokCaptions, TIKTOK_CAPTION_STYLES } from "./TikTokCaptions";
+import type { CaptionSegment } from "./TikTokCaptions";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -77,6 +79,11 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   const viewTrackedRef = useRef(false);
   const videoLoadedRef = useRef(false);
 
+  // Caption state
+  const [captionSegments, setCaptionSegments] = useState<CaptionSegment[]>([]);
+  const [currentCaptionSegment, setCurrentCaptionSegment] = useState<CaptionSegment | null>(null);
+  const [showCaptions, setShowCaptions] = useState(true);
+
   const heartScale = useSharedValue(0.5);
   const heartOpacity = useSharedValue(0);
   const lastTapTime = useSharedValue(0);
@@ -90,6 +97,97 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   useEffect(() => {
     isPlayingShared.value = isPlaying ? 1 : 0;
   }, [isPlaying, isPlayingShared]);
+
+  // Parse transcription into caption segments on mount
+  useEffect(() => {
+    if (!confession.transcription) {
+      setCaptionSegments([]);
+      return;
+    }
+
+    try {
+      // Try to parse as JSON (from AssemblyAI format with word-level timing)
+      const parsed = JSON.parse(confession.transcription);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Already in segment format with word-level timing
+        setCaptionSegments(parsed);
+      } else {
+        // Convert plain text to segments (fallback for old videos)
+        const words = confession.transcription.split(" ");
+        const segments: CaptionSegment[] = [];
+        const wordsPerSegment = 8;
+
+        for (let i = 0; i < words.length; i += wordsPerSegment) {
+          const segmentWords = words.slice(i, i + wordsPerSegment);
+          const startTime = (i / words.length) * (videoPlayer?.duration || 30);
+          const endTime = ((i + wordsPerSegment) / words.length) * (videoPlayer?.duration || 30);
+
+          segments.push({
+            id: `segment_${i}`,
+            text: segmentWords.join(" "),
+            startTime,
+            endTime,
+            isComplete: true,
+            words: segmentWords.map((word, idx) => ({
+              word,
+              startTime: startTime + (idx * (endTime - startTime)) / segmentWords.length,
+              endTime: startTime + ((idx + 1) * (endTime - startTime)) / segmentWords.length,
+              confidence: 1.0,
+              isComplete: true,
+            })),
+          });
+        }
+
+        setCaptionSegments(segments);
+      }
+    } catch (error) {
+      // Plain text transcription - convert to segments (fallback for old videos)
+      const words = confession.transcription.split(" ");
+      const segments: CaptionSegment[] = [];
+      const wordsPerSegment = 8;
+
+      for (let i = 0; i < words.length; i += wordsPerSegment) {
+        const segmentWords = words.slice(i, i + wordsPerSegment);
+        const startTime = (i / words.length) * (videoPlayer?.duration || 30);
+        const endTime = ((i + wordsPerSegment) / words.length) * (videoPlayer?.duration || 30);
+
+        segments.push({
+          id: `segment_${i}`,
+          text: segmentWords.join(" "),
+          startTime,
+          endTime,
+          isComplete: true,
+          words: segmentWords.map((word, idx) => ({
+            word,
+            startTime: startTime + (idx * (endTime - startTime)) / segmentWords.length,
+            endTime: startTime + ((idx + 1) * (endTime - startTime)) / segmentWords.length,
+            confidence: 1.0,
+            isComplete: true,
+          })),
+        });
+      }
+
+      setCaptionSegments(segments);
+    }
+  }, [confession.transcription, videoPlayer?.duration]);
+
+  // Sync captions with video playback
+  useEffect(() => {
+    if (!showCaptions || captionSegments.length === 0 || !videoPlayer || !isActive) {
+      setCurrentCaptionSegment(null);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const currentTime = videoPlayer.currentTime;
+      const segment = captionSegments.find(
+        (seg) => currentTime >= seg.startTime && currentTime <= (seg.endTime || seg.startTime + 3),
+      );
+      setCurrentCaptionSegment(segment || null);
+    }, 100); // Update every 100ms for smooth caption sync
+
+    return () => clearInterval(interval);
+  }, [showCaptions, captionSegments, videoPlayer, isActive]);
 
   useEffect(() => {
     if (!videoPlayer) {
@@ -434,6 +532,16 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
           )}
         </Animated.View>
       </GestureDetector>
+
+      {/* TikTok-style Captions */}
+      {showCaptions && captionSegments.length > 0 && isActive && (
+        <TikTokCaptions
+          segments={captionSegments}
+          currentSegment={currentCaptionSegment}
+          style={TIKTOK_CAPTION_STYLES[0]}
+          position="bottom"
+        />
+      )}
 
       <LinearGradient
         colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.7)"]}

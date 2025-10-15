@@ -36,7 +36,7 @@ function FaceBlurRecordScreen() {
   const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [showStyleSelector, setShowStyleSelector] = useState(false);
   const [selectedCaptionStyle, setSelectedCaptionStyle] = useState(TIKTOK_CAPTION_STYLES[0]);
-  const [captionPosition, setCaptionPosition] = useState<CaptionPosition>('bottom');
+  const [captionPosition, setCaptionPosition] = useState<CaptionPosition>("bottom");
 
   // Speech recognition
   const {
@@ -48,7 +48,7 @@ function FaceBlurRecordScreen() {
     clearResults,
     hasPermission: hasSpeechPermission,
   } = useSpeechRecognition({
-    language: 'en-US',
+    language: "en-US",
   });
 
   useEffect(() => {
@@ -159,7 +159,15 @@ function FaceBlurRecordScreen() {
       console.error("❌ Failed to start recording:", error);
       setIsRecording(false);
     }
-  }, [hapticsEnabled, notificationAsync, captionsEnabled, speechAvailable, hasSpeechPermission, clearResults, processAudioFile]);
+  }, [
+    hapticsEnabled,
+    notificationAsync,
+    captionsEnabled,
+    speechAvailable,
+    hasSpeechPermission,
+    clearResults,
+    processAudioFile,
+  ]);
 
   const stopRecording = useCallback(async () => {
     if (!cameraRef.current || !isRecording) return;
@@ -275,7 +283,13 @@ function FaceBlurRecordScreen() {
             {captionsEnabled && (
               <View style={styles.speechStatus}>
                 <Text style={styles.speechStatusText}>
-                  {isTranscribing ? "🎤 Processing Audio" : speechError ? "❌ Transcription Error" : isRecording ? "🎬 Recording" : "✅ Ready"}
+                  {isTranscribing
+                    ? "🎤 Processing Audio"
+                    : speechError
+                      ? "❌ Transcription Error"
+                      : isRecording
+                        ? "🎬 Recording"
+                        : "✅ Ready"}
                 </Text>
               </View>
             )}
@@ -312,10 +326,7 @@ function FaceBlurRecordScreen() {
                 <View style={styles.bottomHints}>
                   <Text style={styles.hintText}>Tap to start recording</Text>
                   {captionsEnabled && (
-                    <Pressable
-                      style={styles.styleButton}
-                      onPress={() => setShowStyleSelector(!showStyleSelector)}
-                    >
+                    <Pressable style={styles.styleButton} onPress={() => setShowStyleSelector(!showStyleSelector)}>
                       <Text style={styles.styleButtonText}>Caption Style</Text>
                     </Pressable>
                   )}

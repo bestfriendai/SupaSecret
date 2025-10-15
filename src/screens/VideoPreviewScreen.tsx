@@ -125,9 +125,7 @@ export default function VideoPreviewScreen() {
 
     const interval = setInterval(() => {
       const currentTime = player.currentTime;
-      const segment = captionSegments.find(
-        (seg: any) => currentTime >= seg.startTime && currentTime <= seg.endTime
-      );
+      const segment = captionSegments.find((seg: any) => currentTime >= seg.startTime && currentTime <= seg.endTime);
       setCurrentCaptionSegment(segment || null);
     }, 100); // Update every 100ms for smooth caption sync
 
@@ -230,6 +228,7 @@ export default function VideoPreviewScreen() {
 
       console.log("📤 Uploading video:", finalVideoUri);
       console.log("🎭 Face blur applied:", hasBlurApplied);
+      console.log("📝 Captions included:", hasCaptionsApplied, processedVideo.transcription ? "✅" : "❌");
 
       const confessionPayload = {
         type: "video" as const,
@@ -244,6 +243,12 @@ export default function VideoPreviewScreen() {
         views: 0,
         isLiked: false,
       };
+
+      console.log("🎬 Final upload payload:", {
+        hasBlur: confessionPayload.faceBlurApplied,
+        hasCaptions: !!confessionPayload.transcription,
+        videoUri: confessionPayload.videoUri,
+      });
 
       await addConfession(confessionPayload, {
         onUploadProgress: (progress: number) => {
@@ -347,6 +352,10 @@ export default function VideoPreviewScreen() {
         setCurrentVideoUri(result.processedVideoUri);
         setHasBlurApplied(true);
 
+        // ✅ Update processedVideo object to keep it in sync
+        processedVideo.uri = result.processedVideoUri;
+        processedVideo.faceBlurApplied = true;
+
         if (hapticsEnabled) {
           await impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         }
@@ -390,8 +399,10 @@ export default function VideoPreviewScreen() {
       // Get AssemblyAI API key
       const ASSEMBLYAI_API_KEY = process.env.EXPO_PUBLIC_ASSEMBLYAI_API_KEY;
 
-      if (!ASSEMBLYAI_API_KEY || ASSEMBLYAI_API_KEY === 'your_assemblyai_api_key_here') {
-        throw new Error("AssemblyAI API key not configured. Please add EXPO_PUBLIC_ASSEMBLYAI_API_KEY to your .env file.");
+      if (!ASSEMBLYAI_API_KEY || ASSEMBLYAI_API_KEY === "your_assemblyai_api_key_here") {
+        throw new Error(
+          "AssemblyAI API key not configured. Please add EXPO_PUBLIC_ASSEMBLYAI_API_KEY to your .env file.",
+        );
       }
 
       console.log("🎤 Extracting audio from video...");
@@ -401,10 +412,7 @@ export default function VideoPreviewScreen() {
       const { Audio } = await import("expo-av");
 
       // Load the video to extract audio
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: videoUri },
-        { shouldPlay: false }
-      );
+      const { sound } = await Audio.Sound.createAsync({ uri: videoUri }, { shouldPlay: false });
 
       // Get audio URI (the video file itself contains audio)
       // AssemblyAI can process video files directly and extract audio
@@ -418,7 +426,7 @@ export default function VideoPreviewScreen() {
       const uploadResponse = await fetch("https://api.assemblyai.com/v2/upload", {
         method: "POST",
         headers: {
-          "authorization": ASSEMBLYAI_API_KEY,
+          authorization: ASSEMBLYAI_API_KEY,
           "content-type": "application/octet-stream",
         },
         body: videoBlob,
@@ -440,7 +448,7 @@ export default function VideoPreviewScreen() {
       const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
         method: "POST",
         headers: {
-          "authorization": ASSEMBLYAI_API_KEY,
+          authorization: ASSEMBLYAI_API_KEY,
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -467,10 +475,10 @@ export default function VideoPreviewScreen() {
       const maxAttempts = 60; // 5 minutes max
 
       while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Poll every 3 seconds (faster)
+        await new Promise((resolve) => setTimeout(resolve, 3000)); // Poll every 3 seconds (faster)
 
         const statusResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
-          headers: { "authorization": ASSEMBLYAI_API_KEY },
+          headers: { authorization: ASSEMBLYAI_API_KEY },
         });
 
         if (!statusResponse.ok) {
@@ -503,9 +511,6 @@ export default function VideoPreviewScreen() {
       console.log("📝 Transcription text:", transcript.text);
       console.log("📝 Word count:", transcript.words?.length || 0);
 
-      // Store transcription in processed video data
-      processedVideo.transcription = transcript.text;
-
       // Process words into caption segments (8-10 words per segment for TikTok style)
       const words = transcript.words || [];
       const segments = [];
@@ -515,20 +520,32 @@ export default function VideoPreviewScreen() {
         const segmentWords = words.slice(i, i + wordsPerSegment);
         segments.push({
           id: `segment_${i}`,
-          text: segmentWords.map((w: any) => w.text).join(' '),
+          text: segmentWords.map((w: any) => w.text).join(" "),
           startTime: segmentWords[0].start / 1000, // Convert to seconds
           endTime: segmentWords[segmentWords.length - 1].end / 1000,
+          isComplete: true,
           words: segmentWords.map((w: any) => ({
             word: w.text,
             startTime: w.start / 1000,
             endTime: w.end / 1000,
             confidence: w.confidence,
+            isComplete: true,
           })),
         });
       }
 
       console.log("📝 Created caption segments:", segments.length);
+      console.log("📝 Sample segment:", segments[0]);
+
+      // ✅ Store caption segments as JSON (with word-level timing) instead of plain text
+      // This allows captions to display on videos when people watch them
+      processedVideo.transcription = JSON.stringify(segments);
+
       setCaptionSegments(segments);
+
+      // ✅ DON'T burn captions into video by default - keep them as overlays (like TikTok)
+      // Captions will appear on top of the video while playing
+      console.log("✅ Captions will be shown as overlays on top of the video");
 
       setCaptionProgress(100);
       setHasCaptionsApplied(true);
@@ -540,17 +557,15 @@ export default function VideoPreviewScreen() {
 
       Alert.alert(
         "Success! 📝",
-        `Captions have been added to your video!\n\n"${transcript.text.substring(0, 100)}${transcript.text.length > 100 ? '...' : ''}"\n\nThe captions will appear when you share the video.`,
+        `Captions added successfully!\n\n"${transcript.text.substring(0, 100)}${transcript.text.length > 100 ? "..." : ""}"\n\nCaptions will appear on your video like TikTok when people watch it!`,
       );
     } catch (error) {
       console.error("❌ Caption processing failed:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to add captions";
 
-      Alert.alert(
-        "Caption Processing Failed",
-        errorMessage + "\n\nYou can still upload the video without captions.",
-        [{ text: "OK" }],
-      );
+      Alert.alert("Caption Processing Failed", errorMessage + "\n\nYou can still upload the video without captions.", [
+        { text: "OK" },
+      ]);
     } finally {
       setIsAddingCaptions(false);
       setCaptionProgress(0);
@@ -654,16 +669,21 @@ export default function VideoPreviewScreen() {
     <SafeAreaView style={styles.container}>
       {/* Video Player */}
       <View style={styles.videoContainer}>
-        {!videoError && <VideoView player={player} style={styles.video} contentFit="cover" nativeControls={false} />}
+        {/* Always show video player unless there's an error */}
+        {!videoError && (
+          <>
+            <VideoView player={player} style={styles.video} contentFit="cover" nativeControls={false} />
 
-        {/* TikTok-Style Captions Overlay */}
-        {showCaptions && captionSegments.length > 0 && (
-          <TikTokCaptions
-            segments={[]}
-            currentSegment={currentCaptionSegment}
-            style={TIKTOK_CAPTION_STYLES[0]}
-            position="bottom"
-          />
+            {/* TikTok-Style Captions Overlay - Positioned on TOP of video */}
+            {showCaptions && captionSegments.length > 0 && (
+              <TikTokCaptions
+                segments={captionSegments}
+                currentSegment={currentCaptionSegment}
+                style={TIKTOK_CAPTION_STYLES[0]}
+                position="bottom"
+              />
+            )}
+          </>
         )}
 
         {/* Loading Overlay */}
@@ -762,7 +782,7 @@ export default function VideoPreviewScreen() {
           <Pressable
             style={styles.compactBlurButton}
             onPress={handleBlurFaces}
-            disabled={isSharing || isDownloading}
+            disabled={isSharing || isDownloading || isAddingCaptions}
           >
             <View style={styles.compactButtonContent}>
               <Ionicons name="eye-off" size={20} color="#8B5CF6" />
@@ -807,9 +827,7 @@ export default function VideoPreviewScreen() {
                 size={20}
                 color={showCaptions ? "#10B981" : "#6B7280"}
               />
-              <Text style={styles.compactButtonText}>
-                {showCaptions ? "Captions On" : "Captions Off"}
-              </Text>
+              <Text style={styles.compactButtonText}>{showCaptions ? "Captions On" : "Captions Off"}</Text>
             </View>
             <Ionicons
               name={showCaptions ? "checkmark-circle" : "ellipse-outline"}
@@ -843,7 +861,19 @@ export default function VideoPreviewScreen() {
           <Text style={styles.title}>Video Preview</Text>
           <Text style={styles.subtitle}>
             {processedVideo.transcription
-              ? `"${processedVideo.transcription.substring(0, 50)}${processedVideo.transcription.length > 50 ? "..." : ""}"`
+              ? (() => {
+                  // Parse caption segments and extract plain text
+                  try {
+                    const parsed = JSON.parse(processedVideo.transcription);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      const fullText = parsed.map((seg: any) => seg.text).join(" ");
+                      return `"${fullText.substring(0, 80)}${fullText.length > 80 ? "..." : ""}"`;
+                    }
+                  } catch {
+                    // Plain text transcription
+                  }
+                  return `"${processedVideo.transcription.substring(0, 80)}${processedVideo.transcription.length > 80 ? "..." : ""}"`;
+                })()
               : "Your anonymous video confession"}
           </Text>
         </View>

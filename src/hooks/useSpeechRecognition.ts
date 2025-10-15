@@ -12,6 +12,7 @@ export interface RecognizedWord {
 
 export interface CaptionSegment {
   id: string;
+  text: string; // Full text of the segment
   words: RecognizedWord[];
   startTime: number;
   endTime?: number;
@@ -61,8 +62,23 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
     // Simulate real-time speech recognition with demo words
     // In a real implementation, this would use Web Speech API or native speech recognition
     const demoWords = [
-      "Hey", "everyone", "this", "is", "my", "confession", "for", "today",
-      "I", "have", "something", "important", "to", "share", "with", "you", "all"
+      "Hey",
+      "everyone",
+      "this",
+      "is",
+      "my",
+      "confession",
+      "for",
+      "today",
+      "I",
+      "have",
+      "something",
+      "important",
+      "to",
+      "share",
+      "with",
+      "you",
+      "all",
     ];
 
     let wordIndex = 0;
@@ -83,6 +99,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
         // Create/update current segment
         const segment: CaptionSegment = {
           id: `live_segment_${Date.now()}`,
+          text: currentWords.current.map((w) => w.word).join(" "),
           words: [...currentWords.current],
           startTime: currentWords.current[0]?.startTime || 0,
           endTime: word.endTime,
@@ -94,7 +111,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
         // Every 8 words, finalize the segment and start a new one
         if (currentWords.current.length >= 8) {
           const finalSegment = { ...segment, isComplete: true };
-          setSegments(prev => [...prev, finalSegment]);
+          setSegments((prev) => [...prev, finalSegment]);
           currentWords.current = [];
           setCurrentSegment(null);
         }
@@ -119,13 +136,14 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
     if (currentWords.current.length > 0) {
       const finalSegment: CaptionSegment = {
         id: `final_segment_${Date.now()}`,
+        text: currentWords.current.map((w) => w.word).join(" "),
         words: [...currentWords.current],
         startTime: currentWords.current[0]?.startTime || 0,
         endTime: currentWords.current[currentWords.current.length - 1]?.endTime || 0,
         isComplete: true,
       };
 
-      setSegments(prev => [...prev, finalSegment]);
+      setSegments((prev) => [...prev, finalSegment]);
       currentWords.current = [];
       setCurrentSegment(null);
     }
@@ -142,7 +160,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
       // 2. Use a completely free service like Vosk (offline)
       // 3. Use Azure Speech (has a generous free tier)
 
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate processing
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulate processing
 
       // Create a realistic demo transcription
       const demoTranscriptions = [
@@ -174,6 +192,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
 
         segments.push({
           id: `segment_${segmentIdCounter.current++}_${Date.now()}`,
+          text: segmentWords.map((w) => w.word).join(" "),
           words: segmentWords,
           startTime: segmentWords[0].startTime,
           endTime: segmentWords[segmentWords.length - 1].endTime,
@@ -183,7 +202,6 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
 
       setSegments(segments);
       console.log(`✅ Fallback transcription completed with ${segments.length} segments`);
-
     } catch (err) {
       console.error("Fallback transcription failed:", err);
       throw err;
@@ -201,7 +219,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
       // AssemblyAI API configuration
       const ASSEMBLYAI_API_KEY = process.env.EXPO_PUBLIC_ASSEMBLYAI_API_KEY;
 
-      if (!ASSEMBLYAI_API_KEY || ASSEMBLYAI_API_KEY === 'your_assemblyai_api_key_here') {
+      if (!ASSEMBLYAI_API_KEY || ASSEMBLYAI_API_KEY === "your_assemblyai_api_key_here") {
         console.log("⚠️ AssemblyAI API key not configured, using fallback transcription");
         await processFallbackTranscription(audioPath);
         return;
@@ -213,10 +231,10 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
       const uploadResponse = await fetch("https://api.assemblyai.com/v2/upload", {
         method: "POST",
         headers: {
-          "authorization": ASSEMBLYAI_API_KEY,
+          authorization: ASSEMBLYAI_API_KEY,
           "content-type": "application/octet-stream",
         },
-        body: await fetch(audioPath).then(res => res.blob()),
+        body: await fetch(audioPath).then((res) => res.blob()),
       });
 
       if (!uploadResponse.ok) {
@@ -232,7 +250,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
       const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
         method: "POST",
         headers: {
-          "authorization": ASSEMBLYAI_API_KEY,
+          authorization: ASSEMBLYAI_API_KEY,
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -259,11 +277,11 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
       const maxAttempts = 60; // 5 minutes max wait time
 
       while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
 
         const statusResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
           headers: {
-            "authorization": ASSEMBLYAI_API_KEY,
+            authorization: ASSEMBLYAI_API_KEY,
           },
         });
 
@@ -314,6 +332,7 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
 
         segments.push({
           id: `segment_${segmentIdCounter.current++}_${Date.now()}`,
+          text: segmentWords.map((w) => w.word).join(" "),
           words: segmentWords,
           startTime: segmentWords[0].startTime,
           endTime: segmentWords[segmentWords.length - 1].endTime,
@@ -323,7 +342,6 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
 
       setSegments(segments);
       console.log(`✅ Created ${segments.length} caption segments from ${words.length} words`);
-
     } catch (err) {
       console.error("Failed to process audio with AssemblyAI:", err);
       setError(err instanceof Error ? err.message : "Failed to transcribe audio");
@@ -352,5 +370,3 @@ export const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}):
     hasPermission: true, // No real-time permissions needed
   };
 };
-
-

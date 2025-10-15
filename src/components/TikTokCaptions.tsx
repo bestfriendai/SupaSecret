@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, Animated, Dimensions, ViewStyle, TextStyle } from "react-native";
 import { CaptionSegment, RecognizedWord } from "../hooks/useSpeechRecognition";
 
+// Re-export types for convenience
+export type { CaptionSegment, RecognizedWord } from "../hooks/useSpeechRecognition";
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export interface CaptionStyle {
@@ -116,24 +119,14 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
   const [visibleSegments, setVisibleSegments] = useState<CaptionSegment[]>([]);
   const animatedValues = useRef<Map<string, Animated.Value>>(new Map());
 
-  // Update visible segments
+  // ✅ FIX: Update visible segments based on current playback position
   useEffect(() => {
-    const allSegments = [...segments];
-    if (currentSegment) {
-      allSegments.push(currentSegment);
-    }
-
-    // Keep only recent segments (last 10 seconds)
-    const now = Date.now();
-    const recentSegments = allSegments.filter((segment) => now - segment.startTime < 10000);
-
-    // Limit to maxLines
-    const limitedSegments = recentSegments.slice(-maxLines);
-
-    setVisibleSegments(limitedSegments);
+    // Only show the current segment (TikTok style - one caption at a time)
+    const segmentsToShow = currentSegment ? [currentSegment] : [];
+    setVisibleSegments(segmentsToShow);
 
     // Initialize animations for new segments
-    limitedSegments.forEach((segment) => {
+    segmentsToShow.forEach((segment) => {
       if (!animatedValues.current.has(segment.id)) {
         animatedValues.current.set(segment.id, new Animated.Value(0));
 
@@ -147,7 +140,7 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
     });
 
     // Clean up old animations
-    const currentIds = new Set(limitedSegments.map((s) => s.id));
+    const currentIds = new Set(segmentsToShow.map((s) => s.id));
     for (const [id, animValue] of animatedValues.current.entries()) {
       if (!currentIds.has(id)) {
         animatedValues.current.delete(id);
@@ -232,6 +225,7 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
     const isCurrentSegment = segment.id === currentSegment?.id;
     const words = segment.words;
 
+    // ✅ FIX: Render as a single text block with bold styling (like TikTok)
     return (
       <Animated.View
         key={segment.id}
@@ -249,20 +243,15 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
               {
                 scale: animValue.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0.9, 1],
+                  outputRange: [0.95, 1],
                 }),
               },
             ],
           },
         ]}
       >
-        <View style={styles.wordsContainer}>
-          {words.map((word, wordIndex) => (
-            <Text key={`${segment.id}_${wordIndex}`} style={[styles.word, getWordStyle(word, isCurrentSegment)]}>
-              {word.word}
-              {wordIndex < words.length - 1 ? " " : ""}
-            </Text>
-          ))}
+        <View style={styles.captionBox}>
+          <Text style={styles.captionText}>{segment.text}</Text>
         </View>
       </Animated.View>
     );
@@ -283,6 +272,25 @@ const styles = StyleSheet.create({
   segmentContainer: {
     marginVertical: 4,
     alignItems: "center",
+  },
+  captionBox: {
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    maxWidth: screenWidth - 60,
+  },
+  captionText: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    textShadowColor: "rgba(0, 0, 0, 0.9)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+    lineHeight: 36,
   },
   wordsContainer: {
     flexDirection: "row",

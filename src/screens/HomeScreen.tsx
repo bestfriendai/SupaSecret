@@ -293,9 +293,21 @@ function HomeScreen() {
                   <HashtagText text={confession.content} className="text-white text-15 leading-5 mb-3" />
                 ) : (
                   <View>
-                    {confession.transcription && (
-                      <HashtagText text={confession.transcription} className="text-white text-15 leading-5 mb-3" />
-                    )}
+                    {confession.transcription &&
+                      (() => {
+                        // Extract plain text from JSON caption segments or use as-is if plain text
+                        let displayText = confession.transcription;
+                        try {
+                          const parsed = JSON.parse(confession.transcription);
+                          if (Array.isArray(parsed) && parsed.length > 0) {
+                            // Extract text from caption segments
+                            displayText = parsed.map((seg: any) => seg.text).join(" ");
+                          }
+                        } catch {
+                          // Already plain text, use as-is
+                        }
+                        return <HashtagText text={displayText} className="text-white text-15 leading-5 mb-3" />;
+                      })()}
                     {/* Video Preview with Thumbnail */}
                     <Pressable
                       className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden mb-3"

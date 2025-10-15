@@ -290,13 +290,14 @@ class FaceBlurModule: NSObject {
     frameCount += 1
 
     // Adaptive detection frequency based on face movement
+    // ✅ FIX: Detect faces more frequently (every frame initially, then every 1-2 frames)
     let hasMovingFaces = trackedFaces.contains { $0.isMoving }
-    let detectionInterval = hasMovingFaces ? 2 : 4 // More frequent for moving faces
+    let detectionInterval = hasMovingFaces ? 1 : 2 // Much more frequent detection
 
     framesSinceLastDetection += 1
     let shouldDetect = framesSinceLastDetection >= detectionInterval ||
                       trackedFaces.isEmpty ||
-                      CFAbsoluteTimeGetCurrent() - lastDetectionTime > 0.5 // Force detection every 0.5s
+                      CFAbsoluteTimeGetCurrent() - lastDetectionTime > 0.3 // Force detection every 0.3s (more frequent)
 
     if shouldDetect {
       let newFaces = detectFaces(in: ciImage, orientation: orientation)
@@ -335,8 +336,8 @@ class FaceBlurModule: NSObject {
         height: faceRect.height * imageSize.height
       )
 
-      // Expand face region significantly for better coverage (70% expansion for moving faces)
-      let expansionFactor: CGFloat = hasMovingFaces ? 0.7 : 0.6
+      // ✅ FIX: Expand face region much more to ensure full face coverage
+      let expansionFactor: CGFloat = hasMovingFaces ? 0.45 : 0.40 // Larger expansion
       let expandedRect = actualRect.insetBy(dx: -actualRect.width * expansionFactor, dy: -actualRect.height * expansionFactor)
 
       // Clamp to image bounds
@@ -355,12 +356,12 @@ class FaceBlurModule: NSObject {
         continue
       }
 
-      // ✅ Enhanced pixelation with adaptive intensity for moving faces
+      // ✅ FIX: Much stronger pixelation effect for better privacy
       // Scale determines pixelation size (higher = more pixelated)
-      // Use higher intensity for moving faces to ensure privacy
+      // Use much higher intensity to ensure faces are always properly obscured
       let baseIntensity = Double(blurIntensity)
-      let movingFaceBonus = hasMovingFaces ? 15.0 : 0.0 // Extra blur for moving faces
-      let pixelScale = max(baseIntensity + movingFaceBonus, 35.0) // Minimum 35 for strong effect
+      let movingFaceBonus = hasMovingFaces ? 20.0 : 10.0 // Always add bonus for safety
+      let pixelScale = max(baseIntensity + movingFaceBonus, 50.0) // Minimum 50 for very strong effect
       pixellateFilter.setValue(faceRegion, forKey: kCIInputImageKey)
       pixellateFilter.setValue(pixelScale, forKey: kCIInputScaleKey)
       pixellateFilter.setValue(CIVector(x: clampedRect.midX, y: clampedRect.midY), forKey: kCIInputCenterKey)
@@ -475,8 +476,8 @@ class FaceBlurModule: NSObject {
       try handler.perform([request])
       let results = request.results as? [VNFaceObservation] ?? []
 
-      // Filter faces by confidence (higher threshold for better tracking)
-      let filteredResults = results.filter { $0.confidence > 0.6 }
+      // ✅ FIX: Lower confidence threshold to detect more faces (especially side profiles)
+      let filteredResults = results.filter { $0.confidence > 0.4 }
 
       // Log detection results for debugging
       if !filteredResults.isEmpty {

@@ -39,6 +39,7 @@ module.exports = {
     },
     plugins: [
       "./modules/face-blur/app.plugin.js",
+      "./modules/caption-burner/app.plugin.js",
       [
         "expo-build-properties",
         {
