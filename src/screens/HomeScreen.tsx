@@ -26,12 +26,87 @@ import FeedActionSheet from "../components/FeedActionSheet";
 import ConfessionSkeleton from "../components/ConfessionSkeleton";
 import HashtagText from "../components/HashtagText";
 import { Image } from "expo-image";
+import { generateVideoThumbnail } from "../utils/videoThumbnails";
 
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { getLikeButtonA11yProps, getBookmarkButtonA11yProps, getReportButtonA11yProps } from "../utils/accessibility";
 import { useDebouncedLikeToggle } from "../utils/consolidatedUtils";
 import Animated from "react-native-reanimated";
 import { createScreenValidator } from "../utils/screenValidation";
+
+// Video Thumbnail Component with async thumbnail generation
+interface VideoThumbnailViewProps {
+  confession: Confession;
+  generatedThumbnail?: string;
+  onThumbnailGenerated: (uri: string) => void;
+}
+
+function VideoThumbnailView({ confession, generatedThumbnail, onThumbnailGenerated }: VideoThumbnailViewProps) {
+  const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    const loadThumbnail = async () => {
+      // Use existing thumbnail if available
+      if (confession.thumbnailUri) {
+        setThumbnailUri(confession.thumbnailUri);
+        return;
+      }
+
+      // Use generated thumbnail if available
+      if (generatedThumbnail) {
+        setThumbnailUri(generatedThumbnail);
+        return;
+      }
+
+      // Generate new thumbnail
+      if (confession.videoUri && !isGenerating) {
+        setIsGenerating(true);
+        try {
+          const { uri } = await generateVideoThumbnail(confession.videoUri, { time: 1000, quality: 0.7 });
+          setThumbnailUri(uri);
+          onThumbnailGenerated(uri);
+        } catch (error) {
+          console.error("Failed to generate thumbnail:", error);
+        } finally {
+          setIsGenerating(false);
+        }
+      }
+    };
+
+    loadThumbnail();
+  }, [confession.id, confession.videoUri, confession.thumbnailUri, generatedThumbnail, isGenerating, onThumbnailGenerated]);
+
+  return (
+    <View className="w-full aspect-video bg-gray-800 items-center justify-center relative">
+      {/* Actual Thumbnail Image */}
+      {thumbnailUri ? (
+        <Image
+          source={{ uri: thumbnailUri }}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          transition={200}
+          placeholder={{ blurhash: "L5H2EC=PM+yV0g-mq.wG9c010J}I" }}
+        />
+      ) : (
+        <View className="w-full h-full bg-gray-800 items-center justify-center">
+          {isGenerating && <Text className="text-gray-500 text-12">Generating thumbnail...</Text>}
+        </View>
+      )}
+      {/* Gradient Overlay */}
+      <View className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50" />
+      {/* Play Button */}
+      <View className="absolute inset-0 items-center justify-center">
+        <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.9)" />
+      </View>
+      {/* Privacy Badge */}
+      <View className="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded-lg flex-row items-center">
+        <Ionicons name="eye-off" size={12} color="#8B98A5" />
+        <Text className="text-gray-300 text-10 ml-1">Face blurred</Text>
+      </View>
+    </View>
+  );
+}
 
 function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -66,6 +141,7 @@ function HomeScreen() {
   const [selectedConfessionText, setSelectedConfessionText] = useState<string>("");
   const [networkError, setNetworkError] = useState(false);
   const actionSheetRef = useRef<BottomSheetModal | null>(null);
+  const [generatedThumbnails, setGeneratedThumbnails] = useState<Record<string, string>>({});
 
   // FlashList ref for potential future scroll restoration
   const flashListRef = useRef<any | null>(null);
@@ -318,31 +394,13 @@ function HomeScreen() {
                     >
                       {/* Video Thumbnail */}
                       {confession.videoUri && (
-                        <View className="w-full aspect-video bg-gray-800 items-center justify-center relative">
-                          {/* Actual Thumbnail Image */}
-                          {confession.thumbnailUri ? (
-                            <Image
-                              source={{ uri: confession.thumbnailUri }}
-                              style={{ width: "100%", height: "100%" }}
-                              contentFit="cover"
-                              transition={200}
-                              placeholder={{ blurhash: "L5H2EC=PM+yV0g-mq.wG9c010J}I" }}
-                            />
-                          ) : (
-                            <View className="w-full h-full bg-gray-800" />
-                          )}
-                          {/* Gradient Overlay */}
-                          <View className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50" />
-                          {/* Play Button */}
-                          <View className="absolute inset-0 items-center justify-center">
-                            <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.9)" />
-                          </View>
-                          {/* Privacy Badge */}
-                          <View className="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded-lg flex-row items-center">
-                            <Ionicons name="eye-off" size={12} color="#8B98A5" />
-                            <Text className="text-gray-300 text-10 ml-1">Face blurred</Text>
-                          </View>
-                        </View>
+                        <VideoThumbnailView
+                          confession={confession}
+                          generatedThumbnail={generatedThumbnails[confession.id]}
+                          onThumbnailGenerated={(uri) =>
+                            setGeneratedThumbnails((prev) => ({ ...prev, [confession.id]: uri }))
+                          }
+                        />
                       )}
                       {/* Video Info */}
                       <View className="p-3 flex-row items-center">
