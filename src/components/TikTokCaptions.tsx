@@ -163,7 +163,8 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
         return { ...baseStyle, top: screenHeight / 2 - 50 };
       case "bottom":
       default:
-        return { ...baseStyle, bottom: 150 };
+        // Position captions higher to avoid overlapping with bottom controls
+        return { ...baseStyle, bottom: 280 };
     }
   };
 

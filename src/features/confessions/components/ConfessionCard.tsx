@@ -47,21 +47,23 @@ export function ConfessionCard({
             <Text className="text-white text-15 leading-5 mb-3">{confession.content}</Text>
           ) : (
             <View>
-              {confession.transcription &&
-                (() => {
-                  // Extract plain text from JSON caption segments or use as-is if plain text
-                  let displayText = confession.transcription;
-                  try {
-                    const parsed = JSON.parse(confession.transcription);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                      // Extract text from caption segments
-                      displayText = parsed.map((seg: any) => seg.text).join(" ");
+              {confession.transcription && (
+                <Text className="text-white text-15 leading-5 mb-3">
+                  {(() => {
+                    // Extract plain text from JSON caption segments or use as-is if plain text
+                    try {
+                      const parsed = JSON.parse(confession.transcription);
+                      if (Array.isArray(parsed) && parsed.length > 0) {
+                        // Extract text from caption segments
+                        return parsed.map((seg: any) => seg.text).join(" ");
+                      }
+                    } catch {
+                      // Already plain text, use as-is
                     }
-                  } catch {
-                    // Already plain text, use as-is
-                  }
-                  return <Text className="text-white text-15 leading-5 mb-3">{displayText}</Text>;
-                })()}
+                    return confession.transcription;
+                  })()}
+                </Text>
+              )}
               <View className="bg-gray-900 border border-gray-700 rounded-2xl p-3 mb-3">
                 <View className="flex-row items-center">
                   <Ionicons name="play-circle" size={24} color="#1D9BF0" />
