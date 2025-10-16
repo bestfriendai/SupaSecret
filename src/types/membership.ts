@@ -81,9 +81,9 @@ export const PLUS_FEATURES: MembershipFeatures = {
 // Default plans
 export const DEFAULT_PLANS: MembershipPlan[] = [
   {
-    id: "supasecret_plus_monthly",
+    id: "toxic_confessions_plus_monthly",
     tier: "plus",
-    name: "SupaSecret Plus",
+    name: "Toxic Confessions Plus",
     description: "Unlock all premium features",
     price: 499, // $4.99
     currency: "USD",
@@ -91,9 +91,9 @@ export const DEFAULT_PLANS: MembershipPlan[] = [
     features: PLUS_FEATURES,
   },
   {
-    id: "supasecret_plus_yearly",
+    id: "toxic_confessions_plus_yearly",
     tier: "plus",
-    name: "SupaSecret Plus (Annual)",
+    name: "Toxic Confessions Plus (Annual)",
     description: "Save 50% with annual billing",
     price: 2999, // $29.99 (vs $59.88 monthly)
     currency: "USD",

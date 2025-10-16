@@ -1,11 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, Animated, Dimensions, ViewStyle, TextStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CaptionSegment, RecognizedWord } from "../hooks/useSpeechRecognition";
 
 // Re-export types for convenience
 export type { CaptionSegment, RecognizedWord } from "../hooks/useSpeechRecognition";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+
+// Responsive spacing based on screen size
+const getResponsiveSpacing = () => {
+  if (screenHeight < 700) {
+    // Small screens (iPhone SE, etc.)
+    return { captionBottom: 180, topOffset: 80, centerOffset: 40 };
+  } else if (screenHeight < 800) {
+    // Medium screens (iPhone 12/13 mini)
+    return { captionBottom: 220, topOffset: 100, centerOffset: 50 };
+  } else if (screenHeight < 900) {
+    // Standard screens (iPhone 12/13/14)
+    return { captionBottom: 260, topOffset: 120, centerOffset: 50 };
+  } else {
+    // Large screens (iPhone Pro Max, Plus)
+    return { captionBottom: 300, topOffset: 140, centerOffset: 60 };
+  }
+};
 
 export interface CaptionStyle {
   id: string;
@@ -118,6 +136,7 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
 }) => {
   const [visibleSegments, setVisibleSegments] = useState<CaptionSegment[]>([]);
   const animatedValues = useRef<Map<string, Animated.Value>>(new Map());
+  const insets = useSafeAreaInsets();
 
   // ✅ FIX: Update visible segments based on current playback position
   useEffect(() => {
@@ -149,26 +168,38 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
   }, [segments, currentSegment, maxLines, animationDuration]);
 
   const getPositionStyle = (): ViewStyle => {
+    const spacing = getResponsiveSpacing();
     const baseStyle: ViewStyle = {
       position: "absolute",
-      left: 20,
-      right: 20,
+      left: 16,
+      right: 16,
       alignItems: "center",
+      zIndex: 100, // Ensure captions are above video but below controls
     };
 
     switch (position) {
       case "top":
-        return { ...baseStyle, top: 100 };
+        return {
+          ...baseStyle,
+          top: Math.max(spacing.topOffset, insets.top + 60),
+        };
       case "center":
-        return { ...baseStyle, top: screenHeight / 2 - 50 };
+        return {
+          ...baseStyle,
+          top: screenHeight / 2 - spacing.centerOffset,
+        };
       case "bottom":
       default:
         // Position captions higher to avoid overlapping with bottom controls
-        return { ...baseStyle, bottom: 280 };
+        // Account for safe area and ensure minimum clearance
+        return {
+          ...baseStyle,
+          bottom: Math.max(spacing.captionBottom, insets.bottom + 160),
+        };
     }
   };
 
-  const getWordStyle = (word: RecognizedWord, isCurrentSegment: boolean): TextStyle => {
+  const _getWordStyle = (_word: RecognizedWord, _isCurrentSegment: boolean): TextStyle => {
     const baseStyle: TextStyle = {
       fontSize: style.fontSize,
       fontWeight: style.fontWeight,
@@ -206,12 +237,12 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
     }
 
     // Confidence-based styling
-    if (showConfidence && word.confidence < 0.7) {
+    if (showConfidence && _word.confidence < 0.7) {
       baseStyle.opacity = 0.6;
     }
 
     // Highlight current/incomplete words
-    if (isCurrentSegment && !word.isComplete) {
+    if (_isCurrentSegment && !_word.isComplete) {
       baseStyle.opacity = 0.8;
       baseStyle.textDecorationLine = "underline";
     }
@@ -219,12 +250,9 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
     return baseStyle;
   };
 
-  const renderSegment = (segment: CaptionSegment, index: number) => {
+  const renderSegment = (segment: CaptionSegment) => {
     const animValue = animatedValues.current.get(segment.id);
     if (!animValue) return null;
-
-    const isCurrentSegment = segment.id === currentSegment?.id;
-    const words = segment.words;
 
     // ✅ FIX: Render as a single text block with bold styling (like TikTok)
     return (
@@ -264,10 +292,26 @@ export const TikTokCaptions: React.FC<TikTokCaptionsProps> = ({
 
   return (
     <View style={[getPositionStyle(), containerStyle]} pointerEvents="none">
-      {visibleSegments.map((segment, index) => renderSegment(segment, index))}
+      {visibleSegments.map((segment) => renderSegment(segment))}
     </View>
   );
 };
+
+// Get responsive font sizes based on screen width
+const getResponsiveFontSize = () => {
+  if (screenWidth < 375) {
+    // Small screens (iPhone SE)
+    return { caption: 22, lineHeight: 28 };
+  } else if (screenWidth < 414) {
+    // Medium screens (iPhone 12/13 mini)
+    return { caption: 24, lineHeight: 32 };
+  } else {
+    // Standard and large screens
+    return { caption: 28, lineHeight: 36 };
+  }
+};
+
+const responsiveFontSize = getResponsiveFontSize();
 
 const styles = StyleSheet.create({
   segmentContainer: {
@@ -276,22 +320,22 @@ const styles = StyleSheet.create({
   },
   captionBox: {
     backgroundColor: "rgba(0, 0, 0, 0.75)",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: screenWidth < 375 ? 16 : 20,
+    paddingVertical: screenWidth < 375 ? 8 : 10,
     borderRadius: 8,
-    maxWidth: screenWidth - 60,
+    maxWidth: screenWidth - (screenWidth < 375 ? 80 : 60),
   },
   captionText: {
-    fontSize: 28,
+    fontSize: responsiveFontSize.caption,
     fontWeight: "900",
     color: "#FFFFFF",
     textAlign: "center",
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: screenWidth < 375 ? 0.5 : 1,
     textShadowColor: "rgba(0, 0, 0, 0.9)",
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
-    lineHeight: 36,
+    lineHeight: responsiveFontSize.lineHeight,
   },
   wordsContainer: {
     flexDirection: "row",

@@ -575,8 +575,8 @@ export class SubscriptionService {
   static getMockOfferings(): SubscriptionTier[] {
     return [
       {
-        id: "supasecret_plus_monthly",
-        name: "SupaSecret Plus Monthly",
+        id: "toxic_confessions_plus_monthly",
+        name: "Toxic Confessions Plus Monthly",
         price: "$4.99/month",
         features: [
           "Ad-free experience",
@@ -590,8 +590,8 @@ export class SubscriptionService {
         ],
       },
       {
-        id: "supasecret_plus_annual",
-        name: "SupaSecret Plus Annual",
+        id: "toxic_confessions_plus_annual",
+        name: "Toxic Confessions Plus Annual",
         price: "$29.99/year",
         features: [
           "Ad-free experience",

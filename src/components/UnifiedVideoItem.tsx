@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { format, isValid } from "date-fns";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useConfessionStore } from "../state/confessionStore";
 import { VideoDataService } from "../services/VideoDataService";
@@ -30,6 +31,19 @@ import { TikTokCaptions, TIKTOK_CAPTION_STYLES } from "./TikTokCaptions";
 import type { CaptionSegment } from "./TikTokCaptions";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Responsive spacing based on screen size
+const getResponsiveSpacing = () => {
+  if (SCREEN_HEIGHT < 700) {
+    return { infoBottom: 80, muteTop: 50, closeTop: 50 };
+  } else if (SCREEN_HEIGHT < 800) {
+    return { infoBottom: 90, muteTop: 54, closeTop: 54 };
+  } else if (SCREEN_HEIGHT < 900) {
+    return { infoBottom: 100, muteTop: 60, closeTop: 60 };
+  } else {
+    return { infoBottom: 120, muteTop: 64, closeTop: 64 };
+  }
+};
 
 const FALLBACK_USERNAME = "@anonymous";
 const DOUBLE_TAP_MAX_DELAY = 280;
@@ -48,6 +62,24 @@ const sanitizeUri = (uri?: string | null) => {
     return "";
   }
   return uri.trim();
+};
+
+// Helper function to extract plain text from transcription JSON
+const extractTranscriptionText = (transcription: string | null | undefined): string => {
+  if (!transcription) return "";
+
+  try {
+    // Try to parse as JSON (caption segments format)
+    const parsed = JSON.parse(transcription);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Extract text from all segments
+      return parsed.map((seg: any) => seg.text).join(" ");
+    }
+  } catch {
+    // If parsing fails, it's already plain text
+  }
+
+  return transcription;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -69,6 +101,8 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   variant = "tiktok",
 }: VideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
+  const insets = useSafeAreaInsets();
+  const spacing = getResponsiveSpacing();
 
   const [isLiked, setIsLiked] = useState(Boolean(confession.isLiked));
   const [likesCount, setLikesCount] = useState(confession.likes || 0);
@@ -82,7 +116,7 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   // Caption state
   const [captionSegments, setCaptionSegments] = useState<CaptionSegment[]>([]);
   const [currentCaptionSegment, setCurrentCaptionSegment] = useState<CaptionSegment | null>(null);
-  const [showCaptions, setShowCaptions] = useState(true);
+  const [showCaptions] = useState(true);
 
   const heartScale = useSharedValue(0.5);
   const heartOpacity = useSharedValue(0);
@@ -227,7 +261,8 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
   }, [videoPlayer]);
 
   const description = useMemo(() => {
-    return (confession.transcription && confession.transcription.trim()) || confession.content;
+    const transcriptionText = extractTranscriptionText(confession.transcription);
+    return transcriptionText || confession.content;
   }, [confession.content, confession.transcription]);
 
   const videoUri = useMemo(() => sanitizeUri(confession.videoUri), [confession.videoUri]);
@@ -549,7 +584,10 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
         pointerEvents="none"
       />
 
-      <Animated.View style={[styles.infoOverlay, infoOverlayStyle]} pointerEvents="box-none">
+      <Animated.View
+        style={[styles.infoOverlay, { bottom: Math.max(spacing.infoBottom, insets.bottom + 80) }, infoOverlayStyle]}
+        pointerEvents="box-none"
+      >
         <View style={styles.textColumn}>
           <View style={styles.userRow}>
             <Text style={styles.usernameText}>{FALLBACK_USERNAME}</Text>
@@ -581,7 +619,7 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
       />
 
       <AnimatedPressable
-        style={[styles.muteButton, muteButtonAnimatedStyle]}
+        style={[styles.muteButton, { top: Math.max(spacing.muteTop, insets.top + 10) }, muteButtonAnimatedStyle]}
         onPress={handleMuteToggle}
         accessibilityRole="button"
         accessibilityLabel={muted ? "Unmute video" : "Mute video"}
@@ -594,7 +632,7 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
 
       {onClose && (
         <AnimatedPressable
-          style={[styles.closeButton, closeButtonAnimatedStyle]}
+          style={[styles.closeButton, { top: Math.max(spacing.closeTop, insets.top + 10) }, closeButtonAnimatedStyle]}
           onPress={handleClose}
           accessibilityRole="button"
           accessibilityLabel="Close video feed"
@@ -682,11 +720,11 @@ const styles = {
   },
   infoOverlay: {
     position: "absolute" as const,
-    bottom: 100,
     left: 0,
     right: 0,
     flexDirection: "row" as const,
-    paddingHorizontal: 16,
+    paddingHorizontal: SCREEN_WIDTH < 375 ? 12 : 16,
+    zIndex: 100,
   },
   textColumn: {
     flex: 1,
@@ -699,9 +737,9 @@ const styles = {
   },
   usernameText: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: SCREEN_WIDTH < 375 ? 14 : 16,
     fontWeight: "700" as const,
-    marginBottom: 8,
+    marginBottom: SCREEN_HEIGHT < 700 ? 6 : 8,
     textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -714,8 +752,8 @@ const styles = {
   },
   descriptionText: {
     color: "#ffffff",
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: SCREEN_WIDTH < 375 ? 13 : 14,
+    lineHeight: SCREEN_WIDTH < 375 ? 18 : 20,
     textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -743,25 +781,25 @@ const styles = {
   interactionOverlay: {
     position: "absolute" as const,
     right: 0,
-    bottom: 100,
+    bottom: SCREEN_HEIGHT < 700 ? 80 : 100,
     zIndex: 10,
   },
   controlButton: {
     backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 22,
-    padding: 11,
+    borderRadius: SCREEN_WIDTH < 375 ? 20 : 22,
+    padding: SCREEN_WIDTH < 375 ? 10 : 11,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
   muteButton: {
     position: "absolute" as const,
-    top: 60,
-    right: 16,
+    right: SCREEN_WIDTH < 375 ? 12 : 16,
+    zIndex: 200,
   },
   closeButton: {
     position: "absolute" as const,
-    top: 60,
-    left: 16,
+    left: SCREEN_WIDTH < 375 ? 12 : 16,
+    zIndex: 200,
   },
   errorContainer: {
     flex: 1,

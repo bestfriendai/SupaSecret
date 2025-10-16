@@ -154,7 +154,7 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
             <Ionicons name="close" size={24} color="#FFFFFF" />
           </Pressable>
 
-          <Text className="text-white text-28 font-bold text-center mb-2">Unlock SupaSecret Plus</Text>
+          <Text className="text-white text-28 font-bold text-center mb-2">Unlock Toxic Confessions Plus</Text>
           <Text className="text-gray-400 text-16 text-center">Get the most out of your anonymous confessions</Text>
         </View>
 

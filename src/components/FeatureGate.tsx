@@ -57,7 +57,7 @@ export default function FeatureGate({
 function getFeatureDescription(feature: keyof MembershipFeatures): string {
   switch (feature) {
     case "adFree":
-      return "Enjoy SupaSecret without any ads for a cleaner experience.";
+      return "Enjoy Toxic Confessions without any ads for a cleaner experience.";
     case "longerVideos":
       return "Upload videos up to 5 minutes long instead of the 1-minute limit.";
     case "higherQuality":
@@ -73,7 +73,7 @@ function getFeatureDescription(feature: keyof MembershipFeatures): string {
     case "earlyAccess":
       return "Get early access to new features before they're released to everyone.";
     default:
-      return "This feature requires SupaSecret Plus membership.";
+      return "This feature requires Toxic Confessions Plus membership.";
   }
 }
 

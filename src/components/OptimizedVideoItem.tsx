@@ -6,13 +6,28 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { format, isValid } from "date-fns";
 import * as Haptics from "expo-haptics";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useConfessionStore } from "../state/confessionStore";
 import { VideoDataService } from "../services/VideoDataService";
 import type { Confession } from "../types/confession";
 import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
+import { TikTokCaptions, TIKTOK_CAPTION_STYLES, type CaptionSegment } from "./TikTokCaptions";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Responsive spacing based on screen size
+const getResponsiveBottomSpacing = () => {
+  if (SCREEN_HEIGHT < 700) {
+    return { content: 140, actions: 80, closeButton: 50 };
+  } else if (SCREEN_HEIGHT < 800) {
+    return { content: 160, actions: 90, closeButton: 54 };
+  } else if (SCREEN_HEIGHT < 900) {
+    return { content: 180, actions: 100, closeButton: 60 };
+  } else {
+    return { content: 200, actions: 120, closeButton: 64 };
+  }
+};
 
 const FALLBACK_USERNAME = "@anonymous";
 const DOUBLE_TAP_MAX_DELAY = 280;
@@ -24,6 +39,24 @@ const formatTimestamp = (timestamp: string | number) => {
     return "Just now";
   }
   return format(date, "MMM d, h:mm a");
+};
+
+// Helper function to extract plain text from transcription JSON
+const extractTranscriptionText = (transcription: string | null | undefined): string => {
+  if (!transcription) return "";
+
+  try {
+    // Try to parse as JSON (caption segments format)
+    const parsed = JSON.parse(transcription);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Extract text from all segments
+      return parsed.map((seg: any) => seg.text).join(" ");
+    }
+  } catch {
+    // If parsing fails, it's already plain text
+  }
+
+  return transcription;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -56,6 +89,8 @@ export default function OptimizedVideoItem({
   networkStatus = true,
 }: OptimizedVideoItemProps) {
   const toggleLike = useConfessionStore((state) => state.toggleLike);
+  const insets = useSafeAreaInsets();
+  const spacing = getResponsiveBottomSpacing();
 
   const [isLiked, setIsLiked] = useState(Boolean(confession.isLiked));
   const [likesCount, setLikesCount] = useState(confession.likes || 0);
@@ -66,6 +101,11 @@ export default function OptimizedVideoItem({
   const likeInFlightRef = useRef(false);
   const viewTrackedRef = useRef(false);
   const lastTapRef = useRef(0);
+
+  // Caption state
+  const [captionSegments, setCaptionSegments] = useState<CaptionSegment[]>([]);
+  const [currentCaptionSegment, setCurrentCaptionSegment] = useState<CaptionSegment | null>(null);
+  const [showCaptions] = useState(true);
 
   // Animation values
   const likeScale = useSharedValue(1);
@@ -110,6 +150,97 @@ export default function OptimizedVideoItem({
       sourceSubscription.remove();
     };
   }, [videoPlayer]);
+
+  // Parse transcription into caption segments
+  useEffect(() => {
+    if (!confession.transcription) {
+      setCaptionSegments([]);
+      return;
+    }
+
+    try {
+      // Try to parse as JSON (from AssemblyAI format with word-level timing)
+      const parsed = JSON.parse(confession.transcription);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Already in segment format with word-level timing
+        setCaptionSegments(parsed);
+      } else {
+        // Convert plain text to segments (fallback)
+        const words = confession.transcription.split(" ");
+        const segments: CaptionSegment[] = [];
+        const wordsPerSegment = 8;
+
+        for (let i = 0; i < words.length; i += wordsPerSegment) {
+          const segmentWords = words.slice(i, i + wordsPerSegment);
+          const startTime = (i / words.length) * (videoPlayer?.duration || 30);
+          const endTime = ((i + wordsPerSegment) / words.length) * (videoPlayer?.duration || 30);
+
+          segments.push({
+            id: `segment_${i}`,
+            text: segmentWords.join(" "),
+            startTime,
+            endTime,
+            isComplete: true,
+            words: segmentWords.map((word, idx) => ({
+              word,
+              startTime: startTime + (idx * (endTime - startTime)) / segmentWords.length,
+              endTime: startTime + ((idx + 1) * (endTime - startTime)) / segmentWords.length,
+              confidence: 1.0,
+              isComplete: true,
+            })),
+          });
+        }
+
+        setCaptionSegments(segments);
+      }
+    } catch (error) {
+      // Plain text transcription - convert to segments (fallback)
+      const words = confession.transcription.split(" ");
+      const segments: CaptionSegment[] = [];
+      const wordsPerSegment = 8;
+
+      for (let i = 0; i < words.length; i += wordsPerSegment) {
+        const segmentWords = words.slice(i, i + wordsPerSegment);
+        const startTime = (i / words.length) * (videoPlayer?.duration || 30);
+        const endTime = ((i + wordsPerSegment) / words.length) * (videoPlayer?.duration || 30);
+
+        segments.push({
+          id: `segment_${i}`,
+          text: segmentWords.join(" "),
+          startTime,
+          endTime,
+          isComplete: true,
+          words: segmentWords.map((word, idx) => ({
+            word,
+            startTime: startTime + (idx * (endTime - startTime)) / segmentWords.length,
+            endTime: startTime + ((idx + 1) * (endTime - startTime)) / segmentWords.length,
+            confidence: 1.0,
+            isComplete: true,
+          })),
+        });
+      }
+
+      setCaptionSegments(segments);
+    }
+  }, [confession.transcription, videoPlayer?.duration]);
+
+  // Sync captions with video playback
+  useEffect(() => {
+    if (!showCaptions || captionSegments.length === 0 || !videoPlayer || !isActive) {
+      setCurrentCaptionSegment(null);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const currentTime = videoPlayer.currentTime;
+      const segment = captionSegments.find(
+        (seg) => currentTime >= seg.startTime && currentTime <= (seg.endTime || seg.startTime + 3),
+      );
+      setCurrentCaptionSegment(segment || null);
+    }, 100); // Update every 100ms for smooth caption sync
+
+    return () => clearInterval(interval);
+  }, [showCaptions, captionSegments, videoPlayer, isActive]);
 
   // Track video view when it becomes active
   useEffect(() => {
@@ -303,29 +434,48 @@ export default function OptimizedVideoItem({
         <LinearGradient colors={["transparent", "rgba(0,0,0,0.3)", "rgba(0,0,0,0.8)"]} style={styles.overlay} />
       </AnimatedPressable>
 
+      {/* TikTok-style Captions */}
+      {showCaptions && captionSegments.length > 0 && isActive && (
+        <TikTokCaptions
+          segments={captionSegments}
+          currentSegment={currentCaptionSegment}
+          style={TIKTOK_CAPTION_STYLES[0]}
+          position="bottom"
+        />
+      )}
+
       {/* Content Overlay */}
       <View style={styles.contentOverlay}>
         {/* Close Button */}
         {onClose && (
-          <Pressable style={styles.closeButton} onPress={onClose}>
+          <Pressable
+            style={[styles.closeButton, { top: Math.max(spacing.closeButton, insets.top + 10) }]}
+            onPress={onClose}
+          >
             <Ionicons name="close" size={24} color="#ffffff" />
           </Pressable>
         )}
 
         {/* Bottom Content */}
-        <View style={styles.bottomContent}>
+        <View style={[styles.bottomContent, { paddingBottom: Math.max(spacing.content, insets.bottom + 120) }]}>
           {/* Left Content */}
           <View style={styles.leftContent}>
             <Text style={styles.username}>{FALLBACK_USERNAME}</Text>
-            <Text style={styles.content} numberOfLines={3}>
-              {confession.content}
+            <Text style={styles.content} numberOfLines={2}>
+              {extractTranscriptionText(confession.transcription) || confession.content}
             </Text>
-            <Text style={styles.timestamp}>{formatTimestamp(confession.timestamp)}</Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.timestamp}>{formatTimestamp(confession.timestamp)}</Text>
+              <View style={styles.viewsRow}>
+                <Ionicons name="eye-outline" size={12} color="rgba(255,255,255,0.6)" />
+                <Text style={styles.viewsText}>{viewsCount.toLocaleString()} views</Text>
+              </View>
+            </View>
           </View>
         </View>
 
         {/* Right Actions - Positioned Absolutely */}
-        <View style={styles.rightActions}>
+        <View style={[styles.rightActions, { bottom: Math.max(spacing.actions, insets.bottom + 80) }]}>
           {/* Like Button */}
           <AnimatedPressable style={[styles.actionButton, likeButtonStyle]} onPress={handleLike}>
             <Ionicons name={isLiked ? "heart" : "heart-outline"} size={28} color={isLiked ? "#ff3040" : "#ffffff"} />
@@ -343,12 +493,6 @@ export default function OptimizedVideoItem({
             <Ionicons name="arrow-redo-outline" size={28} color="#ffffff" />
             <Text style={styles.actionText}>Share</Text>
           </Pressable>
-
-          {/* Views */}
-          <View style={styles.actionButton}>
-            <Ionicons name="eye-outline" size={28} color="#ffffff" />
-            <Text style={styles.actionText}>{viewsCount}</Text>
-          </View>
 
           {/* Mute Button */}
           <Pressable style={styles.actionButton} onPress={onToggleMute}>
@@ -406,7 +550,6 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    top: 60,
     right: 20,
     width: 40,
     height: 40,
@@ -414,52 +557,74 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 200,
   },
   bottomContent: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingHorizontal: SCREEN_WIDTH < 375 ? 16 : 20,
   },
   leftContent: {
-    maxWidth: "75%",
+    maxWidth: "70%",
   },
   username: {
     color: "#ffffff",
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
-    marginBottom: 6,
+    marginBottom: 8,
+    textShadowColor: "rgba(0,0,0,0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   content: {
     color: "#ffffff",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 10,
     fontWeight: "400",
+    textShadowColor: "rgba(0,0,0,0.75)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
   },
   timestamp: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 13,
-    fontWeight: "400",
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  viewsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  viewsText: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 12,
+    fontWeight: "500",
   },
   rightActions: {
     position: "absolute",
-    right: 15,
-    bottom: 100,
+    right: SCREEN_WIDTH < 375 ? 12 : 15,
     alignItems: "center",
-    gap: 20,
+    gap: SCREEN_HEIGHT < 700 ? 16 : 20,
+    zIndex: 150,
   },
   actionButton: {
     alignItems: "center",
     gap: 4,
-    minWidth: 48,
-    paddingVertical: 6,
+    minWidth: SCREEN_WIDTH < 375 ? 44 : 48,
+    paddingVertical: SCREEN_HEIGHT < 700 ? 4 : 6,
   },
   actionText: {
     color: "#ffffff",
-    fontSize: 12,
+    fontSize: SCREEN_WIDTH < 375 ? 11 : 12,
     fontWeight: "600",
     textAlign: "center",
   },

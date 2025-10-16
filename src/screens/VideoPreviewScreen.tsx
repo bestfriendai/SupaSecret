@@ -1,10 +1,25 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { View, Text, Pressable, ActivityIndicator, Alert, StyleSheet } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, Pressable, ActivityIndicator, Alert, StyleSheet, Dimensions } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEventListener } from "expo";
+
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Responsive spacing based on screen size
+const getResponsiveControlSpacing = () => {
+  if (SCREEN_HEIGHT < 700) {
+    return { bottomPadding: 20, topPadding: 24 };
+  } else if (SCREEN_HEIGHT < 800) {
+    return { bottomPadding: 28, topPadding: 28 };
+  } else if (SCREEN_HEIGHT < 900) {
+    return { bottomPadding: 32, topPadding: 32 };
+  } else {
+    return { bottomPadding: 40, topPadding: 36 };
+  }
+};
 
 import * as Haptics from "expo-haptics";
 import { File } from "expo-file-system";
@@ -40,6 +55,8 @@ export default function VideoPreviewScreen() {
   const navigation = useNavigation();
   const route = useRoute<VideoPreviewScreenRouteProp>();
   const { processedVideo } = route.params;
+  const insets = useSafeAreaInsets();
+  const spacing = getResponsiveControlSpacing();
 
   const [isSharing, setIsSharing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -774,74 +791,65 @@ export default function VideoPreviewScreen() {
           </View>
         )}
         {/* Bottom Controls Overlay - Floating on video */}
-        <View style={styles.bottomControlsOverlay}>
-          {/* COMPACT BLUR BUTTON */}
-          {!hasBlurApplied && !isBlurring && isBlurAvailable && (
-            <Pressable
-              style={styles.compactBlurButton}
-              onPress={handleBlurFaces}
-              disabled={isSharing || isDownloading || isAddingCaptions}
-            >
-              <View style={styles.compactButtonContent}>
-                <Ionicons name="eye-off" size={20} color="#8B5CF6" />
-                <Text style={styles.compactButtonText}>Blur Faces</Text>
+        <View
+          style={[
+            styles.bottomControlsOverlay,
+            {
+              paddingBottom: Math.max(spacing.bottomPadding, insets.bottom + 20),
+              paddingTop: spacing.topPadding,
+              paddingHorizontal: SCREEN_WIDTH < 375 ? 16 : 20,
+            },
+          ]}
+        >
+          {/* COMPACT FEATURE ROW */}
+          <View style={styles.featureRow}>
+            {/* Blur Faces */}
+            {!hasBlurApplied && !isBlurring && isBlurAvailable && (
+              <Pressable
+                style={styles.miniFeatureButton}
+                onPress={handleBlurFaces}
+                disabled={isSharing || isDownloading || isAddingCaptions}
+              >
+                <Ionicons name="eye-off" size={18} color="#8B5CF6" />
+                <Text style={styles.miniFeatureText}>Blur</Text>
+              </Pressable>
+            )}
+
+            {hasBlurApplied && (
+              <View style={styles.miniFeatureButtonActive}>
+                <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                <Text style={styles.miniFeatureTextActive}>Blurred</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
-            </Pressable>
-          )}
+            )}
 
-          {/* SUCCESS BANNER - AFTER BLUR */}
-          {hasBlurApplied && (
-            <View style={styles.successBanner}>
-              <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
-              <Text style={styles.successText}>Faces Blurred Successfully!</Text>
-            </View>
-          )}
+            {/* Add Captions */}
+            {!hasCaptionsApplied && !isAddingCaptions && (
+              <Pressable
+                style={styles.miniFeatureButton}
+                onPress={handleAddCaptions}
+                disabled={isSharing || isDownloading || isBlurring}
+              >
+                <Ionicons name="chatbubble-ellipses" size={18} color="#3B82F6" />
+                <Text style={styles.miniFeatureText}>Captions</Text>
+              </Pressable>
+            )}
 
-          {/* COMPACT CAPTION SECTION */}
-          {!hasCaptionsApplied && !isAddingCaptions && (
-            <Pressable
-              style={styles.compactCaptionButton}
-              onPress={handleAddCaptions}
-              disabled={isSharing || isDownloading || isBlurring}
-            >
-              <View style={styles.compactButtonContent}>
-                <Ionicons name="chatbubble-ellipses" size={20} color="#3B82F6" />
-                <Text style={styles.compactButtonText}>Add Captions</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#8B98A5" />
-            </Pressable>
-          )}
-
-          {/* CAPTION TOGGLE - AFTER CAPTIONS ADDED */}
-          {hasCaptionsApplied && (
-            <Pressable
-              style={[styles.compactCaptionButton, showCaptions && styles.compactButtonActive]}
-              onPress={() => setShowCaptions(!showCaptions)}
-            >
-              <View style={styles.compactButtonContent}>
+            {hasCaptionsApplied && (
+              <Pressable
+                style={[styles.miniFeatureButton, showCaptions && styles.miniFeatureButtonActive]}
+                onPress={() => setShowCaptions(!showCaptions)}
+              >
                 <Ionicons
                   name={showCaptions ? "eye" : "eye-off"}
-                  size={20}
-                  color={showCaptions ? "#10B981" : "#6B7280"}
+                  size={16}
+                  color={showCaptions ? "#22C55E" : "#8B98A5"}
                 />
-                <Text style={styles.compactButtonText}>{showCaptions ? "Captions On" : "Captions Off"}</Text>
-              </View>
-              <Ionicons
-                name={showCaptions ? "checkmark-circle" : "ellipse-outline"}
-                size={20}
-                color={showCaptions ? "#10B981" : "#6B7280"}
-              />
-            </Pressable>
-          )}
-
-          {/* CAPTION SUCCESS BANNER */}
-          {hasCaptionsApplied && (
-            <View style={styles.successBanner}>
-              <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
-              <Text style={styles.successText}>Captions Added Successfully!</Text>
-            </View>
-          )}
+                <Text style={showCaptions ? styles.miniFeatureTextActive : styles.miniFeatureText}>
+                  {showCaptions ? "CC On" : "CC Off"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
 
           {/* Caption Progress Overlay */}
           {isAddingCaptions && (
@@ -855,27 +863,6 @@ export default function VideoPreviewScreen() {
             </View>
           )}
 
-          <View style={styles.infoContainer}>
-            <Text style={styles.title}>Video Preview</Text>
-            <Text style={styles.subtitle}>
-              {processedVideo.transcription
-                ? (() => {
-                    // Parse caption segments and extract plain text
-                    try {
-                      const parsed = JSON.parse(processedVideo.transcription);
-                      if (Array.isArray(parsed) && parsed.length > 0) {
-                        const fullText = parsed.map((seg: any) => seg.text).join(" ");
-                        return `"${fullText.substring(0, 80)}${fullText.length > 80 ? "..." : ""}"`;
-                      }
-                    } catch {
-                      // Plain text transcription
-                    }
-                    return `"${processedVideo.transcription.substring(0, 80)}${processedVideo.transcription.length > 80 ? "..." : ""}"`;
-                  })()
-                : "Your anonymous video confession"}
-            </Text>
-          </View>
-
           {/* Error Message */}
           {shareError && (
             <View style={styles.errorContainer}>
@@ -884,67 +871,59 @@ export default function VideoPreviewScreen() {
             </View>
           )}
 
-          {/* Primary Action - Share */}
-          <Pressable
-            style={[styles.primaryActionButton, (isSharing || isBlurring || isDownloading) && styles.buttonDisabled]}
-            onPress={handleShare}
-            disabled={isSharing || isBlurring || isDownloading}
-          >
-            {isSharing ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <Ionicons name="share" size={24} color="#ffffff" />
-            )}
-            <Text style={styles.primaryActionText}>{isSharing ? "Sharing..." : "Share"}</Text>
-          </Pressable>
-
-          {/* Secondary Actions Row */}
-          <View style={styles.secondaryButtonContainer}>
+          {/* Action Buttons - Compact Grid */}
+          <View style={styles.actionGrid}>
+            {/* Share Button - Full Width */}
             <Pressable
-              style={[styles.secondaryActionButton, styles.retakeButton]}
-              onPress={handleRetake}
+              style={[styles.compactPrimaryButton, (isSharing || isBlurring || isDownloading) && styles.buttonDisabled]}
+              onPress={handleShare}
               disabled={isSharing || isBlurring || isDownloading}
             >
-              <Ionicons name="camera" size={20} color="#ffffff" />
-              <Text style={styles.secondaryActionText}>Retake</Text>
-            </Pressable>
-
-            <Pressable
-              style={[
-                styles.secondaryActionButton,
-                styles.downloadButton,
-                (isSharing || isBlurring || isDownloading) && styles.buttonDisabled,
-              ]}
-              onPress={handleDownload}
-              disabled={isSharing || isBlurring || isDownloading}
-            >
-              {isDownloading ? (
+              {isSharing ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Ionicons name="download" size={20} color="#ffffff" />
+                <Ionicons name="share" size={20} color="#ffffff" />
               )}
-              <Text style={styles.secondaryActionText}>
-                {isDownloading ? "Saving..." : hasBlurApplied ? "Download Blurred" : "Download"}
-              </Text>
+              <Text style={styles.compactPrimaryText}>{isSharing ? "Sharing..." : "Share"}</Text>
             </Pressable>
 
-            <Pressable
-              style={[styles.secondaryActionButton, styles.discardButton]}
-              onPress={handleDiscard}
-              disabled={isSharing || isBlurring || isDownloading}
-            >
-              <Ionicons name="trash" size={20} color="#ffffff" />
-              <Text style={styles.secondaryActionText}>Discard</Text>
-            </Pressable>
-          </View>
+            {/* Secondary Actions - 3 Columns */}
+            <View style={styles.compactSecondaryRow}>
+              <Pressable
+                style={[styles.compactSecondaryButton, styles.retakeButton]}
+                onPress={handleRetake}
+                disabled={isSharing || isBlurring || isDownloading}
+              >
+                <Ionicons name="camera" size={18} color="#ffffff" />
+                <Text style={styles.compactSecondaryText}>Retake</Text>
+              </Pressable>
 
-          {/* Download Info */}
-          <View style={styles.downloadInfo}>
-            <Text style={styles.downloadInfoText}>
-              {hasBlurApplied
-                ? "📱 Download will save the blurred version to your gallery"
-                : "📱 Download will save the original video to your gallery"}
-            </Text>
+              <Pressable
+                style={[
+                  styles.compactSecondaryButton,
+                  styles.downloadButton,
+                  (isSharing || isBlurring || isDownloading) && styles.buttonDisabled,
+                ]}
+                onPress={handleDownload}
+                disabled={isSharing || isBlurring || isDownloading}
+              >
+                {isDownloading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="download" size={18} color="#ffffff" />
+                )}
+                <Text style={styles.compactSecondaryText}>{isDownloading ? "..." : "Save"}</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.compactSecondaryButton, styles.discardButton]}
+                onPress={handleDiscard}
+                disabled={isSharing || isBlurring || isDownloading}
+              >
+                <Ionicons name="trash" size={18} color="#ffffff" />
+                <Text style={styles.compactSecondaryText}>Delete</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </View>
@@ -973,9 +952,83 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    zIndex: 100,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  featureRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+    flexWrap: "wrap",
+  },
+  miniFeatureButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  miniFeatureButtonActive: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(34, 197, 94, 0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#22C55E",
+  },
+  miniFeatureText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  miniFeatureTextActive: {
+    color: "#22C55E",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  actionGrid: {
+    gap: 8,
+  },
+  compactPrimaryButton: {
+    backgroundColor: "#1D9BF0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    paddingBottom: 44,
-    paddingTop: 32,
+    borderRadius: 12,
+    gap: 8,
+  },
+  compactPrimaryText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  compactSecondaryRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  compactSecondaryButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 4,
+  },
+  compactSecondaryText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "600",
   },
   featurePills: {
     flexDirection: "row",
@@ -1064,21 +1117,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 24,
   },
-  infoContainer: {
-    marginBottom: 24,
-  },
-  title: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#8B98A5",
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
   featureList: {
     gap: 8,
   },
@@ -1091,46 +1129,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginLeft: 8,
   },
-  primaryActionButton: {
-    backgroundColor: "#1D9BF0",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-    gap: 12,
-    marginBottom: 16,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  primaryActionText: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  secondaryButtonContainer: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  secondaryActionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    gap: 6,
-  },
-  secondaryActionText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   retakeButton: {
     backgroundColor: "#374151",
   },
@@ -1142,16 +1140,6 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  downloadInfo: {
-    marginTop: 12,
-    paddingHorizontal: 4,
-  },
-  downloadInfoText: {
-    color: "#8B98A5",
-    fontSize: 12,
-    textAlign: "center",
-    lineHeight: 16,
   },
   blurSection: {
     backgroundColor: "#8B5CF6",
@@ -1269,58 +1257,6 @@ const styles = StyleSheet.create({
     color: "#DBEAFE",
     marginTop: 12,
     textAlign: "center",
-  },
-  compactBlurButton: {
-    backgroundColor: "#1F2937",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#8B5CF6",
-  },
-  compactCaptionButton: {
-    backgroundColor: "#1F2937",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#3B82F6",
-  },
-  compactButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  compactButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  compactButtonActive: {
-    backgroundColor: "#1F2937",
-    borderColor: "#10B981",
-  },
-  successBanner: {
-    backgroundColor: "#DCFCE7",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 2,
-    borderColor: "#22C55E",
-  },
-  successText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#166534",
   },
   errorContainer: {
     flexDirection: "row",
