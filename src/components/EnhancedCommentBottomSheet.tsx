@@ -856,9 +856,7 @@ const EnhancedCommentBottomSheet = React.memo(
                 key={filter}
                 onPress={() => setSelectedFilter(filter)}
                 className={`px-4 py-2 rounded-full ${
-                  selectedFilter === filter
-                    ? "bg-purple-500 shadow-lg"
-                    : "bg-gray-800/80 border border-gray-700"
+                  selectedFilter === filter ? "bg-purple-500 shadow-lg" : "bg-gray-800/80 border border-gray-700"
                 }`}
               >
                 <Text className={`text-sm font-semibold ${selectedFilter === filter ? "text-white" : "text-gray-400"}`}>

@@ -59,7 +59,9 @@ export default function AdBanner({ placement, index = 0 }: AdBannerProps) {
 
         <View className="flex-1">
           <Text className="text-white text-15 font-semibold mb-1">Tired of ads?</Text>
-          <Text className="text-gray-400 text-13 mb-2">Upgrade to Toxic Confessions Plus for an ad-free experience</Text>
+          <Text className="text-gray-400 text-13 mb-2">
+            Upgrade to Toxic Confessions Plus for an ad-free experience
+          </Text>
 
           <Pressable onPress={handleUpgradePress} className="bg-blue-600 rounded-lg py-2 px-4 self-start">
             <Text className="text-white text-12 font-medium">Learn More</Text>

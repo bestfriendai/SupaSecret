@@ -407,12 +407,16 @@ export const useConfessionStore = create<ConfessionState>()(
                 }
                 await deleteVideoFile(confession.videoUri);
               } catch (uploadError) {
-                if (__DEV__) {
-                  console.error("Video upload failed:", uploadError);
-                }
-                // If upload fails, queue for retry
+                console.error("❌ Video upload failed:", uploadError);
+
+                // Queue for retry but also throw error to notify user
                 await get().queueTempConfession(confession, { type: confession.type, uploadFailed: true });
-                return;
+
+                throw new Error(
+                  uploadError instanceof Error
+                    ? `Video upload failed: ${uploadError.message}`
+                    : "Video upload failed. Your confession has been saved and will retry automatically when connection improves."
+                );
               }
             } else {
               // Already a remote URL (likely a signed URL) – do not persist path to DB

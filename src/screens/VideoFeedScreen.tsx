@@ -48,7 +48,7 @@ function VideoFeedScreen() {
   }, [navigation, validator]);
 
   return (
-    <View className="flex-1 bg-black">
+    <View style={{ flex: 1, backgroundColor: "#000000" }}>
       <OptimizedTikTokVideoFeed onClose={handleClose} />
     </View>
   );

@@ -1,9 +1,11 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { View, Text, Pressable, Share, Modal } from "react-native";
+import { View, Text, Pressable, Share, Modal, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import { useSavedStore } from "../state/savedStore";
+import { useConfessionStore } from "../state/confessionStore";
+import { useAuthStore } from "../state/authStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import ReportModal from "./ReportModal";
 import { BlurView } from "expo-blur";
@@ -22,6 +24,13 @@ export default function FeedActionSheet({ confessionId, confessionText, bottomSh
 
   const { saveConfession, unsaveConfession, isSaved } = useSavedStore();
   const { impactAsync } = usePreferenceAwareHaptics();
+  const confessions = useConfessionStore((state) => state.confessions);
+  const deleteUserConfession = useConfessionStore((state) => state.deleteUserConfession);
+  const currentUser = useAuthStore((state) => state.user);
+
+  // Find the confession to check ownership
+  const confession = confessions.find((c) => c.id === confessionId);
+  const isOwnConfession = currentUser && confession && confession.user_id === currentUser.id;
 
   // Bottom sheet configuration
   const snapPoints = useMemo(() => ["45%"], []);
@@ -104,6 +113,31 @@ export default function FeedActionSheet({ confessionId, confessionText, bottomSh
     }, 300);
   }, [bottomSheetModalRef, impactAsync]);
 
+  const handleDelete = useCallback(() => {
+    bottomSheetModalRef.current?.dismiss();
+    setTimeout(() => {
+      Alert.alert("Delete Secret", "Are you sure you want to delete this secret? This action cannot be undone.", [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteUserConfession(confessionId);
+              impactAsync();
+              showMessage("Secret deleted successfully", "success");
+            } catch (error) {
+              Alert.alert("Error", "Failed to delete secret. Please try again.");
+            }
+          },
+        },
+      ]);
+    }, 300);
+  }, [confessionId, deleteUserConfession, bottomSheetModalRef, impactAsync]);
+
   const ActionOption = ({
     icon,
     title,
@@ -182,13 +216,27 @@ export default function FeedActionSheet({ confessionId, confessionText, bottomSh
               color="#F59E0B"
             />
 
-            <ActionOption
-              icon="flag-outline"
-              title="Report"
-              subtitle="Report inappropriate content"
-              onPress={handleReport}
-              color="#EF4444"
-            />
+            {/* Show delete option only if user owns this confession */}
+            {isOwnConfession && (
+              <ActionOption
+                icon="trash-outline"
+                title="Delete"
+                subtitle="Delete this secret permanently"
+                onPress={handleDelete}
+                color="#EF4444"
+              />
+            )}
+
+            {/* Only show report option if user doesn't own the confession */}
+            {!isOwnConfession && (
+              <ActionOption
+                icon="flag-outline"
+                title="Report"
+                subtitle="Report inappropriate content"
+                onPress={handleReport}
+                color="#EF4444"
+              />
+            )}
           </View>
         </BottomSheetView>
       </BottomSheetModal>

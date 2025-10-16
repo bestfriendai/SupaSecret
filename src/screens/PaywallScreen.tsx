@@ -33,7 +33,8 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
     loadAvailablePlans().catch((error) => {
       validator.error("Failed to load plans:", error);
     });
-  }, [loadAvailablePlans, validator]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Auto-select the popular plan when plans are loaded
   useEffect(() => {
@@ -233,12 +234,12 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
             className={`rounded-lg py-4 ${!selectedPlan || isLoading ? "bg-gray-700" : "bg-blue-600"}`}
           >
             <Text className="text-white text-16 font-semibold text-center">
-              {isLoading ? "Processing..." : "Start Free Trial"}
+              {isLoading ? "Processing..." : "Subscribe Now"}
             </Text>
           </Pressable>
 
           <Text className="text-gray-500 text-11 text-center mt-2">
-            7-day free trial, then auto-renews. Cancel anytime.
+            Subscription auto-renews monthly or annually. Cancel anytime.
           </Text>
         </View>
 

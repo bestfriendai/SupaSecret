@@ -44,7 +44,7 @@ const FALLBACK_VIDEOS = [
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
 ];
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { height: SCREEN_HEIGHT } = Dimensions.get("screen");
 
 const viewabilityConfig = {
   itemVisiblePercentThreshold: 80,

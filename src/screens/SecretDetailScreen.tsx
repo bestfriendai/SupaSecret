@@ -17,6 +17,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { format } from "date-fns";
 import { useConfessionStore } from "../state/confessionStore";
 import { useReplyStore } from "../state/replyStore";
+import { useAuthStore } from "../state/authStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import ReportModal from "../components/ReportModal";
 import HashtagText from "../components/HashtagText";
@@ -43,6 +44,8 @@ export default function SecretDetailScreen() {
 
   const confessions = useConfessionStore((state) => state.confessions);
   const toggleLike = useConfessionStore((state) => state.toggleLike);
+  const deleteUserConfession = useConfessionStore((state) => state.deleteUserConfession);
+  const currentUser = useAuthStore((state) => state.user);
 
   const {
     loadReplies,
@@ -141,6 +144,35 @@ export default function SecretDetailScreen() {
     setReportingReplyId(null);
   };
 
+  const handleDeleteConfession = () => {
+    Alert.alert("Delete Secret", "Are you sure you want to delete this secret? This action cannot be undone.", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteUserConfession(confessionId);
+            impactAsync();
+            Alert.alert("Deleted", "Your secret has been deleted.", [
+              {
+                text: "OK",
+                onPress: () => {
+                  safeGoBackFromDetail(navigation);
+                },
+              },
+            ]);
+          } catch (error) {
+            Alert.alert("Error", "Failed to delete secret. Please try again.");
+          }
+        },
+      },
+    ]);
+  };
+
   if (!confession) {
     return (
       <SafeAreaView className="flex-1 bg-black justify-center items-center">
@@ -235,9 +267,17 @@ export default function SecretDetailScreen() {
                       </View>
                     </View>
 
-                    <Pressable className="flex-row items-center" onPress={handleReportConfession}>
-                      <Ionicons name="flag-outline" size={18} color="#8B98A5" />
-                    </Pressable>
+                    <View className="flex-row items-center">
+                      {/* Show delete button if user owns this confession */}
+                      {currentUser && confession.user_id === currentUser.id && (
+                        <Pressable className="flex-row items-center mr-4" onPress={handleDeleteConfession}>
+                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                        </Pressable>
+                      )}
+                      <Pressable className="flex-row items-center" onPress={handleReportConfession}>
+                        <Ionicons name="flag-outline" size={18} color="#8B98A5" />
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
               </View>

@@ -1,15 +1,19 @@
 /**
  * Video Download Service
- * Handles downloading and saving blurred videos to device gallery
+ * Handles downloading and saving videos with watermarks and captions to device gallery
  */
 
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "../utils/legacyFileSystem";
 import { Alert, Platform } from "react-native";
+import { Asset } from "expo-asset";
+import { burnCaptionsAndWatermarkIntoVideo } from "../../modules/caption-burner";
+import { loadCaptionData, type CaptionData } from "./CaptionGenerator";
 
 export interface VideoDownloadOptions {
   onProgress?: (progress: number, message: string) => void;
   albumName?: string;
+  videoUri?: string; // Original video URI for caption lookup
 }
 
 export interface VideoDownloadResult {
@@ -19,7 +23,7 @@ export interface VideoDownloadResult {
 }
 
 /**
- * Download and save video to device gallery
+ * Download and save video to device gallery with watermark and captions
  */
 export const downloadVideoToGallery = async (
   videoUri: string,
@@ -39,7 +43,7 @@ export const downloadVideoToGallery = async (
       };
     }
 
-    onProgress?.(20, "Preparing video...");
+    onProgress?.(5, "Preparing video...");
 
     // Ensure the video file exists
     const fileInfo = await FileSystem.getInfoAsync(videoUri);
@@ -50,29 +54,54 @@ export const downloadVideoToGallery = async (
       };
     }
 
-    onProgress?.(40, "Saving to gallery...");
+    onProgress?.(10, "Processing video with watermark and captions...");
+
+    // Process video with watermark and captions
+    let finalVideoUri = videoUri;
+    try {
+      const processedVideo = await processVideoWithWatermarkAndCaptions(
+        videoUri,
+        options.videoUri || videoUri,
+        (progress, message) => {
+          // Map progress from 0-100 to 10-60
+          const mappedProgress = 10 + (progress / 100) * 50;
+          onProgress?.(mappedProgress, message);
+        },
+      );
+
+      if (processedVideo) {
+        finalVideoUri = processedVideo;
+      } else {
+        console.warn("Video processing returned null, using original video");
+      }
+    } catch (processingError) {
+      console.error("Video processing failed, using original:", processingError);
+      // Continue with original video if processing fails
+    }
+
+    onProgress?.(60, "Saving to gallery...");
 
     // Create a unique filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `toxic-confession-${timestamp}.mp4`;
 
     // Copy to a temporary location with proper filename if needed
-    let finalVideoUri = videoUri;
-    if (!videoUri.includes(".mp4")) {
+    let galleryVideoUri = finalVideoUri;
+    if (!finalVideoUri.includes(".mp4") && !finalVideoUri.includes(".mov")) {
       const tempUri = `${FileSystem.cacheDirectory}${filename}`;
       await FileSystem.copyAsync({
-        from: videoUri,
+        from: finalVideoUri,
         to: tempUri,
       });
-      finalVideoUri = tempUri;
+      galleryVideoUri = tempUri;
     }
 
-    onProgress?.(60, "Creating media asset...");
+    onProgress?.(70, "Creating media asset...");
 
     // Save to media library
-    const asset = await MediaLibrary.createAssetAsync(finalVideoUri);
+    const asset = await MediaLibrary.createAssetAsync(galleryVideoUri);
 
-    onProgress?.(80, "Organizing in album...");
+    onProgress?.(85, "Organizing in album...");
 
     // Try to create/get album and add asset to it
     try {
@@ -104,6 +133,84 @@ export const downloadVideoToGallery = async (
     };
   }
 };
+
+/**
+ * Process video with watermark and captions
+ * Returns the path to the processed video, or null if processing is not available/fails
+ */
+async function processVideoWithWatermarkAndCaptions(
+  videoUri: string,
+  originalVideoUri: string,
+  onProgress?: (progress: number, message: string) => void,
+): Promise<string | null> {
+  try {
+    // iOS only for now
+    if (Platform.OS !== "ios") {
+      console.log("Watermark and caption burning only available on iOS");
+      return null;
+    }
+
+    onProgress?.(0, "Loading caption data...");
+
+    // Load caption data
+    const captionUri = originalVideoUri.replace(/\.(mp4|mov)$/i, ".captions.json");
+    const captionData = await loadCaptionData(captionUri);
+
+    if (!captionData || !captionData.segments || captionData.segments.length === 0) {
+      console.log("No captions found for video, skipping caption burning");
+      // Continue without captions but still add watermark
+    }
+
+    onProgress?.(20, "Loading watermark assets...");
+
+    // Get logo path from assets
+    const logoAsset = Asset.fromModule(require("../../assets/logo.png"));
+    await logoAsset.downloadAsync();
+    const logoPath = logoAsset.localUri || logoAsset.uri;
+
+    onProgress?.(30, "Processing video...");
+
+    // Convert caption data to caption-burner format
+    const captionSegments = captionData
+      ? captionData.segments.map((seg, index) => ({
+          id: `seg_${index}`,
+          text: seg.text,
+          startTime: seg.start,
+          endTime: seg.end,
+          isComplete: true,
+          words: seg.words.map((word) => ({
+            word: word.word,
+            startTime: word.start,
+            endTime: word.end,
+            confidence: 1.0,
+            isComplete: true,
+          })),
+        }))
+      : [];
+
+    // Burn captions and watermark into video
+    const result = await burnCaptionsAndWatermarkIntoVideo(videoUri, captionSegments, {
+      watermarkImagePath: logoPath,
+      watermarkText: "ToxicConfessions.app",
+      onProgress: (progress, status) => {
+        // Map progress from 0-100 to 30-100
+        const mappedProgress = 30 + (progress / 100) * 70;
+        onProgress?.(mappedProgress, status);
+      },
+    });
+
+    if (result.success && result.outputPath) {
+      console.log("✅ Video processed successfully with watermark and captions");
+      return result.outputPath;
+    } else {
+      console.error("Video processing failed:", result.error);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error processing video:", error);
+    return null;
+  }
+}
 
 /**
  * Check if media library permissions are granted

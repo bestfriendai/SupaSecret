@@ -7,6 +7,13 @@ RCT_EXTERN_METHOD(burnCaptionsIntoVideo:(NSString *)inputPath
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(burnCaptionsAndWatermarkIntoVideo:(NSString *)inputPath
+                  captionSegmentsJSON:(NSString *)captionSegmentsJSON
+                  watermarkImagePath:(NSString *)watermarkImagePath
+                  watermarkText:(NSString *)watermarkText
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(isAvailable:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 

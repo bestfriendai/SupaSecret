@@ -75,7 +75,14 @@ function VideoThumbnailView({ confession, generatedThumbnail, onThumbnailGenerat
     };
 
     loadThumbnail();
-  }, [confession.id, confession.videoUri, confession.thumbnailUri, generatedThumbnail, isGenerating, onThumbnailGenerated]);
+  }, [
+    confession.id,
+    confession.videoUri,
+    confession.thumbnailUri,
+    generatedThumbnail,
+    isGenerating,
+    onThumbnailGenerated,
+  ]);
 
   return (
     <View className="w-full aspect-video bg-gray-800 items-center justify-center relative">

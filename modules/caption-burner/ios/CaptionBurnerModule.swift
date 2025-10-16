@@ -6,7 +6,7 @@ import QuartzCore
 
 @objc(CaptionBurnerModule)
 class CaptionBurnerModule: NSObject {
-  
+
   @objc
   func burnCaptionsIntoVideo(
     _ inputPath: String,
@@ -18,7 +18,9 @@ class CaptionBurnerModule: NSObject {
       do {
         let outputPath = try self.processVideoWithCaptions(
           inputPath: inputPath,
-          captionSegmentsJSON: captionSegmentsJSON
+          captionSegmentsJSON: captionSegmentsJSON,
+          watermarkImagePath: nil,
+          watermarkText: nil
         )
         resolve([
           "success": true,
@@ -29,7 +31,34 @@ class CaptionBurnerModule: NSObject {
       }
     }
   }
-  
+
+  @objc
+  func burnCaptionsAndWatermarkIntoVideo(
+    _ inputPath: String,
+    captionSegmentsJSON: String,
+    watermarkImagePath: String?,
+    watermarkText: String?,
+    resolve: @escaping RCTPromiseResolveBlock,
+    reject: @escaping RCTPromiseRejectBlock
+  ) {
+    DispatchQueue.global(qos: .userInitiated).async {
+      do {
+        let outputPath = try self.processVideoWithCaptions(
+          inputPath: inputPath,
+          captionSegmentsJSON: captionSegmentsJSON,
+          watermarkImagePath: watermarkImagePath,
+          watermarkText: watermarkText
+        )
+        resolve([
+          "success": true,
+          "outputPath": outputPath
+        ])
+      } catch {
+        reject("CAPTION_WATERMARK_ERROR", error.localizedDescription, error)
+      }
+    }
+  }
+
   @objc
   func isAvailable(_ resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
     resolve(true)
@@ -55,13 +84,22 @@ class CaptionBurnerModule: NSObject {
   }
   
   // MARK: - Video Processing
-  
-  private func processVideoWithCaptions(inputPath: String, captionSegmentsJSON: String) throws -> String {
+
+  private func processVideoWithCaptions(
+    inputPath: String,
+    captionSegmentsJSON: String,
+    watermarkImagePath: String?,
+    watermarkText: String?
+  ) throws -> String {
     print("🎬 Starting caption burning process...")
-    
+
     // Parse caption segments
     let segments = try parseCaptionSegments(json: captionSegmentsJSON)
     print("📝 Parsed \(segments.count) caption segments with \(segments.flatMap { $0.words }.count) total words")
+
+    if watermarkImagePath != nil || watermarkText != nil {
+      print("🏷️ Watermark will be applied")
+    }
     
     // Convert input path to URL
     let inputURL: URL
@@ -122,13 +160,15 @@ class CaptionBurnerModule: NSObject {
       }
     }
     
-    // Create video composition with caption layers
+    // Create video composition with caption and watermark layers
     let videoComposition = try createVideoComposition(
       for: composition,
       videoSize: videoSize,
       transform: transform,
       segments: segments,
-      duration: duration
+      duration: duration,
+      watermarkImagePath: watermarkImagePath,
+      watermarkText: watermarkText
     )
     
     // Export the video
@@ -172,41 +212,57 @@ class CaptionBurnerModule: NSObject {
   }
   
   // MARK: - Video Composition with Captions
-  
+
   private func createVideoComposition(
     for composition: AVMutableComposition,
     videoSize: CGSize,
     transform: CGAffineTransform,
     segments: [CaptionSegment],
-    duration: CMTime
+    duration: CMTime,
+    watermarkImagePath: String?,
+    watermarkText: String?
   ) throws -> AVMutableVideoComposition {
-    
+
     // Determine actual render size based on transform
     let renderSize = videoSize.applying(transform)
     let normalizedSize = CGSize(width: abs(renderSize.width), height: abs(renderSize.height))
-    
+
     print("📐 Render size: \(normalizedSize)")
-    
+
     // Create video composition
     let videoComposition = AVMutableVideoComposition()
     videoComposition.frameDuration = CMTime(value: 1, timescale: 30) // 30 FPS
     videoComposition.renderSize = normalizedSize
-    
+
     // Create layers
     let parentLayer = CALayer()
     let videoLayer = CALayer()
     let captionLayer = CALayer()
-    
+    let watermarkLayer = CALayer()
+
     parentLayer.frame = CGRect(origin: .zero, size: normalizedSize)
     videoLayer.frame = CGRect(origin: .zero, size: normalizedSize)
     captionLayer.frame = CGRect(origin: .zero, size: normalizedSize)
-    
+    watermarkLayer.frame = CGRect(origin: .zero, size: normalizedSize)
+
     // Add video layer
     parentLayer.addSublayer(videoLayer)
-    
+
+    // Add watermark layer (below captions)
+    if watermarkImagePath != nil || watermarkText != nil {
+      createWatermarkLayer(
+        in: watermarkLayer,
+        imagePath: watermarkImagePath,
+        text: watermarkText,
+        videoSize: normalizedSize,
+        duration: duration
+      )
+      parentLayer.addSublayer(watermarkLayer)
+    }
+
     // Create caption text layers for each word with timing
     createCaptionLayers(in: captionLayer, segments: segments, videoSize: normalizedSize, duration: duration)
-    
+
     // Add caption layer on top
     parentLayer.addSublayer(captionLayer)
     
@@ -338,6 +394,102 @@ class CaptionBurnerModule: NSObject {
     layer.add(scaleUp, forKey: "scaleUp")
   }
 
+  // MARK: - Watermark Layer Creation
+
+  private func createWatermarkLayer(
+    in parentLayer: CALayer,
+    imagePath: String?,
+    text: String?,
+    videoSize: CGSize,
+    duration: CMTime
+  ) {
+    print("🏷️ Creating watermark layer")
+
+    // Watermark container positioned in top right corner
+    let watermarkWidth: CGFloat = 200
+    let watermarkHeight: CGFloat = 80
+    let padding: CGFloat = 20
+
+    let containerLayer = CALayer()
+    containerLayer.frame = CGRect(
+      x: videoSize.width - watermarkWidth - padding,
+      y: padding,
+      width: watermarkWidth,
+      height: watermarkHeight
+    )
+
+    var currentY: CGFloat = 0
+
+    // Add logo image if provided
+    if let imagePath = imagePath {
+      if let logoLayer = createLogoLayer(imagePath: imagePath, width: watermarkWidth) {
+        logoLayer.frame.origin.y = currentY
+        containerLayer.addSublayer(logoLayer)
+        currentY += logoLayer.frame.height + 5
+      }
+    }
+
+    // Add text if provided
+    if let text = text {
+      let textLayer = createWatermarkTextLayer(text: text, width: watermarkWidth)
+      textLayer.frame.origin.y = currentY
+      containerLayer.addSublayer(textLayer)
+    }
+
+    // Make watermark semi-transparent
+    containerLayer.opacity = 0.85
+
+    parentLayer.addSublayer(containerLayer)
+    print("✅ Watermark layer created")
+  }
+
+  private func createLogoLayer(imagePath: String, width: CGFloat) -> CALayer? {
+    let logoURL: URL
+    if imagePath.hasPrefix("file://") {
+      logoURL = URL(string: imagePath)!
+    } else {
+      logoURL = URL(fileURLWithPath: imagePath)
+    }
+
+    guard let imageData = try? Data(contentsOf: logoURL),
+          let image = UIImage(data: imageData)?.cgImage else {
+      print("⚠️ Failed to load watermark image from: \(imagePath)")
+      return nil
+    }
+
+    let aspectRatio = CGFloat(image.width) / CGFloat(image.height)
+    let logoHeight = width / aspectRatio * 0.6 // Scale down to 60% of calculated height
+
+    let logoLayer = CALayer()
+    logoLayer.contents = image
+    logoLayer.frame = CGRect(x: 0, y: 0, width: width, height: logoHeight)
+    logoLayer.contentsGravity = .resizeAspect
+
+    return logoLayer
+  }
+
+  private func createWatermarkTextLayer(text: String, width: CGFloat) -> CATextLayer {
+    let textLayer = CATextLayer()
+    textLayer.frame = CGRect(x: 0, y: 0, width: width, height: 30)
+    textLayer.string = text
+
+    let fontSize: CGFloat = 18
+    let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
+    textLayer.font = font
+    textLayer.fontSize = fontSize
+    textLayer.foregroundColor = UIColor.white.cgColor
+    textLayer.alignmentMode = .center
+    textLayer.isWrapped = false
+
+    // Add shadow for better readability
+    textLayer.shadowColor = UIColor.black.cgColor
+    textLayer.shadowOffset = CGSize(width: 0, height: 0)
+    textLayer.shadowOpacity = 0.8
+    textLayer.shadowRadius = 4
+
+    return textLayer
+  }
+
   // MARK: - JSON Parsing
 
   private func parseCaptionSegments(json: String) throws -> [CaptionSegment] {
@@ -348,9 +500,10 @@ class CaptionBurnerModule: NSObject {
     let decoder = JSONDecoder()
     let segments = try decoder.decode([CaptionSegment].self, from: data)
 
-    if segments.isEmpty {
-      throw NSError(domain: "CaptionBurner", code: 7, userInfo: [NSLocalizedDescriptionKey: "No caption segments found"])
-    }
+    // Allow empty segments - watermark can be added without captions
+    // if segments.isEmpty {
+    //   throw NSError(domain: "CaptionBurner", code: 7, userInfo: [NSLocalizedDescriptionKey: "No caption segments found"])
+    // }
 
     return segments
   }

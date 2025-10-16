@@ -38,6 +38,12 @@ export interface BurnCaptionsOptions {
   onProgress?: (progress: number, status: string) => void;
 }
 
+export interface BurnCaptionsWithWatermarkOptions {
+  onProgress?: (progress: number, status: string) => void;
+  watermarkImagePath?: string;
+  watermarkText?: string;
+}
+
 export interface BurnCaptionsResult {
   success: boolean;
   outputPath?: string;
@@ -104,6 +110,57 @@ export async function burnCaptionsIntoVideo(
     return result;
   } catch (error) {
     console.error("Caption burning error:", error);
+    return {
+      success: false,
+      outputPath: undefined,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Burn captions AND watermark into a video file using native iOS AVFoundation
+ * This permanently embeds captions and a watermark into the video
+ *
+ * @param videoPath - Path to the input video (file:// or absolute path)
+ * @param captionSegments - Array of caption segments with word-level timing
+ * @param options - Burn configuration options including watermark settings
+ * @returns Promise with output video path
+ */
+export async function burnCaptionsAndWatermarkIntoVideo(
+  videoPath: string,
+  captionSegments: CaptionSegment[],
+  options: BurnCaptionsWithWatermarkOptions = {},
+): Promise<BurnCaptionsResult> {
+  const { onProgress, watermarkImagePath, watermarkText } = options;
+
+  try {
+    const module = getCaptionBurnerModule();
+    onProgress?.(0, "Initializing video processing...");
+
+    // Convert caption segments to JSON string
+    const captionSegmentsJSON = JSON.stringify(captionSegments);
+
+    console.log("🎬 Burning captions and watermark into video:", videoPath);
+    console.log("📝 Caption segments:", captionSegments.length);
+    console.log("🏷️ Watermark:", { image: !!watermarkImagePath, text: watermarkText });
+
+    onProgress?.(20, "Processing video with captions and watermark...");
+
+    const result = await module.burnCaptionsAndWatermarkIntoVideo(
+      videoPath,
+      captionSegmentsJSON,
+      watermarkImagePath || null,
+      watermarkText || null,
+    );
+
+    onProgress?.(100, "Complete!");
+
+    console.log("✅ Caption and watermark burning complete:", result);
+
+    return result;
+  } catch (error) {
+    console.error("Caption and watermark burning error:", error);
     return {
       success: false,
       outputPath: undefined,

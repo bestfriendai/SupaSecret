@@ -62,9 +62,77 @@ export const useMembershipStore = create<MembershipState>()(
       },
 
       loadAvailablePlans: async () => {
-        // For now, use default plans
-        // In a real implementation, this would fetch from Supabase or RevenueCat
-        set({ availablePlans: DEFAULT_PLANS });
+        set({ isLoading: true, error: null });
+        try {
+          const { RevenueCatService } = await import("../services/RevenueCatService");
+          await RevenueCatService.initialize();
+
+          const offerings = await RevenueCatService.getOfferings();
+
+          if (!offerings?.current) {
+            console.warn("No RevenueCat offerings available, using default plans");
+            set({ availablePlans: DEFAULT_PLANS, isLoading: false });
+            return;
+          }
+
+          const packages = offerings.current.availablePackages || offerings.current.packages || [];
+
+          if (packages.length === 0) {
+            console.warn("No packages in current offering, using default plans");
+            set({ availablePlans: DEFAULT_PLANS, isLoading: false });
+            return;
+          }
+
+          // Convert RevenueCat packages to MembershipPlan format
+          const plans: MembershipPlan[] = packages.map((pkg: any) => {
+            const product = pkg.product;
+            const priceNumber = product.price || 0;
+            const priceInCents = Math.round(priceNumber * 100);
+
+            // Determine interval from package identifier or product
+            let interval: "month" | "year" = "month";
+            const identifier = pkg.identifier.toLowerCase();
+            if (identifier.includes("annual") || identifier.includes("year")) {
+              interval = "year";
+            }
+
+            // Mark annual as popular
+            const isPopular = interval === "year";
+
+            return {
+              id: pkg.identifier, // Use package identifier (e.g., $rc_monthly)
+              tier: "plus" as MembershipTier,
+              name: product.title || product.description || pkg.identifier,
+              description:
+                interval === "year"
+                  ? "Save 50% with annual billing"
+                  : "Monthly access to all premium features",
+              price: priceInCents,
+              currency: product.currencyCode || "USD",
+              interval,
+              features: PLUS_FEATURES,
+              popular: isPopular,
+            };
+          });
+
+          // Sort plans: monthly first, then annual
+          plans.sort((a, b) => {
+            if (a.interval === "month" && b.interval === "year") return -1;
+            if (a.interval === "year" && b.interval === "month") return 1;
+            return 0;
+          });
+
+          console.log("✅ Loaded", plans.length, "plans from RevenueCat");
+          set({ availablePlans: plans, isLoading: false });
+        } catch (error) {
+          console.error("Failed to load plans from RevenueCat:", error);
+          console.warn("Falling back to default plans");
+          set({
+            availablePlans: DEFAULT_PLANS,
+            error: error instanceof Error ? error.message : "Failed to load plans",
+            isLoading: false,
+          });
+        }
       },
 
       purchaseSubscription: async (planId: string) => {
@@ -142,9 +210,62 @@ export const useMembershipStore = create<MembershipState>()(
       },
 
       restorePurchases: async () => {
-        // Placeholder for restore purchases
-        // In a real implementation, this would check with the app store
-        await get().loadMembership();
+        set({ isLoading: true, error: null });
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) throw new Error("User not authenticated");
+
+          const { RevenueCatService } = await import("../services/RevenueCatService");
+          await RevenueCatService.initialize();
+
+          const customerInfo = await RevenueCatService.restorePurchases();
+
+          if ("mockCustomerInfo" in customerInfo) {
+            throw new Error("Cannot restore in demo mode. Please use a development build.");
+          }
+
+          const isPremium = Object.keys(customerInfo.entitlements.active).length > 0;
+
+          if (isPremium) {
+            const activeEntitlement: any = Object.values(customerInfo.entitlements.active)[0];
+            const expiresAt = activeEntitlement?.expirationDate || null;
+
+            const membership: UserMembership = {
+              user_id: user.id,
+              tier: "plus",
+              plan_id: customerInfo.activeSubscriptions[0] || null,
+              subscription_id: customerInfo.originalAppUserId,
+              expires_at: expiresAt,
+              auto_renew: activeEntitlement?.willRenew !== false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+            const { error } = await supabase.from("user_memberships").upsert(membership, {
+              onConflict: "user_id",
+              ignoreDuplicates: false,
+            });
+
+            if (error) throw error;
+
+            set({
+              currentTier: "plus",
+              membership,
+              isLoading: false,
+            });
+          } else {
+            // No active subscriptions found
+            set({ isLoading: false });
+          }
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : "Failed to restore purchases",
+            isLoading: false,
+          });
+          throw error;
+        }
       },
 
       cancelSubscription: async () => {

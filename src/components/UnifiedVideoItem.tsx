@@ -28,6 +28,7 @@ import { isOnline, enqueue } from "../lib/offlineQueue";
 import { normalizeVideoError } from "../types/videoErrors";
 import type { VideoItemProps } from "../types/videoComponents";
 import { TikTokCaptions, TIKTOK_CAPTION_STYLES } from "./TikTokCaptions";
+import { VideoWatermark } from "./VideoWatermark";
 import type { CaptionSegment } from "./TikTokCaptions";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -577,6 +578,9 @@ const UnifiedVideoItem = memo(function UnifiedVideoItem({
           position="bottom"
         />
       )}
+
+      {/* Watermark Overlay - Always visible on every video */}
+      <VideoWatermark position="top-right" size="small" />
 
       <LinearGradient
         colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.7)"]}

@@ -13,8 +13,9 @@ import { VideoDataService } from "../services/VideoDataService";
 import type { Confession } from "../types/confession";
 import { offlineQueue, OFFLINE_ACTIONS } from "../utils/offlineQueue";
 import { TikTokCaptions, TIKTOK_CAPTION_STYLES, type CaptionSegment } from "./TikTokCaptions";
+import { VideoWatermark } from "./VideoWatermark";
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("screen");
 
 // Responsive spacing based on screen size
 const getResponsiveBottomSpacing = () => {
@@ -443,6 +444,9 @@ export default function OptimizedVideoItem({
           position="bottom"
         />
       )}
+
+      {/* Watermark Overlay - Always visible on every video */}
+      <VideoWatermark position="top-right" size="small" />
 
       {/* Content Overlay */}
       <View style={styles.contentOverlay}>

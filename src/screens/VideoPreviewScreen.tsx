@@ -23,6 +23,8 @@ const getResponsiveControlSpacing = () => {
 
 import * as Haptics from "expo-haptics";
 import { File } from "expo-file-system";
+import { Platform } from "react-native";
+import { Asset } from "expo-asset";
 import {
   downloadVideoToGallery,
   showDownloadSuccessMessage,
@@ -30,6 +32,8 @@ import {
   checkMediaLibraryPermissions,
 } from "../services/VideoDownloadService";
 import { isPostProcessBlurAvailable } from "../services/PostProcessBlurService";
+import { burnCaptionsAndWatermarkIntoVideo } from "../../modules/caption-burner";
+import { loadCaptionData } from "../services/CaptionGenerator";
 
 import { useConfessionStore } from "../state/confessionStore";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
@@ -38,6 +42,7 @@ import { IS_EXPO_GO } from "../utils/environmentCheck";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { applyPostProcessBlur, getBlurProcessingMethod } from "../services/PostProcessBlurService";
 import { TikTokCaptions, TIKTOK_CAPTION_STYLES } from "../components/TikTokCaptions";
+import { VideoWatermark } from "../components/VideoWatermark";
 
 type VideoPreviewScreenRouteProp = RouteProp<RootStackParamList, "VideoPreview">;
 
@@ -76,6 +81,7 @@ export default function VideoPreviewScreen() {
   const [blurProgress, setBlurProgress] = useState(0);
   const [hasBlurApplied, setHasBlurApplied] = useState(processedVideo.faceBlurApplied || false);
   const [currentVideoUri, setCurrentVideoUri] = useState(processedVideo.uri);
+  const originalVideoUri = useRef(processedVideo.uri); // Store original URI for caption lookup
 
   // Caption state
   const [isAddingCaptions, setIsAddingCaptions] = useState(false);
@@ -241,11 +247,76 @@ export default function VideoPreviewScreen() {
 
     try {
       // Use currentVideoUri which contains the blurred video path if blur was applied
-      const finalVideoUri = currentVideoUri;
+      let finalVideoUri = currentVideoUri;
 
-      console.log("📤 Uploading video:", finalVideoUri);
+      console.log("📤 Preparing video for upload:", finalVideoUri);
       console.log("🎭 Face blur applied:", hasBlurApplied);
       console.log("📝 Captions included:", hasCaptionsApplied, processedVideo.transcription ? "✅" : "❌");
+
+      // Process video with watermark before uploading (iOS only)
+      if (Platform.OS === "ios") {
+        try {
+          console.log("🏷️ Processing video with watermark...");
+          setUploadProgress(5);
+
+          // Load logo asset
+          const logoAsset = Asset.fromModule(require("../../assets/logo.png"));
+          await logoAsset.downloadAsync();
+          const logoPath = logoAsset.localUri || logoAsset.uri;
+
+          console.log("🏷️ Logo loaded:", logoPath);
+          setUploadProgress(10);
+
+          // Load captions if available
+          const captionUri = originalVideoUri.current.replace(/\.(mp4|mov)$/i, ".captions.json");
+          const captionData = await loadCaptionData(captionUri);
+
+          const captionSegments = captionData?.segments
+            ? captionData.segments.map((seg: any, index: number) => ({
+                id: `seg_${index}`,
+                text: seg.text,
+                startTime: seg.start,
+                endTime: seg.end,
+                isComplete: true,
+                words: seg.words.map((word: any) => ({
+                  word: word.word,
+                  startTime: word.start,
+                  endTime: word.end,
+                  confidence: 1.0,
+                  isComplete: true,
+                })),
+              }))
+            : [];
+
+          console.log("📝 Caption segments:", captionSegments.length);
+          setUploadProgress(15);
+
+          // Burn watermark and captions into video
+          const result = await burnCaptionsAndWatermarkIntoVideo(currentVideoUri, captionSegments, {
+            watermarkImagePath: logoPath,
+            watermarkText: "ToxicConfessions.app",
+            onProgress: (progress, status) => {
+              const mappedProgress = 15 + (progress / 100) * 25; // 15-40%
+              setUploadProgress(mappedProgress);
+              console.log(`🏷️ Watermark progress: ${progress}% - ${status}`);
+            },
+          });
+
+          if (result.success && result.outputPath) {
+            console.log("✅ Video processed with watermark successfully:", result.outputPath);
+            finalVideoUri = result.outputPath;
+            setUploadProgress(40);
+          } else {
+            console.warn("⚠️ Watermark processing failed, continuing with original video:", result.error);
+            // Continue with original video if watermark fails
+          }
+        } catch (error) {
+          console.error("⚠️ Watermark processing error:", error);
+          // Continue with original video if watermark fails
+        }
+      }
+
+      console.log("📤 Uploading video:", finalVideoUri);
 
       const confessionPayload = {
         type: "video" as const,
@@ -269,8 +340,8 @@ export default function VideoPreviewScreen() {
 
       await addConfession(confessionPayload, {
         onUploadProgress: (progress: number) => {
-          // Adjust progress to account for blur processing (if any)
-          const adjustedProgress = hasBlurApplied ? 20 + progress * 0.8 : progress;
+          // Adjust progress to account for watermark and blur processing
+          const adjustedProgress = Platform.OS === "ios" ? 40 + progress * 0.6 : progress;
           setUploadProgress(adjustedProgress);
         },
       });
@@ -657,6 +728,7 @@ export default function VideoPreviewScreen() {
           console.log(`Download progress: ${progress}% - ${message}`);
         },
         albumName: "Toxic Confessions",
+        videoUri: originalVideoUri.current, // Pass original URI for caption lookup
       });
 
       setIsDownloading(false);
@@ -700,6 +772,9 @@ export default function VideoPreviewScreen() {
                 position="bottom"
               />
             )}
+
+            {/* Watermark Overlay - Always visible on every video */}
+            <VideoWatermark position="top-right" size="medium" />
           </>
         )}
 

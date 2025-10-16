@@ -172,9 +172,7 @@ export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
         }}
       />
       {adError && __DEV__ && (
-        <Text style={{ fontSize: 10, color: "#ff6b6b", marginTop: 5, textAlign: "center" }}>
-          {adError}
-        </Text>
+        <Text style={{ fontSize: 10, color: "#ff6b6b", marginTop: 5, textAlign: "center" }}>{adError}</Text>
       )}
     </View>
   );
