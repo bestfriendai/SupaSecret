@@ -16,27 +16,8 @@ interface OptimizedAdBannerProps {
 const OptimizedAdBanner: React.FC<OptimizedAdBannerProps> = memo(({ index, placement, interval = 5 }) => {
   const { isPremium } = useSubscriptionStore();
 
-  // Create stable random offset once per component instance
-  const randomOffsetRef = useRef(Math.floor(Math.random() * 2));
-
-  // Memoize the ad decision to prevent recalculation
-  const shouldShowAd = useMemo(() => {
-    // Don't show ads for premium users
-    if (isPremium) return false;
-
-    // Don't show ad on first item
-    if (index === 0) return false;
-
-    // Show ad every nth item with deterministic randomization
-    const baseInterval = Math.max(1, interval); // Ensure interval is at least 1
-    const randomOffset = randomOffsetRef.current;
-    const actualInterval = baseInterval + randomOffset;
-
-    return index % actualInterval === 0;
-  }, [index, interval, isPremium]);
-
-  // Early return if no ad should be shown
-  if (!shouldShowAd) return null;
+  // Don't show ads for premium users
+  if (isPremium) return null;
 
   return (
     <View

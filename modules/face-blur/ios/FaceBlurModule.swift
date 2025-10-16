@@ -336,8 +336,8 @@ class FaceBlurModule: NSObject {
         height: faceRect.height * imageSize.height
       )
 
-      // ✅ FIX: Expand face region much more to ensure full face coverage
-      let expansionFactor: CGFloat = hasMovingFaces ? 0.45 : 0.40 // Larger expansion
+      // Expand face region to ensure full face coverage without being too large
+      let expansionFactor: CGFloat = hasMovingFaces ? 0.25 : 0.20 // Moderate expansion
       let expandedRect = actualRect.insetBy(dx: -actualRect.width * expansionFactor, dy: -actualRect.height * expansionFactor)
 
       // Clamp to image bounds
@@ -356,12 +356,11 @@ class FaceBlurModule: NSObject {
         continue
       }
 
-      // ✅ FIX: Much stronger pixelation effect for better privacy
       // Scale determines pixelation size (higher = more pixelated)
-      // Use much higher intensity to ensure faces are always properly obscured
+      // Use moderate intensity to properly obscure faces while maintaining natural look
       let baseIntensity = Double(blurIntensity)
-      let movingFaceBonus = hasMovingFaces ? 20.0 : 10.0 // Always add bonus for safety
-      let pixelScale = max(baseIntensity + movingFaceBonus, 50.0) // Minimum 50 for very strong effect
+      let movingFaceBonus = hasMovingFaces ? 8.0 : 5.0 // Small bonus for moving faces
+      let pixelScale = max(baseIntensity + movingFaceBonus, 25.0) // Moderate pixelation effect
       pixellateFilter.setValue(faceRegion, forKey: kCIInputImageKey)
       pixellateFilter.setValue(pixelScale, forKey: kCIInputScaleKey)
       pixellateFilter.setValue(CIVector(x: clampedRect.midX, y: clampedRect.midY), forKey: kCIInputCenterKey)

@@ -12,22 +12,18 @@ interface FeedAdComponentProps {
 export const FeedAdComponent: React.FC<FeedAdComponentProps> = ({ index, interval = 5, placement = "home-feed" }) => {
   const { isPremium } = useSubscriptionStore();
 
+  // Don't show ads for premium users
   if (isPremium) return null;
-
-  // Ensure interval is at least 1 to prevent division by zero
-  const safeInterval = Math.max(1, interval);
-
-  // Use deterministic offset based on index for stable ad placement
-  const offset = index % safeInterval;
-  if ((index - offset) % safeInterval !== 0 || index === 0) return null;
 
   return (
     <View
       style={{
-        backgroundColor: "#f8f9fa",
+        backgroundColor: "#1a1a1a",
         marginVertical: 8,
         borderRadius: 12,
-        padding: 16,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: "#2a2a2a",
       }}
     >
       <BannerAdComponent size="medium" style={{ marginVertical: 0 }} placement={placement} />

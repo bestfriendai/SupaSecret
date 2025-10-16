@@ -333,12 +333,12 @@ function HomeScreen() {
     ({ item: confession, index }: { item: Confession; index: number }) => {
       const replies = getRepliesForConfession(confession.id);
 
-      // Show ads every 10-15 secrets (randomize between 10-15 for natural spacing)
-      const shouldShowAd = index > 0 && index % (10 + (index % 6)) === 0;
+      // Show ads every 5 secrets
+      const shouldShowAd = index > 0 && index % 5 === 0;
 
       return (
         <>
-          {/* Timeline Ad every 10-15 secrets */}
+          {/* Timeline Ad every 5 secrets */}
           {shouldShowAd && <OptimizedAdBanner placement="home-feed" index={index} />}
 
           {/* Confession Item */}

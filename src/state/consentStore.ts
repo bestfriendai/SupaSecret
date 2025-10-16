@@ -39,9 +39,9 @@ interface ConsentState {
 }
 
 const DEFAULT_PREFERENCES: ConsentPreferences = {
-  analytics: false,
-  advertising: false,
-  personalization: false,
+  analytics: __DEV__ ? true : false, // Auto-grant in dev mode for testing
+  advertising: __DEV__ ? true : false, // Auto-grant in dev mode for testing
+  personalization: __DEV__ ? true : false, // Auto-grant in dev mode for testing
   essential: true,
   lastUpdated: new Date().toISOString(),
   version: "1.0",
@@ -248,6 +248,19 @@ export const hasPersonalizationConsent = () => {
 
 // Initialize consent on app start
 export const initializeConsent = async () => {
-  const { loadConsent } = useConsentStore.getState();
+  const { loadConsent, updateConsent, preferences } = useConsentStore.getState();
   await loadConsent();
+
+  // In dev mode, auto-grant all consents for testing
+  if (__DEV__) {
+    const currentPrefs = useConsentStore.getState().preferences;
+    if (!currentPrefs?.advertising || !currentPrefs?.analytics) {
+      console.log("🎯 Dev mode: Auto-granting all consents for testing");
+      await updateConsent({
+        advertising: true,
+        analytics: true,
+        personalization: true,
+      });
+    }
+  }
 };

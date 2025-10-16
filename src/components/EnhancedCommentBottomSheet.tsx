@@ -829,27 +829,39 @@ const EnhancedCommentBottomSheet = React.memo(
 
     const ListHeaderComponent = useCallback(
       () => (
-        <View className="p-4">
-          <View className="flex-row items-center justify-between mb-3">
+        <View className="px-4 pt-3 pb-2">
+          {/* Header with close button */}
+          <View className="flex-row items-center justify-between mb-4">
             <View className="flex-row items-center">
-              <Text className="text-white text-lg font-bold">{totalCount} Comments</Text>
-              <View className="ml-2 bg-purple-500 px-2 py-0.5 rounded-full">
-                <Text className="text-white text-xs font-semibold">{totalCount}</Text>
-              </View>
+              <Ionicons name="chatbubbles" size={24} color="#9333EA" />
+              <Text className="text-white text-xl font-bold ml-2">Comments</Text>
+              {totalCount > 0 && (
+                <View className="ml-2 bg-purple-500 px-2.5 py-1 rounded-full">
+                  <Text className="text-white text-xs font-bold">{totalCount}</Text>
+                </View>
+              )}
             </View>
-            <Pressable onPress={() => bottomSheetModalRef.current?.dismiss()}>
+            <Pressable
+              onPress={() => bottomSheetModalRef.current?.dismiss()}
+              className="p-2 -mr-2 rounded-full active:bg-gray-800"
+            >
               <Ionicons name="close" size={24} color="#8B98A5" />
             </Pressable>
           </View>
 
-          <View className="flex-row gap-2 mb-3">
+          {/* Filter tabs with better styling */}
+          <View className="flex-row gap-2 mb-4">
             {(["recent", "popular", "all"] as const).map((filter) => (
               <TouchableOpacity
                 key={filter}
                 onPress={() => setSelectedFilter(filter)}
-                className={`px-3 py-1.5 rounded-full ${selectedFilter === filter ? "bg-purple-500" : "bg-gray-800"}`}
+                className={`px-4 py-2 rounded-full ${
+                  selectedFilter === filter
+                    ? "bg-purple-500 shadow-lg"
+                    : "bg-gray-800/80 border border-gray-700"
+                }`}
               >
-                <Text className={`text-xs font-semibold ${selectedFilter === filter ? "text-white" : "text-gray-400"}`}>
+                <Text className={`text-sm font-semibold ${selectedFilter === filter ? "text-white" : "text-gray-400"}`}>
                   {filter.charAt(0).toUpperCase() + filter.slice(1)}
                 </Text>
               </TouchableOpacity>
@@ -887,7 +899,7 @@ const EnhancedCommentBottomSheet = React.memo(
     const ListEmptyComponent = useCallback(() => {
       if (page?.isLoading) {
         return (
-          <View>
+          <View className="py-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <CommentSkeleton key={i} />
             ))}
@@ -896,13 +908,15 @@ const EnhancedCommentBottomSheet = React.memo(
       }
 
       return (
-        <View className="p-8 items-center">
-          <Ionicons name="chatbubble-outline" size={48} color="#CBD5E1" />
-          <Text className="text-gray-400 text-base mt-3 text-center">
+        <View className="p-12 items-center">
+          <View className="w-20 h-20 rounded-full bg-purple-500/10 items-center justify-center mb-4">
+            <Ionicons name="chatbubbles-outline" size={40} color="#9333EA" />
+          </View>
+          <Text className="text-white text-lg font-bold mt-2 text-center">
             {searchQuery ? "No comments found" : "No comments yet"}
           </Text>
-          <Text className="text-gray-500 text-sm mt-1 text-center">
-            {searchQuery ? "Try a different search" : "Be the first to comment!"}
+          <Text className="text-gray-400 text-sm mt-2 text-center max-w-[240px]">
+            {searchQuery ? "Try adjusting your search terms" : "Share your thoughts and be the first to comment!"}
           </Text>
         </View>
       );
@@ -980,8 +994,8 @@ const EnhancedCommentBottomSheet = React.memo(
                   </View>
                 )}
 
-                <View className="flex-row items-end px-4 py-3 border-t border-gray-800 bg-gray-900/95">
-                  <View className="flex-1 flex-row items-end bg-gray-800 rounded-2xl border border-gray-700 px-4 py-2 min-h-[40px] max-h-[120px]">
+                <View className="flex-row items-end px-4 py-3.5 border-t border-gray-800/80 bg-gray-900/98">
+                  <View className="flex-1 flex-row items-end bg-gray-800/90 rounded-2xl border border-gray-700/80 px-4 py-2.5 min-h-[44px] max-h-[120px]">
                     <BottomSheetTextInput
                       ref={inputRef}
                       className="flex-1 text-white text-sm max-h-[100px]"
@@ -1011,8 +1025,8 @@ const EnhancedCommentBottomSheet = React.memo(
                   <TouchableOpacity
                     onPress={handleSendComment}
                     disabled={!comment.trim() || isChecking}
-                    className={`ml-2 w-9 h-9 rounded-full items-center justify-center ${
-                      comment.trim() && !isChecking ? "bg-purple-500" : "bg-gray-700"
+                    className={`ml-2 w-11 h-11 rounded-full items-center justify-center ${
+                      comment.trim() && !isChecking ? "bg-purple-500 shadow-lg" : "bg-gray-700/60"
                     }`}
                   >
                     {isChecking ? (

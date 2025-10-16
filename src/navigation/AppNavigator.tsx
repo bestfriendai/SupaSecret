@@ -210,8 +210,8 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: "Secrets",
-          header: () => <AppHeader title="Secrets" showTrendingBar={true} />,
+          title: "Toxic Confessions",
+          header: () => <AppHeader title="Toxic Confessions" showTrendingBar={true} />,
         }}
       />
       <Tab.Screen
