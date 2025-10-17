@@ -457,12 +457,46 @@ class CaptionBurnerModule: NSObject {
       return try exportComposition(composition, to: outputURL, videoComposition: nil)
     }
 
-    // Create simple video composition with watermark
-    let videoComposition = AVMutableVideoComposition(propertiesOf: asset)
+    // Get video properties
+    let transform = videoTrack.preferredTransform
+    let videoSize = videoTrack.naturalSize
+    let frameRate = videoTrack.nominalFrameRate
+
+    print("📹 Video properties:")
+    print("   - Natural size: \(videoSize)")
+    print("   - Transform: \(transform)")
+    print("   - Frame rate: \(frameRate)")
+
+    // Calculate correct render size for rotated videos
+    let isRotated = abs(transform.b) > 0.01 || abs(transform.c) > 0.01
+    let renderSize: CGSize
+    if isRotated {
+      renderSize = CGSize(width: videoSize.height, height: videoSize.width)
+      print("   - Video is rotated, render size: \(renderSize)")
+    } else {
+      renderSize = videoSize
+      print("   - Video not rotated, render size: \(renderSize)")
+    }
+
+    // Create video composition with correct render size
+    let videoComposition = AVMutableVideoComposition()
+    videoComposition.renderSize = renderSize
+    videoComposition.frameDuration = CMTime(value: 1, timescale: Int32(max(frameRate, 30)))
+
+    // Create instruction with transform
+    let instruction = AVMutableVideoCompositionInstruction()
+    instruction.timeRange = CMTimeRange(start: .zero, duration: asset.duration)
+
+    let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compVideoTrack)
+    layerInstruction.setTransform(transform, at: .zero)
+    instruction.layerInstructions = [layerInstruction]
+    videoComposition.instructions = [instruction]
 
     // Load watermark image if provided
     var watermarkImage: CGImage?
     if let imagePath = watermarkImagePath {
+      print("🖼️ Loading watermark image from: \(imagePath)")
+
       let logoURL: URL
       if imagePath.hasPrefix("file://") {
         logoURL = URL(string: imagePath)!
@@ -470,12 +504,20 @@ class CaptionBurnerModule: NSObject {
         logoURL = URL(fileURLWithPath: imagePath)
       }
 
-      if let data = try? Data(contentsOf: logoURL),
-         let img = UIImage(data: data)?.cgImage {
-        watermarkImage = img
-        print("✅ Loaded watermark image")
+      print("🖼️ Logo URL: \(logoURL.path)")
+      print("🖼️ File exists: \(FileManager.default.fileExists(atPath: logoURL.path))")
+
+      if let data = try? Data(contentsOf: logoURL) {
+        print("🖼️ Loaded \(data.count) bytes of image data")
+        if let img = UIImage(data: data) {
+          print("🖼️ Created UIImage: \(img.size)")
+          watermarkImage = img.cgImage
+          print("✅ Successfully loaded watermark image")
+        } else {
+          print("❌ Failed to create UIImage from data")
+        }
       } else {
-        print("⚠️ Failed to load watermark image from: \(imagePath)")
+        print("❌ Failed to load data from: \(logoURL.path)")
       }
     }
 
@@ -484,10 +526,9 @@ class CaptionBurnerModule: NSObject {
     let videoLayer = CALayer()
     let overlayLayer = CALayer()
 
-    let videoSize = videoTrack.naturalSize
-    parentLayer.frame = CGRect(origin: .zero, size: videoSize)
-    videoLayer.frame = CGRect(origin: .zero, size: videoSize)
-    overlayLayer.frame = CGRect(origin: .zero, size: videoSize)
+    parentLayer.frame = CGRect(origin: .zero, size: renderSize)
+    videoLayer.frame = CGRect(origin: .zero, size: renderSize)
+    overlayLayer.frame = CGRect(origin: .zero, size: renderSize)
 
     // Add watermark image if we have one
     if let image = watermarkImage {
@@ -496,13 +537,17 @@ class CaptionBurnerModule: NSObject {
       let imageHeight: CGFloat = 40
       imageLayer.contents = image
       imageLayer.frame = CGRect(
-        x: videoSize.width - imageWidth - 20,
-        y: 20,
+        x: renderSize.width - imageWidth - 20,
+        y: renderSize.height - imageHeight - 20,
         width: imageWidth,
         height: imageHeight
       )
       imageLayer.contentsGravity = .resizeAspect
+      imageLayer.opacity = 0.9
       overlayLayer.addSublayer(imageLayer)
+      print("✅ Added logo watermark at bottom-right")
+    } else {
+      print("⚠️ No logo image to add")
     }
 
     // Add text watermark if provided
@@ -515,12 +560,13 @@ class CaptionBurnerModule: NSObject {
       textLayer.alignmentMode = .center
       textLayer.frame = CGRect(
         x: 20,
-        y: 20,
+        y: renderSize.height - 60,
         width: 200,
         height: 30
       )
       textLayer.cornerRadius = 8
       overlayLayer.addSublayer(textLayer)
+      print("✅ Added text watermark at bottom-left")
     }
 
     parentLayer.addSublayer(videoLayer)
