@@ -289,111 +289,10 @@ export default function VideoPreviewScreen() {
         // Don't return here - let user choose
       }
 
-      // Process video with watermark before uploading (iOS only)
-      if (Platform.OS === "ios") {
-        try {
-          console.log("🏷️ Processing video with watermark...");
-          setUploadProgress(5);
-
-          // Load logo asset
-          const logoAsset = Asset.fromModule(require("../../assets/logo.png"));
-          await logoAsset.downloadAsync();
-          const logoPath = logoAsset.localUri || logoAsset.uri;
-
-          console.log("🏷️ Logo loaded:", logoPath);
-          setUploadProgress(10);
-
-          // Load captions if available
-          // First try to parse from processedVideo.transcription (in-memory)
-          let captionSegments: any[] = [];
-
-          if (processedVideo.transcription) {
-            try {
-              console.log("📝 Parsing captions from in-memory transcription data");
-              const transcriptionData = JSON.parse(processedVideo.transcription);
-
-              // Check if it's already in the correct format (array of segments)
-              if (Array.isArray(transcriptionData)) {
-                captionSegments = transcriptionData.map((seg: any, index: number) => ({
-                  id: seg.id || `seg_${index}`,
-                  text: seg.text || seg.content || "",
-                  startTime: seg.startTime || seg.start || 0,
-                  endTime: seg.endTime || seg.end || 0,
-                  isComplete: seg.isComplete !== undefined ? seg.isComplete : true,
-                  words: (seg.words || []).map((word: any) => ({
-                    word: word.word || word.text || "",
-                    startTime: word.startTime || word.start || 0,
-                    endTime: word.endTime || word.end || 0,
-                    confidence: word.confidence || 1.0,
-                    isComplete: word.isComplete !== undefined ? word.isComplete : true,
-                  })),
-                }));
-                console.log("✅ Parsed captions from in-memory data:", captionSegments.length, "segments");
-              }
-            } catch (error) {
-              console.warn("⚠️ Failed to parse transcription data:", error);
-            }
-          }
-
-          // Fallback to loading from file if not in memory
-          if (captionSegments.length === 0) {
-            console.log("📝 Attempting to load captions from file");
-            const captionUri = originalVideoUri.current.replace(/\.(mp4|mov)$/i, ".captions.json");
-            const captionData = await loadCaptionData(captionUri);
-
-            if (captionData?.segments) {
-              captionSegments = captionData.segments.map((seg: any, index: number) => ({
-                id: `seg_${index}`,
-                text: seg.text,
-                startTime: seg.start,
-                endTime: seg.end,
-                isComplete: true,
-                words: seg.words.map((word: any) => ({
-                  word: word.word,
-                  startTime: word.start,
-                  endTime: word.end,
-                  confidence: 1.0,
-                  isComplete: true,
-                })),
-              }));
-              console.log("✅ Loaded captions from file:", captionSegments.length, "segments");
-            }
-          }
-
-          console.log("📝 Final caption segments for burning:", captionSegments.length);
-          setUploadProgress(15);
-
-          // CRITICAL: Use the current video URI which should be the blurred video if blur was applied
-          console.log("🏷️ ========== WATERMARK BURNING DEBUG ==========");
-          console.log("🏷️ Input video for burning:", currentVideoUri);
-          console.log("🏷️ Caption segments to burn:", captionSegments.length);
-          console.log("🏷️ This should be BLURRED video if blur was applied!");
-          console.log("🏷️ ============================================");
-
-          // Burn watermark and captions into video
-          const result = await burnCaptionsAndWatermarkIntoVideo(currentVideoUri, captionSegments, {
-            watermarkImagePath: logoPath,
-            watermarkText: "ToxicConfessions.app",
-            onProgress: (progress, status) => {
-              const mappedProgress = 15 + (progress / 100) * 25; // 15-40%
-              setUploadProgress(mappedProgress);
-              console.log(`🏷️ Watermark progress: ${progress}% - ${status}`);
-            },
-          });
-
-          if (result.success && result.outputPath) {
-            console.log("✅ Video processed with watermark successfully:", result.outputPath);
-            finalVideoUri = result.outputPath;
-            setUploadProgress(40);
-          } else {
-            console.warn("⚠️ Watermark processing failed, continuing with original video:", result.error);
-            // Continue with original video if watermark fails
-          }
-        } catch (error) {
-          console.error("⚠️ Watermark processing error:", error);
-          // Continue with original video if watermark fails
-        }
-      }
+      // CAPTION BURNING DISABLED - Captions will be shown as overlay during playback
+      // Just use the current video (with blur if applied)
+      console.log("📹 Using video without burning captions:", currentVideoUri);
+      setUploadProgress(10);
 
       console.log("📤 Uploading video:", finalVideoUri);
 
@@ -419,8 +318,8 @@ export default function VideoPreviewScreen() {
 
       await addConfession(confessionPayload, {
         onUploadProgress: (progress: number) => {
-          // Adjust progress to account for watermark and blur processing
-          const adjustedProgress = Platform.OS === "ios" ? 40 + progress * 0.6 : progress;
+          // Map progress from 10-100%
+          const adjustedProgress = 10 + progress * 0.9;
           setUploadProgress(adjustedProgress);
         },
       });

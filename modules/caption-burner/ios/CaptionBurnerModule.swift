@@ -92,6 +92,7 @@ class CaptionBurnerModule: NSObject {
     watermarkText: String?
   ) throws -> String {
     print("🎬 Starting caption burning process...")
+    print("📂 Input path: \(inputPath)")
 
     // Parse caption segments
     let segments = try parseCaptionSegments(json: captionSegmentsJSON)
@@ -100,7 +101,7 @@ class CaptionBurnerModule: NSObject {
     if watermarkImagePath != nil || watermarkText != nil {
       print("🏷️ Watermark will be applied")
     }
-    
+
     // Convert input path to URL
     let inputURL: URL
     if inputPath.hasPrefix("file://") {
@@ -108,59 +109,126 @@ class CaptionBurnerModule: NSObject {
     } else {
       inputURL = URL(fileURLWithPath: inputPath)
     }
-    
+
+    // CRITICAL: Validate input video file exists and is readable
+    let fileManager = FileManager.default
+    let filePath = inputURL.path
+
+    print("🔍 Validating input video file...")
+    print("   - Path: \(filePath)")
+    print("   - Exists: \(fileManager.fileExists(atPath: filePath))")
+
+    if fileManager.fileExists(atPath: filePath) {
+      do {
+        let attributes = try fileManager.attributesOfItem(atPath: filePath)
+        let fileSize = attributes[.size] as? Int64 ?? 0
+        print("   - Size: \(fileSize) bytes (\(Double(fileSize) / 1024.0 / 1024.0) MB)")
+
+        if fileSize == 0 {
+          throw NSError(domain: "CaptionBurner", code: 0, userInfo: [NSLocalizedDescriptionKey: "Input video file is empty (0 bytes)"])
+        }
+      } catch {
+        print("❌ Failed to get file attributes: \(error)")
+        throw error
+      }
+    } else {
+      throw NSError(domain: "CaptionBurner", code: 0, userInfo: [NSLocalizedDescriptionKey: "Input video file does not exist at path: \(filePath)"])
+    }
+
     // Create output URL
     let outputURL = URL(fileURLWithPath: NSTemporaryDirectory())
       .appendingPathComponent("captioned_\(UUID().uuidString).mov")
-    
+
+    print("📤 Output will be saved to: \(outputURL.path)")
+
     // Load video asset
     let asset = AVAsset(url: inputURL)
-    
-    guard let videoTrack = asset.tracks(withMediaType: .video).first else {
-      throw NSError(domain: "CaptionBurner", code: 1, userInfo: [NSLocalizedDescriptionKey: "No video track found"])
+
+    // CRITICAL: Validate asset is loadable
+    print("🎥 Loading video asset...")
+    let tracks = asset.tracks(withMediaType: .video)
+    print("   - Video tracks found: \(tracks.count)")
+
+    guard let videoTrack = tracks.first else {
+      throw NSError(domain: "CaptionBurner", code: 1, userInfo: [NSLocalizedDescriptionKey: "No video track found in asset. The video file may be corrupted or invalid."])
     }
-    
+
     // Get video properties
     let videoSize = videoTrack.naturalSize
     let transform = videoTrack.preferredTransform
     let duration = asset.duration
-    
-    print("📹 Video size: \(videoSize), duration: \(CMTimeGetSeconds(duration))s")
+    let frameRate = videoTrack.nominalFrameRate
+
+    print("📹 Video properties:")
+    print("   - Size: \(videoSize)")
+    print("   - Duration: \(CMTimeGetSeconds(duration))s")
+    print("   - Frame rate: \(frameRate) FPS")
+    print("   - Transform: \(transform)")
+    print("   - Transform.a: \(transform.a), .b: \(transform.b), .c: \(transform.c), .d: \(transform.d)")
+    print("   - Transform.tx: \(transform.tx), .ty: \(transform.ty)")
+
+    // Check if this is an identity transform (video already oriented correctly)
+    let isIdentityTransform = transform.isIdentity
+    print("   - Is identity transform: \(isIdentityTransform)")
     
     // Create composition
+    print("🎬 Creating video composition...")
     let composition = AVMutableComposition()
-    
+
     // Add video track
     guard let compositionVideoTrack = composition.addMutableTrack(
       withMediaType: .video,
       preferredTrackID: kCMPersistentTrackID_Invalid
     ) else {
-      throw NSError(domain: "CaptionBurner", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create video track"])
+      throw NSError(domain: "CaptionBurner", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create video track in composition"])
     }
-    
-    try compositionVideoTrack.insertTimeRange(
-      CMTimeRange(start: .zero, duration: duration),
-      of: videoTrack,
-      at: .zero
-    )
+
+    print("✅ Video track created in composition")
+
+    do {
+      try compositionVideoTrack.insertTimeRange(
+        CMTimeRange(start: .zero, duration: duration),
+        of: videoTrack,
+        at: .zero
+      )
+      print("✅ Video track inserted into composition")
+    } catch {
+      print("❌ Failed to insert video track: \(error)")
+      throw NSError(domain: "CaptionBurner", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to insert video track into composition: \(error.localizedDescription)"])
+    }
+
+    // Apply the original transform to the composition track
+    print("   - Setting composition track transform: \(transform)")
     compositionVideoTrack.preferredTransform = transform
-    
+
     // Add audio track if available
-    if let audioTrack = asset.tracks(withMediaType: .audio).first {
-      print("🔊 Adding audio track")
+    let audioTracks = asset.tracks(withMediaType: .audio)
+    print("🔊 Audio tracks found: \(audioTracks.count)")
+
+    if let audioTrack = audioTracks.first {
+      print("🔊 Adding audio track to composition")
       if let compositionAudioTrack = composition.addMutableTrack(
         withMediaType: .audio,
         preferredTrackID: kCMPersistentTrackID_Invalid
       ) {
-        try compositionAudioTrack.insertTimeRange(
-          CMTimeRange(start: .zero, duration: duration),
-          of: audioTrack,
-          at: .zero
-        )
+        do {
+          try compositionAudioTrack.insertTimeRange(
+            CMTimeRange(start: .zero, duration: duration),
+            of: audioTrack,
+            at: .zero
+          )
+          print("✅ Audio track inserted successfully")
+        } catch {
+          print("⚠️ Failed to insert audio track: \(error)")
+          // Continue without audio rather than failing
+        }
       }
+    } else {
+      print("⚠️ No audio track found in source video")
     }
-    
+
     // Create video composition with caption and watermark layers
+    print("🎨 Creating video composition with captions and watermark...")
     let videoComposition = try createVideoComposition(
       for: composition,
       videoSize: videoSize,
@@ -171,13 +239,15 @@ class CaptionBurnerModule: NSObject {
       watermarkText: watermarkText,
       sourceFrameRate: videoTrack.nominalFrameRate
     )
-    
+    print("✅ Video composition created successfully")
+
     // Export the video
+    print("📤 Creating export session...")
     guard let exportSession = AVAssetExportSession(
       asset: composition,
       presetName: AVAssetExportPresetHighestQuality
     ) else {
-      throw NSError(domain: "CaptionBurner", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create export session"])
+      throw NSError(domain: "CaptionBurner", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create export session - AVAssetExportSession returned nil"])
     }
 
     exportSession.outputURL = outputURL
@@ -185,29 +255,50 @@ class CaptionBurnerModule: NSObject {
     exportSession.videoComposition = videoComposition
     exportSession.shouldOptimizeForNetworkUse = true
 
-    // CRITICAL FIX: Log export session details for debugging
-    print("📤 Export session created:")
+    // CRITICAL: Log export session details for debugging
+    print("📤 Export session configuration:")
     print("   - Input video tracks: \(composition.tracks(withMediaType: .video).count)")
     print("   - Input audio tracks: \(composition.tracks(withMediaType: .audio).count)")
-    print("   - Video composition: \(videoComposition)")
+    print("   - Output URL: \(outputURL.path)")
+    print("   - Output file type: .mov")
     print("   - Render size: \(videoComposition.renderSize)")
     print("   - Frame duration: \(videoComposition.frameDuration)")
-    print("   - Instructions: \(videoComposition.instructions.count)")
-    
+    print("   - Frame rate: \(1.0 / CMTimeGetSeconds(videoComposition.frameDuration)) FPS")
+    print("   - Instructions count: \(videoComposition.instructions.count)")
+
+    // Validate composition has content
+    if composition.tracks(withMediaType: .video).isEmpty {
+      throw NSError(domain: "CaptionBurner", code: 4, userInfo: [NSLocalizedDescriptionKey: "Composition has no video tracks - this should never happen!"])
+    }
+
     print("🎬 Starting export...")
-    
+    print("   - This may take a few seconds depending on video length...")
+
     // Export synchronously
     let semaphore = DispatchSemaphore(value: 0)
     var exportError: Error?
-    
+    let exportStartTime = Date()
+
     exportSession.exportAsynchronously {
+      let exportDuration = Date().timeIntervalSince(exportStartTime)
+
       if exportSession.status == .failed {
         exportError = exportSession.error
-        print("❌ Export FAILED with error: \(String(describing: exportSession.error))")
+        print("❌ Export FAILED after \(exportDuration)s")
+        print("❌ Error: \(String(describing: exportSession.error))")
+        print("❌ Error domain: \(String(describing: exportSession.error?._domain))")
+        print("❌ Error code: \(String(describing: exportSession.error?._code))")
+
+        // Log detailed error information
+        if let error = exportSession.error as NSError? {
+          print("❌ Error userInfo: \(error.userInfo)")
+        }
       } else if exportSession.status == .completed {
-        print("✅ Export COMPLETED successfully")
+        print("✅ Export COMPLETED successfully in \(exportDuration)s")
+      } else if exportSession.status == .cancelled {
+        print("⚠️ Export was CANCELLED after \(exportDuration)s")
       } else {
-        print("⚠️ Export status: \(exportSession.status.rawValue)")
+        print("⚠️ Export ended with unexpected status: \(exportSession.status.rawValue) after \(exportDuration)s")
       }
       semaphore.signal()
     }
@@ -216,7 +307,23 @@ class CaptionBurnerModule: NSObject {
 
     if let error = exportError {
       print("❌ Throwing export error: \(error.localizedDescription)")
-      throw error
+
+      // Provide more helpful error message
+      var errorMessage = "Video export failed: \(error.localizedDescription)"
+      if let nsError = error as NSError? {
+        if nsError.domain == "AVFoundationErrorDomain" {
+          errorMessage += "\n\nThis may be caused by:"
+          errorMessage += "\n• Corrupted input video file"
+          errorMessage += "\n• Invalid video codec or format"
+          errorMessage += "\n• Insufficient storage space"
+          errorMessage += "\n• Video composition configuration issue"
+        }
+      }
+
+      throw NSError(domain: "CaptionBurner", code: 5, userInfo: [
+        NSLocalizedDescriptionKey: errorMessage,
+        NSUnderlyingErrorKey: error
+      ])
     }
 
     if exportSession.status != .completed {
@@ -229,11 +336,11 @@ class CaptionBurnerModule: NSObject {
     }
 
     // CRITICAL: Verify output file exists and has size
-    let fileManager = FileManager.default
+    print("🔍 Verifying output file...")
     if fileManager.fileExists(atPath: outputURL.path) {
       do {
         let attributes = try fileManager.attributesOfItem(atPath: outputURL.path)
-        if let fileSize = attributes[.size] as? UInt64 {
+        if let fileSize = attributes[FileAttributeKey.size] as? UInt64 {
           print("✅ Output file size: \(Double(fileSize) / 1_000_000.0) MB")
           if fileSize < 1000 {
             print("⚠️ WARNING: Output file is very small (\(fileSize) bytes)! Video may be corrupt.")
@@ -264,26 +371,46 @@ class CaptionBurnerModule: NSObject {
     sourceFrameRate: Float
   ) throws -> AVMutableVideoComposition {
 
-    // Determine actual render size based on transform
-    let renderSize = videoSize.applying(transform)
-    let normalizedSize = CGSize(width: abs(renderSize.width), height: abs(renderSize.height))
+    print("🎨 Creating video composition...")
+    print("   - Input video size: \(videoSize)")
+    print("   - Transform: \(transform)")
 
-    print("📐 Render size: \(normalizedSize)")
+    // Use the ORIGINAL video size - do NOT swap dimensions
+    // The transform will handle the rotation
+    let normalizedSize = videoSize
+    print("   - Using original video size as render size: \(normalizedSize)")
+
+    // CRITICAL: Validate render size is valid
+    if normalizedSize.width <= 0 || normalizedSize.height <= 0 {
+      throw NSError(domain: "CaptionBurner", code: 6, userInfo: [
+        NSLocalizedDescriptionKey: "Invalid render size: \(normalizedSize). Video dimensions must be positive."
+      ])
+    }
+
+    if normalizedSize.width > 10000 || normalizedSize.height > 10000 {
+      throw NSError(domain: "CaptionBurner", code: 6, userInfo: [
+        NSLocalizedDescriptionKey: "Render size too large: \(normalizedSize). Maximum dimension is 10000 pixels."
+      ])
+    }
 
     // Create video composition
     let videoComposition = AVMutableVideoComposition()
 
     // CRITICAL FIX: Use source video's frame rate instead of hardcoding 30 FPS
     // This prevents black screen issues
-    if sourceFrameRate > 0 {
+    if sourceFrameRate > 0 && sourceFrameRate <= 120 {
       videoComposition.frameDuration = CMTime(value: 1, timescale: Int32(sourceFrameRate))
-      print("📹 Using source frame rate: \(sourceFrameRate) FPS")
+      print("   - Using source frame rate: \(sourceFrameRate) FPS")
     } else {
       videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
-      print("📹 Using default frame rate: 30 FPS")
+      print("   - Using default frame rate: 30 FPS (source was invalid: \(sourceFrameRate))")
     }
 
     videoComposition.renderSize = normalizedSize
+    videoComposition.renderScale = 1.0  // Ensure 1:1 pixel rendering
+    print("✅ Video composition configuration set")
+    print("   - Render size: \(normalizedSize)")
+    print("   - Render scale: 1.0")
 
     // Create layers
     let parentLayer = CALayer()
@@ -291,20 +418,20 @@ class CaptionBurnerModule: NSObject {
     let captionLayer = CALayer()
     let watermarkLayer = CALayer()
 
+    // All layers use the same size - the final render size (after rotation)
+    print("🎨 Configuring layer frames:")
+    print("   - All layers: \(normalizedSize)")
+
     parentLayer.frame = CGRect(origin: .zero, size: normalizedSize)
     videoLayer.frame = CGRect(origin: .zero, size: normalizedSize)
     captionLayer.frame = CGRect(origin: .zero, size: normalizedSize)
     watermarkLayer.frame = CGRect(origin: .zero, size: normalizedSize)
 
-    // CRITICAL FIX: Do NOT add videoLayer as sublayer!
-    // When using postProcessingAsVideoLayer, the videoLayer represents the actual video frames
-    // and should NOT be added as a sublayer. It's automatically composited by AVFoundation
-    // BEHIND the parentLayer.
-    // Adding it as a sublayer creates an empty black layer that blocks the video!
+    // CRITICAL: The video frames are rendered automatically by AVFoundation
+    // We only add the OVERLAY layers (watermark and captions) to parentLayer
+    // The videoLayer is used ONLY for the animation tool, not added as sublayer
 
-    // parentLayer.addSublayer(videoLayer) // ❌ REMOVED - This was causing black video!
-
-    // Add watermark layer (below captions)
+    // Add watermark layer
     if watermarkImagePath != nil || watermarkText != nil {
       createWatermarkLayer(
         in: watermarkLayer,
@@ -321,8 +448,11 @@ class CaptionBurnerModule: NSObject {
 
     // Add caption layer on top
     parentLayer.addSublayer(captionLayer)
-    
-    // Create animation tool
+
+    // Create animation tool with postProcessingAsVideoLayer
+    // This tells AVFoundation to:
+    // 1. Render the video frames into videoLayer automatically
+    // 2. Composite parentLayer (with overlays) ON TOP of the video
     videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
       postProcessingAsVideoLayer: videoLayer,
       in: parentLayer
@@ -331,17 +461,24 @@ class CaptionBurnerModule: NSObject {
     // Create instruction
     let instruction = AVMutableVideoCompositionInstruction()
     instruction.timeRange = CMTimeRange(start: .zero, duration: duration)
-    
+
     guard let track = composition.tracks(withMediaType: .video).first else {
       throw NSError(domain: "CaptionBurner", code: 5, userInfo: [NSLocalizedDescriptionKey: "No video track in composition"])
     }
-    
+
     let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: track)
-    layerInstruction.setTransform(transform, at: .zero)
-    
+
+    // CRITICAL FIX: Do NOT apply transform when using postProcessingAsVideoLayer
+    // The transform is already handled by the render size calculation
+    // Applying it again causes double-transformation and black video
+    print("   - NOT applying transform to layer instruction (handled by renderSize)")
+    // layerInstruction.setTransform(transform, at: .zero) // ❌ REMOVED
+
     instruction.layerInstructions = [layerInstruction]
     videoComposition.instructions = [instruction]
-    
+
+    print("✅ Video composition instructions configured")
+
     return videoComposition
   }
   
