@@ -249,8 +249,16 @@ async function flushAnalyticsBatch(tasks: QueueTask[]): Promise<void> {
     }
     await persistQueue();
   } catch (error) {
-    console.error("Failed to flush analytics batch:", error);
-    // Tasks remain in queue for retry
+    // Silently fail analytics - non-critical
+    if (__DEV__) {
+      console.warn("Analytics batch upload failed (non-critical):", error);
+    }
+    // Remove failed tasks to prevent infinite retries
+    tasks.forEach((t) => {
+      const index = queue.indexOf(t);
+      if (index !== -1) queue.splice(index, 1);
+    });
+    await persistQueue();
   }
 }
 
@@ -438,13 +446,21 @@ registerProcessor(
 
     // This processor is handled specially in flushAnalyticsBatch
     // Individual processing here is a fallback
-    await withSupabaseRetry(async () => {
-      const { error } = await supabase.functions.invoke("video-analytics-aggregator", {
-        body: payload,
-      });
+    try {
+      await withSupabaseRetry(async () => {
+        const { error } = await supabase.functions.invoke("video-analytics-aggregator", {
+          body: payload,
+        });
 
-      if (error) throw error;
-    });
+        if (error) throw error;
+      });
+    } catch (error) {
+      // Silently fail analytics - non-critical
+      if (__DEV__) {
+        console.warn("Analytics upload failed (non-critical):", error);
+      }
+      // Don't throw - allow task to be removed from queue
+    }
   },
 );
 
