@@ -60,9 +60,9 @@ class FaceBlurModule: NSObject {
         )
         velocities.append(velocity)
 
-        // Determine if face is moving (velocity threshold)
+        // ✅ IMPROVED: More sensitive movement detection
         let speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
-        isMoving = speed > 0.02 // Threshold for movement detection
+        isMoving = speed > 0.01 // Lowered from 0.02 to 0.01 for more sensitive detection
       }
 
       // Keep only recent data (last 10 frames)
@@ -289,25 +289,15 @@ class FaceBlurModule: NSObject {
     let ciImage = CIImage(cvPixelBuffer: imageBuffer)
     frameCount += 1
 
-    // Adaptive detection frequency based on face movement
-    // ✅ FIX: Detect faces more frequently (every frame initially, then every 1-2 frames)
-    let hasMovingFaces = trackedFaces.contains { $0.isMoving }
-    let detectionInterval = hasMovingFaces ? 1 : 2 // Much more frequent detection
+    // ✅ IMPROVED: Detect faces EVERY frame for maximum coverage
+    // This ensures we never miss a face, even when moving quickly
+    let newFaces = detectFaces(in: ciImage, orientation: orientation)
+    updateTrackedFaces(with: newFaces)
+    framesSinceLastDetection = 0
+    lastDetectionTime = CFAbsoluteTimeGetCurrent()
 
-    framesSinceLastDetection += 1
-    let shouldDetect = framesSinceLastDetection >= detectionInterval ||
-                      trackedFaces.isEmpty ||
-                      CFAbsoluteTimeGetCurrent() - lastDetectionTime > 0.3 // Force detection every 0.3s (more frequent)
-
-    if shouldDetect {
-      let newFaces = detectFaces(in: ciImage, orientation: orientation)
-      updateTrackedFaces(with: newFaces)
-      framesSinceLastDetection = 0
-      lastDetectionTime = CFAbsoluteTimeGetCurrent()
-    }
-
-    // Clean up old tracked faces (not seen for 10 frames)
-    trackedFaces.removeAll { frameCount - $0.lastSeen > 10 }
+    // Clean up old tracked faces (not seen for 5 frames - shorter window for faster cleanup)
+    trackedFaces.removeAll { frameCount - $0.lastSeen > 5 }
 
     // Get current face positions (either detected or predicted)
     let currentFaceRects = getCurrentFaceRects()
@@ -336,31 +326,30 @@ class FaceBlurModule: NSObject {
         height: faceRect.height * imageSize.height
       )
 
-      // Expand face region to ensure full face coverage without being too large
-      let expansionFactor: CGFloat = hasMovingFaces ? 0.25 : 0.20 // Moderate expansion
+      // ✅ IMPROVED: Larger expansion to ensure full face coverage even when moving
+      let expansionFactor: CGFloat = 0.35 // Increased from 0.20-0.25 to 0.35 for better coverage
       let expandedRect = actualRect.insetBy(dx: -actualRect.width * expansionFactor, dy: -actualRect.height * expansionFactor)
 
       // Clamp to image bounds
       let clampedRect = expandedRect.intersection(ciImage.extent)
 
-      if index == 0 && shouldDetect {
-        print("🎭 Blurring face \(index + 1): rect=\(clampedRect), moving=\(hasMovingFaces)")
+      if index == 0 && frameCount % 30 == 0 {
+        print("🎭 Blurring face \(index + 1): rect=\(clampedRect)")
       }
 
       // Create pixelated version of the face region
       let faceRegion = outputImage.cropped(to: clampedRect)
 
-      // Use CIPixellate for better privacy and performance
+      // ✅ IMPROVED: Use stronger pixelation for better privacy
       guard let pixellateFilter = CIFilter(name: "CIPixellate") else {
         print("❌ Failed to create pixellate filter")
         continue
       }
 
       // Scale determines pixelation size (higher = more pixelated)
-      // Use moderate intensity to properly obscure faces while maintaining natural look
+      // Increased intensity for better face obscuring
       let baseIntensity = Double(blurIntensity)
-      let movingFaceBonus = hasMovingFaces ? 8.0 : 5.0 // Small bonus for moving faces
-      let pixelScale = max(baseIntensity + movingFaceBonus, 25.0) // Moderate pixelation effect
+      let pixelScale = max(baseIntensity + 15.0, 35.0) // Increased from 25.0 to 35.0 for stronger effect
       pixellateFilter.setValue(faceRegion, forKey: kCIInputImageKey)
       pixellateFilter.setValue(pixelScale, forKey: kCIInputScaleKey)
       pixellateFilter.setValue(CIVector(x: clampedRect.midX, y: clampedRect.midY), forKey: kCIInputCenterKey)
@@ -415,8 +404,8 @@ class FaceBlurModule: NSObject {
 
         let distance = sqrt(pow(newCenter.x - trackedCenter.x, 2) + pow(newCenter.y - trackedCenter.y, 2))
 
-        // If faces are close enough, update the tracked face
-        if distance < 0.1 { // Threshold for face matching
+        // ✅ IMPROVED: Increased threshold for better face matching when moving
+        if distance < 0.15 { // Increased from 0.1 to 0.15 for better tracking of moving faces
           trackedFaces[i].update(with: newFace, frameNumber: frameCount)
           matched = true
           break
@@ -475,12 +464,12 @@ class FaceBlurModule: NSObject {
       try handler.perform([request])
       let results = request.results as? [VNFaceObservation] ?? []
 
-      // ✅ FIX: Lower confidence threshold to detect more faces (especially side profiles)
-      let filteredResults = results.filter { $0.confidence > 0.4 }
+      // ✅ IMPROVED: Even lower confidence threshold to catch more faces (side profiles, partial faces)
+      let filteredResults = results.filter { $0.confidence > 0.3 } // Lowered from 0.4 to 0.3
 
-      // Log detection results for debugging
-      if !filteredResults.isEmpty {
-        print("✅ Detected \(filteredResults.count) high-confidence face(s) in frame \(frameCount)")
+      // Log detection results for debugging (less frequently to reduce noise)
+      if !filteredResults.isEmpty && frameCount % 30 == 0 {
+        print("✅ Detected \(filteredResults.count) face(s) in frame \(frameCount)")
         for (index, face) in filteredResults.enumerated() {
           let landmarks = face.landmarks?.allPoints?.pointCount ?? 0
           print("  Face \(index + 1): bounds=\(face.boundingBox), confidence=\(face.confidence), landmarks=\(landmarks)")

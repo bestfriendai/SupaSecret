@@ -119,12 +119,22 @@ export class RevenueCatMCPService {
       // Get offerings to find the package
       const offerings = await SubscriptionService.getOfferings();
       if (!offerings || !offerings.current) {
-        throw new Error("No offerings available");
+        console.warn("No offerings available for purchase");
+        return {
+          success: false,
+          data: null,
+          message: "Subscription options are currently unavailable",
+        };
       }
 
       const packageToPurchase = offerings.current.packages.find((pkg) => pkg.identifier === packageId);
       if (!packageToPurchase) {
-        throw new Error("Package not found");
+        console.warn(`Package ${packageId} not found. Available:`, offerings.current.packages.map(p => p.identifier));
+        return {
+          success: false,
+          data: null,
+          message: "The selected subscription plan is not available",
+        };
       }
 
       // Make the purchase

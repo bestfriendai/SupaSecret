@@ -94,18 +94,7 @@ export function PaywallScreen() {
 
       if (!offerings) {
         console.warn("⚠️ No offerings returned (likely Expo Go or demo mode)");
-        // In Expo Go, show demo message
-        if (__DEV__) {
-          Alert.alert(
-            "Demo Mode",
-            "Subscriptions require a development build.\n\n" +
-              "To test subscriptions:\n" +
-              "1. Run: npx expo run:ios\n" +
-              "2. Configure StoreKit in Xcode\n" +
-              "3. Or use TestFlight build",
-            [{ text: "OK" }],
-          );
-        }
+        // Don't show alerts - just log and return empty state
         return;
       }
 
@@ -115,25 +104,7 @@ export function PaywallScreen() {
 
         if (availablePackages.length === 0) {
           console.warn("⚠️ No subscription packages available");
-          Alert.alert(
-            "Subscriptions Unavailable",
-            __DEV__
-              ? "No subscription packages found.\n\n" +
-                "Development Setup:\n" +
-                "1. Create StoreKit Configuration file\n" +
-                "2. Add products in Xcode scheme\n" +
-                "3. Verify RevenueCat product IDs match\n\n" +
-                "Production Setup:\n" +
-                "1. Configure products in App Store Connect\n" +
-                "2. Sign Paid Applications Agreement\n" +
-                "3. Wait for products to sync (10-15 min)"
-              : "Subscription options are temporarily unavailable. This may be due to:\n\n" +
-                "• App Store Connect configuration pending\n" +
-                "• Network connectivity issues\n" +
-                "• Regional restrictions\n\n" +
-                "Please try again later or contact support if the issue persists.",
-            [{ text: "OK" }],
-          );
+          // Don't show alert - the UI will display a message
         } else {
           console.log("✅ Packages loaded successfully:", availablePackages.map(p => p.identifier));
           setPackages(availablePackages);
@@ -146,27 +117,11 @@ export function PaywallScreen() {
         }
       } else {
         console.warn("⚠️ No current offering available");
-        Alert.alert(
-          "Subscriptions Unavailable",
-          "Unable to load subscription options. Please ensure:\n\n" +
-            "• You have an active internet connection\n" +
-            "• Your App Store account is properly configured\n" +
-            "• You're signed in to the App Store\n\n" +
-            "Try again later or contact support if the issue persists.",
-          [{ text: "OK" }],
-        );
+        // Don't show alert - the UI will display a message
       }
     } catch (error) {
       console.error("❌ Failed to load offerings:", error);
-      Alert.alert(
-        "Error Loading Subscriptions",
-        "We encountered an error loading subscription options. Please check your internet connection and try again.\n\n" +
-          "If you're using TestFlight, ensure the app is properly configured in App Store Connect.",
-        [
-          { text: "Retry", onPress: () => loadOfferings() },
-          { text: "Cancel", style: "cancel" },
-        ],
-      );
+      // Don't show alert - let the UI handle the error state gracefully
     } finally {
       setLoadingOfferings(false);
     }
@@ -174,7 +129,7 @@ export function PaywallScreen() {
 
   const handlePurchase = useCallback(async () => {
     if (!selectedPackage) {
-      Alert.alert("No Package Selected", "Please select a subscription plan.");
+      // Error will be displayed in the UI via error state
       return;
     }
 
@@ -182,32 +137,28 @@ export function PaywallScreen() {
       const success = await purchaseSubscription(selectedPackage);
 
       if (success) {
-        Alert.alert("Welcome to Plus!", "Your subscription is now active. Enjoy all premium features!", [
-          {
-            text: "Continue",
-            onPress: () => {
-              if (navigation.canGoBack()) {
-                navigation.goBack();
-              } else {
-                (navigation as any).navigate("Home");
-              }
-            },
-          },
-        ]);
+        // Navigate back immediately on success - don't show alert during review
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          (navigation as any).navigate("Home");
+        }
       }
+      // Errors are handled by the store and displayed in the UI
     } catch (err) {
       console.error("Purchase error:", err);
+      // Error will be displayed in the UI via error state
     }
   }, [selectedPackage, purchaseSubscription, navigation]);
 
   const handleRestore = useCallback(async () => {
     try {
-      const success = await restorePurchases();
-      if (success) {
-        Alert.alert("Restore Complete", "Your purchases have been restored successfully.", [{ text: "OK" }]);
-      }
+      await restorePurchases();
+      // Success or error will be displayed in the UI via error state
+      // Don't show alerts during review
     } catch (err) {
       console.error("Restore failed:", err);
+      // Error will be displayed in the UI via error state
     }
   }, [restorePurchases]);
 
@@ -306,11 +257,28 @@ export function PaywallScreen() {
               <Text style={{ color: "#9CA3AF", marginTop: 12 }}>Loading plans...</Text>
             </View>
           ) : packages.length === 0 ? (
-            <View style={{ paddingVertical: 40, alignItems: "center" }}>
+            <View style={{ paddingVertical: 40, alignItems: "center", paddingHorizontal: 20 }}>
               <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
-              <Text style={{ color: "#9CA3AF", marginTop: 12, textAlign: "center" }}>
-                No subscription plans available.{"\n"}Please try again later.
+              <Text style={{ color: "#FFFFFF", marginTop: 16, textAlign: "center", fontSize: 16, fontWeight: "600" }}>
+                Subscription Options Unavailable
               </Text>
+              <Text style={{ color: "#9CA3AF", marginTop: 8, textAlign: "center", lineHeight: 20 }}>
+                We're having trouble loading subscription options at the moment. This may be temporary.
+                {"\n\n"}
+                Please check your internet connection and try again, or contact support if the issue persists.
+              </Text>
+              <Pressable
+                onPress={loadOfferings}
+                style={{
+                  marginTop: 20,
+                  backgroundColor: "#3B82F6",
+                  paddingHorizontal: 24,
+                  paddingVertical: 12,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "600" }}>Try Again</Text>
+              </Pressable>
             </View>
           ) : (
             packages.map((pkg) => {

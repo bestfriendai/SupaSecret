@@ -64,10 +64,10 @@ export const useMembershipStore = create<MembershipState>()(
       loadAvailablePlans: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { RevenueCatService } = await import("../services/RevenueCatService");
-          await RevenueCatService.initialize();
+          const { SubscriptionService } = await import("../features/subscription/services/subscriptionService");
+          await SubscriptionService.initialize();
 
-          const offerings = await RevenueCatService.getOfferings();
+          const offerings = await SubscriptionService.getOfferings();
 
           if (!offerings?.current) {
             console.warn("No RevenueCat offerings available, using default plans");
@@ -139,24 +139,47 @@ export const useMembershipStore = create<MembershipState>()(
         set({ isLoading: true, error: null });
         try {
           const plan = get().availablePlans.find((p) => p.id === planId);
-          if (!plan) throw new Error("Plan not found");
+          if (!plan) {
+            set({
+              error: "The selected plan is not available at this time. Please try again later.",
+              isLoading: false
+            });
+            return false;
+          }
 
           const {
             data: { user },
           } = await supabase.auth.getUser();
-          if (!user) throw new Error("User not authenticated");
+          if (!user) {
+            set({
+              error: "Please sign in to purchase a subscription.",
+              isLoading: false
+            });
+            return false;
+          }
 
           const { SubscriptionService } = await import("../features/subscription/services/subscriptionService");
           await SubscriptionService.initialize();
 
           const offerings = await SubscriptionService.getOfferings();
           if (!offerings?.current) {
-            throw new Error("No offerings available. Please configure RevenueCat products in the dashboard.");
+            set({
+              error: "Subscription options are currently unavailable. Please check your internet connection and try again.",
+              isLoading: false
+            });
+            return false;
           }
 
           const pkg = offerings.current.packages.find((p: any) => p.identifier === planId);
           if (!pkg) {
-            throw new Error(`Package ${planId} not found in RevenueCat offerings`);
+            // Log for debugging but show user-friendly message
+            console.warn(`Package ${planId} not found in offerings. Available packages:`,
+              offerings.current.packages.map((p: any) => p.identifier));
+            set({
+              error: "This subscription option is temporarily unavailable. Please try another plan or contact support.",
+              isLoading: false
+            });
+            return false;
           }
 
           const result = await SubscriptionService.purchasePackage(pkg);
