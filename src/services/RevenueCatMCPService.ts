@@ -1,4 +1,4 @@
-import { RevenueCatService } from "./RevenueCatService";
+import { SubscriptionService } from "../features/subscription/services/subscriptionService";
 import { supabase } from "../lib/supabase";
 
 // RevenueCat MCP Service for enhanced subscription management
@@ -10,7 +10,7 @@ export class RevenueCatMCPService {
 
     try {
       // Initialize the base RevenueCat service
-      await RevenueCatService.initialize();
+      await SubscriptionService.initialize();
 
       console.log("🚀 RevenueCat MCP Service initialized");
       this.isInitialized = true;
@@ -25,7 +25,7 @@ export class RevenueCatMCPService {
     await this.initialize();
 
     try {
-      const customerInfo = await RevenueCatService.getCustomerInfo();
+      const customerInfo = await SubscriptionService.getCustomerInfo();
 
       if (!customerInfo || "mockCustomerInfo" in customerInfo) {
         return {
@@ -62,7 +62,7 @@ export class RevenueCatMCPService {
     await this.initialize();
 
     try {
-      const offerings = await RevenueCatService.getOfferings();
+      const offerings = await SubscriptionService.getOfferings();
 
       if (!offerings) {
         return {
@@ -114,10 +114,10 @@ export class RevenueCatMCPService {
       }
 
       // Set user ID in RevenueCat
-      await RevenueCatService.setUserID(userId);
+      await SubscriptionService.setUserID(userId);
 
       // Get offerings to find the package
-      const offerings = await RevenueCatService.getOfferings();
+      const offerings = await SubscriptionService.getOfferings();
       if (!offerings || !offerings.current) {
         throw new Error("No offerings available");
       }
@@ -128,7 +128,7 @@ export class RevenueCatMCPService {
       }
 
       // Make the purchase
-      const result = await RevenueCatService.purchasePackage(packageToPurchase);
+      const result = await SubscriptionService.purchasePackage(packageToPurchase);
 
       // Track purchase analytics
       await this.trackPurchaseAnalytics(result, userId);
@@ -153,7 +153,7 @@ export class RevenueCatMCPService {
     await this.initialize();
 
     try {
-      const result = await RevenueCatService.restorePurchases();
+      const result = await SubscriptionService.restorePurchases();
 
       // Validate and sync with local database
       if (result && !("mockCustomerInfo" in result)) {
@@ -191,7 +191,7 @@ export class RevenueCatMCPService {
         throw new Error("User not authenticated");
       }
 
-      const customerInfo = await RevenueCatService.getCustomerInfo();
+      const customerInfo = await SubscriptionService.getCustomerInfo();
 
       if (!customerInfo || "mockCustomerInfo" in customerInfo) {
         return {

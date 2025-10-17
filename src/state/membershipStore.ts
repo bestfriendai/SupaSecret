@@ -146,10 +146,10 @@ export const useMembershipStore = create<MembershipState>()(
           } = await supabase.auth.getUser();
           if (!user) throw new Error("User not authenticated");
 
-          const { RevenueCatService } = await import("../services/RevenueCatService");
-          await RevenueCatService.initialize();
+          const { SubscriptionService } = await import("../features/subscription/services/subscriptionService");
+          await SubscriptionService.initialize();
 
-          const offerings = await RevenueCatService.getOfferings();
+          const offerings = await SubscriptionService.getOfferings();
           if (!offerings?.current) {
             throw new Error("No offerings available. Please configure RevenueCat products in the dashboard.");
           }
@@ -159,7 +159,7 @@ export const useMembershipStore = create<MembershipState>()(
             throw new Error(`Package ${planId} not found in RevenueCat offerings`);
           }
 
-          const result = await RevenueCatService.purchasePackage(pkg);
+          const result = await SubscriptionService.purchasePackage(pkg);
 
           if ("mockCustomerInfo" in result) {
             throw new Error("Cannot purchase in demo mode. Please use a development build.");
@@ -217,10 +217,10 @@ export const useMembershipStore = create<MembershipState>()(
           } = await supabase.auth.getUser();
           if (!user) throw new Error("User not authenticated");
 
-          const { RevenueCatService } = await import("../services/RevenueCatService");
-          await RevenueCatService.initialize();
+          const { SubscriptionService } = await import("../features/subscription/services/subscriptionService");
+          await SubscriptionService.initialize();
 
-          const customerInfo = await RevenueCatService.restorePurchases();
+          const customerInfo = await SubscriptionService.restorePurchases();
 
           if ("mockCustomerInfo" in customerInfo) {
             throw new Error("Cannot restore in demo mode. Please use a development build.");

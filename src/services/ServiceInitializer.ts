@@ -7,7 +7,7 @@ import Constants from "expo-constants";
 import { getConfig, validateProductionConfig, isFeatureEnabled } from "../config/production";
 import { validateAdMobConfig, validateRevenueCatConfig } from "../utils/environmentValidation";
 import { AdMobService } from "./AdMobService";
-import { RevenueCatService } from "./RevenueCatService";
+import { SubscriptionService } from "../features/subscription/services/subscriptionService";
 import { getAnonymiser } from "./Anonymiser";
 import { initializeConsent } from "../state/consentStore";
 
@@ -147,12 +147,17 @@ export class ServiceInitializer {
       console.warn(`⚠️ ${msg}`);
     } else {
       try {
-        await RevenueCatService.initialize();
+        // Configure API key before initialization
+        if (config.REVENUECAT?.API_KEY) {
+          SubscriptionService.configure(config.REVENUECAT.API_KEY);
+        }
+
+        await SubscriptionService.initialize();
         result.initializedServices.push("RevenueCat");
         console.log("✅ RevenueCat initialized");
         // Restore purchases on launch (no-op in Expo Go per service implementation)
         try {
-          await RevenueCatService.restorePurchases();
+          await SubscriptionService.restorePurchases();
           console.log("✅ RevenueCat purchases restored on launch");
         } catch (e) {
           console.warn("RevenueCat restore on launch failed:", e);
