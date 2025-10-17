@@ -1,7 +1,18 @@
 import { SubscriptionService } from "../features/subscription/services/subscriptionService";
 import { supabase } from "../lib/supabase";
 
-// RevenueCat MCP Service for enhanced subscription management
+/**
+ * RevenueCat MCP Service
+ *
+ * ⚠️ NOTE: This service is for MCP (Model Context Protocol) tooling ONLY.
+ * It should NOT be used in production app code.
+ *
+ * For production app functionality, use SubscriptionService directly:
+ * import { SubscriptionService } from "../features/subscription/services/subscriptionService"
+ *
+ * This MCP service is a wrapper that adds analytics and debugging capabilities
+ * for development and tooling purposes.
+ */
 export class RevenueCatMCPService {
   private static isInitialized = false;
 

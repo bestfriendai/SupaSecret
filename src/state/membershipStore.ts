@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
-import { RevenueCatMCPService } from "../services/RevenueCatMCPService";
 import type { MembershipState, MembershipTier, UserMembership, MembershipFeatures, MembershipPlan } from "../types/membership";
 import { DEFAULT_PLANS, FREE_FEATURES, PLUS_FEATURES } from "../types/membership";
 
