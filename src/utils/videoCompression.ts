@@ -149,17 +149,28 @@ export async function getVideoSize(videoUri: string): Promise<number> {
  */
 export async function deleteVideoFile(videoUri: string): Promise<boolean> {
   try {
-    const fileInfo = await FileSystem.getInfoAsync(videoUri);
+    // Validate file path
+    if (!videoUri || videoUri.trim() === '') {
+      console.warn("⚠️ Invalid video URI provided for deletion");
+      return false;
+    }
+
+    // Normalize path (remove any trailing slashes or invalid characters)
+    const normalizedUri = videoUri.replace(/\/+$/, '').replace(/\/\.\.$/, '');
+
+    const fileInfo = await FileSystem.getInfoAsync(normalizedUri);
 
     if (fileInfo.exists) {
-      await FileSystem.deleteAsync(videoUri, { idempotent: true });
-      console.log("✅ Deleted temporary video file:", videoUri);
+      await FileSystem.deleteAsync(normalizedUri, { idempotent: true });
+      console.log("✅ Deleted temporary video file:", normalizedUri);
       return true;
     }
 
-    return false;
+    // File doesn't exist - this is okay, might have been cleaned up already
+    return true; // Return true since the goal (file not existing) is achieved
   } catch (error) {
-    console.error("❌ Failed to delete video file:", error);
+    // Log but don't throw - file cleanup failures shouldn't break the app
+    console.warn("⚠️ Could not delete video file (non-critical):", error);
     return false;
   }
 }
