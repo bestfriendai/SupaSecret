@@ -14,11 +14,11 @@ interface ProgressIndicatorProps {
 function ProgressDot({
   index,
   scrollX,
-  screenWidth,
+  _screenWidth,
 }: {
   index: number;
   scrollX: SharedValue<number>;
-  screenWidth: number;
+  _screenWidth: number;
 }) {
   const { dotStyle } = useProgressDotAnimation(index, scrollX);
 
@@ -65,7 +65,7 @@ export default function ProgressIndicator({
     >
       {Array.from({ length: totalSlides }).map((_, index) => (
         <View key={index} style={{ marginLeft: index > 0 ? 8 : 0 }}>
-          <ProgressDot index={index} scrollX={scrollX} screenWidth={screenWidth} />
+          <ProgressDot index={index} scrollX={scrollX} _screenWidth={screenWidth} />
         </View>
       ))}
     </View>

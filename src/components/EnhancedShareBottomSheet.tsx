@@ -7,6 +7,12 @@ import { generateConfessionLink, generateShareMessage } from "../utils/links";
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import ReportModal from "./ReportModal";
 import { BlurView } from "expo-blur";
+import {
+  downloadVideoToGallery,
+  showDownloadSuccessMessage,
+  showDownloadErrorMessage,
+} from "../services/VideoDownloadService";
+import { useConfessionStore } from "../state/confessionStore";
 
 interface EnhancedShareBottomSheetProps {
   confessionId: string;
@@ -20,6 +26,7 @@ interface ShareOptionProps {
   subtitle: string;
   onPress: () => void;
   color?: string;
+  disabled?: boolean;
 }
 
 export default function EnhancedShareBottomSheet({
@@ -29,6 +36,11 @@ export default function EnhancedShareBottomSheet({
 }: EnhancedShareBottomSheetProps) {
   const impactAsync = PreferenceAwareHaptics.impactAsync;
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Get confession data for download
+  const confessions = useConfessionStore((state) => state.confessions);
+  const confession = confessions.find((c) => c.id === confessionId);
 
   const snapPoints = useMemo(() => ["40%"], []);
 
@@ -88,6 +100,36 @@ export default function EnhancedShareBottomSheet({
     }
   }, [confessionText, bottomSheetModalRef, impactAsync]);
 
+  const handleDownload = useCallback(async () => {
+    if (!confession?.videoUri) {
+      Alert.alert("Download Failed", "Video not available for download");
+      return;
+    }
+
+    setIsDownloading(true);
+    impactAsync();
+
+    try {
+      const result = await downloadVideoToGallery(confession.videoUri, {
+        onProgress: (progress, message) => {
+          console.log(`Download progress: ${progress}% - ${message}`);
+        },
+      });
+
+      if (result.success) {
+        showDownloadSuccessMessage();
+        bottomSheetModalRef.current?.dismiss();
+      } else {
+        showDownloadErrorMessage(result.error || "Unknown error");
+      }
+    } catch (error) {
+      console.error("Download error:", error);
+      showDownloadErrorMessage(error instanceof Error ? error.message : "Download failed");
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [confession, bottomSheetModalRef, impactAsync]);
+
   const handleReport = useCallback(() => {
     setReportModalVisible(true);
     bottomSheetModalRef.current?.dismiss();
@@ -98,8 +140,19 @@ export default function EnhancedShareBottomSheet({
     setReportModalVisible(false);
   }, []);
 
-  const ShareOption: React.FC<ShareOptionProps> = ({ icon, title, subtitle, onPress, color = "#1D9BF0" }) => (
-    <Pressable className="flex-row items-center py-4 px-4 active:bg-gray-800/50 rounded-xl" onPress={onPress}>
+  const ShareOption: React.FC<ShareOptionProps> = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    color = "#1D9BF0",
+    disabled = false,
+  }) => (
+    <Pressable
+      className={`flex-row items-center py-4 px-4 rounded-xl ${disabled ? "opacity-50" : "active:bg-gray-800/50"}`}
+      onPress={onPress}
+      disabled={disabled}
+    >
       <BlurView intensity={20} tint="dark" className="w-12 h-12 rounded-full items-center justify-center mr-4">
         <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: color }}>
           <Ionicons name={icon} size={20} color="#FFFFFF" />
@@ -109,6 +162,11 @@ export default function EnhancedShareBottomSheet({
         <Text className="text-white text-16 font-medium">{title}</Text>
         <Text className="text-gray-400 text-13">{subtitle}</Text>
       </View>
+      {isDownloading && icon === "download-outline" && (
+        <View className="w-6 h-6 items-center justify-center">
+          <Ionicons name="reload-outline" size={16} color="#FFFFFF" />
+        </View>
+      )}
     </Pressable>
   );
 
@@ -145,6 +203,15 @@ export default function EnhancedShareBottomSheet({
               subtitle="Copy link to clipboard"
               onPress={handleCopyLink}
               color="#10B981"
+            />
+
+            <ShareOption
+              icon="download-outline"
+              title="Download Video"
+              subtitle="Save video to gallery (Premium)"
+              onPress={handleDownload}
+              color="#F59E0B"
+              disabled={isDownloading || !confession?.videoUri}
             />
 
             <ShareOption

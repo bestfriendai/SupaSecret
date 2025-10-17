@@ -2,7 +2,13 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
-import type { MembershipState, MembershipTier, UserMembership, MembershipFeatures, MembershipPlan } from "../types/membership";
+import type {
+  MembershipState,
+  MembershipTier,
+  UserMembership,
+  MembershipFeatures,
+  MembershipPlan,
+} from "../types/membership";
 import { DEFAULT_PLANS, FREE_FEATURES, PLUS_FEATURES } from "../types/membership";
 
 export const useMembershipStore = create<MembershipState>()(
@@ -103,9 +109,7 @@ export const useMembershipStore = create<MembershipState>()(
               tier: "plus" as MembershipTier,
               name: product.title || product.description || pkg.identifier,
               description:
-                interval === "year"
-                  ? "Save 50% with annual billing"
-                  : "Monthly access to all premium features",
+                interval === "year" ? "Save 50% with annual billing" : "Monthly access to all premium features",
               price: priceInCents,
               currency: product.currencyCode || "USD",
               interval,
@@ -141,7 +145,7 @@ export const useMembershipStore = create<MembershipState>()(
           if (!plan) {
             set({
               error: "The selected plan is not available at this time. Please try again later.",
-              isLoading: false
+              isLoading: false,
             });
             return false;
           }
@@ -152,7 +156,7 @@ export const useMembershipStore = create<MembershipState>()(
           if (!user) {
             set({
               error: "Please sign in to purchase a subscription.",
-              isLoading: false
+              isLoading: false,
             });
             return false;
           }
@@ -163,8 +167,9 @@ export const useMembershipStore = create<MembershipState>()(
           const offerings = await SubscriptionService.getOfferings();
           if (!offerings?.current) {
             set({
-              error: "Subscription options are currently unavailable. Please check your internet connection and try again.",
-              isLoading: false
+              error:
+                "Subscription options are currently unavailable. Please check your internet connection and try again.",
+              isLoading: false,
             });
             return false;
           }
@@ -172,19 +177,40 @@ export const useMembershipStore = create<MembershipState>()(
           const pkg = offerings.current.packages.find((p: any) => p.identifier === planId);
           if (!pkg) {
             // Log for debugging but show user-friendly message
-            console.warn(`Package ${planId} not found in offerings. Available packages:`,
-              offerings.current.packages.map((p: any) => p.identifier));
+            console.warn(
+              `Package ${planId} not found in offerings. Available packages:`,
+              offerings.current.packages.map((p: any) => p.identifier),
+            );
             set({
               error: "This subscription option is temporarily unavailable. Please try another plan or contact support.",
-              isLoading: false
+              isLoading: false,
             });
             return false;
           }
 
           const result = await SubscriptionService.purchasePackage(pkg);
 
+          // Handle demo/simulator mode
           if ("mockCustomerInfo" in result) {
-            throw new Error("Cannot purchase in demo mode. Please use a development build.");
+            // Create a mock membership for demo mode
+            const membership: UserMembership = {
+              user_id: user.id,
+              tier: plan.tier,
+              plan_id: planId,
+              subscription_id: `demo_${user.id}`,
+              expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+              auto_renew: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+            set({
+              currentTier: plan.tier,
+              membership,
+              isLoading: false,
+            });
+
+            return true;
           }
 
           const customerInfo = result.customerInfo;
@@ -244,8 +270,13 @@ export const useMembershipStore = create<MembershipState>()(
 
           const customerInfo = await SubscriptionService.restorePurchases();
 
+          // Handle demo/simulator mode
           if ("mockCustomerInfo" in customerInfo) {
-            throw new Error("Cannot restore in demo mode. Please use a development build.");
+            // In demo mode, just return success without changing membership
+            set({
+              isLoading: false,
+            });
+            return;
           }
 
           const isPremium = Object.keys(customerInfo.entitlements.active).length > 0;

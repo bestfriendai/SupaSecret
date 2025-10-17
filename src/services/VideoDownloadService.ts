@@ -1,6 +1,7 @@
 /**
  * Video Download Service
- * Handles downloading and saving videos with watermarks and captions to device gallery
+ * Handles downloading and saving videos with watermarks and face blur to device gallery
+ * Captions are removed from downloaded videos - only blurred faces and watermark are included
  */
 
 import * as MediaLibrary from "expo-media-library";
@@ -8,12 +9,13 @@ import * as FileSystem from "../utils/legacyFileSystem";
 import { Alert, Platform } from "react-native";
 import { Asset } from "expo-asset";
 import { burnCaptionsAndWatermarkIntoVideo } from "../../modules/caption-burner";
-import { loadCaptionData, type CaptionData } from "./CaptionGenerator";
+import { useMembershipStore } from "../state/membershipStore";
 
 export interface VideoDownloadOptions {
   onProgress?: (progress: number, message: string) => void;
   albumName?: string;
-  videoUri?: string; // Original video URI for caption lookup
+  videoUri?: string; // Original video URI for caption lookup (deprecated - use captionData instead)
+  captionData?: any[]; // Caption segments to burn into video
 }
 
 export interface VideoDownloadResult {
@@ -23,7 +25,7 @@ export interface VideoDownloadResult {
 }
 
 /**
- * Download and save video to device gallery with watermark and captions
+ * Download and save video to device gallery with watermark only (no captions)
  */
 export const downloadVideoToGallery = async (
   videoUri: string,
@@ -33,6 +35,15 @@ export const downloadVideoToGallery = async (
 
   try {
     onProgress?.(0, "Checking permissions...");
+
+    // Check if user has premium subscription
+    const { hasFeature } = useMembershipStore.getState();
+    if (!hasFeature("unlimitedSaves")) {
+      return {
+        success: false,
+        error: "Premium subscription required to download videos",
+      };
+    }
 
     // Request media library permissions
     const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -45,8 +56,10 @@ export const downloadVideoToGallery = async (
 
     onProgress?.(5, "Preparing video...");
 
-    // Ensure the video file exists
+    // Ensure the video file exists and is valid
     const fileInfo = await FileSystem.getInfoAsync(videoUri);
+    console.log("📹 Original video file info:", fileInfo);
+
     if (!fileInfo.exists) {
       return {
         success: false,
@@ -54,30 +67,60 @@ export const downloadVideoToGallery = async (
       };
     }
 
-    onProgress?.(10, "Processing video with watermark and captions...");
+    // Check file size
+    const fileSize = (fileInfo as any).size || 0;
+    if (fileSize < 1000) {
+      console.warn("⚠️ Original video file is very small:", fileSize, "bytes");
+    } else {
+      console.log("✅ Original video file size:", fileSize, "bytes");
+    }
 
-    // Process video with watermark and captions
+    onProgress?.(10, "Processing video with watermark...");
+
+    // Process video with watermark only (no captions for downloads)
     let finalVideoUri = videoUri;
     try {
-      const processedVideo = await processVideoWithWatermarkAndCaptions(
-        videoUri,
-        options.videoUri || videoUri,
-        (progress, message) => {
-          // Map progress from 0-100 to 10-60
-          const mappedProgress = 10 + (progress / 100) * 50;
-          onProgress?.(mappedProgress, message);
-        },
-      );
+      console.log("📹 Starting video processing for download...");
+      console.log("📹 Input videoUri:", videoUri);
+
+      const processedVideo = await processVideoWithWatermarkOnly(videoUri, (progress, message) => {
+        // Map progress from 0-100 to 10-60
+        const mappedProgress = 10 + (progress / 100) * 50;
+        onProgress?.(mappedProgress, message);
+      });
 
       if (processedVideo) {
-        finalVideoUri = processedVideo;
+        console.log("✅ Video processing complete. Output:", processedVideo);
+
+        // Verify the processed video file exists and has content
+        const processedFileInfo = await FileSystem.getInfoAsync(processedVideo);
+        console.log("📹 Processed video file info:", processedFileInfo);
+
+        if (processedFileInfo.exists) {
+          // Check file size using type assertion for legacy FileSystem
+          const fileSize = (processedFileInfo as any).size || 0;
+          if (fileSize > 10000) {
+            // Increased threshold to 10KB
+            finalVideoUri = processedVideo;
+            console.log("✅ Using processed video with watermark");
+          } else {
+            console.warn("⚠️ Processed video file is too small, using original video");
+            console.warn("⚠️ File exists:", processedFileInfo.exists);
+            console.warn("⚠️ File size:", fileSize);
+          }
+        } else {
+          console.warn("⚠️ Video processing returned non-existent file, using original video");
+        }
       } else {
-        console.warn("Video processing returned null, using original video");
+        console.warn("⚠️ Video processing returned null, using original video");
       }
     } catch (processingError) {
-      console.error("Video processing failed, using original:", processingError);
+      console.error("❌ Video processing failed, using original:", processingError);
       // Continue with original video if processing fails
+      onProgress?.(60, "Using original video (processing failed)...");
     }
+
+    console.log("📹 Final video URI for gallery:", finalVideoUri);
 
     onProgress?.(60, "Saving to gallery...");
 
@@ -135,33 +178,23 @@ export const downloadVideoToGallery = async (
 };
 
 /**
- * Process video with watermark and captions
+ * Process video with watermark only (no captions)
  * Returns the path to the processed video, or null if processing is not available/fails
  */
-async function processVideoWithWatermarkAndCaptions(
+async function processVideoWithWatermarkOnly(
   videoUri: string,
-  originalVideoUri: string,
   onProgress?: (progress: number, message: string) => void,
 ): Promise<string | null> {
   try {
-    // iOS only for now
-    if (Platform.OS !== "ios") {
-      console.log("Watermark and caption burning only available on iOS");
+    // Check if caption burning is supported
+    const { isCaptionBurningSupported } = await import("../../modules/caption-burner");
+    if (!isCaptionBurningSupported()) {
+      console.log("⚠️ Video processing not supported on this platform, using original video");
+      onProgress?.(60, "Video processing not available on this platform");
       return null;
     }
 
-    onProgress?.(0, "Loading caption data...");
-
-    // Load caption data
-    const captionUri = originalVideoUri.replace(/\.(mp4|mov)$/i, ".captions.json");
-    const captionData = await loadCaptionData(captionUri);
-
-    if (!captionData || !captionData.segments || captionData.segments.length === 0) {
-      console.log("No captions found for video, skipping caption burning");
-      // Continue without captions but still add watermark
-    }
-
-    onProgress?.(20, "Loading watermark assets...");
+    onProgress?.(0, "Loading watermark assets...");
 
     // Get logo path from assets
     const logoAsset = Asset.fromModule(require("../../assets/logo.png"));
@@ -170,44 +203,41 @@ async function processVideoWithWatermarkAndCaptions(
 
     onProgress?.(30, "Processing video...");
 
-    // Convert caption data to caption-burner format
-    const captionSegments = captionData
-      ? captionData.segments.map((seg, index) => ({
-          id: `seg_${index}`,
-          text: seg.text,
-          startTime: seg.start,
-          endTime: seg.end,
-          isComplete: true,
-          words: seg.words.map((word) => ({
-            word: word.word,
-            startTime: word.start,
-            endTime: word.end,
-            confidence: 1.0,
-            isComplete: true,
-          })),
-        }))
-      : [];
+    console.log("🎬 About to burn watermark only (no captions)...");
+    console.log("🎬 Input video:", videoUri);
+    console.log("🎬 Watermark logo path:", logoPath);
 
-    // Burn captions and watermark into video
-    const result = await burnCaptionsAndWatermarkIntoVideo(videoUri, captionSegments, {
+    // Burn only watermark into video (no captions for downloads)
+    const result = await burnCaptionsAndWatermarkIntoVideo(videoUri, [], {
       watermarkImagePath: logoPath,
       watermarkText: "ToxicConfessions.app",
-      onProgress: (progress, status) => {
+      onProgress: (progress: any, status: any) => {
         // Map progress from 0-100 to 30-100
         const mappedProgress = 30 + (progress / 100) * 70;
         onProgress?.(mappedProgress, status);
       },
     });
 
+    console.log("🎬 Watermark burning result:", result);
+
     if (result.success && result.outputPath) {
-      console.log("✅ Video processed successfully with watermark and captions");
+      console.log("✅ Video processed successfully with watermark");
+      console.log("✅ Output path:", result.outputPath);
       return result.outputPath;
     } else {
-      console.error("Video processing failed:", result.error);
+      console.error("❌ Video processing failed:", result.error);
       return null;
     }
   } catch (error) {
     console.error("Error processing video:", error);
+
+    // Check if it's a module not available error
+    if (error instanceof Error && error.message.includes("not available")) {
+      console.log("⚠️ Video processing module not available, using original video");
+      onProgress?.(60, "Video processing not available (using original)");
+      return null;
+    }
+
     return null;
   }
 }

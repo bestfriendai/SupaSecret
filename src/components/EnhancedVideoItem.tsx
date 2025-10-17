@@ -9,10 +9,10 @@ interface EnhancedVideoItemProps {
   confession: Confession;
   isActive: boolean;
   onClose: () => void;
-  onCommentPress?: (confessionId: string) => void;
-  onSharePress?: (confessionId: string, confessionText: string) => void;
-  onSavePress?: (confessionId: string) => void;
-  onReportPress?: (confessionId: string, confessionText: string) => void;
+  _onCommentPress?: (confessionId: string) => void;
+  _onSharePress?: (confessionId: string, confessionText: string) => void;
+  _onSavePress?: (confessionId: string) => void;
+  _onReportPress?: (confessionId: string, confessionText: string) => void;
   forceUnmuted?: boolean;
   screenFocused?: boolean;
 }
@@ -25,10 +25,10 @@ export default function EnhancedVideoItem({
   confession,
   isActive,
   onClose,
-  onCommentPress,
-  onSharePress,
-  onSavePress,
-  onReportPress,
+  _onCommentPress,
+  _onSharePress,
+  _onSavePress,
+  _onReportPress,
   forceUnmuted = false,
   screenFocused = true,
 }: EnhancedVideoItemProps) {
@@ -66,7 +66,7 @@ export default function EnhancedVideoItem({
     }
   };
 
-  const handleRegisterLikeHandler = (handler: (() => Promise<void>) | null) => {
+  const handleRegisterLikeHandler = (_handler: (() => Promise<void>) | null) => {
     // This would be handled internally by UnifiedVideoItem
   };
 

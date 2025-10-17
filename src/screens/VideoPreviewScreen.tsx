@@ -713,7 +713,8 @@ export default function VideoPreviewScreen() {
           console.log(`Download progress: ${progress}% - ${message}`);
         },
         albumName: "Toxic Confessions",
-        videoUri: originalVideoUri.current, // Pass original URI for caption lookup
+        videoUri: originalVideoUri.current, // Pass original URI for caption lookup (deprecated)
+        captionData: captionSegments, // Pass caption data directly for burning into video
       });
 
       setIsDownloading(false);
@@ -737,7 +738,7 @@ export default function VideoPreviewScreen() {
       setIsDownloading(false);
       showDownloadErrorMessage(error instanceof Error ? error.message : "Unknown error occurred");
     }
-  }, [currentVideoUri, hapticsEnabled, impactAsync]);
+  }, [currentVideoUri, hapticsEnabled, impactAsync, captionSegments]);
 
   return (
     <View style={styles.container}>

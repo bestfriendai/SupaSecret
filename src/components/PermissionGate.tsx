@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Platform } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useMediaPermissions } from "../hooks/useMediaPermissions";
 import { getUserFriendlyMessage, StandardError } from "../utils/errorHandling";
@@ -51,10 +51,6 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
 
   const messages = { ...defaultMessages, ...customMessages };
 
-  useEffect(() => {
-    checkInitialPermissions();
-  }, []);
-
   const checkInitialPermissions = async () => {
     setIsChecking(true);
     setError(null);
@@ -91,6 +87,10 @@ export const PermissionGate: React.FC<PermissionGateProps> = ({
       setIsChecking(false);
     }
   };
+
+  useEffect(() => {
+    checkInitialPermissions();
+  }, [checkInitialPermissions]);
 
   const requestPermission = async (type: "camera" | "microphone" | "mediaLibrary") => {
     setError(null);

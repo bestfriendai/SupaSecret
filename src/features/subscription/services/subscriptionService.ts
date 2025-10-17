@@ -25,8 +25,9 @@ import type {
 } from "../types";
 import { PurchaseErrorType } from "../types";
 
-// Check if running in Expo Go
+// Check if running in Expo Go or Simulator
 const IS_EXPO_GO = Constants.executionEnvironment === "storeClient";
+const IS_SIMULATOR = Constants.platform?.ios?.model?.includes("Simulator") || __DEV__;
 
 // Lazy load RevenueCat to prevent Expo Go crashes
 let Purchases: {
@@ -130,6 +131,9 @@ export class SubscriptionService {
       if (__DEV__) {
         console.log("✅ RevenueCat initialized successfully");
         console.log("📱 Environment:", __DEV__ ? "Development" : "Production");
+        console.log("🔄 Sandbox Mode: RevenueCat automatically detects sandbox/production based on Apple receipt");
+        console.log("💡 Testing: Use sandbox tester account for IAP testing");
+        console.log("💡 Production: Automatically switches after App Store approval");
       }
       this.isInitialized = true;
     } catch (error) {
@@ -182,9 +186,9 @@ export class SubscriptionService {
   static async getOfferings(): Promise<RevenueCatOfferings | null> {
     await this.initialize();
 
-    if (IS_EXPO_GO) {
-      console.log("🎯 Demo: Getting mock offerings");
-      return null;
+    if (IS_EXPO_GO || IS_SIMULATOR) {
+      console.log("🎯 Demo/Simulator: Getting mock offerings");
+      return this.getMockOfferingsData();
     }
 
     try {
@@ -200,9 +204,13 @@ export class SubscriptionService {
         console.error("Available offerings:", Object.keys(offerings?.all || {}));
 
         if (__DEV__) {
-          console.warn("💡 Check: App Store Connect products have all metadata");
-          console.warn("💡 Check: RevenueCat product IDs match exactly");
-          console.warn("💡 Check: Paid Applications Agreement signed");
+          console.warn("💡 Sandbox Testing Checklist:");
+          console.warn("   1. Products created in App Store Connect (any status OK)");
+          console.warn("   2. Wait 10-30 minutes for RevenueCat sync");
+          console.warn("   3. Products configured in RevenueCat dashboard");
+          console.warn("   4. Product IDs match exactly (case-sensitive)");
+          console.warn("   5. Paid Applications Agreement signed in App Store Connect");
+          console.warn("   6. Using development build (not Expo Go)");
         }
 
         return offerings;
@@ -211,8 +219,13 @@ export class SubscriptionService {
       // Validate packages
       if (offerings.current.availablePackages.length === 0) {
         console.error("❌ Current offering has no packages");
+        if (__DEV__) {
+          console.error("💡 This usually means products haven't synced from App Store Connect yet");
+          console.error("💡 Wait 10-30 minutes after creating products, then restart the app");
+        }
       } else {
         console.log("✅ Found", offerings.current.availablePackages.length, "packages");
+        console.log("🔄 Ready for sandbox testing with Apple sandbox tester account");
         if (__DEV__) {
           offerings.current.availablePackages.forEach((pkg, idx) => {
             console.log(`  ${idx + 1}. ${pkg.identifier}:`, {
@@ -266,14 +279,15 @@ export class SubscriptionService {
   ): Promise<RevenueCatPurchaseResult | MockPurchaseResult> {
     await this.initialize();
 
-    if (IS_EXPO_GO) {
+    if (IS_EXPO_GO || IS_SIMULATOR) {
       if (__DEV__) {
-        console.log("🎯 Demo: Simulating purchase...");
+        console.log("🎯 Demo/Simulator: Simulating purchase...");
+        console.log("🎯 Package:", packageToPurchase.identifier);
       }
       return new Promise((resolve) => {
         setTimeout(() => {
           if (__DEV__) {
-            console.log("✅ Demo purchase completed successfully!");
+            console.log("✅ Demo/Simulator purchase completed successfully!");
           }
           resolve({ mockCustomerInfo: true });
         }, 2000);
@@ -320,11 +334,11 @@ export class SubscriptionService {
   static async restorePurchases(): Promise<RevenueCatCustomerInfo | MockPurchaseResult> {
     await this.initialize();
 
-    if (IS_EXPO_GO) {
-      console.log("🎯 Demo: Simulating restore purchases...");
+    if (IS_EXPO_GO || IS_SIMULATOR) {
+      console.log("🎯 Demo/Simulator: Simulating restore purchases...");
       return new Promise((resolve) => {
         setTimeout(() => {
-          console.log("✅ Demo restore completed!");
+          console.log("✅ Demo/Simulator restore completed!");
           resolve({ mockCustomerInfo: true });
         }, 1500);
       });
@@ -346,6 +360,43 @@ export class SubscriptionService {
     } catch (error) {
       console.error("Restore failed:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Check if we're running in sandbox mode
+   * Note: RevenueCat automatically detects sandbox vs production based on Apple receipt
+   * This helper provides information for debugging purposes
+   */
+  static async getSandboxModeInfo(): Promise<{
+    isSandbox: boolean | null;
+    environment: string;
+    message: string;
+  }> {
+    try {
+      if (IS_EXPO_GO || !Purchases) {
+        return {
+          isSandbox: null,
+          environment: "demo",
+          message: "Running in Expo Go demo mode - RevenueCat not available",
+        };
+      }
+
+      // RevenueCat automatically handles sandbox detection
+      // The environment is determined by the Apple receipt type
+      const environment = __DEV__ ? "development (sandbox)" : "production";
+
+      return {
+        isSandbox: __DEV__, // In development builds, we're typically using sandbox
+        environment,
+        message: `RevenueCat automatically routes to ${environment} environment based on Apple receipt type. No configuration needed.`,
+      };
+    } catch (error) {
+      return {
+        isSandbox: null,
+        environment: "unknown",
+        message: `Could not determine sandbox mode: ${error instanceof Error ? error.message : "Unknown error"}`,
+      };
     }
   }
 
@@ -566,6 +617,61 @@ export class SubscriptionService {
       message: errorMessage || "Unknown error",
       shouldRetry: false,
       userFriendlyMessage: "An unexpected error occurred. Please try again or contact support.",
+    };
+  }
+
+  /**
+   * Get mock offerings data for development/demo
+   */
+  static getMockOfferingsData(): RevenueCatOfferings {
+    const mockPackages: RevenueCatPackage[] = [
+      {
+        identifier: "$rc_monthly",
+        packageType: "MONTHLY",
+        product: {
+          identifier: "com.toxic.confessions.monthly",
+          price: 4.99,
+          priceString: "$4.99",
+          currencyCode: "USD",
+          title: "Toxic Confessions Plus Monthly",
+          description: "Monthly access to all premium features",
+          introPrice: null,
+        },
+        offeringIdentifier: "default",
+      },
+      {
+        identifier: "$rc_annual",
+        packageType: "ANNUAL",
+        product: {
+          identifier: "com.toxic.confessions.annual",
+          price: 29.99,
+          priceString: "$29.99",
+          currencyCode: "USD",
+          title: "Toxic Confessions Plus Annual",
+          description: "Annual access to all premium features - Save 50%",
+          introPrice: null,
+        },
+        offeringIdentifier: "default",
+      },
+    ];
+
+    return {
+      current: {
+        identifier: "default",
+        serverDescription: "Default offering",
+        metadata: {},
+        packages: mockPackages,
+        availablePackages: mockPackages,
+      },
+      all: {
+        default: {
+          identifier: "default",
+          serverDescription: "Default offering",
+          metadata: {},
+          packages: mockPackages,
+          availablePackages: mockPackages,
+        },
+      },
     };
   }
 

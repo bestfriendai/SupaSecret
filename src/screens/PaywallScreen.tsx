@@ -75,7 +75,7 @@ export default function PaywallScreen({ route }: PaywallScreenProps) {
           },
         ]);
       } else {
-        validator.warn("Purchase failed:", error);
+        validator.warn("Purchase failed:", error || "Unknown error");
         Alert.alert("Purchase Failed", error || "Unable to complete purchase. Please try again.");
       }
     } catch (err) {

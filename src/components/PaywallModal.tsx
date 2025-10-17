@@ -28,6 +28,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({ visible, onClose, on
     if (visible) {
       loadOfferings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   // Auto-dismiss error after 5 seconds

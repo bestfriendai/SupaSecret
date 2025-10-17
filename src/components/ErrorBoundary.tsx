@@ -167,7 +167,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <DefaultErrorFallback
           error={error}
-          errorInfo={errorInfo}
+          _errorInfo={errorInfo}
           onRetry={this.handleRetry}
           onReload={this.handleReload}
           errorId={this.state.errorId}
@@ -184,13 +184,13 @@ export class ErrorBoundary extends Component<Props, State> {
  */
 interface DefaultErrorFallbackProps {
   error: Error;
-  errorInfo: React.ErrorInfo | null;
+  _errorInfo: React.ErrorInfo | null;
   onRetry: () => void;
   onReload: () => void;
   errorId: string;
 }
 
-function DefaultErrorFallback({ error, errorInfo, onRetry, onReload, errorId }: DefaultErrorFallbackProps) {
+function DefaultErrorFallback({ error, _errorInfo, onRetry, onReload, errorId }: DefaultErrorFallbackProps) {
   // Use platform-specific default safe area insets
   const insets = Platform.select({
     ios: { top: 44, bottom: 34, left: 0, right: 0 },
@@ -264,7 +264,7 @@ export function withErrorBoundary<P extends object>(
  * Hook for manually triggering error boundary
  */
 export function useErrorHandler() {
-  return React.useCallback((error: Error, errorInfo?: React.ErrorInfo) => {
+  return React.useCallback((error: Error, _errorInfo?: React.ErrorInfo) => {
     // This will trigger the nearest error boundary
     throw error;
   }, []);

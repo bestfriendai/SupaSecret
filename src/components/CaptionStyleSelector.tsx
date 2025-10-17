@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { CaptionStyle, TIKTOK_CAPTION_STYLES, CaptionPosition } from "./TikTokCaptions";
 
 // const { width: screenWidth } = Dimensions.get("window");

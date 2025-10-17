@@ -29,7 +29,7 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
       damping: 15,
       stiffness: 150,
     });
-  }, [activeIndex]);
+  }, [activeIndex, indicatorPosition]);
 
   const tabWidth = containerWidth > 0 ? containerWidth / Math.max(1, tabs.length) : 0;
 
@@ -84,7 +84,7 @@ export default function SegmentedTabs({ tabs, activeTab, onTabChange, style }: S
       />
 
       {/* Tab buttons */}
-      {tabs.map((tab, index) => {
+      {tabs.map((tab, _index) => {
         const isActive = tab.id === activeTab;
 
         return (

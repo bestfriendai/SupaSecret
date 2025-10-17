@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useRef } from "react";
+import React, { memo } from "react";
 import { View } from "react-native";
 import { FeedAdComponent } from "./ads/FeedAdComponent";
 import { useSubscriptionStore } from "../features/subscription";

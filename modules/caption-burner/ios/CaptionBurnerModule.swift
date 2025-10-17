@@ -43,16 +43,34 @@ class CaptionBurnerModule: NSObject {
   ) {
     DispatchQueue.global(qos: .userInitiated).async {
       do {
-        let outputPath = try self.processVideoWithCaptions(
-          inputPath: inputPath,
-          captionSegmentsJSON: captionSegmentsJSON,
-          watermarkImagePath: watermarkImagePath,
-          watermarkText: watermarkText
-        )
-        resolve([
-          "success": true,
-          "outputPath": outputPath
-        ])
+        // Check if this is a watermark-only request (empty captions)
+        let captionSegmentsJSON = captionSegmentsJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isWatermarkOnly = captionSegmentsJSON == "[]" || captionSegmentsJSON.isEmpty
+        
+        if isWatermarkOnly {
+          print("🎬 Watermark-only processing detected, using simplified pipeline")
+          let outputPath = try self.processVideoWithWatermarkOnly(
+            inputPath: inputPath,
+            watermarkImagePath: watermarkImagePath,
+            watermarkText: watermarkText
+          )
+          resolve([
+            "success": true,
+            "outputPath": outputPath
+          ])
+        } else {
+          print("🎬 Full caption and watermark processing")
+          let outputPath = try self.processVideoWithCaptions(
+            inputPath: inputPath,
+            captionSegmentsJSON: captionSegmentsJSON,
+            watermarkImagePath: watermarkImagePath,
+            watermarkText: watermarkText
+          )
+          resolve([
+            "success": true,
+            "outputPath": outputPath
+          ])
+        }
       } catch {
         reject("CAPTION_WATERMARK_ERROR", error.localizedDescription, error)
       }
@@ -355,6 +373,209 @@ class CaptionBurnerModule: NSObject {
     }
 
     print("✅ Caption burning complete! Output: \(outputURL.path)")
+    return outputURL.path
+  }
+  
+  // MARK: - Simplified Watermark-Only Processing
+  
+  private func processVideoWithWatermarkOnly(
+    inputPath: String,
+    watermarkImagePath: String?,
+    watermarkText: String?
+  ) throws -> String {
+    print("🎬 Starting simplified watermark-only process...")
+    print("📂 Input path: \(inputPath)")
+
+    // Convert input path to URL
+    let inputURL: URL
+    if inputPath.hasPrefix("file://") {
+      inputURL = URL(string: inputPath)!
+    } else {
+      inputURL = URL(fileURLWithPath: inputPath)
+    }
+
+    // Validate input video file
+    let fileManager = FileManager.default
+    let filePath = inputURL.path
+
+    print("🔍 Validating input video file...")
+    if !fileManager.fileExists(atPath: filePath) {
+      throw NSError(domain: "CaptionBurner", code: 0, userInfo: [NSLocalizedDescriptionKey: "Input video file does not exist at path: \(filePath)"])
+    }
+
+    // Create output URL
+    let outputURL = URL(fileURLWithPath: NSTemporaryDirectory())
+      .appendingPathComponent("watermark_\(UUID().uuidString).mov")
+
+    print("📤 Output will be saved to: \(outputURL.path)")
+
+    // Load video asset
+    let asset = AVAsset(url: inputURL)
+    
+    // Validate asset
+    let tracks = asset.tracks(withMediaType: .video)
+    guard let videoTrack = tracks.first else {
+      throw NSError(domain: "CaptionBurner", code: 1, userInfo: [NSLocalizedDescriptionKey: "No video track found in asset."])
+    }
+
+    let duration = asset.duration
+    print("📹 Video duration: \(CMTimeGetSeconds(duration))s")
+
+    // Create simple composition without complex transforms
+    let composition = AVMutableComposition()
+    
+    // Add video track
+    guard let compositionVideoTrack = composition.addMutableTrack(
+      withMediaType: .video,
+      preferredTrackID: kCMPersistentTrackID_Invalid
+    ) else {
+      throw NSError(domain: "CaptionBurner", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create video track"])
+    }
+
+    try compositionVideoTrack.insertTimeRange(
+      CMTimeRange(start: .zero, duration: duration),
+      of: videoTrack,
+      at: .zero
+    )
+
+    // Preserve original video transform
+    compositionVideoTrack.preferredTransform = videoTrack.preferredTransform
+
+    // Add audio track if available
+    let audioTracks = asset.tracks(withMediaType: .audio)
+    if let audioTrack = audioTracks.first {
+      if let compositionAudioTrack = composition.addMutableTrack(
+        withMediaType: .audio,
+        preferredTrackID: kCMPersistentTrackID_Invalid
+      ) {
+        try? compositionAudioTrack.insertTimeRange(
+          CMTimeRange(start: .zero, duration: duration),
+          of: audioTrack,
+          at: .zero
+        )
+      }
+    }
+
+    // Create simple video composition for watermark only
+    let videoComposition = AVMutableVideoComposition()
+    videoComposition.renderSize = videoTrack.naturalSize
+    videoComposition.frameDuration = CMTime(value: 1, timescale: 30) // Standard 30 FPS
+    videoComposition.renderScale = 1.0
+
+    // Create instruction
+    let instruction = AVMutableVideoCompositionInstruction()
+    instruction.timeRange = CMTimeRange(start: .zero, duration: duration)
+
+    let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compositionVideoTrack)
+    layerInstruction.setTransform(videoTrack.preferredTransform, at: .zero)
+    instruction.layerInstructions = [layerInstruction]
+
+    // Add watermark if provided
+    if watermarkImagePath != nil || watermarkText != nil {
+      print("🏷️ Adding watermark...")
+      
+      // Create layers for animation tool
+      let parentLayer = CALayer()
+      let videoLayer = CALayer()
+      let watermarkLayer = CALayer()
+      
+      let videoSize = videoTrack.naturalSize
+      parentLayer.frame = CGRect(origin: .zero, size: videoSize)
+      videoLayer.frame = CGRect(origin: .zero, size: videoSize)
+      watermarkLayer.frame = CGRect(origin: .zero, size: videoSize)
+      
+      // Add watermark content to watermark layer
+      if let imagePath = watermarkImagePath {
+        // Add image watermark
+        let watermarkImage = UIImage(contentsOfFile: imagePath)
+        if let image = watermarkImage {
+          let imageLayer = CALayer()
+          let imageSize = CGSize(width: 120, height: 40)
+          imageLayer.frame = CGRect(
+            x: videoSize.width - imageSize.width - 20,
+            y: videoSize.height - imageSize.height - 20,
+            width: imageSize.width,
+            height: imageSize.height
+          )
+          imageLayer.contents = image.cgImage
+          imageLayer.opacity = 0.8
+          watermarkLayer.addSublayer(imageLayer)
+        }
+      }
+      
+      if let text = watermarkText {
+        // Add text watermark
+        let textLayer = CATextLayer()
+        textLayer.string = text
+        textLayer.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        textLayer.fontSize = 16
+        textLayer.foregroundColor = UIColor.white.withAlphaComponent(0.8).cgColor
+        textLayer.backgroundColor = UIColor.black.withAlphaComponent(0.5).cgColor
+        textLayer.alignmentMode = .center
+        textLayer.frame = CGRect(
+          x: 20,
+          y: videoSize.height - 60,
+          width: 200,
+          height: 40
+        )
+        textLayer.cornerRadius = 8
+        watermarkLayer.addSublayer(textLayer)
+      }
+
+      // Add watermark layer to parent
+      parentLayer.addSublayer(watermarkLayer)
+
+      // Create animation tool with correct layer types
+      videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
+        postProcessingAsVideoLayer: videoLayer,  // CALayer, not composition track
+        in: parentLayer
+      )
+    }
+
+    videoComposition.instructions = [instruction]
+
+    // Export video
+    guard let exportSession = AVAssetExportSession(
+      asset: composition,
+      presetName: AVAssetExportPresetHighestQuality
+    ) else {
+      throw NSError(domain: "CaptionBurner", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create export session"])
+    }
+
+    exportSession.outputURL = outputURL
+    exportSession.outputFileType = .mov
+    exportSession.videoComposition = videoComposition
+    exportSession.shouldOptimizeForNetworkUse = true
+
+    print("🎬 Starting simplified export...")
+    let semaphore = DispatchSemaphore(value: 0)
+    var exportError: Error?
+
+    exportSession.exportAsynchronously {
+      if exportSession.status == .completed {
+        print("✅ Simplified export completed successfully")
+      } else {
+        exportError = exportSession.error
+        print("❌ Simplified export failed: \(exportSession.status.rawValue)")
+      }
+      semaphore.signal()
+    }
+
+    semaphore.wait()
+
+    if let error = exportError {
+      throw NSError(domain: "CaptionBurner", code: 4, userInfo: [
+        NSLocalizedDescriptionKey: "Simplified export failed: \(error.localizedDescription)",
+        NSUnderlyingErrorKey: error
+      ])
+    }
+
+    // Verify output file
+    if !fileManager.fileExists(atPath: outputURL.path) {
+      throw NSError(domain: "CaptionBurner", code: 5, userInfo: [NSLocalizedDescriptionKey: "Output file was not created"])
+    }
+
+    print("✅ Simplified watermark processing complete! Output: \(outputURL.path)")
     return outputURL.path
   }
   
