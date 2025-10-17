@@ -609,10 +609,21 @@ class CaptionBurnerModule: NSObject {
     print("   - Input video size: \(videoSize)")
     print("   - Transform: \(transform)")
 
-    // Use the ORIGINAL video size - do NOT swap dimensions
-    // The transform will handle the rotation
-    let normalizedSize = videoSize
-    print("   - Using original video size as render size: \(normalizedSize)")
+    // Calculate the correct render size based on the transform
+    // For rotated videos (90° or 270°), we need to swap width and height
+    var normalizedSize = videoSize
+
+    // Check if video is rotated (portrait mode)
+    // A rotation transform has .b or .c values set (not zero)
+    let isRotated = abs(transform.b) > 0.01 || abs(transform.c) > 0.01
+
+    if isRotated {
+      // Video is rotated, swap dimensions for render size
+      normalizedSize = CGSize(width: videoSize.height, height: videoSize.width)
+      print("   - Video is rotated, swapping dimensions: \(normalizedSize)")
+    } else {
+      print("   - Video is not rotated, using original size: \(normalizedSize)")
+    }
 
     // CRITICAL: Validate render size is valid
     if normalizedSize.width <= 0 || normalizedSize.height <= 0 {
@@ -702,11 +713,11 @@ class CaptionBurnerModule: NSObject {
 
     let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: track)
 
-    // CRITICAL FIX: Do NOT apply transform when using postProcessingAsVideoLayer
-    // The transform is already handled by the render size calculation
-    // Applying it again causes double-transformation and black video
-    print("   - NOT applying transform to layer instruction (handled by renderSize)")
-    // layerInstruction.setTransform(transform, at: .zero) // ❌ REMOVED
+    // CRITICAL FIX: We MUST set the transform on the layer instruction
+    // This ensures the video frames are properly oriented in the composition
+    // Without this, the video appears black or incorrectly oriented
+    print("   - Applying transform to layer instruction: \(transform)")
+    layerInstruction.setTransform(transform, at: .zero)
 
     instruction.layerInstructions = [layerInstruction]
     videoComposition.instructions = [instruction]
