@@ -43,34 +43,20 @@ class CaptionBurnerModule: NSObject {
   ) {
     DispatchQueue.global(qos: .userInitiated).async {
       do {
-        // Check if this is a watermark-only request (empty captions)
-        let captionSegmentsJSON = captionSegmentsJSON.trimmingCharacters(in: .whitespacesAndNewlines)
-        let isWatermarkOnly = captionSegmentsJSON == "[]" || captionSegmentsJSON.isEmpty
-        
-        if isWatermarkOnly {
-          print("🎬 Watermark-only processing detected, using simplified pipeline")
-          let outputPath = try self.processVideoWithWatermarkOnly(
-            inputPath: inputPath,
-            watermarkImagePath: watermarkImagePath,
-            watermarkText: watermarkText
-          )
-          resolve([
-            "success": true,
-            "outputPath": outputPath
-          ])
-        } else {
-          print("🎬 Full caption and watermark processing")
-          let outputPath = try self.processVideoWithCaptions(
-            inputPath: inputPath,
-            captionSegmentsJSON: captionSegmentsJSON,
-            watermarkImagePath: watermarkImagePath,
-            watermarkText: watermarkText
-          )
-          resolve([
-            "success": true,
-            "outputPath": outputPath
-          ])
-        }
+        // CRITICAL FIX: Always use the full caption processing pipeline
+        // The simplified watermark-only pipeline has issues with video rendering
+        // Using the full pipeline with empty captions works perfectly
+        print("🎬 Using full caption processing pipeline (captions may be empty)")
+        let outputPath = try self.processVideoWithCaptions(
+          inputPath: inputPath,
+          captionSegmentsJSON: captionSegmentsJSON,
+          watermarkImagePath: watermarkImagePath,
+          watermarkText: watermarkText
+        )
+        resolve([
+          "success": true,
+          "outputPath": outputPath
+        ])
       } catch {
         reject("CAPTION_WATERMARK_ERROR", error.localizedDescription, error)
       }
