@@ -384,6 +384,7 @@ export const HermesCompatibleVideoPlayer: React.FC<HermesCompatibleVideoPlayerPr
       ref={playerRef}
       style={style}
       player={player}
+      contentFit="cover"
       fullscreenOptions={{ enable: false }}
       allowsPictureInPicture={false}
       showsTimecodes={false}

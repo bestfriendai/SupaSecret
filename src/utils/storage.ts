@@ -80,64 +80,110 @@ export async function uploadVideoToSupabase(
   userId: string,
   options?: UploadOptions,
 ): Promise<UploadResult> {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
-  if (!supabaseUrl) throw new Error("Missing Supabase URL");
+  try {
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.error("❌ Missing Supabase URL in environment variables");
+      throw new Error("Missing Supabase URL");
+    }
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) throw sessionError;
-  const accessToken = sessionData?.session?.access_token;
-  if (!accessToken) throw new Error("Not authenticated");
+    if (__DEV__) {
+      console.log(`📤 Starting video upload for user ${userId}`);
+      console.log(`📁 Local file URI: ${localFileUri}`);
+    }
 
-  const { onProgress, contentType = "video/mp4", allowUpsert = false, signedUrlExpiresIn = 3600 } = options || {};
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error("❌ Session error:", sessionError);
+      throw sessionError;
+    }
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      console.error("❌ No access token available");
+      throw new Error("Not authenticated");
+    }
 
-  const filename = `${uuidv4()}.mp4`;
-  const objectPath = `confessions/${userId}/${filename}`;
-  // Encode path components separately to preserve slashes for nested paths
-  const encodedPath = objectPath
-    .split("/")
-    .map((part) => encodeURIComponent(part))
-    .join("/");
-  const url = `${supabaseUrl}/storage/v1/object/${BUCKET}/${encodedPath}`;
+    const { onProgress, contentType = "video/mp4", allowUpsert = false, signedUrlExpiresIn = 3600 } = options || {};
 
-  const uploadOptions: any = {
-    httpMethod: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": contentType,
-      "x-upsert": allowUpsert.toString(),
-      "cache-control": "public, max-age=31536000, immutable",
-    },
-  };
+    const filename = `${uuidv4()}.mp4`;
+    const objectPath = `confessions/${userId}/${filename}`;
+    // Encode path components separately to preserve slashes for nested paths
+    const encodedPath = objectPath
+      .split("/")
+      .map((part) => encodeURIComponent(part))
+      .join("/");
+    const url = `${supabaseUrl}/storage/v1/object/${BUCKET}/${encodedPath}`;
 
-  let result: any;
-  if (onProgress) {
-    const task = FileSystem.createUploadTask(url, localFileUri, uploadOptions, (progress) => {
-      if (progress.totalBytesExpectedToSend) {
-        const pct = (progress.totalBytesSent / progress.totalBytesExpectedToSend) * 100;
-        onProgress(Math.max(0, Math.min(100, pct)));
-      }
-    });
-    result = await task.uploadAsync();
-  } else {
-    result = await FileSystem.uploadAsync(url, localFileUri, uploadOptions);
+    if (__DEV__) {
+      console.log(`📤 Upload URL: ${url}`);
+      console.log(`📁 Storage path: ${objectPath}`);
+    }
+
+    const uploadOptions: any = {
+      httpMethod: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": contentType,
+        "x-upsert": allowUpsert.toString(),
+        "cache-control": "public, max-age=31536000, immutable",
+      },
+    };
+
+    let result: any;
+    if (onProgress) {
+      const task = FileSystem.createUploadTask(url, localFileUri, uploadOptions, (progress) => {
+        if (progress.totalBytesExpectedToSend) {
+          const pct = (progress.totalBytesSent / progress.totalBytesExpectedToSend) * 100;
+          onProgress(Math.max(0, Math.min(100, pct)));
+        }
+      });
+      result = await task.uploadAsync();
+    } else {
+      result = await FileSystem.uploadAsync(url, localFileUri, uploadOptions);
+    }
+
+    if (!result) {
+      console.error("❌ Upload failed: no result returned");
+      throw new Error("Upload failed: no result");
+    }
+
+    if (__DEV__) {
+      console.log(`📤 Upload response status: ${result.status}`);
+    }
+
+    if (result.status !== 200 && result.status !== 201) {
+      console.error(`❌ Upload failed with status ${result.status}:`, result.body);
+      throw new Error(`Upload failed: HTTP ${result.status} ${result.body ?? ""}`);
+    }
+
+    if (__DEV__) {
+      console.log(`✅ Video uploaded successfully to: ${objectPath}`);
+      console.log(`🔗 Creating signed URL...`);
+    }
+
+    const { data: signed, error: signedError } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(objectPath, signedUrlExpiresIn);
+
+    if (signedError) {
+      console.error("❌ Failed to create signed URL:", signedError);
+      // Don't throw here, we can still return the path
+    }
+
+    if (__DEV__) {
+      console.log(`✅ Upload complete! Path: ${objectPath}`);
+    }
+
+    return {
+      path: objectPath,
+      signedUrl: signed?.signedUrl || "",
+      filename,
+      userId,
+    };
+  } catch (error) {
+    console.error("❌ Video upload error:", error);
+    throw error;
   }
-
-  if (!result) {
-    throw new Error("Upload failed: no result");
-  }
-
-  if (result.status !== 200 && result.status !== 201) {
-    throw new Error(`Upload failed: HTTP ${result.status} ${result.body ?? ""}`);
-  }
-
-  const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(objectPath, signedUrlExpiresIn);
-
-  return {
-    path: objectPath,
-    signedUrl: signed?.signedUrl || "",
-    filename,
-    userId,
-  };
 }
 
 /**

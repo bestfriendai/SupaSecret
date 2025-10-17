@@ -249,9 +249,45 @@ export default function VideoPreviewScreen() {
       // Use currentVideoUri which contains the blurred video path if blur was applied
       let finalVideoUri = currentVideoUri;
 
-      console.log("📤 Preparing video for upload:", finalVideoUri);
-      console.log("🎭 Face blur applied:", hasBlurApplied);
-      console.log("📝 Captions included:", hasCaptionsApplied, processedVideo.transcription ? "✅" : "❌");
+      console.log("📤 ========== SHARE VIDEO DEBUG ==========");
+      console.log("📤 currentVideoUri:", currentVideoUri);
+      console.log("📤 originalVideoUri:", originalVideoUri.current);
+      console.log("🎭 hasBlurApplied:", hasBlurApplied);
+      console.log("📝 hasCaptionsApplied:", hasCaptionsApplied);
+      console.log("📝 processedVideo.transcription exists:", !!processedVideo.transcription);
+      console.log("📤 Are URIs different? (blur applied):", currentVideoUri !== originalVideoUri.current);
+      console.log("📤 ========================================");
+
+      // CRITICAL CHECK: If blur is supposed to be applied but URIs are the same, something went wrong!
+      if (hasBlurApplied && currentVideoUri === originalVideoUri.current) {
+        console.error("❌ CRITICAL ERROR: hasBlurApplied is true but video URI hasn't changed!");
+        console.error("❌ This means blur was not actually applied to the video file.");
+        console.error("❌ currentVideoUri:", currentVideoUri);
+        console.error("❌ originalVideoUri:", originalVideoUri.current);
+
+        Alert.alert(
+          "Blur Error Detected",
+          "The face blur may not have been properly applied. The video will be uploaded without blur. Please try applying blur again.",
+          [
+            {
+              text: "Cancel Upload",
+              style: "cancel",
+              onPress: () => {
+                setIsSharing(false);
+                setUploadProgress(0);
+              },
+            },
+            {
+              text: "Upload Anyway",
+              style: "destructive",
+              onPress: () => {
+                // Continue with upload
+              },
+            },
+          ]
+        );
+        // Don't return here - let user choose
+      }
 
       // Process video with watermark before uploading (iOS only)
       if (Platform.OS === "ios") {
@@ -268,11 +304,45 @@ export default function VideoPreviewScreen() {
           setUploadProgress(10);
 
           // Load captions if available
-          const captionUri = originalVideoUri.current.replace(/\.(mp4|mov)$/i, ".captions.json");
-          const captionData = await loadCaptionData(captionUri);
+          // First try to parse from processedVideo.transcription (in-memory)
+          let captionSegments: any[] = [];
 
-          const captionSegments = captionData?.segments
-            ? captionData.segments.map((seg: any, index: number) => ({
+          if (processedVideo.transcription) {
+            try {
+              console.log("📝 Parsing captions from in-memory transcription data");
+              const transcriptionData = JSON.parse(processedVideo.transcription);
+
+              // Check if it's already in the correct format (array of segments)
+              if (Array.isArray(transcriptionData)) {
+                captionSegments = transcriptionData.map((seg: any, index: number) => ({
+                  id: seg.id || `seg_${index}`,
+                  text: seg.text || seg.content || "",
+                  startTime: seg.startTime || seg.start || 0,
+                  endTime: seg.endTime || seg.end || 0,
+                  isComplete: seg.isComplete !== undefined ? seg.isComplete : true,
+                  words: (seg.words || []).map((word: any) => ({
+                    word: word.word || word.text || "",
+                    startTime: word.startTime || word.start || 0,
+                    endTime: word.endTime || word.end || 0,
+                    confidence: word.confidence || 1.0,
+                    isComplete: word.isComplete !== undefined ? word.isComplete : true,
+                  })),
+                }));
+                console.log("✅ Parsed captions from in-memory data:", captionSegments.length, "segments");
+              }
+            } catch (error) {
+              console.warn("⚠️ Failed to parse transcription data:", error);
+            }
+          }
+
+          // Fallback to loading from file if not in memory
+          if (captionSegments.length === 0) {
+            console.log("📝 Attempting to load captions from file");
+            const captionUri = originalVideoUri.current.replace(/\.(mp4|mov)$/i, ".captions.json");
+            const captionData = await loadCaptionData(captionUri);
+
+            if (captionData?.segments) {
+              captionSegments = captionData.segments.map((seg: any, index: number) => ({
                 id: `seg_${index}`,
                 text: seg.text,
                 startTime: seg.start,
@@ -285,11 +355,20 @@ export default function VideoPreviewScreen() {
                   confidence: 1.0,
                   isComplete: true,
                 })),
-              }))
-            : [];
+              }));
+              console.log("✅ Loaded captions from file:", captionSegments.length, "segments");
+            }
+          }
 
-          console.log("📝 Caption segments:", captionSegments.length);
+          console.log("📝 Final caption segments for burning:", captionSegments.length);
           setUploadProgress(15);
+
+          // CRITICAL: Use the current video URI which should be the blurred video if blur was applied
+          console.log("🏷️ ========== WATERMARK BURNING DEBUG ==========");
+          console.log("🏷️ Input video for burning:", currentVideoUri);
+          console.log("🏷️ Caption segments to burn:", captionSegments.length);
+          console.log("🏷️ This should be BLURRED video if blur was applied!");
+          console.log("🏷️ ============================================");
 
           // Burn watermark and captions into video
           const result = await burnCaptionsAndWatermarkIntoVideo(currentVideoUri, captionSegments, {
@@ -425,7 +504,11 @@ export default function VideoPreviewScreen() {
       });
 
       if (result.success && result.processedVideoUri) {
-        console.log("✅ Blur applied successfully:", result.processedVideoUri);
+        console.log("✅ ========== BLUR APPLIED SUCCESSFULLY ==========");
+        console.log("✅ Input video (original):", videoUri);
+        console.log("✅ Output video (blurred):", result.processedVideoUri);
+        console.log("✅ Updating currentVideoUri state to blurred video...");
+        console.log("✅ ================================================");
 
         // Pause current player before changing video
         try {
@@ -443,6 +526,9 @@ export default function VideoPreviewScreen() {
         // ✅ Update processedVideo object to keep it in sync
         processedVideo.uri = result.processedVideoUri;
         processedVideo.faceBlurApplied = true;
+
+        console.log("✅ State updated! currentVideoUri should now point to blurred video");
+        console.log("✅ When you click Share, this blurred video should be used");
 
         if (hapticsEnabled) {
           await impactAsync(Haptics.ImpactFeedbackStyle.Heavy);

@@ -404,6 +404,7 @@ export default function OptimizedVideoItem({
           <VideoView
             style={styles.video}
             player={videoPlayer}
+            contentFit="cover"
             allowsFullscreen={false}
             allowsPictureInPicture={false}
             fullscreenOptions={{ enable: false }}

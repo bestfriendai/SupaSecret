@@ -46,22 +46,42 @@ export const BannerAdComponent: React.FC<BannerAdComponentProps> = ({
   const hasConsent = hasAdvertisingConsent();
 
   useEffect(() => {
-    loadAdMobModule().then((loaded) => {
-      if (__DEV__) {
-        console.log(`🎯 AdMob module loaded: ${loaded}`);
-        console.log(`🎯 Ad Unit ID: ${adUnitId}`);
-        console.log(`🎯 Has Consent: ${hasConsent}`);
-        console.log(`🎯 Is Premium: ${isPremium}`);
-        console.log(`🎯 Platform: ${Platform.OS}`);
-        console.log(`🎯 Is Expo Go: ${AdMobService.isExpoGo()}`);
-      }
-      setModuleLoaded(loaded);
-    });
+    loadAdMobModule()
+      .then((loaded) => {
+        if (__DEV__) {
+          console.log(`📱 AdMob Banner Component [${placement}]`);
+          console.log(`  ✓ Module loaded: ${loaded}`);
+          console.log(`  ✓ Ad Unit ID: ${adUnitId || 'MISSING'}`);
+          console.log(`  ✓ Has Consent: ${hasConsent}`);
+          console.log(`  ✓ Is Premium: ${isPremium}`);
+          console.log(`  ✓ Platform: ${Platform.OS}`);
+          console.log(`  ✓ Is Expo Go: ${AdMobService.isExpoGo()}`);
+        }
+        setModuleLoaded(loaded);
+      })
+      .catch((error) => {
+        console.error("❌ Failed to load AdMob module:", error);
+        setModuleLoaded(false);
+      });
   }, []);
 
-  if (isPremium || !hasConsent || !adUnitId) {
+  if (isPremium) {
     if (__DEV__) {
-      console.log(`❌ Ad not showing: isPremium=${isPremium}, hasConsent=${hasConsent}, hasAdUnitId=${!!adUnitId}`);
+      console.log(`🚫 Ad hidden: User is premium`);
+    }
+    return null;
+  }
+
+  if (!hasConsent) {
+    if (__DEV__) {
+      console.log(`🚫 Ad hidden: No advertising consent`);
+    }
+    return null;
+  }
+
+  if (!adUnitId) {
+    if (__DEV__) {
+      console.error(`❌ Ad Unit ID missing for ${placement}`);
     }
     return null;
   }

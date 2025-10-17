@@ -6,7 +6,7 @@ console.log("[DIAG] App.tsx: React Native imports completed");
 console.log("[DIAG] App.tsx: About to import supabase...");
 import { supabase } from "./src/lib/supabase";
 console.log("[DIAG] App.tsx: Supabase imported successfully");
-import { startNetworkWatcher, stopNetworkWatcher } from "./src/lib/offlineQueue";
+import { stopNetworkWatcher } from "./src/lib/offlineQueue";
 console.log("[DIAG] App.tsx: offlineQueue imported successfully");
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";

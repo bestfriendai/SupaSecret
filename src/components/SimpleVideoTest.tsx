@@ -25,7 +25,7 @@ export const SimpleVideoTest: React.FC = () => {
       <Text style={styles.info}>URL: {TEST_VIDEO_URL}</Text>
 
       {player ? (
-        <VideoView style={styles.video} player={player} fullscreenOptions={{ enable: false }} nativeControls />
+        <VideoView style={styles.video} player={player} contentFit="cover" fullscreenOptions={{ enable: false }} nativeControls />
       ) : (
         <View style={styles.placeholder}>
           <Text style={styles.placeholderText}>No Player Available</Text>

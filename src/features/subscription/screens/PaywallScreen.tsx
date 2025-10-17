@@ -89,22 +89,53 @@ export function PaywallScreen() {
   const loadOfferings = async () => {
     setLoadingOfferings(true);
     try {
+      console.log("📦 Loading RevenueCat offerings...");
       const offerings = await getOfferings();
+
+      if (!offerings) {
+        console.warn("⚠️ No offerings returned (likely Expo Go or demo mode)");
+        // In Expo Go, show demo message
+        if (__DEV__) {
+          Alert.alert(
+            "Demo Mode",
+            "Subscriptions require a development build.\n\n" +
+              "To test subscriptions:\n" +
+              "1. Run: npx expo run:ios\n" +
+              "2. Configure StoreKit in Xcode\n" +
+              "3. Or use TestFlight build",
+            [{ text: "OK" }],
+          );
+        }
+        return;
+      }
+
       if (offerings?.current) {
         const availablePackages = offerings.current.availablePackages || [];
+        console.log(`📦 Found ${availablePackages.length} packages`);
 
         if (availablePackages.length === 0) {
-          console.warn("No subscription packages available");
+          console.warn("⚠️ No subscription packages available");
           Alert.alert(
             "Subscriptions Unavailable",
-            "Subscription options are temporarily unavailable. This may be due to:\n\n" +
-              "• App Store Connect configuration pending\n" +
-              "• Network connectivity issues\n" +
-              "• Regional restrictions\n\n" +
-              "Please try again later or contact support if the issue persists.",
+            __DEV__
+              ? "No subscription packages found.\n\n" +
+                "Development Setup:\n" +
+                "1. Create StoreKit Configuration file\n" +
+                "2. Add products in Xcode scheme\n" +
+                "3. Verify RevenueCat product IDs match\n\n" +
+                "Production Setup:\n" +
+                "1. Configure products in App Store Connect\n" +
+                "2. Sign Paid Applications Agreement\n" +
+                "3. Wait for products to sync (10-15 min)"
+              : "Subscription options are temporarily unavailable. This may be due to:\n\n" +
+                "• App Store Connect configuration pending\n" +
+                "• Network connectivity issues\n" +
+                "• Regional restrictions\n\n" +
+                "Please try again later or contact support if the issue persists.",
             [{ text: "OK" }],
           );
         } else {
+          console.log("✅ Packages loaded successfully:", availablePackages.map(p => p.identifier));
           setPackages(availablePackages);
 
           // Auto-select annual (most popular) or first package
@@ -114,7 +145,7 @@ export function PaywallScreen() {
           setSelectedPackage(annualPackage || availablePackages[0] || null);
         }
       } else {
-        console.warn("No current offering available");
+        console.warn("⚠️ No current offering available");
         Alert.alert(
           "Subscriptions Unavailable",
           "Unable to load subscription options. Please ensure:\n\n" +
@@ -126,7 +157,7 @@ export function PaywallScreen() {
         );
       }
     } catch (error) {
-      console.error("Failed to load offerings:", error);
+      console.error("❌ Failed to load offerings:", error);
       Alert.alert(
         "Error Loading Subscriptions",
         "We encountered an error loading subscription options. Please check your internet connection and try again.\n\n" +

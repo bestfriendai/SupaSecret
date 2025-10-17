@@ -168,10 +168,25 @@ export async function saveCaptionData(captionData: CaptionData, videoUri: string
 export async function loadCaptionData(captionUri: string): Promise<CaptionData | null> {
   try {
     const FileSystem = await import("../utils/legacyFileSystem");
+
+    // Check if file exists first
+    const fileInfo = await FileSystem.getInfoAsync(captionUri);
+    if (!fileInfo.exists) {
+      if (__DEV__) {
+        console.log("📝 Caption file not found:", captionUri);
+      }
+      return null;
+    }
+
     const data = await FileSystem.readAsStringAsync(captionUri);
     return JSON.parse(data);
   } catch (error) {
-    console.error("Failed to load captions:", error);
+    // Only log error if it's not a "file not found" error
+    if (error instanceof Error && !error.message.includes("not readable") && !error.message.includes("not found")) {
+      console.error("Failed to load captions:", error);
+    } else if (__DEV__) {
+      console.log("📝 Caption file not available:", captionUri);
+    }
     return null;
   }
 }

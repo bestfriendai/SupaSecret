@@ -6,7 +6,6 @@ import { SplashScreen, Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import * as Audio from "expo-audio";
 import * as Linking from "expo-linking";
 import { StatusBar } from "expo-status-bar";
 

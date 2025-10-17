@@ -401,6 +401,10 @@ export const useConfessionStore = create<ConfessionState>()(
                 videoStoragePath = result.path; // store path in DB
                 signedVideoUrl = result.signedUrl; // use for immediate playback
 
+                if (__DEV__) {
+                  console.log(`✅ Video uploaded successfully: ${videoStoragePath}`);
+                }
+
                 // Clean up temporary file after successful upload
                 if (videoToUpload !== confession.videoUri) {
                   await deleteVideoFile(videoToUpload);
@@ -418,11 +422,56 @@ export const useConfessionStore = create<ConfessionState>()(
                     : "Video upload failed. Your confession has been saved and will retry automatically when connection improves."
                 );
               }
-            } else {
-              // Already a remote URL (likely a signed URL) – do not persist path to DB
+            } else if (/^https?:\/\//i.test(confession.videoUri)) {
+              // Already a remote URL (likely from retry queue or signed URL)
+              // Extract the storage path if it's a Supabase URL, otherwise skip saving to DB
+              if (__DEV__) {
+                console.warn("⚠️ Video URI is already a remote URL:", confession.videoUri);
+              }
+
+              // Try to extract storage path from Supabase signed URL
+              const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_VIBECODE_SUPABASE_URL;
+              if (supabaseUrl && confession.videoUri.includes(supabaseUrl)) {
+                // Extract path from signed URL: https://[project].supabase.co/storage/v1/object/sign/confessions/[path]?token=...
+                const match = confession.videoUri.match(/\/object\/(?:sign\/)?confessions\/(.+?)(?:\?|$)/);
+                if (match && match[1]) {
+                  videoStoragePath = `confessions/${decodeURIComponent(match[1])}`;
+                  if (__DEV__) {
+                    console.log(`📁 Extracted storage path from URL: ${videoStoragePath}`);
+                  }
+                }
+              }
+
               signedVideoUrl = confession.videoUri;
-              videoStoragePath = undefined;
+            } else {
+              // Local file path that wasn't uploaded yet - this shouldn't happen
+              // but if it does, try to upload it now
+              if (__DEV__) {
+                console.warn("⚠️ Video URI is a local path that wasn't uploaded:", confession.videoUri);
+              }
+
+              try {
+                const uploadResult = await uploadVideoToSupabase(confession.videoUri, user?.id || "anonymous");
+                videoStoragePath = uploadResult.path;
+                signedVideoUrl = uploadResult.signedUrl;
+
+                if (__DEV__) {
+                  console.log(`✅ Video uploaded successfully: ${videoStoragePath}`);
+                }
+              } catch (uploadError) {
+                console.error("❌ Failed to upload video:", uploadError);
+                throw new Error(
+                  uploadError instanceof Error
+                    ? `Video upload failed: ${uploadError.message}`
+                    : "Video upload failed. Your confession has been saved and will retry automatically when connection improves."
+                );
+              }
             }
+          }
+
+          // Validate that video confessions have a valid video_uri before inserting
+          if (confession.type === "video" && !videoStoragePath) {
+            throw new Error("Video confession must have a valid video storage path");
           }
 
           const { data, error } = await supabase
