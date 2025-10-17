@@ -168,7 +168,8 @@ class CaptionBurnerModule: NSObject {
       segments: segments,
       duration: duration,
       watermarkImagePath: watermarkImagePath,
-      watermarkText: watermarkText
+      watermarkText: watermarkText,
+      sourceFrameRate: videoTrack.nominalFrameRate
     )
     
     // Export the video
@@ -178,11 +179,20 @@ class CaptionBurnerModule: NSObject {
     ) else {
       throw NSError(domain: "CaptionBurner", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create export session"])
     }
-    
+
     exportSession.outputURL = outputURL
     exportSession.outputFileType = .mov
     exportSession.videoComposition = videoComposition
     exportSession.shouldOptimizeForNetworkUse = true
+
+    // CRITICAL FIX: Log export session details for debugging
+    print("📤 Export session created:")
+    print("   - Input video tracks: \(composition.tracks(withMediaType: .video).count)")
+    print("   - Input audio tracks: \(composition.tracks(withMediaType: .audio).count)")
+    print("   - Video composition: \(videoComposition)")
+    print("   - Render size: \(videoComposition.renderSize)")
+    print("   - Frame duration: \(videoComposition.frameDuration)")
+    print("   - Instructions: \(videoComposition.instructions.count)")
     
     print("🎬 Starting export...")
     
@@ -193,20 +203,50 @@ class CaptionBurnerModule: NSObject {
     exportSession.exportAsynchronously {
       if exportSession.status == .failed {
         exportError = exportSession.error
+        print("❌ Export FAILED with error: \(String(describing: exportSession.error))")
+      } else if exportSession.status == .completed {
+        print("✅ Export COMPLETED successfully")
+      } else {
+        print("⚠️ Export status: \(exportSession.status.rawValue)")
       }
       semaphore.signal()
     }
-    
+
     semaphore.wait()
-    
+
     if let error = exportError {
+      print("❌ Throwing export error: \(error.localizedDescription)")
       throw error
     }
-    
+
     if exportSession.status != .completed {
-      throw NSError(domain: "CaptionBurner", code: 4, userInfo: [NSLocalizedDescriptionKey: "Export failed with status: \(exportSession.status.rawValue)"])
+      let errorMsg = "Export failed with status: \(exportSession.status.rawValue)"
+      print("❌ \(errorMsg)")
+      if let error = exportSession.error {
+        print("❌ Export session error: \(error.localizedDescription)")
+      }
+      throw NSError(domain: "CaptionBurner", code: 4, userInfo: [NSLocalizedDescriptionKey: errorMsg])
     }
-    
+
+    // CRITICAL: Verify output file exists and has size
+    let fileManager = FileManager.default
+    if fileManager.fileExists(atPath: outputURL.path) {
+      do {
+        let attributes = try fileManager.attributesOfItem(atPath: outputURL.path)
+        if let fileSize = attributes[.size] as? UInt64 {
+          print("✅ Output file size: \(Double(fileSize) / 1_000_000.0) MB")
+          if fileSize < 1000 {
+            print("⚠️ WARNING: Output file is very small (\(fileSize) bytes)! Video may be corrupt.")
+          }
+        }
+      } catch {
+        print("⚠️ Could not get file size: \(error.localizedDescription)")
+      }
+    } else {
+      print("❌ ERROR: Output file does not exist at: \(outputURL.path)")
+      throw NSError(domain: "CaptionBurner", code: 5, userInfo: [NSLocalizedDescriptionKey: "Output file was not created"])
+    }
+
     print("✅ Caption burning complete! Output: \(outputURL.path)")
     return outputURL.path
   }
@@ -220,7 +260,8 @@ class CaptionBurnerModule: NSObject {
     segments: [CaptionSegment],
     duration: CMTime,
     watermarkImagePath: String?,
-    watermarkText: String?
+    watermarkText: String?,
+    sourceFrameRate: Float
   ) throws -> AVMutableVideoComposition {
 
     // Determine actual render size based on transform
@@ -231,7 +272,17 @@ class CaptionBurnerModule: NSObject {
 
     // Create video composition
     let videoComposition = AVMutableVideoComposition()
-    videoComposition.frameDuration = CMTime(value: 1, timescale: 30) // 30 FPS
+
+    // CRITICAL FIX: Use source video's frame rate instead of hardcoding 30 FPS
+    // This prevents black screen issues
+    if sourceFrameRate > 0 {
+      videoComposition.frameDuration = CMTime(value: 1, timescale: Int32(sourceFrameRate))
+      print("📹 Using source frame rate: \(sourceFrameRate) FPS")
+    } else {
+      videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
+      print("📹 Using default frame rate: 30 FPS")
+    }
+
     videoComposition.renderSize = normalizedSize
 
     // Create layers
@@ -245,8 +296,13 @@ class CaptionBurnerModule: NSObject {
     captionLayer.frame = CGRect(origin: .zero, size: normalizedSize)
     watermarkLayer.frame = CGRect(origin: .zero, size: normalizedSize)
 
-    // Add video layer
-    parentLayer.addSublayer(videoLayer)
+    // CRITICAL FIX: Do NOT add videoLayer as sublayer!
+    // When using postProcessingAsVideoLayer, the videoLayer represents the actual video frames
+    // and should NOT be added as a sublayer. It's automatically composited by AVFoundation
+    // BEHIND the parentLayer.
+    // Adding it as a sublayer creates an empty black layer that blocks the video!
+
+    // parentLayer.addSublayer(videoLayer) // ❌ REMOVED - This was causing black video!
 
     // Add watermark layer (below captions)
     if watermarkImagePath != nil || watermarkText != nil {
