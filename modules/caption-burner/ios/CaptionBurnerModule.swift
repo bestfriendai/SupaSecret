@@ -411,7 +411,7 @@ class CaptionBurnerModule: NSObject {
 
     // Load video asset
     let asset = AVAsset(url: inputURL)
-    
+
     // Validate asset
     let tracks = asset.tracks(withMediaType: .video)
     guard let videoTrack = tracks.first else {
@@ -419,11 +419,13 @@ class CaptionBurnerModule: NSObject {
     }
 
     let duration = asset.duration
+    let frameRate = videoTrack.nominalFrameRate
     print("📹 Video duration: \(CMTimeGetSeconds(duration))s")
+    print("📹 Video frame rate: \(frameRate) FPS")
 
     // Create simple composition without complex transforms
     let composition = AVMutableComposition()
-    
+
     // Add video track
     guard let compositionVideoTrack = composition.addMutableTrack(
       withMediaType: .video,
@@ -459,7 +461,17 @@ class CaptionBurnerModule: NSObject {
     // Create simple video composition for watermark only
     let videoComposition = AVMutableVideoComposition()
     videoComposition.renderSize = videoTrack.naturalSize
-    videoComposition.frameDuration = CMTime(value: 1, timescale: 30) // Standard 30 FPS
+
+    // CRITICAL FIX: Use source video's frame rate instead of hardcoding 30 FPS
+    // This prevents black screen issues
+    if frameRate > 0 && frameRate <= 120 {
+      videoComposition.frameDuration = CMTime(value: 1, timescale: Int32(frameRate))
+      print("   - Using source frame rate: \(frameRate) FPS")
+    } else {
+      videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
+      print("   - Using default frame rate: 30 FPS (source was invalid: \(frameRate))")
+    }
+
     videoComposition.renderScale = 1.0
 
     // Create instruction
@@ -467,10 +479,16 @@ class CaptionBurnerModule: NSObject {
     instruction.timeRange = CMTimeRange(start: .zero, duration: duration)
 
     let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compositionVideoTrack)
-    layerInstruction.setTransform(videoTrack.preferredTransform, at: .zero)
+
+    // CRITICAL FIX: Do NOT apply transform when using postProcessingAsVideoLayer
+    // The transform is already handled by the composition track's preferredTransform
+    // Applying it again causes double-transformation and black video
+    print("   - NOT applying transform to layer instruction (handled by composition track)")
+    // layerInstruction.setTransform(videoTrack.preferredTransform, at: .zero) // ❌ REMOVED
+
     instruction.layerInstructions = [layerInstruction]
 
-    // Create layers for animation tool (always needed, even without watermark)
+    // Create layers for animation tool
     print("🏷️ Setting up video layers...")
     let parentLayer = CALayer()
     let videoLayer = CALayer()
@@ -481,9 +499,11 @@ class CaptionBurnerModule: NSObject {
     videoLayer.frame = CGRect(origin: .zero, size: videoSize)
     watermarkLayer.frame = CGRect(origin: .zero, size: videoSize)
 
-    // CRITICAL FIX: Add videoLayer to parentLayer as the base layer
-    // This ensures video frames are properly rendered
-    parentLayer.addSublayer(videoLayer)
+    // CRITICAL: Do NOT add videoLayer to parentLayer as a sublayer
+    // When using postProcessingAsVideoLayer, AVFoundation automatically renders
+    // video frames into videoLayer and composites it with parentLayer
+    // Only add overlay layers (watermark) to parentLayer
+    print("   - videoLayer will be used by animation tool (not added as sublayer)")
 
     // Add watermark if provided
     if watermarkImagePath != nil || watermarkText != nil {
@@ -527,11 +547,13 @@ class CaptionBurnerModule: NSObject {
         watermarkLayer.addSublayer(textLayer)
       }
 
-      // Add watermark layer on top of video layer
+      // Add watermark layer to parent (video frames will be rendered behind this)
       parentLayer.addSublayer(watermarkLayer)
     }
 
-    // Create animation tool - this renders video frames into videoLayer
+    // Create animation tool - this tells AVFoundation to:
+    // 1. Render video frames into videoLayer automatically
+    // 2. Composite parentLayer (with overlays) ON TOP of the video
     videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
       postProcessingAsVideoLayer: videoLayer,
       in: parentLayer
