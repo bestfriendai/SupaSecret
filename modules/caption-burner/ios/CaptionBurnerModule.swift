@@ -470,20 +470,25 @@ class CaptionBurnerModule: NSObject {
     layerInstruction.setTransform(videoTrack.preferredTransform, at: .zero)
     instruction.layerInstructions = [layerInstruction]
 
+    // Create layers for animation tool (always needed, even without watermark)
+    print("🏷️ Setting up video layers...")
+    let parentLayer = CALayer()
+    let videoLayer = CALayer()
+    let watermarkLayer = CALayer()
+
+    let videoSize = videoTrack.naturalSize
+    parentLayer.frame = CGRect(origin: .zero, size: videoSize)
+    videoLayer.frame = CGRect(origin: .zero, size: videoSize)
+    watermarkLayer.frame = CGRect(origin: .zero, size: videoSize)
+
+    // CRITICAL FIX: Add videoLayer to parentLayer as the base layer
+    // This ensures video frames are properly rendered
+    parentLayer.addSublayer(videoLayer)
+
     // Add watermark if provided
     if watermarkImagePath != nil || watermarkText != nil {
       print("🏷️ Adding watermark...")
-      
-      // Create layers for animation tool
-      let parentLayer = CALayer()
-      let videoLayer = CALayer()
-      let watermarkLayer = CALayer()
-      
-      let videoSize = videoTrack.naturalSize
-      parentLayer.frame = CGRect(origin: .zero, size: videoSize)
-      videoLayer.frame = CGRect(origin: .zero, size: videoSize)
-      watermarkLayer.frame = CGRect(origin: .zero, size: videoSize)
-      
+
       // Add watermark content to watermark layer
       if let imagePath = watermarkImagePath {
         // Add image watermark
@@ -502,7 +507,7 @@ class CaptionBurnerModule: NSObject {
           watermarkLayer.addSublayer(imageLayer)
         }
       }
-      
+
       if let text = watermarkText {
         // Add text watermark
         let textLayer = CATextLayer()
@@ -522,15 +527,15 @@ class CaptionBurnerModule: NSObject {
         watermarkLayer.addSublayer(textLayer)
       }
 
-      // Add watermark layer to parent
+      // Add watermark layer on top of video layer
       parentLayer.addSublayer(watermarkLayer)
-
-      // Create animation tool with correct layer types
-      videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
-        postProcessingAsVideoLayer: videoLayer,  // CALayer, not composition track
-        in: parentLayer
-      )
     }
+
+    // Create animation tool - this renders video frames into videoLayer
+    videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
+      postProcessingAsVideoLayer: videoLayer,
+      in: parentLayer
+    )
 
     videoComposition.instructions = [instruction]
 
