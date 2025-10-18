@@ -21,6 +21,7 @@ export interface Confession {
   selectedVideoUri?: string; // For video quality selection
   qualityMetadata?: any; // Video quality metadata
   videoVariants?: any[]; // Video quality variants
+  replyCount?: number; // Number of replies/comments
 }
 
 // Database schema representation (snake_case)
@@ -36,6 +37,8 @@ export interface DatabaseConfession {
   views: number;
   session_id?: string | null;
   user_id?: string | null;
+  reply_count?: number;
+  likes_count?: number;
 }
 
 export interface VideoAnalytics {

@@ -38,7 +38,7 @@ export function normalizeConfessionSync(dbRow: any): Confession {
     transcription: dbRow.transcription || undefined,
     timestamp: dbRow.created_at ? new Date(dbRow.created_at).getTime() : Date.now(),
     isAnonymous: Boolean(dbRow.is_anonymous),
-    likes: Math.max(0, parseInt(dbRow.likes) || 0),
+    likes: Math.max(0, parseInt(dbRow.likes_count || dbRow.likes) || 0),
     views: Math.max(0, parseInt(dbRow.views) || 0),
     isLiked: false,
     has_face_blur: dbRow.has_face_blur || false,
@@ -46,6 +46,7 @@ export function normalizeConfessionSync(dbRow: any): Confession {
     voiceChangeApplied: dbRow.has_voice_change || false,
     video_duration: dbRow.video_duration || undefined,
     thumbnailUri: dbRow.video_thumbnail_url || undefined,
+    replyCount: Math.max(0, parseInt(dbRow.reply_count) || 0),
   };
 
   // Handle video URI for video confessions

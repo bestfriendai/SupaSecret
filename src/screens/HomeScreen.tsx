@@ -135,9 +135,9 @@ function HomeScreen() {
   // Debounced like toggle
   const debouncedToggleLike = useDebouncedLikeToggle(toggleLike, 500);
   const hasMore = useConfessionStore((state) => state.hasMore);
-  const { getRepliesForConfession } = useReplyStore();
+  // const { getRepliesForConfession } = useReplyStore();
   const { isSaved } = useSavedStore();
-  const { loadRepliesForVisibleItems, clearLoadedReplies } = useOptimizedReplies();
+  const { clearLoadedReplies } = useOptimizedReplies();
   const { scrollViewRef } = useScrollRestoration({ key: "home-feed" });
   const insets = useSafeAreaInsets();
   const { impactAsync } = usePreferenceAwareHaptics();
@@ -338,7 +338,8 @@ function HomeScreen() {
 
   const renderItem = useCallback(
     ({ item: confession, index }: { item: Confession; index: number }) => {
-      const replies = getRepliesForConfession(confession.id);
+      // Use reply_count from database instead of loading all replies
+      // const replies = getRepliesForConfession(confession.id);
 
       // Show ads every 5 secrets
       const shouldShowAd = index > 0 && index % 5 === 0;
@@ -438,7 +439,7 @@ function HomeScreen() {
                     </Pressable>
                     <View className="flex-row items-center">
                       <Ionicons name="chatbubble-outline" size={18} color="#8B98A5" />
-                      <Text className="text-gray-500 text-13 ml-1">{replies.length}</Text>
+                      <Text className="text-gray-500 text-13 ml-1">{confession.replyCount || 0}</Text>
                     </View>
                     <Pressable
                       className="flex-row items-center touch-target px-2 py-2 -mx-2 -my-2 rounded-lg"
@@ -466,7 +467,7 @@ function HomeScreen() {
         </>
       );
     },
-    [getRepliesForConfession, handleSecretPress, handleToggleLike, handleReportPress, handleActionSheetPress, isSaved],
+    [handleSecretPress, handleToggleLike, handleReportPress, handleActionSheetPress, isSaved],
   );
 
   const renderFooter = useCallback(() => {
@@ -537,11 +538,12 @@ function HomeScreen() {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#1D9BF0"]} tintColor="#1D9BF0" />
             }
-            onViewableItemsChanged={({ viewableItems }) => {
-              const visibleIds = viewableItems.map((item) => item.item.id);
-              loadRepliesForVisibleItems(visibleIds);
-            }}
-            viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+            // Removed reply loading for performance - using reply_count from database instead
+            // onViewableItemsChanged={({ viewableItems }) => {
+            //   const visibleIds = viewableItems.map((item) => item.item.id);
+            //   loadRepliesForVisibleItems(visibleIds);
+            // }}
+            // viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
             extraData={{ refreshing, isLoadingMore, networkError }}
             // FlashList performance optimization
             estimatedItemSize={340}
