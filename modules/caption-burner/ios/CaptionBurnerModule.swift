@@ -569,7 +569,10 @@ class CaptionBurnerModule: NSObject {
       print("✅ Added text watermark at bottom-left")
     }
 
-    parentLayer.addSublayer(videoLayer)
+    // CRITICAL: Do NOT add videoLayer to parentLayer!
+    // When using postProcessingAsVideoLayer, AVFoundation automatically renders
+    // video frames into videoLayer. Adding it as a sublayer causes black screen.
+    // Only add overlay layers to parentLayer.
     parentLayer.addSublayer(overlayLayer)
 
     videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
