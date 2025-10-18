@@ -707,14 +707,19 @@ export default function VideoPreviewScreen() {
 
   const handleDownloadWithPermission = useCallback(async () => {
     try {
+      console.log("📥 Starting download...");
+      console.log("📥 currentVideoUri (blurred video if blur applied):", currentVideoUri);
+      console.log("📥 hasBlurApplied:", hasBlurApplied);
+      console.log("📥 Captions will NOT be burned (they're overlays only)");
+
       const result = await downloadVideoToGallery(currentVideoUri, {
         onProgress: (progress, message) => {
           setDownloadProgress(progress);
           console.log(`Download progress: ${progress}% - ${message}`);
         },
         albumName: "Toxic Confessions",
-        videoUri: originalVideoUri.current, // Pass original URI for caption lookup (deprecated)
-        captionData: captionSegments, // Pass caption data directly for burning into video
+        // DO NOT pass caption data - captions should not be burned into downloads
+        // They are overlay-only for playback
       });
 
       setIsDownloading(false);
