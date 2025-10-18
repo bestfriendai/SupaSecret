@@ -7,9 +7,10 @@ interface VideoWatermarkProps {
 }
 
 export function VideoWatermark({ position = "top-right", size = "medium" }: VideoWatermarkProps) {
-  const logoSize = size === "small" ? 40 : size === "medium" ? 50 : 60;
-  const fontSize = size === "small" ? 10 : size === "medium" ? 12 : 14;
-  const padding = size === "small" ? 12 : size === "medium" ? 16 : 20;
+  // Significantly increased sizes for better visibility and social media branding
+  const logoSize = size === "small" ? 60 : size === "medium" ? 80 : 100;
+  const fontSize = size === "small" ? 14 : size === "medium" ? 18 : 22;
+  const padding = size === "small" ? 16 : size === "medium" ? 20 : 24;
 
   const positionStyle = {
     "top-left": { top: padding, left: padding },
@@ -36,26 +37,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10,
-    opacity: 0.85,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    // Subtle shadow for better visibility
+    opacity: 0.95, // Increased from 0.85 for better visibility
+    backgroundColor: "rgba(0, 0, 0, 0.6)", // Darker background for better contrast
+    borderRadius: 16, // Larger radius for modern look
+    paddingHorizontal: 16, // Increased padding
+    paddingVertical: 12, // Increased padding
+    // Enhanced shadow for better visibility
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.7,
+    shadowRadius: 6,
   },
   logo: {
-    marginBottom: 4,
+    marginBottom: 6, // Increased spacing
   },
   text: {
     color: "#ffffff",
-    fontWeight: "700",
+    fontWeight: "800", // Bolder font
     textAlign: "center",
-    textShadowColor: "rgba(0, 0, 0, 0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    letterSpacing: 0.5, // Better readability
+    textShadowColor: "rgba(0, 0, 0, 0.9)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
 });
