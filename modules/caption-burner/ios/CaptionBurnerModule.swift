@@ -385,8 +385,12 @@ class CaptionBurnerModule: NSObject {
     watermarkImagePath: String?,
     watermarkText: String?
   ) throws -> String {
-    print("🎬 SIMPLE watermark processing - no complex layers")
-    print("📂 Input: \(inputPath)")
+    print("===============================================")
+    print("🎬 SIMPLE WATERMARK PROCESSING STARTED")
+    print("===============================================")
+    print("📂 Input path: \(inputPath)")
+    print("🖼️ Watermark image path: \(watermarkImagePath ?? "nil")")
+    print("📝 Watermark text: \(watermarkText ?? "nil")")
 
     // Convert to URL
     let inputURL: URL
@@ -398,9 +402,14 @@ class CaptionBurnerModule: NSObject {
 
     // Validate input
     let fileManager = FileManager.default
-    guard fileManager.fileExists(atPath: inputURL.path) else {
+    print("🔍 Checking if input file exists at: \(inputURL.path)")
+    let inputExists = fileManager.fileExists(atPath: inputURL.path)
+    print("🔍 Input file exists: \(inputExists)")
+
+    guard inputExists else {
+      print("❌ ERROR: Input video not found!")
       throw NSError(domain: "CaptionBurner", code: 0, userInfo: [
-        NSLocalizedDescriptionKey: "Input video not found"
+        NSLocalizedDescriptionKey: "Input video not found at: \(inputURL.path)"
       ])
     }
 
@@ -408,11 +417,16 @@ class CaptionBurnerModule: NSObject {
     let outputURL = URL(fileURLWithPath: NSTemporaryDirectory())
       .appendingPathComponent("simple_watermark_\(UUID().uuidString).mov")
 
-    print("📤 Output: \(outputURL.path)")
+    print("📤 Output will be saved to: \(outputURL.path)")
 
     // Load asset
+    print("🎥 Loading video asset...")
     let asset = AVAsset(url: inputURL)
-    guard let videoTrack = asset.tracks(withMediaType: .video).first else {
+    let videoTracks = asset.tracks(withMediaType: .video)
+    print("🎥 Found \(videoTracks.count) video track(s)")
+
+    guard let videoTrack = videoTracks.first else {
+      print("❌ ERROR: No video track found in asset!")
       throw NSError(domain: "CaptionBurner", code: 1, userInfo: [
         NSLocalizedDescriptionKey: "No video track found"
       ])
@@ -573,15 +587,22 @@ class CaptionBurnerModule: NSObject {
     // When using postProcessingAsVideoLayer, AVFoundation automatically renders
     // video frames into videoLayer. Adding it as a sublayer causes black screen.
     // Only add overlay layers to parentLayer.
+    print("🎨 Adding overlay layer to parent (NOT videoLayer)")
     parentLayer.addSublayer(overlayLayer)
+    print("🎨 Parent layer sublayers count: \(parentLayer.sublayers?.count ?? 0)")
 
+    print("🎬 Creating animation tool with postProcessingAsVideoLayer")
     videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
       postProcessingAsVideoLayer: videoLayer,
       in: parentLayer
     )
 
-    print("✅ Simple watermark composition created")
+    print("✅ Simple watermark composition created successfully")
+    print("   - Render size: \(renderSize)")
+    print("   - Frame duration: \(videoComposition.frameDuration)")
+    print("   - Instructions: \(videoComposition.instructions.count)")
 
+    print("📤 Starting export process...")
     return try exportComposition(composition, to: outputURL, videoComposition: videoComposition)
   }
 
@@ -591,10 +612,19 @@ class CaptionBurnerModule: NSObject {
     to outputURL: URL,
     videoComposition: AVVideoComposition?
   ) throws -> String {
+    print("===============================================")
+    print("📤 EXPORT SESSION STARTING")
+    print("===============================================")
+    print("📤 Output URL: \(outputURL.path)")
+    print("📤 Composition has video tracks: \(composition.tracks(withMediaType: .video).count)")
+    print("📤 Composition has audio tracks: \(composition.tracks(withMediaType: .audio).count)")
+    print("📤 Video composition provided: \(videoComposition != nil)")
+
     guard let exportSession = AVAssetExportSession(
       asset: composition,
       presetName: AVAssetExportPresetHighestQuality
     ) else {
+      print("❌ ERROR: Failed to create AVAssetExportSession!")
       throw NSError(domain: "CaptionBurner", code: 3, userInfo: [
         NSLocalizedDescriptionKey: "Failed to create export session"
       ])
@@ -605,21 +635,37 @@ class CaptionBurnerModule: NSObject {
     exportSession.videoComposition = videoComposition
     exportSession.shouldOptimizeForNetworkUse = true
 
-    print("📤 Exporting...")
+    print("📤 Export session configured successfully")
+    print("📤 Preset: AVAssetExportPresetHighestQuality")
+    print("📤 Output file type: .mov")
+    print("📤 Starting asynchronous export...")
 
     let semaphore = DispatchSemaphore(value: 0)
     var exportError: Error?
+    let exportStartTime = Date()
 
     exportSession.exportAsynchronously {
+      let exportDuration = Date().timeIntervalSince(exportStartTime)
+
       if exportSession.status == .completed {
-        print("✅ Export completed")
+        print("✅ ========== EXPORT COMPLETED ==========")
+        print("✅ Export took \(String(format: "%.2f", exportDuration)) seconds")
+        print("✅ Output saved to: \(outputURL.path)")
       } else {
         exportError = exportSession.error ?? NSError(
           domain: "CaptionBurner",
           code: 4,
           userInfo: [NSLocalizedDescriptionKey: "Export failed with status: \(exportSession.status.rawValue)"]
         )
-        print("❌ Export failed: \(exportError!.localizedDescription)")
+        print("❌ ========== EXPORT FAILED ==========")
+        print("❌ Export took \(String(format: "%.2f", exportDuration)) seconds")
+        print("❌ Status: \(exportSession.status.rawValue)")
+        print("❌ Error: \(exportError!.localizedDescription)")
+        if let nsError = exportError as? NSError {
+          print("❌ Error domain: \(nsError.domain)")
+          print("❌ Error code: \(nsError.code)")
+          print("❌ Error userInfo: \(nsError.userInfo)")
+        }
       }
       semaphore.signal()
     }
@@ -627,17 +673,32 @@ class CaptionBurnerModule: NSObject {
     semaphore.wait()
 
     if let error = exportError {
+      print("❌ Throwing export error")
       throw error
     }
 
     // Verify output
-    guard FileManager.default.fileExists(atPath: outputURL.path) else {
+    print("🔍 Verifying output file...")
+    let outputExists = FileManager.default.fileExists(atPath: outputURL.path)
+    print("🔍 Output file exists: \(outputExists)")
+
+    if outputExists {
+      if let attributes = try? FileManager.default.attributesOfItem(atPath: outputURL.path),
+         let fileSize = attributes[.size] as? Int64 {
+        print("✅ Output file size: \(fileSize) bytes (\(Double(fileSize) / 1_000_000.0) MB)")
+      }
+    }
+
+    guard outputExists else {
+      print("❌ ERROR: Output file was not created!")
       throw NSError(domain: "CaptionBurner", code: 5, userInfo: [
         NSLocalizedDescriptionKey: "Output file was not created"
       ])
     }
 
-    print("✅ Simple watermark processing complete")
+    print("===============================================")
+    print("✅ WATERMARK PROCESSING COMPLETE")
+    print("===============================================")
     return outputURL.path
   }
 

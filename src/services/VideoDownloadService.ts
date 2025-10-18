@@ -75,19 +75,55 @@ export const downloadVideoToGallery = async (
       console.log("✅ Original video file size:", fileSize, "bytes");
     }
 
-    // TEMPORARY TEST: Skip watermark processing entirely to see if save works
-    console.log("📹 ========== DOWNLOAD DEBUG ==========");
-    console.log("📹 Input video URI:", videoUri);
-    console.log("📹 Testing direct save WITHOUT watermark processing");
-    console.log("📹 =====================================");
+    console.log("📹 ========== DOWNLOAD WITH WATERMARK DEBUG ==========");
+    console.log("📹 Step 1: Input video URI:", videoUri);
+    console.log("📹 Step 2: Starting watermark processing...");
 
-    onProgress?.(50, "Saving video directly (no processing)...");
+    onProgress?.(10, "Processing video with watermark...");
 
-    // Just use the input video directly - no processing
-    // This should save the blurred video if blur was applied
+    // Process video with watermark only (no captions for downloads)
     let finalVideoUri = videoUri;
+    try {
+      console.log("📹 Step 3: Calling processVideoWithWatermarkOnly...");
 
-    console.log("📹 Final video URI for gallery:", finalVideoUri);
+      const processedVideo = await processVideoWithWatermarkOnly(videoUri, (progress, message) => {
+        console.log(`📹 Watermark progress: ${progress}% - ${message}`);
+        const mappedProgress = 10 + (progress / 100) * 50;
+        onProgress?.(mappedProgress, message);
+      });
+
+      console.log("📹 Step 4: Watermark processing returned:", processedVideo);
+
+      if (processedVideo) {
+        console.log("📹 Step 5: Verifying processed video file...");
+
+        const processedFileInfo = await FileSystem.getInfoAsync(processedVideo);
+        console.log("📹 Step 6: Processed file info:", JSON.stringify(processedFileInfo, null, 2));
+
+        if (processedFileInfo.exists) {
+          const fileSize = (processedFileInfo as any).size || 0;
+          console.log("📹 Step 7: Processed file size:", fileSize, "bytes");
+
+          if (fileSize > 10000) {
+            finalVideoUri = processedVideo;
+            console.log("✅ Step 8: Using processed video with watermark!");
+          } else {
+            console.warn("⚠️ Processed video too small, using original");
+          }
+        } else {
+          console.warn("⚠️ Processed video file does not exist, using original");
+        }
+      } else {
+        console.warn("⚠️ processVideoWithWatermarkOnly returned null, using original");
+      }
+    } catch (processingError) {
+      console.error("❌ Watermark processing failed:", processingError);
+      console.error("❌ Error stack:", (processingError as Error).stack);
+      onProgress?.(60, "Using original video (processing failed)...");
+    }
+
+    console.log("📹 Step 9: Final video URI for gallery:", finalVideoUri);
+    console.log("📹 =====================================================");
 
     onProgress?.(60, "Saving to gallery...");
 
