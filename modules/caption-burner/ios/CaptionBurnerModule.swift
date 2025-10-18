@@ -481,30 +481,16 @@ class CaptionBurnerModule: NSObject {
     print("   - Transform: \(transform)")
     print("   - Frame rate: \(frameRate)")
 
-    // Calculate correct render size for rotated videos
-    let isRotated = abs(transform.b) > 0.01 || abs(transform.c) > 0.01
-    let renderSize: CGSize
-    if isRotated {
-      renderSize = CGSize(width: videoSize.height, height: videoSize.width)
-      print("   - Video is rotated, render size: \(renderSize)")
-    } else {
-      renderSize = videoSize
-      print("   - Video not rotated, render size: \(renderSize)")
-    }
+    // CRITICAL FIX: Use AVMutableVideoComposition(propertiesOf:) to automatically
+    // handle ALL the complex transform/sizing/timing configuration
+    // Manual configuration was creating corrupt 61KB files
+    print("🎬 Creating video composition using propertiesOf (automatic config)")
+    let videoComposition = AVMutableVideoComposition(propertiesOf: asset)
 
-    // Create video composition with correct render size
-    let videoComposition = AVMutableVideoComposition()
-    videoComposition.renderSize = renderSize
-    videoComposition.frameDuration = CMTime(value: 1, timescale: Int32(max(frameRate, 30)))
-
-    // Create instruction with transform
-    let instruction = AVMutableVideoCompositionInstruction()
-    instruction.timeRange = CMTimeRange(start: .zero, duration: asset.duration)
-
-    let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compVideoTrack)
-    layerInstruction.setTransform(transform, at: .zero)
-    instruction.layerInstructions = [layerInstruction]
-    videoComposition.instructions = [instruction]
+    // The renderSize is automatically calculated correctly by propertiesOf
+    print("✅ Automatic render size: \(videoComposition.renderSize)")
+    print("✅ Automatic frame duration: \(videoComposition.frameDuration)")
+    print("✅ Automatic instructions: \(videoComposition.instructions.count)")
 
     // Load watermark image if provided
     var watermarkImage: CGImage?
@@ -539,6 +525,10 @@ class CaptionBurnerModule: NSObject {
     let parentLayer = CALayer()
     let videoLayer = CALayer()
     let overlayLayer = CALayer()
+
+    // Use the render size from the automatically configured video composition
+    let renderSize = videoComposition.renderSize
+    print("🎨 Using render size for layers: \(renderSize)")
 
     parentLayer.frame = CGRect(origin: .zero, size: renderSize)
     videoLayer.frame = CGRect(origin: .zero, size: renderSize)
@@ -592,15 +582,17 @@ class CaptionBurnerModule: NSObject {
     print("🎨 Parent layer sublayers count: \(parentLayer.sublayers?.count ?? 0)")
 
     print("🎬 Creating animation tool with postProcessingAsVideoLayer")
+    // CRITICAL: Set the animation tool which adds the watermark overlays
+    // Do NOT modify videoComposition.instructions - they're already correct from propertiesOf
     videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
       postProcessingAsVideoLayer: videoLayer,
       in: parentLayer
     )
 
     print("✅ Simple watermark composition created successfully")
-    print("   - Render size: \(renderSize)")
-    print("   - Frame duration: \(videoComposition.frameDuration)")
-    print("   - Instructions: \(videoComposition.instructions.count)")
+    print("   - Final render size: \(videoComposition.renderSize)")
+    print("   - Final frame duration: \(videoComposition.frameDuration)")
+    print("   - Final instructions: \(videoComposition.instructions.count)")
 
     print("📤 Starting export process...")
     return try exportComposition(composition, to: outputURL, videoComposition: videoComposition)
