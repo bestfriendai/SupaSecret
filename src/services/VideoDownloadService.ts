@@ -25,6 +25,122 @@ export interface VideoDownloadResult {
 }
 
 /**
+ * Debug logging helper (only logs in development)
+ */
+const debugLog = (step: string, data: any) => {
+  if (__DEV__) {
+    console.log(`🔍 [VideoDownload] ${step}:`, data);
+  }
+};
+
+/**
+ * Validate video file exists and is valid
+ */
+const validateVideoFile = async (videoUri: string): Promise<boolean> => {
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(videoUri);
+    if (!fileInfo.exists) {
+      console.error("❌ Video file does not exist:", videoUri);
+      return false;
+    }
+
+    const fileSize = (fileInfo as any).size || 0;
+    if (fileSize < 1000) {
+      console.error("❌ Video file too small:", fileSize, "bytes");
+      return false;
+    }
+
+    // Additional validation: check if it's a valid video file
+    const validExtensions = [".mp4", ".mov", ".m4v", ".avi"];
+    const hasValidExtension = validExtensions.some((ext) => videoUri.toLowerCase().endsWith(ext));
+
+    if (!hasValidExtension) {
+      console.error("❌ Invalid video file extension:", videoUri);
+      return false;
+    }
+
+    debugLog("Video validation passed", { uri: videoUri, size: fileSize });
+    return true;
+  } catch (error) {
+    console.error("❌ Video validation failed:", error);
+    return false;
+  }
+};
+
+/**
+ * Validate processed video is valid and not corrupted
+ */
+const validateProcessedVideo = async (processedUri: string): Promise<boolean> => {
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(processedUri);
+    if (!fileInfo.exists) {
+      console.error("❌ Processed video file does not exist");
+      return false;
+    }
+
+    const fileSize = (fileInfo as any).size || 0;
+    if (fileSize < 10000) {
+      // Increased threshold for processed videos
+      console.error("❌ Processed video file too small:", fileSize, "bytes");
+      return false;
+    }
+
+    console.log("✅ Processed video validation passed:", {
+      uri: processedUri,
+      size: fileSize,
+      sizeMB: (fileSize / 1024 / 1024).toFixed(2),
+    });
+
+    return true;
+  } catch (error) {
+    console.error("❌ Processed video validation failed:", error);
+    return false;
+  }
+};
+
+/**
+ * Load watermark asset with multiple fallback methods
+ */
+const loadWatermarkAsset = async (): Promise<string | null> => {
+  try {
+    console.log("🎯 Loading watermark asset...");
+
+    // Try multiple approaches to load the logo
+    let logoPath: string | null = null;
+
+    // Method 1: Asset.fromModule (primary method)
+    try {
+      const logoAsset = Asset.fromModule(require("../../assets/logo.png"));
+      await logoAsset.downloadAsync();
+      logoPath = logoAsset.localUri || logoAsset.uri;
+      console.log("✅ Logo loaded via Asset.fromModule:", logoPath);
+    } catch (assetError) {
+      console.warn("⚠️ Asset.fromModule failed:", assetError);
+    }
+
+    // Method 2: Direct require path (fallback)
+    if (!logoPath) {
+      try {
+        const directAsset = Asset.fromModule(require("../../assets/logo.png"));
+        logoPath = directAsset.uri;
+        console.log("✅ Using direct asset URI:", logoPath);
+      } catch (directError) {
+        console.warn("⚠️ Direct asset URI failed:", directError);
+      }
+    }
+
+    if (!logoPath) {
+      throw new Error("Failed to load watermark logo from any source");
+    }
+
+    return logoPath;
+  } catch (error) {
+    console.error("❌ Failed to load watermark asset:", error);
+    return null;
+  }
+};
+
+/**
  * Download and save video to device gallery with watermark only (no captions)
  */
 export const downloadVideoToGallery = async (
@@ -34,6 +150,8 @@ export const downloadVideoToGallery = async (
   const { onProgress, albumName = "Toxic Confessions" } = options;
 
   try {
+    debugLog("Starting download", { videoUri, options });
+
     onProgress?.(0, "Checking permissions...");
 
     // Check if user has premium subscription
@@ -54,42 +172,51 @@ export const downloadVideoToGallery = async (
       };
     }
 
-    onProgress?.(5, "Preparing video...");
+    onProgress?.(5, "Validating video...");
 
-    // Ensure the video file exists and is valid
-    const fileInfo = await FileSystem.getInfoAsync(videoUri);
-    console.log("📹 Original video file info:", fileInfo);
+    // Validate the video file
+    const isValidVideo = await validateVideoFile(videoUri);
+    debugLog("Video validation", { isValid: isValidVideo });
 
-    if (!fileInfo.exists) {
+    if (!isValidVideo) {
       return {
         success: false,
-        error: "Video file not found",
+        error: "Invalid video file",
       };
     }
 
-    // Check file size
-    const fileSize = (fileInfo as any).size || 0;
-    if (fileSize < 1000) {
-      console.warn("⚠️ Original video file is very small:", fileSize, "bytes");
-    } else {
-      console.log("✅ Original video file size:", fileSize, "bytes");
-    }
+    console.log("📹 ========== PROCESSING VIDEO FOR DOWNLOAD ==========");
+    console.log("📹 Input video:", videoUri);
+    console.log("📹 Will apply: Face blur (if not already applied) + Watermark");
+    console.log("📹 ====================================================");
 
-    console.log("📹 ========== SAVING VIDEO DIRECTLY ==========");
-    console.log("📹 Input video (already has blur if applied):", videoUri);
-    console.log("📹 Skipping watermark processing due to corruption issues");
-    console.log("📹 This ensures you get your blurred video saved successfully");
-    console.log("📹 ============================================");
+    onProgress?.(10, "Processing video with blur and watermark...");
 
-    onProgress?.(50, "Preparing video for save...");
+    // Process video with face blur and watermark
+    const processedVideo = await processVideoWithWatermarkAndBlur(videoUri, (progress, message) => {
+      console.log(`📹 Processing progress: ${progress}% - ${message}`);
+      const mappedProgress = 10 + (progress / 100) * 50;
+      onProgress?.(mappedProgress, message);
+    });
 
-    // TEMPORARY FIX: Skip watermark processing entirely
-    // The watermark processing is creating corrupt 43KB files
-    // Just save the blurred video directly - it already has the blur applied
+    // Determine final video URI
     let finalVideoUri = videoUri;
 
-    console.log("📹 Final video URI for gallery:", finalVideoUri);
-    console.log("📹 Video will be saved with blur (no watermark due to processing bug)");
+    if (processedVideo) {
+      const isValidProcessed = await validateProcessedVideo(processedVideo);
+      debugLog("Processed video validation", { isValid: isValidProcessed, processedVideo });
+
+      if (isValidProcessed) {
+        finalVideoUri = processedVideo;
+        console.log("✅ Using processed video with blur and watermark!");
+      } else {
+        console.warn("⚠️ Processed video validation failed, using original");
+      }
+    } else {
+      console.log("⚠️ Video processing failed or not available, using original video");
+    }
+
+    debugLog("Final video", { finalVideoUri });
 
     onProgress?.(60, "Saving to gallery...");
 
@@ -133,6 +260,8 @@ export const downloadVideoToGallery = async (
 
     onProgress?.(100, "Download complete!");
 
+    debugLog("Download complete", { assetId: asset.id });
+
     return {
       success: true,
       assetId: asset.id,
@@ -147,51 +276,71 @@ export const downloadVideoToGallery = async (
 };
 
 /**
- * Process video with watermark only (no captions)
+ * Process video with face blur and watermark (no captions)
  * Returns the path to the processed video, or null if processing is not available/fails
  */
-async function processVideoWithWatermarkOnly(
+async function processVideoWithWatermarkAndBlur(
   videoUri: string,
   onProgress?: (progress: number, message: string) => void,
 ): Promise<string | null> {
   try {
-    // Check if caption burning is supported
+    // Check if video processing is supported
     const { isCaptionBurningSupported } = await import("../../modules/caption-burner");
     if (!isCaptionBurningSupported()) {
-      console.log("⚠️ Video processing not supported on this platform, using original video");
-      onProgress?.(60, "Video processing not available on this platform");
+      console.log("⚠️ Video processing not supported on this platform");
       return null;
     }
 
-    onProgress?.(0, "Loading watermark assets...");
+    onProgress?.(0, "Loading assets...");
 
-    // Get logo path from assets
-    const logoAsset = Asset.fromModule(require("../../assets/logo.png"));
-    await logoAsset.downloadAsync();
-    const logoPath = logoAsset.localUri || logoAsset.uri;
+    // Get logo path with improved error handling
+    const logoPath = await loadWatermarkAsset();
+    if (!logoPath) {
+      console.error("❌ Failed to load watermark asset");
+      return null;
+    }
 
-    onProgress?.(30, "Processing video...");
+    debugLog("Asset loading", { logoPath });
 
-    console.log("🎬 About to burn watermark only (no captions)...");
-    console.log("🎬 Input video:", videoUri);
+    onProgress?.(20, "Applying face blur...");
+
+    // First apply face blur if available
+    let processedVideo = videoUri;
+    try {
+      const { applyFaceBlur } = await import("../../modules/face-blur");
+      const blurredVideo = await applyFaceBlur(videoUri);
+      if (blurredVideo) {
+        processedVideo = blurredVideo;
+        console.log("✅ Face blur applied successfully");
+        debugLog("Face blur applied", { blurredVideo });
+      } else {
+        console.warn("⚠️ Face blur returned null, continuing with original video");
+      }
+    } catch (blurError) {
+      console.warn("⚠️ Face blur failed, continuing with original video:", blurError);
+      debugLog("Face blur error", { error: blurError });
+    }
+
+    onProgress?.(50, "Applying watermark...");
+
+    console.log("🎬 About to burn watermark into video...");
+    console.log("🎬 Input video (with blur if applied):", processedVideo);
     console.log("🎬 Watermark logo path:", logoPath);
 
-    // Burn only watermark into video (no captions for downloads)
-    const result = await burnCaptionsAndWatermarkIntoVideo(videoUri, [], {
+    // Then apply watermark
+    const result = await burnCaptionsAndWatermarkIntoVideo(processedVideo, [], {
       watermarkImagePath: logoPath,
       watermarkText: "ToxicConfessions.app",
       onProgress: (progress: any, status: any) => {
-        // Map progress from 0-100 to 30-100
-        const mappedProgress = 30 + (progress / 100) * 70;
+        const mappedProgress = 50 + (progress / 100) * 50;
         onProgress?.(mappedProgress, status);
       },
     });
 
-    console.log("🎬 Watermark burning result:", result);
+    debugLog("Processing result", { success: result.success, outputPath: result.outputPath });
 
     if (result.success && result.outputPath) {
-      console.log("✅ Video processed successfully with watermark");
-      console.log("✅ Output path:", result.outputPath);
+      console.log("✅ Video processed successfully with blur and watermark");
       return result.outputPath;
     } else {
       console.error("❌ Video processing failed:", result.error);
@@ -199,14 +348,7 @@ async function processVideoWithWatermarkOnly(
     }
   } catch (error) {
     console.error("Error processing video:", error);
-
-    // Check if it's a module not available error
-    if (error instanceof Error && error.message.includes("not available")) {
-      console.log("⚠️ Video processing module not available, using original video");
-      onProgress?.(60, "Video processing not available (using original)");
-      return null;
-    }
-
+    debugLog("Processing error", { error });
     return null;
   }
 }

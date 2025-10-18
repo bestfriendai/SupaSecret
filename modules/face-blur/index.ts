@@ -1,4 +1,4 @@
-import { NativeModules } from "react-native";
+import { NativeModules, Platform } from "react-native";
 
 /**
  * Native Face Blur Module
@@ -34,6 +34,11 @@ export interface BlurOptions {
   onProgress?: (progress: number, status: string) => void;
 }
 
+export interface FaceBlurOptions {
+  blurIntensity?: number;
+  detectionMode?: "fast" | "accurate";
+}
+
 /**
  * Blur faces in a video file
  *
@@ -63,6 +68,29 @@ export async function blurFacesInVideo(videoPath: string, options: BlurOptions =
 }
 
 /**
+ * Apply face blur to a video (simplified interface for download service)
+ * Returns the processed video URI or null if it fails
+ */
+export const applyFaceBlur = async (videoUri: string, options: FaceBlurOptions = {}): Promise<string | null> => {
+  if (!FaceBlurModule) {
+    console.warn("FaceBlurModule not available");
+    return null;
+  }
+
+  try {
+    const result = await FaceBlurModule.blurFacesInVideo(videoUri, {
+      blurIntensity: options.blurIntensity || 50,
+      detectionMode: options.detectionMode || "fast",
+    });
+
+    return result.success ? result.outputPath : null;
+  } catch (error) {
+    console.error("Face blur failed:", error);
+    return null;
+  }
+};
+
+/**
  * Check if face blur is available on this device
  */
 export function isNativeFaceBlurAvailable(): boolean {
@@ -74,7 +102,16 @@ export function isNativeFaceBlurAvailable(): boolean {
   }
 }
 
+/**
+ * Check if face blur is supported on the current platform
+ */
+export const isFaceBlurSupported = (): boolean => {
+  return !!FaceBlurModule && Platform.OS !== "web";
+};
+
 export default {
   blurFacesInVideo,
   isNativeFaceBlurAvailable,
+  applyFaceBlur,
+  isFaceBlurSupported,
 };

@@ -534,50 +534,99 @@ class CaptionBurnerModule: NSObject {
     videoLayer.frame = CGRect(origin: .zero, size: renderSize)
     overlayLayer.frame = CGRect(origin: .zero, size: renderSize)
 
+    // ENHANCED WATERMARK FOR SOCIAL MEDIA VISIBILITY
+    // Position: Bottom-left corner
+    // Size: Large and readable for viral sharing
+
+    let watermarkPadding: CGFloat = 30
+    let logoWidth: CGFloat = 200  // Increased from 120 for better visibility
+    let logoHeight: CGFloat = 80  // Increased from 40 for better visibility
+    let textFontSize: CGFloat = 28  // Increased from 16 for social media readability
+    let textHeight: CGFloat = 45  // Increased for larger font
+
+    // Add semi-transparent background for better contrast
+    let backgroundLayer = CALayer()
+    backgroundLayer.backgroundColor = UIColor.black.withAlphaComponent(0.7).cgColor
+    backgroundLayer.cornerRadius = 16
+
+    var totalHeight: CGFloat = 0
+    var maxWidth: CGFloat = 0
+
     // Add watermark image if we have one
     if let image = watermarkImage {
       let imageLayer = CALayer()
-      let imageWidth: CGFloat = 120
-      let imageHeight: CGFloat = 40
       imageLayer.contents = image
-      imageLayer.frame = CGRect(
-        x: renderSize.width - imageWidth - 20,
-        y: renderSize.height - imageHeight - 20,
-        width: imageWidth,
-        height: imageHeight
-      )
       imageLayer.contentsGravity = .resizeAspect
-      imageLayer.opacity = 0.9
+      imageLayer.opacity = 1.0  // Full opacity for maximum visibility
+
+      // Position logo at bottom-left with padding
+      imageLayer.frame = CGRect(
+        x: watermarkPadding + 15,  // 15px padding inside background
+        y: watermarkPadding + 15,
+        width: logoWidth,
+        height: logoHeight
+      )
+
       overlayLayer.addSublayer(imageLayer)
-      print("✅ Added logo watermark at bottom-right")
-    } else {
-      print("⚠️ No logo image to add")
+      totalHeight = logoHeight
+      maxWidth = logoWidth
+      print("✅ Added logo watermark at bottom-left: \(logoWidth)x\(logoHeight)")
     }
 
     // Add text watermark if provided
     if let text = watermarkText {
       let textLayer = CATextLayer()
       textLayer.string = text
-      textLayer.fontSize = 16
+      textLayer.fontSize = textFontSize
       textLayer.foregroundColor = UIColor.white.cgColor
-      textLayer.backgroundColor = UIColor.black.withAlphaComponent(0.5).cgColor
-      textLayer.alignmentMode = .center
+      textLayer.alignmentMode = .left
+      textLayer.contentsScale = UIScreen.main.scale  // Fix blurry text on retina
+
+      // Calculate text width based on content
+      let textWidth: CGFloat = 350  // Wide enough for "ToxicConfessions.app"
+
+      // Position text below the logo (if logo exists) or standalone
+      let textY: CGFloat
+      if watermarkImage != nil {
+        textY = watermarkPadding + 15 + logoHeight + 10  // 10px gap below logo
+        totalHeight += logoHeight + 10 + textHeight
+      } else {
+        textY = watermarkPadding + 15
+        totalHeight = textHeight
+      }
+
       textLayer.frame = CGRect(
-        x: 20,
-        y: renderSize.height - 60,
-        width: 200,
-        height: 30
+        x: watermarkPadding + 15,
+        y: textY,
+        width: textWidth,
+        height: textHeight
       )
-      textLayer.cornerRadius = 8
+
       overlayLayer.addSublayer(textLayer)
-      print("✅ Added text watermark at bottom-left")
+      maxWidth = max(maxWidth, textWidth)
+      print("✅ Added text watermark at bottom-left: '\(text)' (size: \(textFontSize))")
     }
 
-    // CRITICAL: Do NOT add videoLayer to parentLayer!
-    // When using postProcessingAsVideoLayer, AVFoundation automatically renders
-    // video frames into videoLayer. Adding it as a sublayer causes black screen.
-    // Only add overlay layers to parentLayer.
-    print("🎨 Adding overlay layer to parent (NOT videoLayer)")
+    // Add semi-transparent background behind watermark elements
+    if watermarkImage != nil || watermarkText != nil {
+      backgroundLayer.frame = CGRect(
+        x: watermarkPadding,
+        y: watermarkPadding,
+        width: maxWidth + 30,  // 15px padding on each side
+        height: totalHeight + 30
+      )
+
+      // Insert background behind other layers
+      overlayLayer.insertSublayer(backgroundLayer, at: 0)
+      print("✅ Added watermark background: \(backgroundLayer.frame)")
+    }
+
+    // CRITICAL FIX: Add BOTH videoLayer and overlayLayer to parentLayer
+    // The videoLayer goes on the bottom (shows the video frames)
+    // The overlayLayer goes on top (shows the watermark)
+    // This is the standard pattern for Core Animation compositing
+    print("🎨 Adding video layer (bottom) and overlay layer (top) to parent")
+    parentLayer.addSublayer(videoLayer)
     parentLayer.addSublayer(overlayLayer)
     print("🎨 Parent layer sublayers count: \(parentLayer.sublayers?.count ?? 0)")
 
