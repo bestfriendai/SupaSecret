@@ -75,50 +75,17 @@ export const downloadVideoToGallery = async (
       console.log("✅ Original video file size:", fileSize, "bytes");
     }
 
-    onProgress?.(10, "Processing video with watermark...");
+    // TEMPORARY TEST: Skip watermark processing entirely to see if save works
+    console.log("📹 ========== DOWNLOAD DEBUG ==========");
+    console.log("📹 Input video URI:", videoUri);
+    console.log("📹 Testing direct save WITHOUT watermark processing");
+    console.log("📹 =====================================");
 
-    // Process video with watermark only (no captions for downloads)
+    onProgress?.(50, "Saving video directly (no processing)...");
+
+    // Just use the input video directly - no processing
+    // This should save the blurred video if blur was applied
     let finalVideoUri = videoUri;
-    try {
-      console.log("📹 Starting video processing for download...");
-      console.log("📹 Input videoUri:", videoUri);
-
-      const processedVideo = await processVideoWithWatermarkOnly(videoUri, (progress, message) => {
-        // Map progress from 0-100 to 10-60
-        const mappedProgress = 10 + (progress / 100) * 50;
-        onProgress?.(mappedProgress, message);
-      });
-
-      if (processedVideo) {
-        console.log("✅ Video processing complete. Output:", processedVideo);
-
-        // Verify the processed video file exists and has content
-        const processedFileInfo = await FileSystem.getInfoAsync(processedVideo);
-        console.log("📹 Processed video file info:", processedFileInfo);
-
-        if (processedFileInfo.exists) {
-          // Check file size using type assertion for legacy FileSystem
-          const fileSize = (processedFileInfo as any).size || 0;
-          if (fileSize > 10000) {
-            // Increased threshold to 10KB
-            finalVideoUri = processedVideo;
-            console.log("✅ Using processed video with watermark");
-          } else {
-            console.warn("⚠️ Processed video file is too small, using original video");
-            console.warn("⚠️ File exists:", processedFileInfo.exists);
-            console.warn("⚠️ File size:", fileSize);
-          }
-        } else {
-          console.warn("⚠️ Video processing returned non-existent file, using original video");
-        }
-      } else {
-        console.warn("⚠️ Video processing returned null, using original video");
-      }
-    } catch (processingError) {
-      console.error("❌ Video processing failed, using original:", processingError);
-      // Continue with original video if processing fails
-      onProgress?.(60, "Using original video (processing failed)...");
-    }
 
     console.log("📹 Final video URI for gallery:", finalVideoUri);
 
