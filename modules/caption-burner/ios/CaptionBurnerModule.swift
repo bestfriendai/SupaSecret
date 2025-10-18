@@ -536,13 +536,13 @@ class CaptionBurnerModule: NSObject {
 
     // ENHANCED WATERMARK FOR SOCIAL MEDIA VISIBILITY
     // Position: Bottom-left corner
-    // Size: Large and readable for viral sharing
+    // Size: Optimized for readability and proper fit
 
-    let watermarkPadding: CGFloat = 30
-    let logoWidth: CGFloat = 200  // Increased from 120 for better visibility
-    let logoHeight: CGFloat = 80  // Increased from 40 for better visibility
-    let textFontSize: CGFloat = 28  // Increased from 16 for social media readability
-    let textHeight: CGFloat = 45  // Increased for larger font
+    let watermarkPadding: CGFloat = 20
+    let logoWidth: CGFloat = 140  // Balanced size - visible but not overwhelming
+    let logoHeight: CGFloat = 55  // Proportional to logo
+    let textFontSize: CGFloat = 22  // Readable on social media
+    let textHeight: CGFloat = 35  // Appropriate for font size
 
     // Add semi-transparent background for better contrast
     let backgroundLayer = CALayer()
@@ -561,8 +561,8 @@ class CaptionBurnerModule: NSObject {
 
       // Position logo at bottom-left with padding
       imageLayer.frame = CGRect(
-        x: watermarkPadding + 15,  // 15px padding inside background
-        y: watermarkPadding + 15,
+        x: watermarkPadding + 12,  // 12px padding inside background
+        y: watermarkPadding + 12,
         width: logoWidth,
         height: logoHeight
       )
@@ -583,20 +583,20 @@ class CaptionBurnerModule: NSObject {
       textLayer.contentsScale = UIScreen.main.scale  // Fix blurry text on retina
 
       // Calculate text width based on content
-      let textWidth: CGFloat = 350  // Wide enough for "ToxicConfessions.app"
+      let textWidth: CGFloat = 280  // Proportional to new logo size
 
       // Position text below the logo (if logo exists) or standalone
       let textY: CGFloat
       if watermarkImage != nil {
-        textY = watermarkPadding + 15 + logoHeight + 10  // 10px gap below logo
-        totalHeight += logoHeight + 10 + textHeight
+        textY = watermarkPadding + 12 + logoHeight + 8  // 8px gap below logo
+        totalHeight += logoHeight + 8 + textHeight
       } else {
-        textY = watermarkPadding + 15
+        textY = watermarkPadding + 12
         totalHeight = textHeight
       }
 
       textLayer.frame = CGRect(
-        x: watermarkPadding + 15,
+        x: watermarkPadding + 12,
         y: textY,
         width: textWidth,
         height: textHeight
@@ -612,8 +612,8 @@ class CaptionBurnerModule: NSObject {
       backgroundLayer.frame = CGRect(
         x: watermarkPadding,
         y: watermarkPadding,
-        width: maxWidth + 30,  // 15px padding on each side
-        height: totalHeight + 30
+        width: maxWidth + 24,  // 12px padding on each side
+        height: totalHeight + 24
       )
 
       // Insert background behind other layers
