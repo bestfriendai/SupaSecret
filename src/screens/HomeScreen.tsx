@@ -3,17 +3,37 @@ import { View, Text, Pressable, RefreshControl, type GestureResponderEvent } fro
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useIsFocused } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import type { Confession } from "../types/confession";
 import { useConfessionStore } from "../state/confessionStore";
 import { useReplyStore } from "../state/replyStore";
 import { useSavedStore } from "../state/savedStore";
-import { format } from "date-fns";
 import { usePreferenceAwareHaptics } from "../utils/haptics";
 import { checkConfessionStoreState } from "../utils/debugConfessions";
 import { useOptimizedReplies } from "../hooks/useOptimizedReplies";
+
+// Efficient time ago formatter (doesn't cause re-renders)
+function getTimeAgo(timestamp: string | number): string {
+  const now = Date.now();
+  const then = new Date(timestamp).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo`;
+  const years = Math.floor(days / 365);
+  return `${years}y`;
+}
 import { useScreenStatus } from "../hooks/useScreenStatus";
 import { ErrorState } from "../components/ErrorState";
 import { withErrorBoundary } from "../components/ErrorBoundary";
@@ -117,6 +137,7 @@ function VideoThumbnailView({ confession, generatedThumbnail, onThumbnailGenerat
 
 function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const isFocused = useIsFocused();
   const confessions = useConfessionStore((state) => state.confessions);
   const loadConfessions = useConfessionStore((state) => state.loadConfessions);
   const loadMoreConfessions = useConfessionStore((state) => state.loadMoreConfessions);
@@ -152,6 +173,23 @@ function HomeScreen() {
 
   // FlashList ref for potential future scroll restoration
   const flashListRef = useRef<any | null>(null);
+
+  // Track if user manually scrolled and previous focus state
+  const hasScrolledRef = useRef(false);
+  const wasFocusedRef = useRef(false);
+
+  // Scroll to top when tab is pressed (if already on Home screen)
+  useEffect(() => {
+    // Only scroll to top if:
+    // 1. Screen just became focused
+    // 2. It was already focused before (user tapped tab again)
+    // 3. User has scrolled down
+    if (isFocused && wasFocusedRef.current && hasScrolledRef.current && flashListRef.current) {
+      flashListRef.current.scrollToOffset({ offset: 0, animated: true });
+      hasScrolledRef.current = false;
+    }
+    wasFocusedRef.current = isFocused;
+  }, [isFocused]);
 
   // Initialize data loading on component mount
   useEffect(() => {
@@ -353,14 +391,18 @@ function HomeScreen() {
           <Pressable className="border-b border-gray-800 px-4 py-3" onPress={() => handleSecretPress(confession)}>
             {/* Header with avatar and info */}
             <View className="flex-row items-start mb-3">
-              <View className="w-12 h-12 bg-gray-700 rounded-full items-center justify-center mr-3">
-                <Ionicons name="person" size={20} color="#8B98A5" />
+              <View className="w-12 h-12 rounded-full items-center justify-center mr-3 overflow-hidden">
+                <Image
+                  source={require("../../assets/logo.png")}
+                  style={{ width: 48, height: 48 }}
+                  contentFit="cover"
+                />
               </View>
               <View className="flex-1">
                 <View className="flex-row items-center mb-1">
                   <Text className="text-white font-bold text-15">Anonymous</Text>
                   <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
-                  <Text className="text-gray-500 text-15">{format(new Date(confession.timestamp), "MMM d")}</Text>
+                  <Text className="text-gray-500 text-15">{getTimeAgo(confession.timestamp)}</Text>
                   <View className="w-1 h-1 bg-gray-500 rounded-full mx-2" />
                   <View className="flex-row items-center">
                     <Ionicons
@@ -538,6 +580,13 @@ function HomeScreen() {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#1D9BF0"]} tintColor="#1D9BF0" />
             }
+            onScroll={useCallback((event: any) => {
+              // Track if user has scrolled down (using ref to avoid re-renders)
+              if (event.nativeEvent.contentOffset.y > 100 && !hasScrolledRef.current) {
+                hasScrolledRef.current = true;
+              }
+            }, [])}
+            scrollEventThrottle={400}
             // Removed reply loading for performance - using reply_count from database instead
             // onViewableItemsChanged={({ viewableItems }) => {
             //   const visibleIds = viewableItems.map((item) => item.item.id);

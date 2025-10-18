@@ -211,7 +211,7 @@ function MainTabs() {
         component={HomeScreen}
         options={{
           title: "Secrets",
-          header: () => <AppHeader title="Secrets" showTrendingBar={true} />,
+          header: () => <AppHeader title="Toxic Confessions" showTrendingBar={true} />,
         }}
       />
       <Tab.Screen

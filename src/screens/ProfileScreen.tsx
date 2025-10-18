@@ -334,7 +334,8 @@ const ProfileScreen = () => {
   useEffect(() => {
     console.log("[ProfileScreen] Mount useEffect - calling onRefresh");
     onRefresh();
-  }, [onRefresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   return (
     <SafeAreaView className="flex-1 bg-black" style={{ paddingTop: insets.top }}>

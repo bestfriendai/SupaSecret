@@ -71,10 +71,12 @@ async function generateWithGemini(prompt: string): Promise<string> {
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 1.0,
-          maxOutputTokens: 300,
-          topP: 0.95,
-          topK: 40
+          temperature: 1.4,  // Maximum creativity for human-like variety
+          maxOutputTokens: 350,
+          topP: 0.99,  // Maximum diversity
+          topK: 64,  // Maximum variety
+          candidateCount: 1,
+          stopSequences: []
         }
       })
     }
@@ -117,12 +119,40 @@ Requirements:
 - Length: ${lengthMap[config.length]} characters
 - Category: ${config.category}
 - Toxicity: ${config.toxicityLevel}
-- Hashtags: ${config.hashtagCount} (if 0, don't include any. If 1-2, add relevant trending hashtags)
+- Hashtags: ${config.hashtagCount} (if 0, don't include any. If 1-2, CREATE UNIQUE hashtags based on the specific content of your confession)
 
 IMPORTANT: Do NOT include "Category:", "Toxicity:", or "Hashtags:" labels in your response. Just write the confession naturally.
 
-HASHTAG EXAMPLES (use these types, make them relevant):
-#toxic #regret #confession #guilty #shameless #revenge #cheating #lies #drama #messy #wild #crazy #oops #yolo #noregrets #sorrynotsorry #truth #real #exposed #secret #anonymous #confessing #spill #tea #receipts #caught #busted #mistake #whoops #fml #help
+HASHTAG INSTRUCTIONS (ONLY IF SPECIFIED):
+- Most confessions DON'T need hashtags - only add them if it feels natural
+- When you do add hashtags, make them feel ORGANIC and CASUAL
+- Use lowercase, simple, relatable tags that real people would use
+- Avoid overly specific or compound hashtags (no #crushconfession or #pettyrevenge)
+- Think like someone casually adding a tag, not trying to be discovered
+
+GOOD NATURAL HASHTAGS (simple, casual, relatable):
+- Emotions: #sad #happy #angry #guilty #proud #embarrassed #confused
+- Situations: #work #college #party #family #dating #breakup #drama
+- Reactions: #oops #yikes #help #ugh #whatever #mood #same
+- Relationships: #ex #crush #toxic #single #complicated
+- Actions: #cheated #lied #stole #ghosted #blocked #deleted
+- Time: #lastnight #today #yesterday #weekend
+- Feelings: #regret #noshame #sorry #notsorry #mybad
+
+BAD BOT-LIKE HASHTAGS (avoid these):
+- ❌ #crushconfession (too specific/compound)
+- ❌ #pettyrevenge (sounds like a category)
+- ❌ #datingfails (too Instagram-influencer)
+- ❌ #officedrama (too formal)
+- ❌ #sorrynotsorry (overused cliché)
+
+EXAMPLES OF NATURAL USAGE:
+- "i cheated on my boyfriend last night and i feel terrible #guilty"
+- "told my boss what i really think about him #oops"
+- "my ex texted me at 3am... i replied #weak"
+- "stole my roommate's food again #notsorry"
+- "kissed my best friend's crush at the party #drama"
+- NO HASHTAG: "i've been lying to my parents about college for 2 years" (most confessions don't need tags!)
 
 CRITICAL REALISM RULES (FOLLOW THESE STRICTLY):
 
@@ -134,24 +164,31 @@ CRITICAL REALISM RULES (FOLLOW THESE STRICTLY):
    - Use "..." for trailing thoughts or dramatic pauses
    - Start sentences with: "so", "like", "honestly", "okay so", "i", "not gonna lie"
 
-2. TYPOS & IMPERFECTIONS (use sparingly, 1-2 per confession):
-   - "ur" instead of "your"
-   - "u" instead of "you"
-   - "tho" instead of "though"
-   - "thru" instead of "through"
-   - "rn" instead of "right now"
-   - "bc" instead of "because"
-   - Missing apostrophes: "dont", "cant", "im"
-   - Double letters for emphasis: "sooo", "reallly", "omgg"
+2. TYPOS & IMPERFECTIONS (CRITICAL - use 2-4 per confession for realism):
+   - Text speak: "ur", "u", "tho", "thru", "rn", "bc", "w/", "tbh", "ngl", "fr", "lowkey", "highkey"
+   - Missing apostrophes: "dont", "cant", "im", "didnt", "wasnt", "isnt", "wouldnt", "shouldnt"
+   - Missing capitals: start sentences lowercase sometimes
+   - Double letters for emphasis: "sooo", "reallly", "omgg", "yesss", "noooo", "wtff"
+   - Typos that happen on phone keyboards: "teh" (the), "adn" (and), "hte" (the), "jsut" (just)
+   - Run-on sentences without commas
+   - Missing periods at the end
+   - "alot" instead of "a lot"
+   - "prolly" instead of "probably"
+   - "gonna", "wanna", "gotta"
 
-3. EMOJIS (use sparingly, 0-2 per confession):
-   - 💀 (dead/dying laughing or embarrassed)
-   - 😭 (crying/emotional)
+3. EMOJIS (use 0-3 per confession, placed naturally):
+   - 💀 (dead/dying laughing or embarrassed) - MOST COMMON
+   - 😭 (crying/emotional) - VERY COMMON
    - 😅 (nervous laugh)
-   - 🤷‍♀️ (shrug/whatever)
+   - 🤷‍♀️ or 🤷 (shrug/whatever)
    - 🙈 (hiding/embarrassed)
    - 😬 (awkward/cringe)
-   - Place naturally in the text, not at the end
+   - 🥴 (drunk/messy)
+   - 😳 (shocked/caught)
+   - 🤡 (feeling stupid)
+   - 🚩 (red flag)
+   - Place naturally MID-SENTENCE, not just at the end
+   - Can use multiple of same emoji for emphasis: "💀💀💀"
 
 4. SENTENCE STRUCTURE:
    - Vary length: mix short punchy sentences with longer rambling ones
@@ -175,9 +212,17 @@ CRITICAL REALISM RULES (FOLLOW THESE STRICTLY):
 
 7. HASHTAGS (if specified):
    - Put at the VERY END after the confession
-   - Make them relevant to the content
-   - Use 1-2 max, never more
-   - Separate with spaces: "#toxic #regret" not "#toxic#regret"
+   - Keep them SIMPLE, CASUAL, and LOWERCASE
+   - Use single-word tags that feel natural: #guilty #oops #drama #toxic #ex
+   - Avoid compound words or overly specific tags
+   - Most confessions DON'T need hashtags - only add if it feels organic
+   - Use 1 hashtag max (rarely 2)
+   - Separate with spaces: "#guilty #oops" not "#guilty#oops"
+   - Examples:
+     * Cheating story → #guilty or #cheated (NOT #cheatingconfession)
+     * Work story → #work or #boss (NOT #officedrama)
+     * Ex story → #ex or #toxic (NOT #exboyfriend)
+     * Party story → #lastnight or #oops (NOT #partyregrets)
 
 8. WHAT TO AVOID:
    - NO quotation marks around the confession
@@ -187,11 +232,16 @@ CRITICAL REALISM RULES (FOLLOW THESE STRICTLY):
    - NO perfect punctuation (occasional missing periods is fine)
    - NO hashtags in the middle of text
 
-9. AUTHENTICITY MARKERS:
-   - Admit uncertainty: "i think", "maybe", "idk"
-   - Show emotion: "i feel terrible", "im so embarrassed", "this is eating me up"
-   - Be specific with details: ages, timeframes, relationships
-   - Include internal conflict: "i know its wrong but...", "part of me feels bad but..."
+9. AUTHENTICITY MARKERS (CRITICAL FOR REALISM):
+   - Admit uncertainty: "i think", "maybe", "idk", "not sure", "kinda", "sorta"
+   - Show emotion: "i feel terrible", "im so embarrassed", "this is eating me up", "im freaking out"
+   - Be specific with details: exact ages (23, 19, 26), timeframes (last tuesday, 3 months ago), relationships (coworker, roommate's bf)
+   - Include internal conflict: "i know its wrong but...", "part of me feels bad but...", "i shouldnt have but..."
+   - Time references: "last night", "yesterday", "last week", "a few months ago", "back in college", "when i was 19"
+   - Real-world details: specific places (starbucks, target, the gym), apps (tinder, snapchat, instagram), situations (zoom call, group chat)
+   - Relationship specifics: "my bf of 2 years", "this girl from work", "my roommate's friend", "my ex from high school"
+   - Money amounts: "$20", "$500", "like $100"
+   - Quantities: "3 times", "every day for a week", "twice"
 
 10. EXAMPLES OF REALISTIC OPENINGS:
     - "okay so i need to confess something..."
@@ -201,6 +251,28 @@ CRITICAL REALISM RULES (FOLLOW THESE STRICTLY):
     - "i feel terrible about this but..."
     - "honestly i dont even feel bad about..."
     - "this is gonna sound bad but..."
+    - "throwaway bc people know my main but..."
+    - "idk if this makes me a bad person but..."
+    - "been holding this in for months..."
+
+11. ULTRA-REALISTIC PATTERNS (use these to seem 100% human):
+    - Start mid-thought: "so basically what happened was..."
+    - Self-awareness: "i know this sounds fake but i swear its real"
+    - Defensive: "before yall judge me...", "dont come for me but..."
+    - Seeking validation: "am i the asshole here?", "tell me im not crazy"
+    - Time stamps: "this was like 2am", "happened on a tuesday", "back in march"
+    - Specific ages: "when i was 22", "hes 26", "shes 19"
+    - Platform references: "saw on his instagram", "she posted on her story", "found his tinder"
+    - Real situations: "during a zoom meeting", "at target", "in the uber", "at the gym"
+    - Consequences: "now everyone knows", "she found out", "got fired", "we broke up"
+    - Current status: "we're still together", "havent talked since", "blocked me", "still friends somehow"
+
+12. VARY YOUR STYLE (don't follow a formula):
+    - Some confessions are one long paragraph
+    - Some have short sentences. Like this. For impact.
+    - Some ramble and go on and on without much structure just typing whatever comes to mind
+    - Some are super short and direct
+    - Mix it up constantly - no two confessions should feel the same
 
 Return ONLY the confession text (with hashtags at the end if specified), nothing else. NO quotation marks.`;
 }
@@ -226,11 +298,12 @@ function getRandomConfig(): SecretConfig {
 
   const toxicityLevels = ['mild', 'moderate', 'spicy', 'extra_spicy'];
 
-  // 60% chance of having 1-2 hashtags
+  // Only 30% chance of having hashtags (most posts don't have them)
   let hashtagCount = 0;
   const rand = Math.random();
-  if (rand < 0.6) {
-    hashtagCount = Math.random() > 0.5 ? 2 : 1;
+  if (rand < 0.3) {
+    // 70% chance of 1 hashtag, 30% chance of 2 hashtags
+    hashtagCount = Math.random() > 0.7 ? 2 : 1;
   }
 
   return {

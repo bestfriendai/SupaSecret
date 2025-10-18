@@ -1,5 +1,6 @@
 import React from "react";
 import { View, type DimensionValue, type ViewStyle } from "react-native";
+import { Image } from "expo-image";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -52,7 +53,13 @@ export default function ConfessionSkeleton({ showVideo = false }: ConfessionSkel
     <View className="border-b border-gray-800 px-4 py-3">
       {/* Header with avatar and info */}
       <View className="flex-row items-start mb-3">
-        <SkeletonBox width={48} height={48} className="rounded-full mr-3" />
+        <View className="w-12 h-12 rounded-full items-center justify-center mr-3 overflow-hidden opacity-50">
+          <Image
+            source={require("../../assets/logo.png")}
+            style={{ width: 48, height: 48 }}
+            contentFit="cover"
+          />
+        </View>
         <View className="flex-1">
           <View className="flex-row items-center mb-1">
             <SkeletonBox width={80} height={16} className="mr-2" />
